@@ -9,6 +9,7 @@ import GameOverModal from './components/GameOverModal';
 import { useStore } from './store';
 import { useEffect, useRef } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
+import { fmtMoney, fmtMB } from './utils/format';
 import Papa from 'papaparse';
 import { Clock, RotateCcw } from 'lucide-react';
 
@@ -23,20 +24,62 @@ function App() {
   const { 
     isPlaying, stepForward, currentIndex, rawData, balance, positions, 
     musicEnabled, setAllData, gameStarted, gamePeriod,
-    gameState, rules, updateTimeRemaining, endGame, restartGame
+    gameState, rules, updateTimeRemaining, endGame, restartGame,
+    loadingState
   } = useStore();
   const soundtrackStarted = useRef(false);
 
-  // Load CSV
+  // ---------- Load CSV with streaming progress ----------
   useEffect(() => {
-    fetch('/data/xauusd.csv')
-      .then(response => response.text())
-      .then(csvText => {
+    let cancelled = false;
+    const setLoadingState = useStore.getState().setLoadingState;
+    const csvUrl = `${import.meta.env.BASE_URL}data/xauusd.csv`;
+
+    const loadCSV = async () => {
+      try {
+        setLoadingState({ isActive: true, loaded: 0, total: 0, error: null });
+
+        const response = await fetch(csvUrl);
+        if (!response.ok) throw new Error(`Failed to fetch CSV: ${response.status}`);
+
+        const contentLength = response.headers.get('Content-Length');
+        const total = contentLength ? parseInt(contentLength, 10) : 0;
+
+        let loaded = 0;
+        let csvText = '';
+
+        // Stream the response if supported
+        if (response.body && response.body.getReader) {
+          const reader = response.body.getReader();
+          const chunks = [];
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (cancelled) return;
+            chunks.push(value);
+            loaded += value.length;
+            setLoadingState({ loaded, total });
+          }
+          const allChunks = new Uint8Array(loaded);
+          let position = 0;
+          for (const chunk of chunks) {
+            allChunks.set(chunk, position);
+            position += chunk.length;
+          }
+          csvText = new TextDecoder('utf-8').decode(allChunks);
+        } else {
+          // Fallback (some browsers)
+          csvText = await response.text();
+          loaded = csvText.length;
+          setLoadingState({ loaded, total: loaded });
+        }
+
         Papa.parse(csvText, {
-          header: true, dynamicTyping: true,
+          header: true,
+          dynamicTyping: true,
           complete: (results) => {
             const formattedData = results.data
-              .filter(row => row.date && row.close) 
+              .filter(row => row.date && row.close)
               .map(row => {
                 const dateStr = row.date.toString();
                 const year = dateStr.substring(0, 4);
@@ -45,11 +88,11 @@ function App() {
                 const timeStr = row.time;
                 const paddedTime = timeStr.length === 7 ? `0${timeStr}` : timeStr;
                 const isoString = `${year}-${month}-${day}T${paddedTime}`;
-                return { 
-                  time: new Date(isoString).getTime() / 1000, 
-                  open: row.open, 
-                  high: row.high, 
-                  low: row.low, 
+                return {
+                  time: new Date(isoString).getTime() / 1000,
+                  open: row.open,
+                  high: row.high,
+                  low: row.low,
                   close: row.close,
                   volume: Number(row.volume) || 0,
                 };
@@ -57,10 +100,20 @@ function App() {
               .filter(row => !isNaN(row.time))
               .sort((a, b) => a.time - b.time);
             setAllData(formattedData);
+            setLoadingState({ isActive: false });
+          },
+          error: (err) => {
+            setLoadingState({ isActive: false, error: err.message });
           },
         });
-      })
-      .catch(error => console.error("Fetch Error:", error));
+      } catch (err) {
+        console.error('CSV load error:', err);
+        setLoadingState({ isActive: false, error: err.message });
+      }
+    };
+
+    loadCSV();
+    return () => { cancelled = true; };
   }, [setAllData]);
 
   // Auto-play
@@ -139,12 +192,16 @@ function App() {
     }
   };
 
+  // Progress bar values
+  const percent = loadingState.total > 0
+    ? Math.min(100, Math.round((loadingState.loaded / loadingState.total) * 100))
+    : 0;
+
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col h-screen overflow-hidden relative">
       {/* SINGLE ROW HEADER */}
       <header className="px-2 py-1.5 md:px-3 md:py-2 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-2">
         
-        {/* Left: Logo + Countdown */}
         <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
           <h1 className="text-sm md:text-lg font-bold tracking-wider whitespace-nowrap">
             <span className="text-blue-500">Omax</span>
@@ -159,7 +216,6 @@ function App() {
           )}
         </div>
 
-        {/* Right: Stats + Controls */}
         <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm flex-shrink-0">
           {gameStarted && (
             <span className="text-gray-500 text-[10px] md:text-xs hidden lg:inline">{periodLabel}</span>
@@ -171,12 +227,12 @@ function App() {
           )}
           <div className="flex items-baseline gap-1">
             <span className="text-gray-400 hidden md:inline">Bal:</span>
-            <span className="text-green-400 font-bold text-xs md:text-sm">${balance.toFixed(2)}</span>
+            <span className="text-green-400 font-bold text-xs md:text-sm">${fmtMoney(balance)}</span>
           </div>
           <div className="flex items-baseline gap-1">
             <span className="text-gray-400 hidden md:inline">P&L:</span>
             <span className={`font-bold text-xs md:text-sm ${unrealisedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              ${unrealisedPnl.toFixed(2)}
+              ${fmtMoney(unrealisedPnl)}
             </span>
           </div>
           <div className="hidden xl:block text-gray-500 font-mono text-xs">{displayTime}</div>
@@ -205,6 +261,42 @@ function App() {
       <EquityModal />
       <PeriodModal />
       <GameOverModal />
+
+      {/* LOADING OVERLAY WITH PROGRESS BAR */}
+      {loadingState.isActive && (
+        <div className="fixed inset-0 bg-[#0b0e11] z-[100] flex items-center justify-center">
+          <div className="w-80 max-w-[90vw] space-y-4">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold tracking-wider mb-1">
+                <span className="text-blue-500">Omax</span>
+                <span className="text-white">FX Game</span>
+              </h1>
+              <p className="text-xs text-gray-500">
+                {loadingState.error ? 'Failed to load data' : 'Downloading market data…'}
+              </p>
+            </div>
+
+            {loadingState.error ? (
+              <div className="bg-red-900/30 border border-red-700 rounded-lg p-3 text-red-400 text-xs">
+                {loadingState.error}
+              </div>
+            ) : (
+              <>
+                <div className="h-2 bg-[#1e222d] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-200"
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-gray-500 font-mono">
+                  <span>{fmtMB(loadingState.loaded)} / {loadingState.total > 0 ? fmtMB(loadingState.total) : '…'}</span>
+                  <span>{loadingState.total > 0 ? `${percent}%` : '…'}</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

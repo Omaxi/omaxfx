@@ -1,4 +1,5 @@
 import { useStore } from '../store';
+import { fmtMoney } from '../utils/format';
 import { X } from 'lucide-react';
 
 export default function HistoryModal() {
@@ -37,7 +38,7 @@ export default function HistoryModal() {
           <div className="bg-[#1e222d] p-3 rounded-lg">
             <p className="text-xs text-gray-400">Total PnL</p>
             <p className={`text-lg font-bold ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              ${totalPnl.toFixed(2)}
+              ${fmtMoney(totalPnl)}
             </p>
           </div>
         </div>
@@ -75,7 +76,7 @@ export default function HistoryModal() {
                     <td className="p-3 text-right font-mono text-green-400">{t.tp?.toFixed(2) || '-'}</td>
                     <td className="p-3 text-right">{t.size}</td>
                     <td className={`p-3 text-right font-bold ${t.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      ${t.pnl.toFixed(2)}
+                      ${fmtMoney(t.pnl)}
                     </td>
                     <td className="p-3">
                       <span className={`text-xs px-2 py-1 rounded ${

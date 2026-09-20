@@ -12,29 +12,23 @@ const getCtx = () => {
   return audioCtx;
 };
 
-// ---------- VOLUME CONTROLS ----------
-const SFX_VOLUME_MULTIPLIER = 1.5;   // Sound effects multiplier
-const MUSIC_VOLUME = 0.1;             // Soundtrack volume (0.0 – 1.0)
+const SFX_VOLUME_MULTIPLIER = 1.5;
+const MUSIC_VOLUME = 0.1;
 
-// ---------- SYNTHESIZED SFX ----------
 const playTone = (freq, duration, type = 'sine', volume = 0.15, delay = 0) => {
   try {
     const ctx = getCtx();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    
     osc.type = type;
     osc.frequency.value = freq;
-    
     const finalVolume = volume * SFX_VOLUME_MULTIPLIER;
     const startTime = ctx.currentTime + delay;
     gain.gain.setValueAtTime(0, startTime);
     gain.gain.linearRampToValueAtTime(finalVolume, startTime + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-    
     osc.connect(gain);
     gain.connect(ctx.destination);
-    
     osc.start(startTime);
     osc.stop(startTime + duration + 0.05);
   } catch (e) {}
@@ -68,7 +62,6 @@ export const playPendingTriggered = () => {
   playTone(1100, 0.1, 'square', 0.05, 0.07);
 };
 
-// "ELIMINATED" — dramatic game-over bwoooong (kept for future use)
 export const playEliminated = () => {
   playTone(220, 0.2, 'sawtooth', 0.1);
   playTone(165, 0.3, 'sawtooth', 0.11, 0.15);
@@ -77,7 +70,6 @@ export const playEliminated = () => {
   playTone(55, 1.5, 'sine', 0.08, 1.2);
 };
 
-// "RESTART" — ascending reset chime, feels like "fresh start"
 export const playRestart = () => {
   playTone(400, 0.1, 'sine', 0.12);
   playTone(550, 0.1, 'sine', 0.12, 0.07);
@@ -86,6 +78,8 @@ export const playRestart = () => {
 };
 
 // ---------- SOUNDTRACK ----------
+const SOUNDTRACK_URL = `${import.meta.env.BASE_URL}sounds/soundtrack.mp3`;
+
 let soundtrackAudio = null;
 let soundtrackGain = null;
 let soundtrackSource = null;
@@ -94,13 +88,12 @@ let isPlaying = false;
 export const startSoundtrack = async () => {
   try {
     const ctx = getCtx();
-
     if (ctx.state === 'suspended') {
       try { await ctx.resume(); } catch (e) { console.warn('[Soundtrack] Resume failed:', e); }
     }
 
     if (!soundtrackAudio) {
-      soundtrackAudio = new Audio('/sounds/soundtrack.mp3');
+      soundtrackAudio = new Audio(SOUNDTRACK_URL);
       soundtrackAudio.loop = true;
     }
 

@@ -50,6 +50,17 @@ export const useStore = create((set) => ({
   playerName: 'Player',
   setPlayerName: (name) => set({ playerName: name }),
 
+  // ---------- LOADING STATE ----------
+  loadingState: {
+    isActive: true,
+    loaded: 0,
+    total: 0,
+    error: null,
+  },
+  setLoadingState: (patch) => set((state) => ({
+    loadingState: { ...state.loadingState, ...patch }
+  })),
+
   rules: {
     startingBalance: INITIAL_BALANCE,
     maxRiskPerTrade: 1,
@@ -84,7 +95,6 @@ export const useStore = create((set) => ({
   drawingStep: null,
   draftPosition: null,
 
-  // ---------- CHART DRAWINGS ----------
   drawings: [],
   activeDrawingTool: null,
 

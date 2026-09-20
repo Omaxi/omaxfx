@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useStore, INITIAL_BALANCE } from '../store';
+import { fmtMoney } from '../utils/format';
 import { X, Share2, Download, MessageCircle, Send, Mail, Smartphone } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
 import html2canvas from 'html2canvas-pro';
@@ -73,7 +74,7 @@ export default function EquityModal() {
     URL.revokeObjectURL(url);
   };
 
-  const shareText = `Check out my OmaxFX Game performance! Return: ${pnlPercent.toFixed(2)}%, Total P&L: $${currentPnl.toFixed(2)}`;
+  const shareText = `Check out my OmaxFX Game performance! Return: ${pnlPercent.toFixed(2)}%, Total P&L: $${fmtMoney(currentPnl)}`;
 
   const handleNativeShare = async () => {
     setIsCapturing(true);
@@ -242,7 +243,6 @@ export default function EquityModal() {
             <span className="text-[10px] text-gray-500 font-mono">{new Date().toLocaleDateString()}</span>
           </div>
 
-          {/* Player name */}
           <div className="px-5 pt-2">
             <span className="text-sm text-gray-300 font-bold">{playerName || 'Player'}</span>
           </div>
@@ -250,16 +250,16 @@ export default function EquityModal() {
           <div className="grid grid-cols-4 gap-3 p-5">
             <div className="bg-[#1e222d] p-3 rounded-lg">
               <p className="text-[10px] text-gray-400 uppercase font-bold">Starting Balance</p>
-              <p className="text-base font-bold mt-1">${startBalance.toLocaleString()}</p>
+              <p className="text-base font-bold mt-1">${fmtMoney(startBalance, 0)}</p>
             </div>
             <div className="bg-[#1e222d] p-3 rounded-lg">
               <p className="text-[10px] text-gray-400 uppercase font-bold">Current Equity</p>
-              <p className="text-base font-bold mt-1">${balance.toFixed(2)}</p>
+              <p className="text-base font-bold mt-1">${fmtMoney(balance)}</p>
             </div>
             <div className="bg-[#1e222d] p-3 rounded-lg">
               <p className="text-[10px] text-gray-400 uppercase font-bold">Total PnL</p>
               <p className={`text-base font-bold mt-1 ${currentPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                ${currentPnl.toFixed(2)}
+                ${fmtMoney(currentPnl)}
               </p>
             </div>
             <div className="bg-[#1e222d] p-3 rounded-lg">
@@ -293,7 +293,7 @@ export default function EquityModal() {
                   />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#1e222d', border: '1px solid #2a2e39', borderRadius: '8px' }}
-                    formatter={(value) => [`$${value.toFixed(2)}`, 'Balance']}
+                    formatter={(value) => [`$${fmtMoney(value)}`, 'Balance']}
                     labelFormatter={(label) => `Trade #${label}`}
                   />
                   <ReferenceLine y={startBalance} stroke="#444" strokeDasharray="3 3" />

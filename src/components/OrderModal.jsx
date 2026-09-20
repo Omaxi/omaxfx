@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useStore } from '../store';
+import { fmtMoney } from '../utils/format';
 import { X, AlertTriangle } from 'lucide-react';
 
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -20,12 +21,10 @@ export default function OrderModal() {
   const riskAmount = balance * (riskPercent / 100);
   const maxRisk = rules?.maxRiskPerTrade ?? 3;
 
-  // Cap riskPercent when modal opens or rules change
   useEffect(() => {
     if (riskPercent > maxRisk) setRiskPercent(maxRisk);
   }, [maxRisk, riskPercent]);
 
-  // Pre-fill when modal opens
   useEffect(() => {
     if (isOrderModalOpen) {
       if (draftPosition) {
@@ -42,7 +41,6 @@ export default function OrderModal() {
     }
   }, [isOrderModalOpen, draftPosition, orderSide, currentPrice]);
 
-  // ---------- VALIDATION ----------
   const validation = useMemo(() => {
     const errors = [];
     const effectiveEntry = orderType === 'market' ? currentPrice : entryPrice;
@@ -59,7 +57,6 @@ export default function OrderModal() {
       if (tpPrice >= effectiveEntry) errors.push('SELL: Take Profit must be BELOW entry');
     }
 
-    // Game rule: max risk per trade
     if (riskPercent > maxRisk) {
       errors.push(`Risk ${riskPercent}% exceeds game rule (max ${maxRisk}%)`);
     }
@@ -67,7 +64,6 @@ export default function OrderModal() {
     return { errors, isValid: errors.length === 0, effectiveEntry };
   }, [orderSide, entryPrice, slPrice, tpPrice, orderType, currentPrice, riskPercent, maxRisk]);
 
-  // Estimated P/L based on actual entry/SL/TP distances
   const { estimatedLoss, estimatedProfit } = useMemo(() => {
     const entry = validation.effectiveEntry;
     if (!entry || !slPrice || !tpPrice) return { estimatedLoss: 0, estimatedProfit: 0 };
@@ -110,11 +106,11 @@ export default function OrderModal() {
           <div className="bg-[#1e222d] mx-4 mt-4 p-4 rounded-lg flex justify-between">
             <div>
               <p className="text-xs text-gray-400">Estimated Loss</p>
-              <p className="text-red-400 font-bold">${estimatedLoss.toFixed(2)}</p>
+              <p className="text-red-400 font-bold">${fmtMoney(estimatedLoss)}</p>
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-400">Estimated Profit</p>
-              <p className="text-green-400 font-bold">${estimatedProfit.toFixed(2)}</p>
+              <p className="text-green-400 font-bold">${fmtMoney(estimatedProfit)}</p>
             </div>
           </div>
 

@@ -1,4 +1,5 @@
 import { useStore } from '../store';
+import { fmtMoney } from '../utils/format';
 import { Trophy, TrendingDown, TrendingUp, Target, Zap, RotateCcw } from 'lucide-react';
 
 export default function GameOverModal() {
@@ -55,13 +56,13 @@ export default function GameOverModal() {
         <div className="grid grid-cols-3 gap-3 p-5">
           <div className="bg-[#1e222d] p-4 rounded-lg">
             <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Final Balance</p>
-            <p className="text-lg font-bold font-mono">${balance.toFixed(2)}</p>
+            <p className="text-lg font-bold font-mono">${fmtMoney(balance)}</p>
           </div>
           <div className="bg-[#1e222d] p-4 rounded-lg">
             <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Total P&L</p>
             <p className={`text-lg font-bold font-mono flex items-center gap-1 ${isProfitable ? 'text-green-400' : 'text-red-400'}`}>
               {isProfitable ? <TrendingUp size={16}/> : <TrendingDown size={16}/>}
-              {isProfitable ? '+' : ''}${totalPnl.toFixed(2)}
+              {isProfitable ? '+' : ''}${fmtMoney(totalPnl)}
             </p>
           </div>
           <div className="bg-[#1e222d] p-4 rounded-lg">
