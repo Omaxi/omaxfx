@@ -1,0 +1,212 @@
+import Chart from './components/Chart';
+import ControlPanel from './components/ControlPanel';
+import OrderModal from './components/OrderModal';
+import HistoryModal from './components/HistoryModal';
+import EquityModal from './components/EquityModal';
+import SoundToggle from './components/SoundToggle';
+import PeriodModal from './components/PeriodModal';
+import GameOverModal from './components/GameOverModal';
+import { useStore } from './store';
+import { useEffect, useRef } from 'react';
+import { startSoundtrack, stopSoundtrack } from './utils/audio';
+import Papa from 'papaparse';
+import { Clock, RotateCcw } from 'lucide-react';
+
+const formatTime = (sec) => {
+  if (sec == null) return '∞';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+};
+
+function App() {
+  const { 
+    isPlaying, stepForward, currentIndex, rawData, balance, positions, 
+    musicEnabled, setAllData, gameStarted, gamePeriod,
+    gameState, rules, updateTimeRemaining, endGame, restartGame
+  } = useStore();
+  const soundtrackStarted = useRef(false);
+
+  // Load CSV
+  useEffect(() => {
+    fetch('/data/xauusd.csv')
+      .then(response => response.text())
+      .then(csvText => {
+        Papa.parse(csvText, {
+          header: true, dynamicTyping: true,
+          complete: (results) => {
+            const formattedData = results.data
+              .filter(row => row.date && row.close) 
+              .map(row => {
+                const dateStr = row.date.toString();
+                const year = dateStr.substring(0, 4);
+                const month = dateStr.substring(4, 6);
+                const day = dateStr.substring(6, 8);
+                const timeStr = row.time;
+                const paddedTime = timeStr.length === 7 ? `0${timeStr}` : timeStr;
+                const isoString = `${year}-${month}-${day}T${paddedTime}`;
+                return { 
+                  time: new Date(isoString).getTime() / 1000, 
+                  open: row.open, 
+                  high: row.high, 
+                  low: row.low, 
+                  close: row.close,
+                  volume: Number(row.volume) || 0,
+                };
+              })
+              .filter(row => !isNaN(row.time))
+              .sort((a, b) => a.time - b.time);
+            setAllData(formattedData);
+          },
+        });
+      })
+      .catch(error => console.error("Fetch Error:", error));
+  }, [setAllData]);
+
+  // Auto-play
+  useEffect(() => {
+    let interval;
+    if (isPlaying && currentIndex < rawData.length - 1 && !gameState.isOver) {
+      interval = setInterval(() => { stepForward(); }, 500);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, currentIndex, rawData, stepForward, gameState.isOver]);
+
+  // Countdown
+  useEffect(() => {
+    if (!gameStarted || gameState.isOver || !rules.countdownMinutes) return;
+    const interval = setInterval(() => {
+      const elapsed = (Date.now() - gameState.startTime) / 1000;
+      const total = rules.countdownMinutes * 60;
+      const remaining = Math.max(0, total - elapsed);
+      if (remaining <= 0) {
+        endGame('countdown', `Time's up! Your ${rules.countdownMinutes}-minute session ended.`);
+        clearInterval(interval);
+      } else {
+        updateTimeRemaining(remaining);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [gameStarted, gameState.isOver, gameState.startTime, rules.countdownMinutes, endGame, updateTimeRemaining]);
+
+  // Soundtrack
+  useEffect(() => {
+    const startAudio = () => {
+      if (!soundtrackStarted.current && musicEnabled) {
+        startSoundtrack();
+        soundtrackStarted.current = true;
+      }
+    };
+    window.addEventListener('click', startAudio, { once: true });
+    window.addEventListener('keydown', startAudio, { once: true });
+    return () => {
+      window.removeEventListener('click', startAudio);
+      window.removeEventListener('keydown', startAudio);
+    };
+  }, [musicEnabled]);
+
+  useEffect(() => {
+    if (musicEnabled && soundtrackStarted.current) startSoundtrack();
+    else if (!musicEnabled) stopSoundtrack();
+  }, [musicEnabled]);
+
+  const currentPrice = rawData[currentIndex]?.close || 0;
+  const unrealisedPnl = positions.reduce((sum, pos) => {
+    const isBuy = pos.type === 'buy';
+    const priceDiff = isBuy ? currentPrice - pos.entryPrice : pos.entryPrice - currentPrice;
+    return sum + priceDiff * 100 * pos.size;
+  }, 0);
+
+  const currentCandle = rawData[currentIndex];
+  const displayTime = currentCandle ? new Date(currentCandle.time * 1000).toLocaleString() : '—';
+  
+  const periodLabel = gamePeriod 
+    ? `${new Date(gamePeriod.from * 1000).toLocaleDateString()} → ${new Date(gamePeriod.to * 1000).toLocaleDateString()}`
+    : '—';
+
+  const timeRemaining = gameState.timeRemaining;
+  const timeBoxClass = timeRemaining == null 
+    ? 'text-gray-500 border-gray-700 bg-gray-900/20'
+    : timeRemaining < 60 
+      ? 'text-red-400 border-red-600 bg-red-900/40 animate-pulse' 
+      : timeRemaining < 300 
+        ? 'text-yellow-400 border-yellow-600 bg-yellow-900/30' 
+        : 'text-blue-400 border-blue-600 bg-blue-900/30';
+
+  const handleRestart = () => {
+    if (window.confirm('Restart game? All progress will be lost.')) {
+      restartGame();
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-screen overflow-hidden">
+      {/* SINGLE ROW HEADER */}
+      <header className="px-2 py-1.5 md:px-3 md:py-2 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-2">
+        
+        {/* Left: Logo + Countdown */}
+        <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+          <h1 className="text-sm md:text-lg font-bold tracking-wider whitespace-nowrap">
+            <span className="text-blue-500">Omax</span>
+            <span className="text-white">FX</span>
+            <span className="hidden sm:inline text-white"> Game</span>
+          </h1>
+          {gameStarted && (
+            <div className={`flex items-center gap-1 md:gap-2 px-2 md:px-3 py-0.5 md:py-1 rounded-lg font-mono font-bold text-xs md:text-sm border-2 ${timeBoxClass}`}>
+              <Clock size={11} />
+              <span>{formatTime(timeRemaining)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Right: Stats + Controls */}
+        <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm flex-shrink-0">
+          {gameStarted && (
+            <span className="text-gray-500 text-[10px] md:text-xs hidden lg:inline">{periodLabel}</span>
+          )}
+          {positions.length > 0 && (
+            <span className="text-xs bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded hidden md:inline">
+              {positions.length} open
+            </span>
+          )}
+          <div className="flex items-baseline gap-1">
+            <span className="text-gray-400 hidden md:inline">Bal:</span>
+            <span className="text-green-400 font-bold text-xs md:text-sm">${balance.toFixed(2)}</span>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-gray-400 hidden md:inline">P&L:</span>
+            <span className={`font-bold text-xs md:text-sm ${unrealisedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              ${unrealisedPnl.toFixed(2)}
+            </span>
+          </div>
+          <div className="hidden xl:block text-gray-500 font-mono text-xs">{displayTime}</div>
+          
+          {gameStarted && (
+            <button 
+              onClick={handleRestart}
+              className="p-1.5 md:p-2 bg-[#1e222d] hover:bg-red-900/50 hover:text-red-400 rounded-lg border border-[#2a2e39] transition-colors"
+              title="Restart game"
+            >
+              <RotateCcw size={14} />
+            </button>
+          )}
+          <SoundToggle />
+        </div>
+      </header>
+      
+      <main className="flex-1 relative min-h-0">
+        <Chart />
+      </main>
+      
+      <ControlPanel />
+
+      <OrderModal />
+      <HistoryModal />
+      <EquityModal />
+      <PeriodModal />
+      <GameOverModal />
+    </div>
+  );
+}
+
+export default App;
