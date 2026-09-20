@@ -23,7 +23,8 @@ export default defineConfig(({ command }) => ({
         theme_color: '#0b0e11',
         background_color: '#0b0e11',
         display: 'standalone',
-        orientation: 'any',
+        display_override: ['fullscreen', 'standalone'],
+        orientation: 'landscape',
         start_url: './',
         scope: './',
         icons: [

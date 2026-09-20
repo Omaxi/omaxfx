@@ -29,7 +29,7 @@ function App() {
   } = useStore();
   const soundtrackStarted = useRef(false);
 
-  // ---------- Load CSV with streaming progress ----------
+  // Load CSV with streaming progress
   useEffect(() => {
     let cancelled = false;
     const setLoadingState = useStore.getState().setLoadingState;
@@ -38,17 +38,14 @@ function App() {
     const loadCSV = async () => {
       try {
         setLoadingState({ isActive: true, loaded: 0, total: 0, error: null });
-
         const response = await fetch(csvUrl);
         if (!response.ok) throw new Error(`Failed to fetch CSV: ${response.status}`);
 
         const contentLength = response.headers.get('Content-Length');
         const total = contentLength ? parseInt(contentLength, 10) : 0;
-
         let loaded = 0;
         let csvText = '';
 
-        // Stream the response if supported
         if (response.body && response.body.getReader) {
           const reader = response.body.getReader();
           const chunks = [];
@@ -68,7 +65,6 @@ function App() {
           }
           csvText = new TextDecoder('utf-8').decode(allChunks);
         } else {
-          // Fallback (some browsers)
           csvText = await response.text();
           loaded = csvText.length;
           setLoadingState({ loaded, total: loaded });
@@ -192,46 +188,46 @@ function App() {
     }
   };
 
-  // Progress bar values
   const percent = loadingState.total > 0
     ? Math.min(100, Math.round((loadingState.loaded / loadingState.total) * 100))
     : 0;
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden relative">
-      {/* SINGLE ROW HEADER */}
-      <header className="px-2 py-1.5 md:px-3 md:py-2 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-2">
+    <div className="flex flex-col h-dvh overflow-hidden">
+      {/* HEADER — compact on mobile */}
+      <header className="px-1.5 py-1 md:px-3 md:py-2 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-1.5 md:gap-2">
         
-        <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-          <h1 className="text-sm md:text-lg font-bold tracking-wider whitespace-nowrap">
+        <div className="flex items-center gap-1.5 md:gap-3 flex-shrink-0">
+          <h1 className="text-xs md:text-lg font-bold tracking-wider whitespace-nowrap">
             <span className="text-blue-500">Omax</span>
             <span className="text-white">FX</span>
             <span className="hidden sm:inline text-white"> Game</span>
           </h1>
           {gameStarted && (
-            <div className={`flex items-center gap-1 md:gap-2 px-2 md:px-3 py-0.5 md:py-1 rounded-lg font-mono font-bold text-xs md:text-sm border-2 ${timeBoxClass}`}>
-              <Clock size={11} />
+            <div className={`flex items-center gap-1 md:gap-2 px-1.5 md:px-3 py-0.5 md:py-1 rounded-md md:rounded-lg font-mono font-bold text-[10px] md:text-sm border md:border-2 ${timeBoxClass}`}>
+              <Clock size={10} className="md:hidden" />
+              <Clock size={12} className="hidden md:block" />
               <span>{formatTime(timeRemaining)}</span>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm flex-shrink-0">
+        <div className="flex items-center gap-1.5 md:gap-3 text-[10px] md:text-sm flex-shrink-0">
           {gameStarted && (
-            <span className="text-gray-500 text-[10px] md:text-xs hidden lg:inline">{periodLabel}</span>
+            <span className="text-gray-500 text-[10px] hidden lg:inline">{periodLabel}</span>
           )}
           {positions.length > 0 && (
-            <span className="text-xs bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded hidden md:inline">
+            <span className="text-[10px] bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded hidden md:inline">
               {positions.length} open
             </span>
           )}
-          <div className="flex items-baseline gap-1">
+          <div className="flex items-baseline gap-0.5 md:gap-1">
             <span className="text-gray-400 hidden md:inline">Bal:</span>
-            <span className="text-green-400 font-bold text-xs md:text-sm">${fmtMoney(balance)}</span>
+            <span className="text-green-400 font-bold">${fmtMoney(balance, 0)}</span>
           </div>
-          <div className="flex items-baseline gap-1">
+          <div className="flex items-baseline gap-0.5 md:gap-1">
             <span className="text-gray-400 hidden md:inline">P&L:</span>
-            <span className={`font-bold text-xs md:text-sm ${unrealisedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <span className={`font-bold ${unrealisedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               ${fmtMoney(unrealisedPnl)}
             </span>
           </div>
@@ -240,10 +236,11 @@ function App() {
           {gameStarted && (
             <button 
               onClick={handleRestart}
-              className="p-1.5 md:p-2 bg-[#1e222d] hover:bg-red-900/50 hover:text-red-400 rounded-lg border border-[#2a2e39] transition-colors"
+              className="p-1 md:p-2 bg-[#1e222d] hover:bg-red-900/50 hover:text-red-400 rounded-md md:rounded-lg border border-[#2a2e39] transition-colors"
               title="Restart game"
             >
-              <RotateCcw size={14} />
+              <RotateCcw size={12} className="md:hidden" />
+              <RotateCcw size={14} className="hidden md:block" />
             </button>
           )}
           <SoundToggle />
@@ -262,7 +259,6 @@ function App() {
       <PeriodModal />
       <GameOverModal />
 
-      {/* LOADING OVERLAY WITH PROGRESS BAR */}
       {loadingState.isActive && (
         <div className="fixed inset-0 bg-[#0b0e11] z-[100] flex items-center justify-center">
           <div className="w-80 max-w-[90vw] space-y-4">

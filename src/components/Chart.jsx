@@ -186,6 +186,9 @@ export default function Chart() {
   const draftRef = useRef(null);
   const profileCacheRef = useRef(new Map());
   const visibleDataRef = useRef([]);
+  const longPressTimerRef = useRef(null);
+  const longPressTriggeredRef = useRef(false);
+  const startPosRef = useRef({ x: 0, y: 0 });
 
   const [pendingBtnPos, setPendingBtnPos] = useState([]);
   const [positionBtnPos, setPositionBtnPos] = useState([]);
@@ -195,21 +198,10 @@ export default function Chart() {
     draftPosition, timeframe, cancelPendingOrder, closePosition, activeDrawingTool
   } = useStore();
 
-  // ============================================================
-  // COORDINATE CONVERSION (robust — uses native API when possible)
-  // ============================================================
+  // ---------- COORDINATE CONVERSIONS ----------
   const timeToX = useCallback((time) => {
     const chart = chartRef.current;
     if (!chart) return null;
-
-    // 1. Try native time→X. Works when time exactly matches a candle.
-    try {
-      const nativeX = chart.timeScale().timeToCoordinate(time);
-      if (nativeX !== null && nativeX !== undefined && Number.isFinite(nativeX)) {
-        return nativeX;
-      }
-    } catch (e) {}
-
     const data = visibleDataRef.current;
     if (data.length === 0) return null;
 
@@ -217,27 +209,22 @@ export default function Chart() {
     const lastTime = data[data.length - 1].time;
 
     let logical;
-
     if (time <= firstTime) {
-      // Extrapolate left using the FIRST two candles' actual spacing
       const step = data.length > 1 ? (data[1].time - data[0].time) : 60;
       logical = (time - firstTime) / (step || 60);
     } else if (time >= lastTime) {
-      // Extrapolate right using the LAST two candles' actual spacing
       const step = data.length > 1
         ? (data[data.length - 1].time - data[data.length - 2].time)
         : 60;
       logical = (data.length - 1) + (time - lastTime) / (step || 60);
     } else {
-      // Interpolate between the two candles surrounding `time`
       let lo = 0, hi = data.length - 1;
       while (hi - lo > 1) {
         const mid = Math.floor((lo + hi) / 2);
         if (data[mid].time < time) lo = mid;
         else hi = mid;
       }
-      const t1 = data[lo].time;
-      const t2 = data[hi].time;
+      const t1 = data[lo].time, t2 = data[hi].time;
       const frac = t2 !== t1 ? (time - t1) / (t2 - t1) : 0;
       logical = lo + frac;
     }
@@ -277,13 +264,10 @@ export default function Chart() {
     const lastTime = data[data.length - 1].time;
 
     let time;
-
     if (logical <= 0) {
-      // Extrapolate left using the first two candles' spacing
       const step = data.length > 1 ? (data[1].time - data[0].time) : 60;
       time = firstTime + logical * (step || 60);
     } else if (logical >= data.length - 1) {
-      // Extrapolate right using the last two candles' spacing
       const step = data.length > 1
         ? (data[data.length - 1].time - data[data.length - 2].time)
         : 60;
@@ -307,6 +291,7 @@ export default function Chart() {
       layout: { 
         background: { type: 'solid', color: 'transparent' }, 
         textColor: '#d1d4dc',
+        fontSize: 10,
       },
       grid: { vertLines: { visible: false }, horzLines: { visible: false } },
       timeScale: { timeVisible: true, secondsVisible: false },
@@ -340,7 +325,6 @@ export default function Chart() {
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Clip to price pane (excluding right Y-axis and bottom X-axis)
       let paneW = canvas.width, paneH = canvas.height;
       if (chartRef.current) {
         try {
@@ -383,15 +367,18 @@ export default function Chart() {
     };
   }, [pointToXY]);
 
-  // ---------- MOUSE INTERACTION ----------
+  // ---------- MOUSE + TOUCH INTERACTION ----------
   useEffect(() => {
     const container = chartContainerRef.current;
     if (!container) return;
 
+    // CRITICAL: prevents browser scroll/pan from cancelling our pointer drags
+    container.style.touchAction = 'none';
+
     const hitTest = (x, y) => {
       const state = useStore.getState();
-      const TOL = 8;
-      const HANDLE_TOL = 14;
+      const TOL = 12;          // bigger tolerance for touch
+      const HANDLE_TOL = 18;
 
       for (let i = state.drawings.length - 1; i >= 0; i--) {
         const d = state.drawings[i];
@@ -427,7 +414,7 @@ export default function Chart() {
     const getTol = () => {
       if (!seriesRef.current) return 0;
       const p1 = seriesRef.current.coordinateToPrice(0);
-      const p2 = seriesRef.current.coordinateToPrice(12);
+      const p2 = seriesRef.current.coordinateToPrice(15);
       return Math.abs(p1 - p2);
     };
     const detectTradeHit = (price) => {
@@ -457,11 +444,21 @@ export default function Chart() {
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     };
 
+    const cancelLongPress = () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    };
+
     const handlePointerDown = (e) => {
       if (e.button === 2) return;
       const state = useStore.getState();
       const { x, y } = getLocalXY(e);
+      startPosRef.current = { x, y };
+      longPressTriggeredRef.current = false;
 
+      // Long/Short draft mode
       if (state.isDrawingMode && seriesRef.current) {
         const price = seriesRef.current.coordinateToPrice(y);
         if (price != null) {
@@ -471,6 +468,7 @@ export default function Chart() {
         return;
       }
 
+      // Trade line hit (SL/TP/pending)
       const price = seriesRef.current?.coordinateToPrice(y);
       if (price != null) {
         const hit = detectTradeHit(price);
@@ -481,12 +479,22 @@ export default function Chart() {
         }
       }
 
+      // Drawing hit → start LONG-PRESS timer for delete on touch
       if (!state.activeDrawingTool) {
         const hit = hitTest(x, y);
         if (hit) {
           const drawing = state.drawings.find(d => d.id === hit.drawingId);
           const point = xyToPoint(x, y);
           if (drawing && point) {
+            // Start long-press timer
+            longPressTimerRef.current = setTimeout(() => {
+              longPressTriggeredRef.current = true;
+              // Delete the drawing
+              state.removeDrawing(hit.drawingId);
+              // Also cancel any drag that might have started
+              drawingDragRef.current = null;
+            }, 550);
+
             drawingDragRef.current = {
               ...hit,
               startMouse: point,
@@ -498,13 +506,13 @@ export default function Chart() {
         }
       }
 
+      // Drawing tool active → create a new drawing
       if (state.activeDrawingTool) {
         const point = xyToPoint(x, y);
         if (!point) return;
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
 
         const tool = state.activeDrawingTool;
-
         if (tool === 'horizontal') {
           state.addDrawing({ type: 'horizontal', points: [point], color: '#f59e0b' });
           state.setActiveDrawingTool(null);
@@ -530,6 +538,15 @@ export default function Chart() {
       const state = useStore.getState();
       const { x, y } = getLocalXY(e);
 
+      // Cancel long-press if moved more than 10px (means user is dragging, not holding)
+      if (longPressTimerRef.current) {
+        const dx = x - startPosRef.current.x;
+        const dy = y - startPosRef.current.y;
+        if (Math.hypot(dx, dy) > 10) {
+          cancelLongPress();
+        }
+      }
+
       if (tradeDragRef.current) {
         const price = seriesRef.current?.coordinateToPrice(y);
         if (price != null) {
@@ -544,7 +561,7 @@ export default function Chart() {
         return;
       }
 
-      if (drawingDragRef.current) {
+      if (drawingDragRef.current && !longPressTriggeredRef.current) {
         const point = xyToPoint(x, y);
         if (!point) return;
         const inter = drawingDragRef.current;
@@ -578,12 +595,7 @@ export default function Chart() {
         return;
       }
 
-      if (state.activeDrawingTool) {
-        container.style.cursor = 'crosshair';
-        return;
-      }
-
-      if (state.isDrawingMode) {
+      if (state.activeDrawingTool || state.isDrawingMode) {
         container.style.cursor = 'crosshair';
         return;
       }
@@ -599,10 +611,14 @@ export default function Chart() {
     };
 
     const handlePointerUp = () => {
+      cancelLongPress();
+      const wasLongPress = longPressTriggeredRef.current;
+      longPressTriggeredRef.current = false;
       tradeDragRef.current = null;
       drawingDragRef.current = null;
       const state = useStore.getState();
       container.style.cursor = (state.activeDrawingTool || state.isDrawingMode) ? 'crosshair' : 'default';
+      return wasLongPress;
     };
 
     const handleContextMenu = (e) => {
@@ -620,12 +636,15 @@ export default function Chart() {
     container.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
 
     return () => {
+      cancelLongPress();
       container.removeEventListener('pointerdown', handlePointerDown, true);
       container.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
     };
   }, [xyToPoint, pointToXY]);
 
@@ -746,7 +765,7 @@ export default function Chart() {
       <div 
         ref={chartContainerRef} 
         className="absolute inset-0"
-        style={{ zIndex: 1 }}
+        style={{ zIndex: 1, touchAction: 'none' }}
       />
 
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 20 }}>
@@ -758,11 +777,12 @@ export default function Chart() {
           <button
             key={`p-${p.id}`}
             onClick={() => cancelPendingOrder(p.id)}
-            style={{ top: p.y, right: 200 }}
-            className="absolute pointer-events-auto -translate-y-1/2 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400"
+            style={{ top: p.y, right: 90 }}
+            className="absolute pointer-events-auto -translate-y-1/2 w-6 h-6 md:w-5 md:h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400"
             title="Cancel this order"
           >
-            <X size={12} strokeWidth={3.5} />
+            <X size={14} className="md:hidden" strokeWidth={3.5} />
+            <X size={12} className="hidden md:block" strokeWidth={3.5} />
           </button>
         ))}
 
@@ -770,11 +790,12 @@ export default function Chart() {
           <button
             key={`pos-${p.id}`}
             onClick={() => closePosition(p.id)}
-            style={{ top: p.y, right: 200 }}
-            className="absolute pointer-events-auto -translate-y-1/2 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400"
+            style={{ top: p.y, right: 90 }}
+            className="absolute pointer-events-auto -translate-y-1/2 w-6 h-6 md:w-5 md:h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400"
             title="Close this position"
           >
-            <X size={12} strokeWidth={3.5} />
+            <X size={14} className="md:hidden" strokeWidth={3.5} />
+            <X size={12} className="hidden md:block" strokeWidth={3.5} />
           </button>
         ))}
       </div>
