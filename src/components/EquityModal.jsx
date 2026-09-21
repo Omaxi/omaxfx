@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useStore, INITIAL_BALANCE } from '../store';
 import { fmtMoney } from '../utils/format';
 import { X, Share2, Download, MessageCircle, Send, Mail, Smartphone } from 'lucide-react';
@@ -16,6 +16,14 @@ export default function EquityModal() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState('');
+
+  // Reset states when modal closes
+  useEffect(() => {
+    if (!isEquityOpen) {
+      setMenuOpen(false);
+      setToast('');
+    }
+  }, [isEquityOpen]);
 
   if (!isEquityOpen) return null;
 
@@ -40,12 +48,14 @@ export default function EquityModal() {
 
   const showToast = (msg) => {
     setToast(msg);
-    setTimeout(() => setToast(''), 4000);
+    setTimeout(() => setToast(''), 3500);
   };
 
   const captureImage = async () => {
     if (!captureRef.current) return null;
     try {
+      // Give layout a moment to settle
+      await new Promise(r => setTimeout(r, 50));
       const canvas = await html2canvas(captureRef.current, {
         backgroundColor: '#131722',
         scale: 2,
@@ -76,25 +86,40 @@ export default function EquityModal() {
 
   const shareText = `Check out my OmaxFX Game performance! Return: ${pnlPercent.toFixed(2)}%, Total P&L: $${fmtMoney(currentPnl)}`;
 
-  const handleNativeShare = async () => {
+  // ============================================================
+  // Native share — this is what makes WhatsApp/Telegram/etc receive the IMAGE
+  // ============================================================
+  const shareWithImage = async () => {
     setIsCapturing(true);
     setMenuOpen(false);
     try {
       const blob = await captureImage();
-      if (!blob) return;
-      const file = new File([blob], `${safeName}-equity.png`, { type: 'image/png' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: 'OmaxFX Game - Equity Curve',
-          text: shareText,
-        });
-      } else {
-        downloadImage(blob);
-        showToast('Image downloaded! Share it with your friends.');
+      if (!blob) {
+        showToast('Could not generate image.');
+        return;
       }
+      const file = new File([blob], `${safeName}-equity.png`, { type: 'image/png' });
+
+      // 1. Best: native share with file
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'OmaxFX Game - Equity Curve',
+            text: shareText,
+          });
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') return; // user cancelled
+          console.warn('navigator.share failed:', err);
+        }
+      }
+
+      // 2. Fallback: download image + show instructions
+      downloadImage(blob);
+      showToast('Image saved! Open WhatsApp and attach it.');
     } catch (e) {
-      if (e.name !== 'AbortError') console.error(e);
+      console.error(e);
     } finally {
       setIsCapturing(false);
     }
@@ -119,13 +144,19 @@ export default function EquityModal() {
     setMenuOpen(false);
     try {
       const blob = await captureImage();
-      if (blob) {
-        downloadImage(blob);
-        showToast('Image downloaded! Attach it in WhatsApp.');
-        setTimeout(() => {
-          window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
-        }, 700);
+      if (!blob) return;
+      const file = new File([blob], `${safeName}-equity.png`, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: 'OmaxFX', text: shareText });
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') return;
+        }
       }
+      // Fallback
+      downloadImage(blob);
+      showToast('Image saved! Open WhatsApp and attach it.');
     } finally {
       setIsCapturing(false);
     }
@@ -136,13 +167,18 @@ export default function EquityModal() {
     setMenuOpen(false);
     try {
       const blob = await captureImage();
-      if (blob) {
-        downloadImage(blob);
-        showToast('Image downloaded! Attach it in Telegram.');
-        setTimeout(() => {
-          window.open(`https://t.me/share/url?url=${encodeURIComponent('https://omaxfx.game')}&text=${encodeURIComponent(shareText)}`, '_blank');
-        }, 700);
+      if (!blob) return;
+      const file = new File([blob], `${safeName}-equity.png`, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: 'OmaxFX', text: shareText });
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') return;
+        }
       }
+      downloadImage(blob);
+      showToast('Image saved! Open Telegram and attach it.');
     } finally {
       setIsCapturing(false);
     }
@@ -155,144 +191,136 @@ export default function EquityModal() {
       const blob = await captureImage();
       if (blob) {
         downloadImage(blob);
-        showToast('Image downloaded! Attach it in your email.');
+        showToast('Image saved! Attach it to your email.');
         setTimeout(() => {
           window.location.href = `mailto:?subject=${encodeURIComponent('My OmaxFX Game Performance')}&body=${encodeURIComponent(shareText)}`;
-        }, 700);
+        }, 800);
       }
     } finally {
       setIsCapturing(false);
     }
   };
 
+  // ============================================================
+  // COMPACT LAYOUT
+  // ============================================================
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4" onClick={() => setMenuOpen(false)}>
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-1" onClick={() => setMenuOpen(false)}>
       <div 
-        className="bg-[#131722] rounded-2xl w-full max-w-4xl border border-[#2a2e39] overflow-hidden flex flex-col max-h-[90vh] relative" 
+        className="bg-[#131722] rounded-lg w-full max-w-3xl border border-[#2a2e39] overflow-hidden flex flex-col max-h-[95vh] relative" 
         onClick={(e) => e.stopPropagation()}
       >
         
-        <div className="flex justify-between items-center p-4 border-b border-[#2a2e39]">
-          <h2 className="text-xl font-bold">Equity Curve</h2>
-          <div className="flex items-center gap-2">
+        {/* HEADER */}
+        <div className="flex justify-between items-center px-2 py-1 border-b border-[#2a2e39] flex-shrink-0">
+          <h2 className="text-sm font-bold">Equity Curve</h2>
+          <div className="flex items-center gap-1">
             
             <div className="relative">
               <button 
                 onClick={() => setMenuOpen(!menuOpen)}
                 disabled={isCapturing}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-wait rounded-lg font-bold text-sm transition-colors"
+                className="flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded text-xs font-bold transition-colors"
               >
-                <Share2 size={16} />
+                <Share2 size={12} />
                 {isCapturing ? 'Generating…' : 'Share'}
               </button>
               
               {menuOpen && (
-                <div className="absolute right-0 top-full mt-2 bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl overflow-hidden z-10 min-w-[200px]">
-                  <button 
-                    onClick={handleNativeShare} 
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#2a2e39] text-sm text-left text-white transition-colors"
-                  >
-                    <Smartphone size={16} className="text-purple-400" />
+                <div className="absolute right-0 top-full mt-1 bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl overflow-hidden z-10 min-w-[170px]">
+                  <button onClick={shareWithImage} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39] text-xs text-left text-white transition-colors">
+                    <Smartphone size={12} className="text-purple-400" />
                     Share via...
                   </button>
-                  <button 
-                    onClick={handleWhatsApp} 
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#2a2e39] text-sm text-left text-white transition-colors"
-                  >
-                    <MessageCircle size={16} className="text-green-400" />
+                  <button onClick={handleWhatsApp} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39] text-xs text-left text-white transition-colors">
+                    <MessageCircle size={12} className="text-green-400" />
                     WhatsApp
                   </button>
-                  <button 
-                    onClick={handleTelegram} 
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#2a2e39] text-sm text-left text-white transition-colors"
-                  >
-                    <Send size={16} className="text-blue-400" />
+                  <button onClick={handleTelegram} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39] text-xs text-left text-white transition-colors">
+                    <Send size={12} className="text-blue-400" />
                     Telegram
                   </button>
-                  <button 
-                    onClick={handleEmail} 
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#2a2e39] text-sm text-left text-white transition-colors"
-                  >
-                    <Mail size={16} className="text-yellow-400" />
+                  <button onClick={handleEmail} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39] text-xs text-left text-white transition-colors">
+                    <Mail size={12} className="text-yellow-400" />
                     Email
                   </button>
-                  <button 
-                    onClick={handleDownload} 
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#2a2e39] text-sm text-left text-white transition-colors border-t border-[#2a2e39]"
-                  >
-                    <Download size={16} className="text-gray-400" />
-                    Download Image
+                  <button onClick={handleDownload} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39] text-xs text-left text-white transition-colors border-t border-[#2a2e39]">
+                    <Download size={12} className="text-gray-400" />
+                    Download PNG
                   </button>
                 </div>
               )}
             </div>
             
-            <button onClick={closeEquity} className="p-2 hover:bg-[#2a2e39] rounded-lg transition-colors">
-              <X size={20}/>
+            <button onClick={closeEquity} className="p-1 hover:bg-[#2a2e39] rounded">
+              <X size={16}/>
             </button>
           </div>
         </div>
 
-        <div ref={captureRef} className="bg-[#131722] overflow-y-auto flex-1">
+        {/* CAPTURE AREA */}
+        <div ref={captureRef} className="bg-[#131722] overflow-hidden flex flex-col flex-1 min-h-0">
           
-          <div className="px-5 pt-4 flex justify-between items-center">
-            <span className="text-base font-bold">
+          {/* Brand strip */}
+          <div className="px-2 pt-1.5 flex justify-between items-center flex-shrink-0">
+            <span className="text-xs font-bold">
               <span className="text-blue-500">Omax</span>
               <span className="text-white">FX Game</span>
             </span>
-            <span className="text-[10px] text-gray-500 font-mono">{new Date().toLocaleDateString()}</span>
+            <span className="text-[9px] text-gray-500 font-mono">{new Date().toLocaleDateString()}</span>
+          </div>
+          <div className="px-2 pb-1 flex-shrink-0">
+            <span className="text-[11px] text-gray-300 font-bold">{playerName || 'Player'}</span>
           </div>
 
-          <div className="px-5 pt-2">
-            <span className="text-sm text-gray-300 font-bold">{playerName || 'Player'}</span>
-          </div>
-
-          <div className="grid grid-cols-4 gap-3 p-5">
-            <div className="bg-[#1e222d] p-3 rounded-lg">
-              <p className="text-[10px] text-gray-400 uppercase font-bold">Starting Balance</p>
-              <p className="text-base font-bold mt-1">${fmtMoney(startBalance, 0)}</p>
+          {/* Compact stat cards — 4 in a row, tiny */}
+          <div className="grid grid-cols-4 gap-1 px-2 pb-1.5 flex-shrink-0">
+            <div className="bg-[#1e222d] px-2 py-1 rounded">
+              <p className="text-[8px] text-gray-400 uppercase font-bold">Starting</p>
+              <p className="text-xs font-bold">${fmtMoney(startBalance, 0)}</p>
             </div>
-            <div className="bg-[#1e222d] p-3 rounded-lg">
-              <p className="text-[10px] text-gray-400 uppercase font-bold">Current Equity</p>
-              <p className="text-base font-bold mt-1">${fmtMoney(balance)}</p>
+            <div className="bg-[#1e222d] px-2 py-1 rounded">
+              <p className="text-[8px] text-gray-400 uppercase font-bold">Equity</p>
+              <p className="text-xs font-bold">${fmtMoney(balance, 0)}</p>
             </div>
-            <div className="bg-[#1e222d] p-3 rounded-lg">
-              <p className="text-[10px] text-gray-400 uppercase font-bold">Total PnL</p>
-              <p className={`text-base font-bold mt-1 ${currentPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                ${fmtMoney(currentPnl)}
+            <div className="bg-[#1e222d] px-2 py-1 rounded">
+              <p className="text-[8px] text-gray-400 uppercase font-bold">P&L</p>
+              <p className={`text-xs font-bold ${currentPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                ${fmtMoney(currentPnl, 0)}
               </p>
             </div>
-            <div className="bg-[#1e222d] p-3 rounded-lg">
-              <p className="text-[10px] text-gray-400 uppercase font-bold">Return %</p>
-              <p className={`text-base font-bold mt-1 ${pnlPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <div className="bg-[#1e222d] px-2 py-1 rounded">
+              <p className="text-[8px] text-gray-400 uppercase font-bold">Return</p>
+              <p className={`text-xs font-bold ${pnlPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {pnlPercent.toFixed(2)}%
               </p>
             </div>
           </div>
 
-          <div className="px-5 pb-5" style={{ minHeight: '340px' }}>
+          {/* Chart — compact height so it fits on phone */}
+          <div className="px-2 pb-1.5 flex-1 min-h-0">
             {tradeHistory.length === 0 ? (
-              <div className="flex items-center justify-center h-[320px] text-gray-500">
+              <div className="flex items-center justify-center h-full text-gray-500 text-xs">
                 No trades yet. Close a trade to see your equity curve!
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={320}>
-                <LineChart data={equityData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={equityData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e222d" />
                   <XAxis 
                     dataKey="trade" 
                     stroke="#666" 
-                    label={{ value: 'Trade #', position: 'insideBottom', offset: -5, fill: '#888', fontSize: 11 }}
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 9 }}
                   />
                   <YAxis 
                     stroke="#666" 
                     domain={[minEquity * 0.98, maxEquity * 1.02]}
                     tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`}
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 9 }}
+                    width={45}
                   />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#1e222d', border: '1px solid #2a2e39', borderRadius: '8px' }}
+                    contentStyle={{ backgroundColor: '#1e222d', border: '1px solid #2a2e39', borderRadius: '6px', fontSize: '11px' }}
                     formatter={(value) => [`$${fmtMoney(value)}`, 'Balance']}
                     labelFormatter={(label) => `Trade #${label}`}
                   />
@@ -303,20 +331,20 @@ export default function EquityModal() {
                     stroke="#26a69a" 
                     strokeWidth={2} 
                     dot={false}
-                    activeDot={{ r: 5, fill: '#26a69a' }}
+                    activeDot={{ r: 4, fill: '#26a69a' }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             )}
           </div>
 
-          <div className="px-5 pb-4 text-center">
-            <span className="text-[10px] text-gray-500">Trading Performance Report • OmaxFX Game</span>
+          <div className="px-2 pb-1 text-center flex-shrink-0">
+            <span className="text-[8px] text-gray-500">Trading Performance Report • OmaxFX Game</span>
           </div>
         </div>
 
         {toast && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-[#1e222d] border border-blue-500/50 px-4 py-2.5 rounded-lg text-sm text-white shadow-2xl z-20 whitespace-nowrap animate-pulse">
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-[#1e222d] border border-blue-500/50 px-3 py-1.5 rounded text-xs text-white shadow-2xl z-20 whitespace-nowrap">
             {toast}
           </div>
         )}

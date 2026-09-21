@@ -163,7 +163,7 @@ export default function Chart() {
   const tradeDragRef = useRef(null);
   const drawingDragRef = useRef(null);
   const draftRef = useRef(null);
-  const dragDrawRef = useRef(null);  // For drag-to-create shapes
+  const dragDrawRef = useRef(null);
   const profileCacheRef = useRef(new Map());
   const visibleDataRef = useRef([]);
   const longPressTimerRef = useRef(null);
@@ -175,8 +175,23 @@ export default function Chart() {
 
   const { 
     rawData, displayData, currentIndex, positions, pendingOrders, 
-    draftPosition, timeframe, cancelPendingOrder, closePosition, activeDrawingTool
+    draftPosition, timeframe, cancelPendingOrder, closePosition, activeDrawingTool,
+    isDrawingMode
   } = useStore();
+
+  // ============================================================
+  // CRITICAL FIX: Disable chart scroll/pan/zoom while drawing
+  // ============================================================
+  useEffect(() => {
+    if (!chartRef.current) return;
+    const isDrawing = !!activeDrawingTool || !!isDrawingMode;
+    try {
+      chartRef.current.applyOptions({
+        handleScroll: !isDrawing,
+        handleScale: !isDrawing,
+      });
+    } catch (e) {}
+  }, [activeDrawingTool, isDrawingMode]);
 
   const timeToX = useCallback((time) => {
     const chart = chartRef.current;
@@ -317,7 +332,6 @@ export default function Chart() {
   useEffect(() => {
     const container = chartContainerRef.current;
     if (!container) return;
-
     container.style.touchAction = 'none';
 
     const hitTest = (x, y) => {
@@ -400,7 +414,6 @@ export default function Chart() {
       startPosRef.current = { x, y };
       longPressTriggeredRef.current = false;
 
-      // Long/Short position drawing
       if (state.isDrawingMode && seriesRef.current) {
         const price = seriesRef.current.coordinateToPrice(y);
         if (price != null) {
@@ -410,7 +423,6 @@ export default function Chart() {
         return;
       }
 
-      // Trade line hit (SL/TP/pending)
       const price = seriesRef.current?.coordinateToPrice(y);
       if (price != null) {
         const hit = detectTradeHit(price);
@@ -421,7 +433,6 @@ export default function Chart() {
         }
       }
 
-      // Drawing hit
       if (!state.activeDrawingTool) {
         const hit = hitTest(x, y);
         if (hit) {
@@ -444,22 +455,18 @@ export default function Chart() {
         }
       }
 
-      // Active drawing tool: start drag-draw
       if (state.activeDrawingTool) {
         const point = xyToPoint(x, y);
         if (!point) return;
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
 
         const tool = state.activeDrawingTool;
-
-        // Horizontal: commit immediately on tap
         if (tool === 'horizontal') {
           state.addDrawing({ type: 'horizontal', points: [point], color: '#f59e0b' });
           state.setActiveDrawingTool(null);
           return;
         }
 
-        // If we already have a draft (first tap done, waiting for second), commit now
         if (draftRef.current && !dragDrawRef.current) {
           state.addDrawing({
             type: draftRef.current.type,
@@ -471,7 +478,6 @@ export default function Chart() {
           return;
         }
 
-        // Start a new drag-draw (finger down)
         dragDrawRef.current = { tool, startPoint: point };
         draftRef.current = { type: tool, points: [point, point], color: '#f59e0b' };
         return;
@@ -521,7 +527,6 @@ export default function Chart() {
         return;
       }
 
-      // Active drag-draw: update second point
       if (dragDrawRef.current && draftRef.current) {
         const point = xyToPoint(x, y);
         if (point) {
@@ -556,14 +561,12 @@ export default function Chart() {
       tradeDragRef.current = null;
       drawingDragRef.current = null;
 
-      // Commit drag-draw if the user actually moved
       if (dragDrawRef.current && draftRef.current) {
         const state = useStore.getState();
         const pts = draftRef.current.points;
         const p1 = pointToXY(pts[0]);
         const p2 = pointToXY(pts[1]);
         const moved = p1 && p2 && Math.hypot(p1.x - p2.x, p1.y - p2.y) > 10;
-
         if (moved) {
           state.addDrawing({
             type: draftRef.current.type,
@@ -573,7 +576,6 @@ export default function Chart() {
           draftRef.current = null;
           state.setActiveDrawingTool(null);
         }
-        // else: keep draft, wait for second tap
         dragDrawRef.current = null;
       }
 

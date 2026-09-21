@@ -25,7 +25,7 @@ function App() {
     isPlaying, stepForward, currentIndex, rawData, balance, positions, 
     musicEnabled, setAllData, gameStarted, gamePeriod,
     gameState, rules, updateTimeRemaining, endGame, restartGame,
-    loadingState
+    loadingState, openOrderModal
   } = useStore();
   const soundtrackStarted = useRef(false);
 
@@ -43,7 +43,6 @@ function App() {
         const total = contentLength ? parseInt(contentLength, 10) : 0;
         let loaded = 0;
         let csvText = '';
-
         if (response.body && response.body.getReader) {
           const reader = response.body.getReader();
           const chunks = [];
@@ -67,7 +66,6 @@ function App() {
           loaded = csvText.length;
           setLoadingState({ loaded, total: loaded });
         }
-
         Papa.parse(csvText, {
           header: true, dynamicTyping: true,
           complete: (results) => {
@@ -176,14 +174,14 @@ function App() {
 
   return (
     <div className="flex flex-col h-dvh overflow-hidden">
-      {/* COMPACT HEADER */}
-      <header className="px-2 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-2">
+      {/* HEADER with BUY/SELL */}
+      <header className="px-1.5 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-1.5">
         
-        <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Left: Logo + Countdown */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <h1 className="text-sm font-bold tracking-wider whitespace-nowrap">
             <span className="text-blue-500">Omax</span>
             <span className="text-white">FX</span>
-            <span className="hidden xs:inline text-white"> Game</span>
           </h1>
           {gameStarted && (
             <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded font-mono font-bold text-[11px] border ${timeBoxClass}`}>
@@ -193,29 +191,39 @@ function App() {
           )}
         </div>
 
-        <div className="flex items-center gap-2 text-[11px] flex-shrink-0">
-          {positions.length > 0 && (
-            <span className="bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded text-[10px] hidden sm:inline">
-              {positions.length} open
-            </span>
-          )}
-          <div className="flex items-baseline gap-1">
+        {/* Center: BUY / SELL */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button 
+            onClick={() => openOrderModal('buy')} 
+            className="px-4 py-1 bg-green-600 active:bg-green-700 rounded font-bold text-xs text-white"
+          >
+            BUY
+          </button>
+          <button 
+            onClick={() => openOrderModal('sell')} 
+            className="px-4 py-1 bg-red-600 active:bg-red-700 rounded font-bold text-xs text-white"
+          >
+            SELL
+          </button>
+        </div>
+
+        {/* Right: Balance + P&L + Restart + Sound */}
+        <div className="flex items-center gap-1.5 text-[11px] flex-shrink-0">
+          <div className="flex items-baseline gap-0.5">
             <span className="text-gray-400">Bal:</span>
             <span className="text-green-400 font-bold">${fmtMoney(balance, 0)}</span>
           </div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-gray-400 hidden xs:inline">P&L:</span>
+          <div className="flex items-baseline gap-0.5">
             <span className={`font-bold ${unrealisedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               ${fmtMoney(unrealisedPnl)}
             </span>
           </div>
-          
           {gameStarted && (
             <button 
               onClick={handleRestart}
               className="p-1 bg-[#1e222d] hover:bg-red-900/50 hover:text-red-400 rounded border border-[#2a2e39] transition-colors"
             >
-              <RotateCcw size={12} />
+              <RotateCcw size={11} />
             </button>
           )}
           <SoundToggle />
