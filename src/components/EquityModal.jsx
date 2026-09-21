@@ -10,8 +10,13 @@ const sanitizeName = (name) => {
   return name.trim().replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase() || 'player';
 };
 
+const fmtDate = (unix) => {
+  if (!unix) return '—';
+  return new Date(unix * 1000).toLocaleDateString();
+};
+
 export default function EquityModal() {
-  const { isEquityOpen, closeEquity, tradeHistory, balance, rules, playerName } = useStore();
+  const { isEquityOpen, closeEquity, tradeHistory, balance, rules, playerName, gamePeriod } = useStore();
   const captureRef = useRef(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -24,6 +29,7 @@ export default function EquityModal() {
   if (!isEquityOpen) return null;
 
   const startBalance = rules?.startingBalance ?? INITIAL_BALANCE;
+  const presetName = rules?.presetName || 'Custom';
   const safeName = sanitizeName(playerName);
 
   const equityData = [{ trade: 0, balance: startBalance, pnl: 0 }];
@@ -37,6 +43,9 @@ export default function EquityModal() {
   const minEquity = Math.min(...equityData.map(d => d.balance), startBalance);
   const currentPnl = running - startBalance;
   const pnlPercent = (currentPnl / startBalance) * 100;
+  const totalTrades = tradeHistory.length;
+  const wins = tradeHistory.filter(t => t.pnl > 0).length;
+  const losses = tradeHistory.filter(t => t.pnl < 0).length;
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
@@ -112,12 +121,12 @@ export default function EquityModal() {
     } finally { setIsCapturing(false); }
   };
 
-  const PNG_WIDTH = 640;
+  const PNG_WIDTH = 720;
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-1" onClick={() => setMenuOpen(false)}>
       <div 
-        className="bg-[#131722] rounded-lg w-full max-w-2xl border border-[#2a2e39] overflow-hidden flex flex-col max-h-[95vh] relative" 
+        className="bg-[#131722] rounded-lg w-full max-w-3xl border border-[#2a2e39] overflow-hidden flex flex-col max-h-[95vh] relative" 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center px-2 py-1 border-b border-[#2a2e39] flex-shrink-0">
@@ -172,6 +181,7 @@ export default function EquityModal() {
               margin: '0 auto',
             }}
           >
+            {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
               <div style={{ fontSize: '15px', fontWeight: 'bold' }}>
                 <span style={{ color: '#3b82f6' }}>Omax</span>
@@ -182,33 +192,54 @@ export default function EquityModal() {
               </div>
             </div>
 
-            <div style={{ fontSize: '12px', color: '#d1d4dc', fontWeight: 'bold', marginBottom: '12px' }}>
-              {playerName || 'Player'}
+            {/* Player + Challenge + Period */}
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '13px', color: '#ffffff', fontWeight: 'bold', marginBottom: '3px' }}>
+                {playerName || 'Player'}
+              </div>
+              <div style={{ fontSize: '10px', color: '#9ca3af' }}>
+                <span style={{ color: '#60a5fa', fontWeight: 'bold' }}>CHALLENGE:</span> {presetName}
+                <span style={{ color: '#6b7280' }}> • </span>
+                <span style={{ color: '#60a5fa', fontWeight: 'bold' }}>PERIOD:</span> {fmtDate(gamePeriod?.from)} → {fmtDate(gamePeriod?.to)}
+              </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '14px' }}>
-              <div style={{ backgroundColor: '#1e222d', padding: '8px 10px', borderRadius: '6px' }}>
-                <div style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Starting</div>
-                <div style={{ fontSize: '13px', color: '#ffffff', fontWeight: 'bold', marginTop: '3px' }}>${fmtMoney(startBalance, 0)}</div>
+            {/* Stats — 5 columns */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px', marginBottom: '14px' }}>
+              <div style={{ backgroundColor: '#1e222d', padding: '8px 8px', borderRadius: '6px' }}>
+                <div style={{ fontSize: '8px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Starting</div>
+                <div style={{ fontSize: '12px', color: '#ffffff', fontWeight: 'bold', marginTop: '3px' }}>${fmtMoney(startBalance, 0)}</div>
               </div>
-              <div style={{ backgroundColor: '#1e222d', padding: '8px 10px', borderRadius: '6px' }}>
-                <div style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Equity</div>
-                <div style={{ fontSize: '13px', color: '#ffffff', fontWeight: 'bold', marginTop: '3px' }}>${fmtMoney(balance, 0)}</div>
+              <div style={{ backgroundColor: '#1e222d', padding: '8px 8px', borderRadius: '6px' }}>
+                <div style={{ fontSize: '8px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Final</div>
+                <div style={{ fontSize: '12px', color: '#ffffff', fontWeight: 'bold', marginTop: '3px' }}>${fmtMoney(balance, 0)}</div>
               </div>
-              <div style={{ backgroundColor: '#1e222d', padding: '8px 10px', borderRadius: '6px' }}>
-                <div style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>P&L</div>
-                <div style={{ fontSize: '13px', color: currentPnl >= 0 ? '#22c55e' : '#ef4444', fontWeight: 'bold', marginTop: '3px' }}>
+              <div style={{ backgroundColor: '#1e222d', padding: '8px 8px', borderRadius: '6px' }}>
+                <div style={{ fontSize: '8px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>P&L</div>
+                <div style={{ fontSize: '12px', color: currentPnl >= 0 ? '#22c55e' : '#ef4444', fontWeight: 'bold', marginTop: '3px' }}>
                   ${fmtMoney(currentPnl, 0)}
                 </div>
               </div>
-              <div style={{ backgroundColor: '#1e222d', padding: '8px 10px', borderRadius: '6px' }}>
-                <div style={{ fontSize: '9px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Return</div>
-                <div style={{ fontSize: '13px', color: pnlPercent >= 0 ? '#22c55e' : '#ef4444', fontWeight: 'bold', marginTop: '3px' }}>
+              <div style={{ backgroundColor: '#1e222d', padding: '8px 8px', borderRadius: '6px' }}>
+                <div style={{ fontSize: '8px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Return</div>
+                <div style={{ fontSize: '12px', color: pnlPercent >= 0 ? '#22c55e' : '#ef4444', fontWeight: 'bold', marginTop: '3px' }}>
                   {pnlPercent.toFixed(2)}%
+                </div>
+              </div>
+              <div style={{ backgroundColor: '#1e222d', padding: '8px 8px', borderRadius: '6px' }}>
+                <div style={{ fontSize: '8px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Trades</div>
+                <div style={{ fontSize: '12px', color: '#ffffff', fontWeight: 'bold', marginTop: '3px' }}>
+                  {totalTrades}
+                  <span style={{ fontSize: '10px', fontWeight: 'bold', marginLeft: '5px' }}>
+                    <span style={{ color: '#22c55e' }}>{wins}</span>
+                    <span style={{ color: '#6b7280' }}>/</span>
+                    <span style={{ color: '#ef4444' }}>{losses}</span>
+                  </span>
                 </div>
               </div>
             </div>
 
+            {/* Chart */}
             <div style={{ width: '100%', height: '220px', backgroundColor: '#0b0e11', borderRadius: '6px', padding: '4px' }}>
               {tradeHistory.length === 0 ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6b7280', fontSize: '12px' }}>

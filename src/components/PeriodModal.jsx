@@ -104,6 +104,7 @@ export default function PeriodModal() {
       maxDailyLoss: Number(maxDailyLoss),
       maxDrawdown: Number(maxDrawdown),
       countdownMinutes: countdownMinutes === null ? null : Number(countdownMinutes),
+      presetName: activePreset?.name || 'Custom',
     });
   };
 

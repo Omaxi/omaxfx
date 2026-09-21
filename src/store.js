@@ -53,6 +53,7 @@ export const useStore = create((set) => ({
     maxDailyLoss: 5,
     maxDrawdown: 10,
     countdownMinutes: 60,
+    presetName: 'Custom',
   },
 
   gameState: { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
@@ -153,27 +154,14 @@ export const useStore = create((set) => ({
     };
   }),
 
-  // Timeframe switch — rescale drawings to keep them visually stable
+  // FIX: No time-scaling. Drawings keep their absolute time/price
+  // so they never disappear, and remain anchored to real market moments.
   setTimeframe: (newTimeframe) => set((state) => {
-    const oldTF = state.timeframe;
-    if (newTimeframe === oldTF) return state;
-
-    const currentCandle = state.rawData[state.currentIndex];
-    const anchorTime = currentCandle ? currentCandle.time : 0;
-    const scale = newTimeframe / oldTF;
-
-    const scaledDrawings = state.drawings.map(d => ({
-      ...d,
-      points: d.points.map(p => ({
-        ...p,
-        time: anchorTime + (p.time - anchorTime) * scale,
-      })),
-    }));
-
+    if (newTimeframe === state.timeframe) return state;
     return {
       timeframe: newTimeframe,
       displayData: aggregateData(state.rawData, newTimeframe),
-      drawings: scaledDrawings,
+      drawings: state.drawings,   // preserved unchanged
     };
   }),
 
