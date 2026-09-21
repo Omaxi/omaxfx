@@ -12,68 +12,48 @@ body {
 /* ============================================================
    DARK THEME SCROLLBARS
    ============================================================ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0b0e11; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 3px; transition: background 0.2s ease; }
+::-webkit-scrollbar-thumb:hover { background: #3a3e49; }
+::-webkit-scrollbar-thumb:active { background: #4a4e59; }
+::-webkit-scrollbar-corner { background: #0b0e11; }
+* { scrollbar-width: thin; scrollbar-color: #2a2e39 #0b0e11; }
+::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
 
-/* Webkit browsers (Chrome, Safari, Edge) */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #0b0e11;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #2a2e39;
-  border-radius: 4px;
-  transition: background 0.2s ease;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #3a3e49;
-}
-
-::-webkit-scrollbar-thumb:active {
-  background: #4a4e59;
-}
-
-::-webkit-scrollbar-corner {
-  background: #0b0e11;
-}
-
-/* Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #2a2e39 #0b0e11;
-}
-
-/* Optional: hide the up/down arrow buttons on the scrollbar */
-::-webkit-scrollbar-button {
-  display: none;
-  height: 0;
-  width: 0;
-}
-
-/* Make number inputs cleaner (hide native spinners) */
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
-
-input[type="number"] {
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-
-/* Dark theme date picker icon */
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(0.7);
   cursor: pointer;
   opacity: 0.7;
 }
+input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 
-input[type="date"]::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
+/* ============================================================
+   CRITICAL: prevent browser gestures from hijacking touch on chart
+   ============================================================ */
+.chart-no-touch,
+.chart-no-touch *,
+.chart-no-touch canvas,
+.chart-no-touch > div,
+.chart-no-touch > div > div,
+.chart-no-touch > div > div > div,
+.chart-no-touch > div > div > canvas,
+.chart-no-touch > div > div > table,
+.chart-no-touch > div > div > table td {
+  touch-action: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+html, body, #root {
+  height: 100%;
+  overscroll-behavior: none;
 }

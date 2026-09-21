@@ -32,36 +32,28 @@ const computeVolumeProfile = (drawing) => {
   const timeMax = Math.max(p1.time, p2.time);
   const priceMin = Math.min(p1.price, p2.price);
   const priceMax = Math.max(p1.price, p2.price);
-
   if (priceMax <= priceMin) return null;
-
   const BUCKETS = 40;
   const bucketSize = (priceMax - priceMin) / BUCKETS;
   const buckets = new Array(BUCKETS).fill(0);
-
   const data = useStore.getState().displayData;
   for (const c of data) {
     if (c.time < timeMin || c.time > timeMax) continue;
     const candleRange = c.high - c.low;
     const vol = c.volume || 0;
     if (vol <= 0) continue;
-
     if (candleRange <= 0) {
       const idx = Math.max(0, Math.min(BUCKETS - 1, Math.floor((c.close - priceMin) / bucketSize)));
       buckets[idx] += vol;
       continue;
     }
-
     for (let i = 0; i < BUCKETS; i++) {
       const bLow = priceMin + i * bucketSize;
       const bHigh = bLow + bucketSize;
       const overlap = Math.max(0, Math.min(c.high, bHigh) - Math.max(c.low, bLow));
-      if (overlap > 0) {
-        buckets[i] += vol * (overlap / candleRange);
-      }
+      if (overlap > 0) buckets[i] += vol * (overlap / candleRange);
     }
   }
-
   const maxVol = Math.max(...buckets, 1);
   const pocIdx = buckets.indexOf(maxVol);
   return { buckets, maxVol, priceMin, priceMax, bucketSize, BUCKETS, pocIdx };
@@ -71,12 +63,10 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache) => {
   const color = drawing.color || '#f59e0b';
   const pts = drawing.points.map(p => pointToXY(p)).filter(Boolean);
   if (pts.length === 0) return;
-
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
   ctx.lineWidth = isDraft ? 1.5 : 2;
   ctx.setLineDash(isDraft ? [5, 5] : []);
-
   const canvasW = ctx.canvas.width;
 
   if (drawing.type === 'horizontal') {
@@ -103,10 +93,8 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache) => {
     const x1 = pts[0].x, x2 = pts[1].x;
     const xMin = Math.min(x1, x2);
     const xMax = Math.max(x1, x2);
-
     ctx.fillStyle = color + '10';
     ctx.fillRect(xMin, Math.min(y1, y2), xMax - xMin, Math.abs(y2 - y1));
-
     levels.forEach(level => {
       const y = y1 + (y2 - y1) * level;
       const isKey = level === 0.5 || level === 0.618;
@@ -116,7 +104,6 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache) => {
       ctx.moveTo(xMin, y);
       ctx.lineTo(xMax, y);
       ctx.stroke();
-
       ctx.setLineDash([]);
       ctx.fillStyle = color;
       ctx.font = 'bold 10px monospace';
@@ -127,37 +114,29 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache) => {
   } else if (drawing.type === 'volumeProfile' && pts.length === 2) {
     const x1 = Math.min(pts[0].x, pts[1].x);
     const x2 = Math.max(pts[0].x, pts[1].x);
-
     const profile = profileCache.get(drawing);
     if (profile) {
       const { buckets, maxVol, priceMin, bucketSize, BUCKETS, pocIdx } = profile;
       const width = x2 - x1;
-
       for (let i = 0; i < BUCKETS; i++) {
         const vol = buckets[i];
         if (vol === 0) continue;
         const ratio = vol / maxVol;
         const barWidth = ratio * width;
-
         const bucketLowPrice = priceMin + i * bucketSize;
         const bucketHighPrice = bucketLowPrice + bucketSize;
-
         const yLow = pointToXY({ time: drawing.points[0].time, price: bucketLowPrice })?.y;
         const yHigh = pointToXY({ time: drawing.points[0].time, price: bucketHighPrice })?.y;
         if (yLow == null || yHigh == null) continue;
-
         const barTop = Math.min(yLow, yHigh);
         const barBottom = Math.max(yLow, yHigh);
-
-        if (i === pocIdx) {
-          ctx.fillStyle = 'rgba(239, 68, 68, 0.75)';
-        } else {
+        if (i === pocIdx) ctx.fillStyle = 'rgba(239, 68, 68, 0.75)';
+        else {
           const intensity = 0.25 + ratio * 0.65;
           ctx.fillStyle = `rgba(245, 158, 11, ${intensity})`;
         }
         ctx.fillRect(x1, barTop, barWidth, barBottom - barTop);
       }
-
       const pocPrice = priceMin + (pocIdx + 0.5) * bucketSize;
       const pocY = pointToXY({ time: drawing.points[0].time, price: pocPrice })?.y;
       if (pocY != null) {
@@ -184,6 +163,7 @@ export default function Chart() {
   const tradeDragRef = useRef(null);
   const drawingDragRef = useRef(null);
   const draftRef = useRef(null);
+  const dragDrawRef = useRef(null);  // For drag-to-create shapes
   const profileCacheRef = useRef(new Map());
   const visibleDataRef = useRef([]);
   const longPressTimerRef = useRef(null);
@@ -198,42 +178,31 @@ export default function Chart() {
     draftPosition, timeframe, cancelPendingOrder, closePosition, activeDrawingTool
   } = useStore();
 
-  // ---------- COORDINATE CONVERSIONS ----------
   const timeToX = useCallback((time) => {
     const chart = chartRef.current;
     if (!chart) return null;
     const data = visibleDataRef.current;
     if (data.length === 0) return null;
-
     const firstTime = data[0].time;
     const lastTime = data[data.length - 1].time;
-
     let logical;
     if (time <= firstTime) {
       const step = data.length > 1 ? (data[1].time - data[0].time) : 60;
       logical = (time - firstTime) / (step || 60);
     } else if (time >= lastTime) {
-      const step = data.length > 1
-        ? (data[data.length - 1].time - data[data.length - 2].time)
-        : 60;
+      const step = data.length > 1 ? (data[data.length - 1].time - data[data.length - 2].time) : 60;
       logical = (data.length - 1) + (time - lastTime) / (step || 60);
     } else {
       let lo = 0, hi = data.length - 1;
       while (hi - lo > 1) {
         const mid = Math.floor((lo + hi) / 2);
-        if (data[mid].time < time) lo = mid;
-        else hi = mid;
+        if (data[mid].time < time) lo = mid; else hi = mid;
       }
       const t1 = data[lo].time, t2 = data[hi].time;
       const frac = t2 !== t1 ? (time - t1) / (t2 - t1) : 0;
       logical = lo + frac;
     }
-
-    try {
-      return chart.timeScale().logicalToCoordinate(logical);
-    } catch (e) {
-      return null;
-    }
+    try { return chart.timeScale().logicalToCoordinate(logical); } catch (e) { return null; }
   }, []);
 
   const pointToXY = useCallback((point) => {
@@ -250,27 +219,20 @@ export default function Chart() {
     const chart = chartRef.current;
     const series = seriesRef.current;
     if (!chart || !series) return null;
-
     const price = series.coordinateToPrice(y);
     if (price == null) return null;
-
     const data = visibleDataRef.current;
     if (data.length === 0) return null;
-
     const logical = chart.timeScale().coordinateToLogical(x);
     if (logical == null) return null;
-
     const firstTime = data[0].time;
     const lastTime = data[data.length - 1].time;
-
     let time;
     if (logical <= 0) {
       const step = data.length > 1 ? (data[1].time - data[0].time) : 60;
       time = firstTime + logical * (step || 60);
     } else if (logical >= data.length - 1) {
-      const step = data.length > 1
-        ? (data[data.length - 1].time - data[data.length - 2].time)
-        : 60;
+      const step = data.length > 1 ? (data[data.length - 1].time - data[data.length - 2].time) : 60;
       time = lastTime + (logical - (data.length - 1)) * (step || 60);
     } else {
       const lo = Math.floor(logical);
@@ -280,11 +242,9 @@ export default function Chart() {
       const t2 = data[hi].time;
       time = t1 + (t2 - t1) * frac;
     }
-
     return { time, price };
   }, []);
 
-  // ---------- CHART INIT ----------
   useEffect(() => {
     if (!chartContainerRef.current) return;
     chartRef.current = createChart(chartContainerRef.current, {
@@ -305,12 +265,10 @@ export default function Chart() {
     return () => chartRef.current.remove();
   }, []);
 
-  // ---------- CANVAS RESIZE + RENDER LOOP ----------
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = chartContainerRef.current;
     if (!canvas || !container) return;
-
     const resizeCanvas = () => {
       const rect = container.getBoundingClientRect();
       canvas.width = rect.width;
@@ -324,7 +282,6 @@ export default function Chart() {
     const draw = () => {
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
       let paneW = canvas.width, paneH = canvas.height;
       if (chartRef.current) {
         try {
@@ -334,30 +291,20 @@ export default function Chart() {
           if (timeAxisH > 0) paneH = canvas.height - timeAxisH;
         } catch (e) {}
       }
-
       ctx.save();
       ctx.beginPath();
       ctx.rect(0, 0, paneW, paneH);
       ctx.clip();
-
       const state = useStore.getState();
       const cache = profileCacheRef.current;
-
       const alive = new Set(state.drawings);
-      for (const key of cache.keys()) {
-        if (!alive.has(key)) cache.delete(key);
-      }
-
+      for (const key of cache.keys()) if (!alive.has(key)) cache.delete(key);
       state.drawings.forEach(d => {
-        if (d.type === 'volumeProfile' && !cache.has(d)) {
-          cache.set(d, computeVolumeProfile(d));
-        }
+        if (d.type === 'volumeProfile' && !cache.has(d)) cache.set(d, computeVolumeProfile(d));
         drawShape(ctx, d, pointToXY, false, cache);
       });
       if (draftRef.current) drawShape(ctx, draftRef.current, pointToXY, true, cache);
-
       ctx.restore();
-
       rafId = requestAnimationFrame(draw);
     };
     draw();
@@ -367,30 +314,25 @@ export default function Chart() {
     };
   }, [pointToXY]);
 
-  // ---------- MOUSE + TOUCH INTERACTION ----------
   useEffect(() => {
     const container = chartContainerRef.current;
     if (!container) return;
 
-    // CRITICAL: prevents browser scroll/pan from cancelling our pointer drags
     container.style.touchAction = 'none';
 
     const hitTest = (x, y) => {
       const state = useStore.getState();
-      const TOL = 12;          // bigger tolerance for touch
-      const HANDLE_TOL = 18;
-
+      const TOL = 14;
+      const HANDLE_TOL = 20;
       for (let i = state.drawings.length - 1; i >= 0; i--) {
         const d = state.drawings[i];
         const pts = d.points.map(p => pointToXY(p)).filter(Boolean);
         if (pts.length === 0) continue;
-
         for (let j = 0; j < pts.length; j++) {
           if (Math.hypot(x - pts[j].x, y - pts[j].y) < HANDLE_TOL) {
             return { drawingId: d.id, mode: 'drag-point', pointIndex: j };
           }
         }
-
         if (d.type === 'horizontal' && pts[0]) {
           if (Math.abs(y - pts[0].y) < TOL) return { drawingId: d.id, mode: 'drag-body' };
         } else if (d.type === 'trendline' && pts.length === 2) {
@@ -458,7 +400,7 @@ export default function Chart() {
       startPosRef.current = { x, y };
       longPressTriggeredRef.current = false;
 
-      // Long/Short draft mode
+      // Long/Short position drawing
       if (state.isDrawingMode && seriesRef.current) {
         const price = seriesRef.current.coordinateToPrice(y);
         if (price != null) {
@@ -479,22 +421,18 @@ export default function Chart() {
         }
       }
 
-      // Drawing hit → start LONG-PRESS timer for delete on touch
+      // Drawing hit
       if (!state.activeDrawingTool) {
         const hit = hitTest(x, y);
         if (hit) {
           const drawing = state.drawings.find(d => d.id === hit.drawingId);
           const point = xyToPoint(x, y);
           if (drawing && point) {
-            // Start long-press timer
             longPressTimerRef.current = setTimeout(() => {
               longPressTriggeredRef.current = true;
-              // Delete the drawing
               state.removeDrawing(hit.drawingId);
-              // Also cancel any drag that might have started
               drawingDragRef.current = null;
-            }, 550);
-
+            }, 600);
             drawingDragRef.current = {
               ...hit,
               startMouse: point,
@@ -506,22 +444,23 @@ export default function Chart() {
         }
       }
 
-      // Drawing tool active → create a new drawing
+      // Active drawing tool: start drag-draw
       if (state.activeDrawingTool) {
         const point = xyToPoint(x, y);
         if (!point) return;
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
 
         const tool = state.activeDrawingTool;
+
+        // Horizontal: commit immediately on tap
         if (tool === 'horizontal') {
           state.addDrawing({ type: 'horizontal', points: [point], color: '#f59e0b' });
           state.setActiveDrawingTool(null);
           return;
         }
 
-        if (!draftRef.current) {
-          draftRef.current = { type: tool, points: [point, point], color: '#f59e0b' };
-        } else {
+        // If we already have a draft (first tap done, waiting for second), commit now
+        if (draftRef.current && !dragDrawRef.current) {
           state.addDrawing({
             type: draftRef.current.type,
             points: [draftRef.current.points[0], point],
@@ -529,7 +468,12 @@ export default function Chart() {
           });
           draftRef.current = null;
           state.setActiveDrawingTool(null);
+          return;
         }
+
+        // Start a new drag-draw (finger down)
+        dragDrawRef.current = { tool, startPoint: point };
+        draftRef.current = { type: tool, points: [point, point], color: '#f59e0b' };
         return;
       }
     };
@@ -538,13 +482,10 @@ export default function Chart() {
       const state = useStore.getState();
       const { x, y } = getLocalXY(e);
 
-      // Cancel long-press if moved more than 10px (means user is dragging, not holding)
       if (longPressTimerRef.current) {
         const dx = x - startPosRef.current.x;
         const dy = y - startPosRef.current.y;
-        if (Math.hypot(dx, dy) > 10) {
-          cancelLongPress();
-        }
+        if (Math.hypot(dx, dy) > 10) cancelLongPress();
       }
 
       if (tradeDragRef.current) {
@@ -565,11 +506,8 @@ export default function Chart() {
         const point = xyToPoint(x, y);
         if (!point) return;
         const inter = drawingDragRef.current;
-
         if (inter.mode === 'drag-point') {
-          const newPoints = inter.originalPoints.map((p, i) =>
-            i === inter.pointIndex ? point : p
-          );
+          const newPoints = inter.originalPoints.map((p, i) => i === inter.pointIndex ? point : p);
           state.updateDrawing(inter.drawingId, newPoints);
         } else if (inter.mode === 'drag-body') {
           const dTime = point.time - inter.startMouse.time;
@@ -583,12 +521,13 @@ export default function Chart() {
         return;
       }
 
-      if (draftRef.current && state.activeDrawingTool) {
+      // Active drag-draw: update second point
+      if (dragDrawRef.current && draftRef.current) {
         const point = xyToPoint(x, y);
         if (point) {
           draftRef.current = {
             ...draftRef.current,
-            points: [draftRef.current.points[0], point],
+            points: [dragDrawRef.current.startPoint, point],
           };
         }
         container.style.cursor = 'crosshair';
@@ -616,6 +555,28 @@ export default function Chart() {
       longPressTriggeredRef.current = false;
       tradeDragRef.current = null;
       drawingDragRef.current = null;
+
+      // Commit drag-draw if the user actually moved
+      if (dragDrawRef.current && draftRef.current) {
+        const state = useStore.getState();
+        const pts = draftRef.current.points;
+        const p1 = pointToXY(pts[0]);
+        const p2 = pointToXY(pts[1]);
+        const moved = p1 && p2 && Math.hypot(p1.x - p2.x, p1.y - p2.y) > 10;
+
+        if (moved) {
+          state.addDrawing({
+            type: draftRef.current.type,
+            points: draftRef.current.points,
+            color: '#f59e0b',
+          });
+          draftRef.current = null;
+          state.setActiveDrawingTool(null);
+        }
+        // else: keep draft, wait for second tap
+        dragDrawRef.current = null;
+      }
+
       const state = useStore.getState();
       container.style.cursor = (state.activeDrawingTool || state.isDrawingMode) ? 'crosshair' : 'default';
       return wasLongPress;
@@ -634,7 +595,7 @@ export default function Chart() {
 
     container.addEventListener('pointerdown', handlePointerDown, true);
     container.addEventListener('contextmenu', handleContextMenu);
-    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointermove', handlePointerMove, { passive: false });
     window.addEventListener('pointerup', handlePointerUp);
     window.addEventListener('pointercancel', handlePointerUp);
 
@@ -653,6 +614,7 @@ export default function Chart() {
       if (e.key === 'Escape') {
         const state = useStore.getState();
         draftRef.current = null;
+        dragDrawRef.current = null;
         if (state.activeDrawingTool) state.setActiveDrawingTool(null);
       }
     };
@@ -660,7 +622,7 @@ export default function Chart() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  useEffect(() => { draftRef.current = null; }, [activeDrawingTool]);
+  useEffect(() => { draftRef.current = null; dragDrawRef.current = null; }, [activeDrawingTool]);
 
   const visibleData = useMemo(() => {
     if (!rawData[currentIndex] || displayData.length === 0) return [];
@@ -684,14 +646,10 @@ export default function Chart() {
     let rafId;
     const update = () => {
       if (seriesRef.current) {
-        const pendPos = pendingOrders.map(o => ({
-          id: o.id, y: seriesRef.current.priceToCoordinate(o.entryPrice)
-        })).filter(p => p.y !== null && !isNaN(p.y));
-
-        const posBtn = positions.map(p => ({
-          id: p.id, y: seriesRef.current.priceToCoordinate(p.entryPrice)
-        })).filter(p => p.y !== null && !isNaN(p.y));
-
+        const pendPos = pendingOrders.map(o => ({ id: o.id, y: seriesRef.current.priceToCoordinate(o.entryPrice) }))
+          .filter(p => p.y !== null && !isNaN(p.y));
+        const posBtn = positions.map(p => ({ id: p.id, y: seriesRef.current.priceToCoordinate(p.entryPrice) }))
+          .filter(p => p.y !== null && !isNaN(p.y));
         setPendingBtnPos(prev => {
           if (prev.length !== pendPos.length) return pendPos;
           for (let i = 0; i < prev.length; i++) {
@@ -717,16 +675,13 @@ export default function Chart() {
     if (!seriesRef.current) return;
     linesRef.current.forEach(line => seriesRef.current.removePriceLine(line));
     linesRef.current = [];
-
     const addLine = (price, color, title, lineStyle = 2, lineWidth = 2) => {
       if (price == null) return;
       const line = seriesRef.current.createPriceLine({
-        price: Number(price), color, lineWidth, lineStyle,
-        axisLabelVisible: true, title,
+        price: Number(price), color, lineWidth, lineStyle, axisLabelVisible: true, title,
       });
       linesRef.current.push(line);
     };
-
     positions.forEach(pos => {
       const rrr = calcRRR(pos.entryPrice, pos.sl, pos.tp);
       const dirLabel = pos.type === 'buy' ? 'BUY' : 'SELL';
@@ -734,7 +689,6 @@ export default function Chart() {
       addLine(pos.sl, '#ef5350', 'SL', 2, 2);
       addLine(pos.tp, '#26a69a', 'TP', 2, 2);
     });
-
     pendingOrders.forEach(order => {
       const rrr = calcRRR(order.entryPrice, order.sl, order.tp);
       const label = `${order.type === 'buy' ? 'Buy' : 'Sell'} ${order.orderType}${rrr ? ` · RRR ${rrr}` : ''}`;
@@ -742,7 +696,6 @@ export default function Chart() {
       addLine(order.sl, '#ef5350', 'SL', 2, 1);
       addLine(order.tp, '#26a69a', 'TP', 2, 1);
     });
-
     if (draftPosition) {
       const rrr = calcRRR(draftPosition.entry, draftPosition.sl, draftPosition.tp);
       addLine(draftPosition.entry, '#3b82f6', `DRAFT${rrr ? ` · RRR ${rrr}` : ''}`, 1, 2);
@@ -764,7 +717,7 @@ export default function Chart() {
 
       <div 
         ref={chartContainerRef} 
-        className="absolute inset-0"
+        className="absolute inset-0 chart-no-touch"
         style={{ zIndex: 1, touchAction: 'none' }}
       />
 
@@ -777,12 +730,11 @@ export default function Chart() {
           <button
             key={`p-${p.id}`}
             onClick={() => cancelPendingOrder(p.id)}
-            style={{ top: p.y, right: 90 }}
-            className="absolute pointer-events-auto -translate-y-1/2 w-6 h-6 md:w-5 md:h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400"
+            style={{ top: p.y, right: 60 }}
+            className="absolute pointer-events-auto -translate-y-1/2 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400"
             title="Cancel this order"
           >
-            <X size={14} className="md:hidden" strokeWidth={3.5} />
-            <X size={12} className="hidden md:block" strokeWidth={3.5} />
+            <X size={12} strokeWidth={3.5} />
           </button>
         ))}
 
@@ -790,12 +742,11 @@ export default function Chart() {
           <button
             key={`pos-${p.id}`}
             onClick={() => closePosition(p.id)}
-            style={{ top: p.y, right: 90 }}
-            className="absolute pointer-events-auto -translate-y-1/2 w-6 h-6 md:w-5 md:h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400"
+            style={{ top: p.y, right: 60 }}
+            className="absolute pointer-events-auto -translate-y-1/2 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400"
             title="Close this position"
           >
-            <X size={14} className="md:hidden" strokeWidth={3.5} />
-            <X size={12} className="hidden md:block" strokeWidth={3.5} />
+            <X size={12} strokeWidth={3.5} />
           </button>
         ))}
       </div>

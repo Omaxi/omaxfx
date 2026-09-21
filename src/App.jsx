@@ -29,7 +29,6 @@ function App() {
   } = useStore();
   const soundtrackStarted = useRef(false);
 
-  // Load CSV with streaming progress
   useEffect(() => {
     let cancelled = false;
     const setLoadingState = useStore.getState().setLoadingState;
@@ -40,7 +39,6 @@ function App() {
         setLoadingState({ isActive: true, loaded: 0, total: 0, error: null });
         const response = await fetch(csvUrl);
         if (!response.ok) throw new Error(`Failed to fetch CSV: ${response.status}`);
-
         const contentLength = response.headers.get('Content-Length');
         const total = contentLength ? parseInt(contentLength, 10) : 0;
         let loaded = 0;
@@ -71,8 +69,7 @@ function App() {
         }
 
         Papa.parse(csvText, {
-          header: true,
-          dynamicTyping: true,
+          header: true, dynamicTyping: true,
           complete: (results) => {
             const formattedData = results.data
               .filter(row => row.date && row.close)
@@ -86,10 +83,7 @@ function App() {
                 const isoString = `${year}-${month}-${day}T${paddedTime}`;
                 return {
                   time: new Date(isoString).getTime() / 1000,
-                  open: row.open,
-                  high: row.high,
-                  low: row.low,
-                  close: row.close,
+                  open: row.open, high: row.high, low: row.low, close: row.close,
                   volume: Number(row.volume) || 0,
                 };
               })
@@ -98,9 +92,7 @@ function App() {
             setAllData(formattedData);
             setLoadingState({ isActive: false });
           },
-          error: (err) => {
-            setLoadingState({ isActive: false, error: err.message });
-          },
+          error: (err) => setLoadingState({ isActive: false, error: err.message }),
         });
       } catch (err) {
         console.error('CSV load error:', err);
@@ -112,7 +104,6 @@ function App() {
     return () => { cancelled = true; };
   }, [setAllData]);
 
-  // Auto-play
   useEffect(() => {
     let interval;
     if (isPlaying && currentIndex < rawData.length - 1 && !gameState.isOver) {
@@ -121,7 +112,6 @@ function App() {
     return () => clearInterval(interval);
   }, [isPlaying, currentIndex, rawData, stepForward, gameState.isOver]);
 
-  // Countdown
   useEffect(() => {
     if (!gameStarted || gameState.isOver || !rules.countdownMinutes) return;
     const interval = setInterval(() => {
@@ -138,7 +128,6 @@ function App() {
     return () => clearInterval(interval);
   }, [gameStarted, gameState.isOver, gameState.startTime, rules.countdownMinutes, endGame, updateTimeRemaining]);
 
-  // Soundtrack
   useEffect(() => {
     const startAudio = () => {
       if (!soundtrackStarted.current && musicEnabled) {
@@ -166,13 +155,6 @@ function App() {
     return sum + priceDiff * 100 * pos.size;
   }, 0);
 
-  const currentCandle = rawData[currentIndex];
-  const displayTime = currentCandle ? new Date(currentCandle.time * 1000).toLocaleString() : '—';
-  
-  const periodLabel = gamePeriod 
-    ? `${new Date(gamePeriod.from * 1000).toLocaleDateString()} → ${new Date(gamePeriod.to * 1000).toLocaleDateString()}`
-    : '—';
-
   const timeRemaining = gameState.timeRemaining;
   const timeBoxClass = timeRemaining == null 
     ? 'text-gray-500 border-gray-700 bg-gray-900/20'
@@ -194,53 +176,46 @@ function App() {
 
   return (
     <div className="flex flex-col h-dvh overflow-hidden">
-      {/* HEADER — compact on mobile */}
-      <header className="px-1.5 py-1 md:px-3 md:py-2 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-1.5 md:gap-2">
+      {/* COMPACT HEADER */}
+      <header className="px-2 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-2">
         
-        <div className="flex items-center gap-1.5 md:gap-3 flex-shrink-0">
-          <h1 className="text-xs md:text-lg font-bold tracking-wider whitespace-nowrap">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <h1 className="text-sm font-bold tracking-wider whitespace-nowrap">
             <span className="text-blue-500">Omax</span>
             <span className="text-white">FX</span>
-            <span className="hidden sm:inline text-white"> Game</span>
+            <span className="hidden xs:inline text-white"> Game</span>
           </h1>
           {gameStarted && (
-            <div className={`flex items-center gap-1 md:gap-2 px-1.5 md:px-3 py-0.5 md:py-1 rounded-md md:rounded-lg font-mono font-bold text-[10px] md:text-sm border md:border-2 ${timeBoxClass}`}>
-              <Clock size={10} className="md:hidden" />
-              <Clock size={12} className="hidden md:block" />
+            <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded font-mono font-bold text-[11px] border ${timeBoxClass}`}>
+              <Clock size={10} />
               <span>{formatTime(timeRemaining)}</span>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 md:gap-3 text-[10px] md:text-sm flex-shrink-0">
-          {gameStarted && (
-            <span className="text-gray-500 text-[10px] hidden lg:inline">{periodLabel}</span>
-          )}
+        <div className="flex items-center gap-2 text-[11px] flex-shrink-0">
           {positions.length > 0 && (
-            <span className="text-[10px] bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded hidden md:inline">
+            <span className="bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded text-[10px] hidden sm:inline">
               {positions.length} open
             </span>
           )}
-          <div className="flex items-baseline gap-0.5 md:gap-1">
-            <span className="text-gray-400 hidden md:inline">Bal:</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-gray-400">Bal:</span>
             <span className="text-green-400 font-bold">${fmtMoney(balance, 0)}</span>
           </div>
-          <div className="flex items-baseline gap-0.5 md:gap-1">
-            <span className="text-gray-400 hidden md:inline">P&L:</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-gray-400 hidden xs:inline">P&L:</span>
             <span className={`font-bold ${unrealisedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               ${fmtMoney(unrealisedPnl)}
             </span>
           </div>
-          <div className="hidden xl:block text-gray-500 font-mono text-xs">{displayTime}</div>
           
           {gameStarted && (
             <button 
               onClick={handleRestart}
-              className="p-1 md:p-2 bg-[#1e222d] hover:bg-red-900/50 hover:text-red-400 rounded-md md:rounded-lg border border-[#2a2e39] transition-colors"
-              title="Restart game"
+              className="p-1 bg-[#1e222d] hover:bg-red-900/50 hover:text-red-400 rounded border border-[#2a2e39] transition-colors"
             >
-              <RotateCcw size={12} className="md:hidden" />
-              <RotateCcw size={14} className="hidden md:block" />
+              <RotateCcw size={12} />
             </button>
           )}
           <SoundToggle />
@@ -271,7 +246,6 @@ function App() {
                 {loadingState.error ? 'Failed to load data' : 'Downloading market data…'}
               </p>
             </div>
-
             {loadingState.error ? (
               <div className="bg-red-900/30 border border-red-700 rounded-lg p-3 text-red-400 text-xs">
                 {loadingState.error}

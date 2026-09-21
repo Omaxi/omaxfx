@@ -14,13 +14,13 @@ export default function DrawingToolbar() {
   const { activeDrawingTool, setActiveDrawingTool, clearDrawings, drawings } = useStore();
 
   return (
-    <div className="absolute top-2 left-2 z-20 flex flex-col gap-1 bg-[#131722]/95 backdrop-blur border border-[#2a2e39] rounded-lg p-1 shadow-lg">
+    <div className="absolute top-1 left-1 md:top-2 md:left-2 z-20 flex flex-col gap-0.5 md:gap-1 bg-[#131722]/95 backdrop-blur border border-[#2a2e39] rounded-md md:rounded-lg p-0.5 md:p-1 shadow-lg">
       {TOOLS.map(({ key, label, icon: Icon }) => (
         <button
           key={label}
           onClick={() => setActiveDrawingTool(key)}
           title={label}
-          className={`p-1.5 md:p-2 rounded transition-colors ${
+          className={`p-1 md:p-1.5 rounded transition-colors ${
             activeDrawingTool === key && key !== null
               ? 'bg-blue-600 text-white'
               : key === null && activeDrawingTool === null
@@ -28,7 +28,8 @@ export default function DrawingToolbar() {
                 : 'text-gray-400 hover:text-white hover:bg-[#2a2e39]'
           }`}
         >
-          <Icon size={14} className="md:w-4 md:h-4" />
+          <Icon size={12} className="md:hidden" />
+          <Icon size={14} className="hidden md:block" />
         </button>
       ))}
       
@@ -38,9 +39,10 @@ export default function DrawingToolbar() {
           <button
             onClick={clearDrawings}
             title={`Clear ALL drawings (${drawings.length})`}
-            className="p-1.5 md:p-2 rounded text-red-400 hover:bg-red-900/40 transition-colors"
+            className="p-1 md:p-1.5 rounded text-red-400 hover:bg-red-900/40 transition-colors"
           >
-            <Trash2 size={14} className="md:w-4 md:h-4" />
+            <Trash2 size={12} className="md:hidden" />
+            <Trash2 size={14} className="hidden md:block" />
           </button>
         </>
       )}
