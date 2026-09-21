@@ -98,10 +98,11 @@ function App() {
     return () => { cancelled = true; };
   }, [setAllData]);
 
+  // 2x speed: 250ms
   useEffect(() => {
     let interval;
     if (isPlaying && currentIndex < rawData.length - 1 && !gameState.isOver) {
-      interval = setInterval(() => { stepForward(); }, 500);
+      interval = setInterval(() => { stepForward(); }, 250);
     }
     return () => clearInterval(interval);
   }, [isPlaying, currentIndex, rawData, stepForward, gameState.isOver]);
@@ -168,10 +169,7 @@ function App() {
 
   return (
     <div className="flex flex-col h-dvh overflow-hidden">
-      {/* HEADER: Logo + Countdown | Stats + Controls */}
       <header className="px-2 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-2">
-        
-        {/* Left */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <h1 className="text-sm font-bold tracking-wider whitespace-nowrap">
             <span className="text-blue-500">Omax</span>
@@ -190,7 +188,6 @@ function App() {
           )}
         </div>
 
-        {/* Right */}
         <div className="flex items-center gap-2 text-[11px] flex-shrink-0">
           <div className="flex items-baseline gap-1">
             <span className="text-gray-400">Bal:</span>

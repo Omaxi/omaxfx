@@ -153,12 +153,29 @@ export const useStore = create((set) => ({
     };
   }),
 
-  // EXPLICITLY preserve drawings on timeframe switch
-  setTimeframe: (minutes) => set((state) => ({
-    timeframe: minutes,
-    displayData: aggregateData(state.rawData, minutes),
-    drawings: state.drawings,  // preserved
-  })),
+  // Timeframe switch — rescale drawings to keep them visually stable
+  setTimeframe: (newTimeframe) => set((state) => {
+    const oldTF = state.timeframe;
+    if (newTimeframe === oldTF) return state;
+
+    const currentCandle = state.rawData[state.currentIndex];
+    const anchorTime = currentCandle ? currentCandle.time : 0;
+    const scale = newTimeframe / oldTF;
+
+    const scaledDrawings = state.drawings.map(d => ({
+      ...d,
+      points: d.points.map(p => ({
+        ...p,
+        time: anchorTime + (p.time - anchorTime) * scale,
+      })),
+    }));
+
+    return {
+      timeframe: newTimeframe,
+      displayData: aggregateData(state.rawData, newTimeframe),
+      drawings: scaledDrawings,
+    };
+  }),
 
   startDrawing: (side) => set({ 
     isDrawingMode: true, drawingSide: side, drawingStep: 'entry',

@@ -1,5 +1,5 @@
 import { useStore } from '../store';
-import { Play, Pause, SkipForward, X } from 'lucide-react';
+import { X } from 'lucide-react';
 
 const TIMEFRAMES = [
   { label: '1m', value: 1 },
@@ -14,7 +14,6 @@ const TIMEFRAMES = [
 
 export default function ControlPanel() {
   const { 
-    stepForward, togglePlay, isPlaying,
     positions, setTimeframe, timeframe, closeAllPositions, openOrderModal,
     pendingOrders, startDrawing, isDrawingMode, drawingStep, clearDraft,
     openHistory, openEquity
@@ -43,7 +42,7 @@ export default function ControlPanel() {
 
         <div className="flex-1 min-w-2" />
 
-        {/* Long/Short position (draw) */}
+        {/* Long/Short draw */}
         {!isDrawingMode ? (
           <div className="flex items-center gap-1 flex-shrink-0">
             <button 
@@ -84,7 +83,7 @@ export default function ControlPanel() {
           </button>
         </div>
 
-        {/* Close all + Pending count */}
+        {/* Close all + Pending */}
         {positions.length > 0 && (
           <button 
             onClick={closeAllPositions} 
@@ -99,7 +98,7 @@ export default function ControlPanel() {
           </div>
         )}
 
-        {/* BUY / SELL — big and green/red */}
+        {/* BUY / SELL */}
         <div className="flex items-center gap-1 flex-shrink-0">
           <button 
             onClick={() => openOrderModal('buy')} 
@@ -112,22 +111,6 @@ export default function ControlPanel() {
             className="px-3 py-1.5 bg-red-600 active:bg-red-700 rounded font-bold text-xs text-white"
           >
             SELL
-          </button>
-        </div>
-
-        {/* BIG PLAY / STEP */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <button 
-            onClick={togglePlay}
-            className="p-2 bg-blue-600 active:bg-blue-700 rounded text-white"
-          >
-            {isPlaying ? <Pause size={22} /> : <Play size={22} />}
-          </button>
-          <button 
-            onClick={stepForward}
-            className="p-2 bg-[#1e222d] active:bg-[#2a2e39] rounded text-white border border-[#2a2e39]"
-          >
-            <SkipForward size={22} />
           </button>
         </div>
       </div>

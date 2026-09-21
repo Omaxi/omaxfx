@@ -1,5 +1,5 @@
 import { useStore } from '../store';
-import { X, Play, TrendingUp, Pencil, Target, Sparkles, Smartphone, Share2 } from 'lucide-react';
+import { X, Play, TrendingUp, Pencil, Target, Sparkles, Smartphone, Share2, Award } from 'lucide-react';
 
 export default function InfoModal() {
   const { isInfoOpen, closeInfo } = useStore();
@@ -31,9 +31,9 @@ export default function InfoModal() {
 
           <Section icon={<Play size={12}/>} title="Playback">
             <ul className="list-disc pl-4 space-y-0.5">
-              <li><b>▶ Play</b> — auto-advance the market (one candle per 0.5s)</li>
+              <li><b>▶ Play</b> (floating blue button, bottom-right) — auto-advance the market (2× speed)</li>
               <li><b>⏭ Step</b> — jump forward one candle at a time</li>
-              <li><b>1m / 5m / 15m / 1h ...</b> — change the timeframe (candles resize, drawings stay)</li>
+              <li><b>1m / 5m / 15m / 1h ...</b> — change the timeframe (candles resize, drawings stay stable)</li>
             </ul>
           </Section>
 
@@ -55,7 +55,7 @@ export default function InfoModal() {
               <li><b>—</b> Horizontal line — click once</li>
               <li><b>↗</b> Trendline — tap-tap or drag from A to B</li>
               <li><b>▢</b> Rectangle — tap-tap or drag corner to corner</li>
-              <li><b>≡</b> Fibonacci — draw from high to low (or vice versa)</li>
+              <li><b>≡</b> Fibonacci — draw from high to low (levels 0, 0.5, 0.618, 0.764, 1)</li>
               <li><b>▥</b> Volume Profile — drag over a range to see POC</li>
               <li><b>🗑</b> Clear all drawings</li>
               <li><b>Long-press</b> (0.6s) any drawing to delete it individually</li>
@@ -65,7 +65,7 @@ export default function InfoModal() {
           <Section icon={<Target size={12}/>} title="Rules & Scoring">
             <ul className="list-disc pl-4 space-y-0.5">
               <li>Game ends if you hit <b>Daily Loss</b>, <b>Max Drawdown</b>, or the <b>Countdown</b> ends</li>
-              <li><b>History</b> shows every closed trade</li>
+              <li><b>History</b> shows every closed trade including <b>Risk per trade</b></li>
               <li><b>Equity</b> shows your balance curve</li>
               <li>Tap <b>Share</b> to send a PNG of your performance</li>
             </ul>
@@ -87,6 +87,15 @@ export default function InfoModal() {
               <li>Works <b>fully offline</b> after the first load</li>
               <li>Use smaller timeframes for scalping, bigger for swings</li>
               <li>Always set SL before TP — protect your capital first</li>
+            </ul>
+          </Section>
+
+          <Section icon={<Award size={12}/>} title="Credits">
+            <ul className="list-disc pl-4 space-y-0.5">
+              <li><b>Created by Omar Mohamed Yonis</b></li>
+              <li>Historical data: <b>Dukascopy</b> — industry-standard, high-quality tick data trusted by professional traders worldwide</li>
+              <li>Charting engine: TradingView Lightweight Charts</li>
+              <li>Built with React + Vite + Capacitor for offline PWA</li>
             </ul>
           </Section>
 

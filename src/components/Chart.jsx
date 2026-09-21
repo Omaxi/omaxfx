@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { createChart, CandlestickSeries } from 'lightweight-charts';
 import { useStore } from '../store';
-import { X } from 'lucide-react';
+import { X, Play, Pause, SkipForward } from 'lucide-react';
 import DrawingToolbar from './DrawingToolbar';
 
 const calcRRR = (entry, sl, tp) => {
@@ -176,12 +176,10 @@ export default function Chart() {
   const { 
     rawData, displayData, currentIndex, positions, pendingOrders, 
     draftPosition, timeframe, cancelPendingOrder, closePosition, activeDrawingTool,
-    isDrawingMode
+    isDrawingMode, isPlaying, togglePlay, stepForward
   } = useStore();
 
-  // ============================================================
-  // CRITICAL FIX: Disable chart scroll/pan/zoom while drawing
-  // ============================================================
+  // Disable chart scroll/pan/zoom while drawing
   useEffect(() => {
     if (!chartRef.current) return;
     const isDrawing = !!activeDrawingTool || !!isDrawingMode;
@@ -751,6 +749,24 @@ export default function Chart() {
             <X size={12} strokeWidth={3.5} />
           </button>
         ))}
+      </div>
+
+      {/* BIG FLOATING PLAY / STEP BUTTONS */}
+      <div className="absolute bottom-3 right-3 z-30 flex items-end gap-2 pointer-events-auto">
+        <button 
+          onClick={stepForward}
+          className="w-12 h-12 rounded-full bg-[#1e222d] hover:bg-[#2a2e39] border-2 border-[#2a2e39] text-white flex items-center justify-center shadow-2xl shadow-black/60 active:scale-95 transition-transform"
+          title="Step forward one candle"
+        >
+          <SkipForward size={22} />
+        </button>
+        <button 
+          onClick={togglePlay}
+          className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-2xl shadow-blue-900/60 active:scale-95 transition-transform border-2 border-blue-500"
+          title={isPlaying ? 'Pause' : 'Play'}
+        >
+          {isPlaying ? <Pause size={30} /> : <Play size={30} />}
+        </button>
       </div>
     </div>
   );
