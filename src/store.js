@@ -18,19 +18,13 @@ const checkRuleViolations = (state, newBalance, newPeak, newDailyLoss) => {
     const dailyLossAmt = newDailyLoss.dayStartBalance - newBalance;
     const dailyLossPct = dailyLossAmt > 0 ? (dailyLossAmt / newDailyLoss.dayStartBalance) * 100 : 0;
     if (dailyLossPct >= state.rules.maxDailyLoss - EPSILON) {
-      return {
-        reason: 'daily_loss',
-        message: `Daily loss limit hit: -${dailyLossPct.toFixed(2)}% (max ${state.rules.maxDailyLoss}%).`
-      };
+      return { reason: 'daily_loss', message: `Daily loss limit hit: -${dailyLossPct.toFixed(2)}% (max ${state.rules.maxDailyLoss}%).` };
     }
   }
   if (newPeak > 0) {
     const dd = ((newPeak - newBalance) / newPeak) * 100;
     if (dd >= state.rules.maxDrawdown - EPSILON) {
-      return {
-        reason: 'drawdown',
-        message: `Max drawdown hit: -${dd.toFixed(2)}% (max ${state.rules.maxDrawdown}%).`
-      };
+      return { reason: 'drawdown', message: `Max drawdown hit: -${dd.toFixed(2)}% (max ${state.rules.maxDrawdown}%).` };
     }
   }
   return null;
@@ -50,16 +44,8 @@ export const useStore = create((set) => ({
   playerName: 'Player',
   setPlayerName: (name) => set({ playerName: name }),
 
-  // ---------- LOADING STATE ----------
-  loadingState: {
-    isActive: true,
-    loaded: 0,
-    total: 0,
-    error: null,
-  },
-  setLoadingState: (patch) => set((state) => ({
-    loadingState: { ...state.loadingState, ...patch }
-  })),
+  loadingState: { isActive: true, loaded: 0, total: 0, error: null },
+  setLoadingState: (patch) => set((state) => ({ loadingState: { ...state.loadingState, ...patch } })),
 
   rules: {
     startingBalance: INITIAL_BALANCE,
@@ -69,13 +55,7 @@ export const useStore = create((set) => ({
     countdownMinutes: 60,
   },
 
-  gameState: {
-    isOver: false,
-    reason: null,
-    message: '',
-    startTime: null,
-    timeRemaining: null,
-  },
+  gameState: { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
 
   peakBalance: INITIAL_BALANCE,
   dailyLoss: { day: null, dayStartBalance: INITIAL_BALANCE },
@@ -88,6 +68,7 @@ export const useStore = create((set) => ({
   isOrderModalOpen: false,
   isHistoryOpen: false,
   isEquityOpen: false,
+  isInfoOpen: false,
   orderSide: 'buy',
 
   isDrawingMode: false,
@@ -115,7 +96,6 @@ export const useStore = create((set) => ({
 
   soundEnabled: true,
   musicEnabled: true,
-
   toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
   toggleMusic: () => set((state) => ({ musicEnabled: !state.musicEnabled })),
 
@@ -143,13 +123,7 @@ export const useStore = create((set) => ({
       activeDrawingTool: null,
       peakBalance: startBal,
       dailyLoss: { day: startDay, dayStartBalance: startBal },
-      gameState: {
-        isOver: false,
-        reason: null,
-        message: '',
-        startTime: Date.now(),
-        timeRemaining: rules.countdownMinutes ? rules.countdownMinutes * 60 : null,
-      },
+      gameState: { isOver: false, reason: null, message: '', startTime: Date.now(), timeRemaining: rules.countdownMinutes ? rules.countdownMinutes * 60 : null },
     };
   }),
 
@@ -179,9 +153,11 @@ export const useStore = create((set) => ({
     };
   }),
 
+  // EXPLICITLY preserve drawings on timeframe switch
   setTimeframe: (minutes) => set((state) => ({
     timeframe: minutes,
     displayData: aggregateData(state.rawData, minutes),
+    drawings: state.drawings,  // preserved
   })),
 
   startDrawing: (side) => set({ 
@@ -206,6 +182,8 @@ export const useStore = create((set) => ({
   closeHistory: () => set({ isHistoryOpen: false }),
   openEquity: () => set({ isEquityOpen: true }),
   closeEquity: () => set({ isEquityOpen: false }),
+  openInfo: () => set({ isInfoOpen: true }),
+  closeInfo: () => set({ isInfoOpen: false }),
 
   cancelPendingOrder: (orderId) => set((state) => ({
     pendingOrders: state.pendingOrders.filter(o => o.id !== orderId)
@@ -266,12 +244,10 @@ export const useStore = create((set) => ({
     if (state.soundEnabled) playPositionClosed();
     const newBalance = state.balance + pnl;
     const newPeak = Math.max(state.peakBalance, newBalance);
-    
     const violation = checkRuleViolations(state, newBalance, newPeak, state.dailyLoss);
     const newGameState = violation
       ? { ...state.gameState, isOver: true, reason: violation.reason, message: violation.message }
       : state.gameState;
-    
     return {
       balance: newBalance,
       peakBalance: newPeak,
@@ -297,12 +273,10 @@ export const useStore = create((set) => ({
     });
     if (state.soundEnabled) playPositionClosed();
     const newPeak = Math.max(state.peakBalance, newBalance);
-    
     const violation = checkRuleViolations(state, newBalance, newPeak, state.dailyLoss);
     const newGameState = violation
       ? { ...state.gameState, isOver: true, reason: violation.reason, message: violation.message }
       : state.gameState;
-    
     return { 
       balance: newBalance, 
       peakBalance: newPeak,
@@ -315,7 +289,6 @@ export const useStore = create((set) => ({
 
   stepForward: () => set((state) => {
     if (state.gameState.isOver) return state;
-
     const jumpSize = state.timeframe;
     const nextIndex = Math.min(state.currentIndex + jumpSize, state.rawData.length - 1);
     
@@ -331,12 +304,10 @@ export const useStore = create((set) => ({
     for (let i = state.currentIndex + 1; i <= nextIndex; i++) {
       const candle = state.rawData[i];
       if (!candle) break;
-
       const dayKey = getDayKey(candle.time);
       if (newDailyLoss.day !== dayKey) {
         newDailyLoss = { day: dayKey, dayStartBalance: newBalance };
       }
-
       const stillOpen = [];
       for (const pos of newPositions) {
         const isBuy = pos.type === 'buy';
@@ -362,15 +333,10 @@ export const useStore = create((set) => ({
         if (!closed) stillOpen.push(pos);
       }
       newPositions = stillOpen;
-
       if (!gameOverReason) {
         const violation = checkRuleViolations(state, newBalance, newPeak, newDailyLoss);
-        if (violation) {
-          gameOverReason = violation.reason;
-          gameOverMessage = violation.message;
-        }
+        if (violation) { gameOverReason = violation.reason; gameOverMessage = violation.message; }
       }
-
       const stillPending = [];
       for (const order of newPendingOrders) {
         const isBuy = order.type === 'buy';
@@ -383,9 +349,7 @@ export const useStore = create((set) => ({
         } else stillPending.push(order);
       }
       newPendingOrders = stillPending;
-
       if (newBalance > newPeak) newPeak = newBalance;
-
       if (gameOverReason) break;
     }
 
@@ -397,10 +361,7 @@ export const useStore = create((set) => ({
 
     if (!gameOverReason) {
       const violation = checkRuleViolations(state, newBalance, newPeak, newDailyLoss);
-      if (violation) {
-        gameOverReason = violation.reason;
-        gameOverMessage = violation.message;
-      }
+      if (violation) { gameOverReason = violation.reason; gameOverMessage = violation.message; }
     }
 
     const atEnd = nextIndex >= state.rawData.length - 1;
@@ -431,7 +392,6 @@ export const useStore = create((set) => ({
   placeOrder: ({ side, type, riskPercent, entryPrice, slPrice, tpPrice, riskAmount }) => set((state) => {
     if (state.gameState.isOver) return state;
     if (riskPercent > state.rules.maxRiskPerTrade + EPSILON) return state;
-
     const currentPrice = state.rawData[state.currentIndex].close;
     const lots = riskAmount / (Math.abs(entryPrice - slPrice) * 100);
     const openTime = state.rawData[state.currentIndex].time;
@@ -446,7 +406,6 @@ export const useStore = create((set) => ({
       openTime
     };
     if (state.soundEnabled) playOrderPlaced();
-
     if (type === 'market') {
       return { positions: [...state.positions, newOrder], isOrderModalOpen: false, draftPosition: null };
     } else {

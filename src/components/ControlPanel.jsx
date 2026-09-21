@@ -15,15 +15,13 @@ const TIMEFRAMES = [
 export default function ControlPanel() {
   const { 
     stepForward, togglePlay, isPlaying,
-    positions, setTimeframe, timeframe, closeAllPositions,
+    positions, setTimeframe, timeframe, closeAllPositions, openOrderModal,
     pendingOrders, startDrawing, isDrawingMode, drawingStep, clearDraft,
     openHistory, openEquity
   } = useStore();
 
   return (
     <div className="flex-shrink-0 bg-[#131722] border-t border-[#2a2e39]">
-      
-      {/* SINGLE-ROW LAYOUT for all sizes */}
       <div className="flex items-center gap-1 px-1.5 py-1.5 overflow-x-auto">
         
         {/* Timeframes */}
@@ -45,7 +43,7 @@ export default function ControlPanel() {
 
         <div className="flex-1 min-w-2" />
 
-        {/* Draw tools */}
+        {/* Long/Short position (draw) */}
         {!isDrawingMode ? (
           <div className="flex items-center gap-1 flex-shrink-0">
             <button 
@@ -86,7 +84,7 @@ export default function ControlPanel() {
           </button>
         </div>
 
-        {/* Close all + Pending */}
+        {/* Close all + Pending count */}
         {positions.length > 0 && (
           <button 
             onClick={closeAllPositions} 
@@ -97,23 +95,39 @@ export default function ControlPanel() {
         )}
         {pendingOrders.length > 0 && (
           <div className="px-2 py-1 text-[10px] text-yellow-400 bg-yellow-900/30 rounded font-bold whitespace-nowrap flex-shrink-0">
-            {pendingOrders.length} P
+            {pendingOrders.length}P
           </div>
         )}
 
-        {/* Playback */}
-        <div className="flex items-center gap-1 flex-shrink-0 ml-1">
+        {/* BUY / SELL — big and green/red */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button 
+            onClick={() => openOrderModal('buy')} 
+            className="px-3 py-1.5 bg-green-600 active:bg-green-700 rounded font-bold text-xs text-white"
+          >
+            BUY
+          </button>
+          <button 
+            onClick={() => openOrderModal('sell')} 
+            className="px-3 py-1.5 bg-red-600 active:bg-red-700 rounded font-bold text-xs text-white"
+          >
+            SELL
+          </button>
+        </div>
+
+        {/* BIG PLAY / STEP */}
+        <div className="flex items-center gap-1 flex-shrink-0">
           <button 
             onClick={togglePlay}
-            className="p-1.5 bg-[#1e222d] active:bg-[#2a2e39] rounded text-white"
+            className="p-2 bg-blue-600 active:bg-blue-700 rounded text-white"
           >
-            {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+            {isPlaying ? <Pause size={22} /> : <Play size={22} />}
           </button>
           <button 
             onClick={stepForward}
-            className="p-1.5 bg-[#1e222d] active:bg-[#2a2e39] rounded text-white"
+            className="p-2 bg-[#1e222d] active:bg-[#2a2e39] rounded text-white border border-[#2a2e39]"
           >
-            <SkipForward size={14} />
+            <SkipForward size={22} />
           </button>
         </div>
       </div>

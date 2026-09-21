@@ -3,6 +3,7 @@ import ControlPanel from './components/ControlPanel';
 import OrderModal from './components/OrderModal';
 import HistoryModal from './components/HistoryModal';
 import EquityModal from './components/EquityModal';
+import InfoModal from './components/InfoModal';
 import SoundToggle from './components/SoundToggle';
 import PeriodModal from './components/PeriodModal';
 import GameOverModal from './components/GameOverModal';
@@ -11,7 +12,7 @@ import { useEffect, useRef } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney, fmtMB } from './utils/format';
 import Papa from 'papaparse';
-import { Clock, RotateCcw } from 'lucide-react';
+import { Clock, RotateCcw, Info } from 'lucide-react';
 
 const formatTime = (sec) => {
   if (sec == null) return '∞';
@@ -25,7 +26,7 @@ function App() {
     isPlaying, stepForward, currentIndex, rawData, balance, positions, 
     musicEnabled, setAllData, gameStarted, gamePeriod,
     gameState, rules, updateTimeRemaining, endGame, restartGame,
-    loadingState, openOrderModal
+    loadingState, openInfo
   } = useStore();
   const soundtrackStarted = useRef(false);
 
@@ -41,8 +42,7 @@ function App() {
         if (!response.ok) throw new Error(`Failed to fetch CSV: ${response.status}`);
         const contentLength = response.headers.get('Content-Length');
         const total = contentLength ? parseInt(contentLength, 10) : 0;
-        let loaded = 0;
-        let csvText = '';
+        let loaded = 0, csvText = '';
         if (response.body && response.body.getReader) {
           const reader = response.body.getReader();
           const chunks = [];
@@ -56,10 +56,7 @@ function App() {
           }
           const allChunks = new Uint8Array(loaded);
           let position = 0;
-          for (const chunk of chunks) {
-            allChunks.set(chunk, position);
-            position += chunk.length;
-          }
+          for (const chunk of chunks) { allChunks.set(chunk, position); position += chunk.length; }
           csvText = new TextDecoder('utf-8').decode(allChunks);
         } else {
           csvText = await response.text();
@@ -97,7 +94,6 @@ function App() {
         setLoadingState({ isActive: false, error: err.message });
       }
     };
-
     loadCSV();
     return () => { cancelled = true; };
   }, [setAllData]);
@@ -163,9 +159,7 @@ function App() {
         : 'text-blue-400 border-blue-600 bg-blue-900/30';
 
   const handleRestart = () => {
-    if (window.confirm('Restart game? All progress will be lost.')) {
-      restartGame();
-    }
+    if (window.confirm('Restart game? All progress will be lost.')) restartGame();
   };
 
   const percent = loadingState.total > 0
@@ -174,11 +168,11 @@ function App() {
 
   return (
     <div className="flex flex-col h-dvh overflow-hidden">
-      {/* HEADER with BUY/SELL */}
-      <header className="px-1.5 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-1.5">
+      {/* HEADER: Logo + Countdown | Stats + Controls */}
+      <header className="px-2 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-2">
         
-        {/* Left: Logo + Countdown */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
+        {/* Left */}
+        <div className="flex items-center gap-2 flex-shrink-0">
           <h1 className="text-sm font-bold tracking-wider whitespace-nowrap">
             <span className="text-blue-500">Omax</span>
             <span className="text-white">FX</span>
@@ -189,31 +183,21 @@ function App() {
               <span>{formatTime(timeRemaining)}</span>
             </div>
           )}
+          {positions.length > 0 && (
+            <span className="bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded text-[10px] font-bold hidden md:inline">
+              {positions.length}
+            </span>
+          )}
         </div>
 
-        {/* Center: BUY / SELL */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <button 
-            onClick={() => openOrderModal('buy')} 
-            className="px-4 py-1 bg-green-600 active:bg-green-700 rounded font-bold text-xs text-white"
-          >
-            BUY
-          </button>
-          <button 
-            onClick={() => openOrderModal('sell')} 
-            className="px-4 py-1 bg-red-600 active:bg-red-700 rounded font-bold text-xs text-white"
-          >
-            SELL
-          </button>
-        </div>
-
-        {/* Right: Balance + P&L + Restart + Sound */}
-        <div className="flex items-center gap-1.5 text-[11px] flex-shrink-0">
-          <div className="flex items-baseline gap-0.5">
+        {/* Right */}
+        <div className="flex items-center gap-2 text-[11px] flex-shrink-0">
+          <div className="flex items-baseline gap-1">
             <span className="text-gray-400">Bal:</span>
             <span className="text-green-400 font-bold">${fmtMoney(balance, 0)}</span>
           </div>
-          <div className="flex items-baseline gap-0.5">
+          <div className="flex items-baseline gap-1">
+            <span className="text-gray-400 hidden sm:inline">PnL:</span>
             <span className={`font-bold ${unrealisedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               ${fmtMoney(unrealisedPnl)}
             </span>
@@ -221,12 +205,19 @@ function App() {
           {gameStarted && (
             <button 
               onClick={handleRestart}
-              className="p-1 bg-[#1e222d] hover:bg-red-900/50 hover:text-red-400 rounded border border-[#2a2e39] transition-colors"
+              className="p-1 bg-[#1e222d] hover:bg-red-900/50 hover:text-red-400 rounded border border-[#2a2e39]"
             >
               <RotateCcw size={11} />
             </button>
           )}
           <SoundToggle />
+          <button 
+            onClick={openInfo}
+            className="p-1 bg-[#1e222d] hover:bg-blue-900/50 hover:text-blue-400 rounded border border-[#2a2e39]"
+            title="Quick guide"
+          >
+            <Info size={11} />
+          </button>
         </div>
       </header>
       
@@ -239,6 +230,7 @@ function App() {
       <OrderModal />
       <HistoryModal />
       <EquityModal />
+      <InfoModal />
       <PeriodModal />
       <GameOverModal />
 

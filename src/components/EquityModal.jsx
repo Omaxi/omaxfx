@@ -17,12 +17,8 @@ export default function EquityModal() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState('');
 
-  // Reset states when modal closes
   useEffect(() => {
-    if (!isEquityOpen) {
-      setMenuOpen(false);
-      setToast('');
-    }
+    if (!isEquityOpen) { setMenuOpen(false); setToast(''); }
   }, [isEquityOpen]);
 
   if (!isEquityOpen) return null;
@@ -34,11 +30,7 @@ export default function EquityModal() {
   let running = startBalance;
   tradeHistory.forEach((trade, i) => {
     running += trade.pnl;
-    equityData.push({ 
-      trade: i + 1, 
-      balance: Number(running.toFixed(2)), 
-      pnl: Number(trade.pnl.toFixed(2)) 
-    });
+    equityData.push({ trade: i + 1, balance: Number(running.toFixed(2)), pnl: Number(trade.pnl.toFixed(2)) });
   });
 
   const maxEquity = Math.max(...equityData.map(d => d.balance), startBalance);
@@ -46,26 +38,22 @@ export default function EquityModal() {
   const currentPnl = running - startBalance;
   const pnlPercent = (currentPnl / startBalance) * 100;
 
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 3500);
-  };
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3500); };
 
   const captureImage = async () => {
     if (!captureRef.current) return null;
     try {
-      // Give layout a moment to settle
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise(r => setTimeout(r, 80));
       const canvas = await html2canvas(captureRef.current, {
         backgroundColor: '#131722',
         scale: 2,
         logging: false,
         useCORS: true,
         allowTaint: true,
+        foreignObjectRendering: false,
+        imageTimeout: 3000,
       });
-      return new Promise(resolve => {
-        canvas.toBlob(blob => resolve(blob), 'image/png', 0.95);
-      });
+      return new Promise(resolve => canvas.toBlob(blob => resolve(blob), 'image/png', 0.95));
     } catch (err) {
       console.error('html2canvas error:', err);
       showToast('Error generating image. Try again.');
@@ -86,40 +74,25 @@ export default function EquityModal() {
 
   const shareText = `Check out my OmaxFX Game performance! Return: ${pnlPercent.toFixed(2)}%, Total P&L: $${fmtMoney(currentPnl)}`;
 
-  // ============================================================
-  // Native share — this is what makes WhatsApp/Telegram/etc receive the IMAGE
-  // ============================================================
-  const shareWithImage = async () => {
+  // Core: try native file share first, fall back to download
+  const shareWithImage = async (forceDownloadOnly = false) => {
     setIsCapturing(true);
     setMenuOpen(false);
     try {
       const blob = await captureImage();
-      if (!blob) {
-        showToast('Could not generate image.');
-        return;
-      }
+      if (!blob) { showToast('Could not generate image.'); return; }
       const file = new File([blob], `${safeName}-equity.png`, { type: 'image/png' });
 
-      // 1. Best: native share with file
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (!forceDownloadOnly && navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
-          await navigator.share({
-            files: [file],
-            title: 'OmaxFX Game - Equity Curve',
-            text: shareText,
-          });
+          await navigator.share({ files: [file], title: 'OmaxFX Game', text: shareText });
           return;
         } catch (err) {
-          if (err.name === 'AbortError') return; // user cancelled
-          console.warn('navigator.share failed:', err);
+          if (err.name === 'AbortError') return;
         }
       }
-
-      // 2. Fallback: download image + show instructions
       downloadImage(blob);
-      showToast('Image saved! Open WhatsApp and attach it.');
-    } catch (e) {
-      console.error(e);
+      showToast('Image saved! Attach it wherever you want.');
     } finally {
       setIsCapturing(false);
     }
@@ -130,13 +103,8 @@ export default function EquityModal() {
     setMenuOpen(false);
     try {
       const blob = await captureImage();
-      if (blob) {
-        downloadImage(blob);
-        showToast('Image downloaded!');
-      }
-    } finally {
-      setIsCapturing(false);
-    }
+      if (blob) { downloadImage(blob); showToast('Image downloaded!'); }
+    } finally { setIsCapturing(false); }
   };
 
   const handleWhatsApp = async () => {
@@ -147,19 +115,12 @@ export default function EquityModal() {
       if (!blob) return;
       const file = new File([blob], `${safeName}-equity.png`, { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], title: 'OmaxFX', text: shareText });
-          return;
-        } catch (err) {
-          if (err.name === 'AbortError') return;
-        }
+        try { await navigator.share({ files: [file], title: 'OmaxFX', text: shareText }); return; }
+        catch (err) { if (err.name === 'AbortError') return; }
       }
-      // Fallback
       downloadImage(blob);
-      showToast('Image saved! Open WhatsApp and attach it.');
-    } finally {
-      setIsCapturing(false);
-    }
+      showToast('Saved! Open WhatsApp and attach it.');
+    } finally { setIsCapturing(false); }
   };
 
   const handleTelegram = async () => {
@@ -170,18 +131,12 @@ export default function EquityModal() {
       if (!blob) return;
       const file = new File([blob], `${safeName}-equity.png`, { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
-          await navigator.share({ files: [file], title: 'OmaxFX', text: shareText });
-          return;
-        } catch (err) {
-          if (err.name === 'AbortError') return;
-        }
+        try { await navigator.share({ files: [file], title: 'OmaxFX', text: shareText }); return; }
+        catch (err) { if (err.name === 'AbortError') return; }
       }
       downloadImage(blob);
-      showToast('Image saved! Open Telegram and attach it.');
-    } finally {
-      setIsCapturing(false);
-    }
+      showToast('Saved! Open Telegram and attach it.');
+    } finally { setIsCapturing(false); }
   };
 
   const handleEmail = async () => {
@@ -196,26 +151,19 @@ export default function EquityModal() {
           window.location.href = `mailto:?subject=${encodeURIComponent('My OmaxFX Game Performance')}&body=${encodeURIComponent(shareText)}`;
         }, 800);
       }
-    } finally {
-      setIsCapturing(false);
-    }
+    } finally { setIsCapturing(false); }
   };
 
-  // ============================================================
-  // COMPACT LAYOUT
-  // ============================================================
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-1" onClick={() => setMenuOpen(false)}>
       <div 
-        className="bg-[#131722] rounded-lg w-full max-w-3xl border border-[#2a2e39] overflow-hidden flex flex-col max-h-[95vh] relative" 
+        className="bg-[#131722] rounded-lg w-full max-w-2xl border border-[#2a2e39] overflow-hidden flex flex-col max-h-[95vh] relative" 
         onClick={(e) => e.stopPropagation()}
       >
-        
-        {/* HEADER */}
+        {/* Header */}
         <div className="flex justify-between items-center px-2 py-1 border-b border-[#2a2e39] flex-shrink-0">
           <h2 className="text-sm font-bold">Equity Curve</h2>
           <div className="flex items-center gap-1">
-            
             <div className="relative">
               <button 
                 onClick={() => setMenuOpen(!menuOpen)}
@@ -225,71 +173,60 @@ export default function EquityModal() {
                 <Share2 size={12} />
                 {isCapturing ? 'Generating…' : 'Share'}
               </button>
-              
               {menuOpen && (
                 <div className="absolute right-0 top-full mt-1 bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl overflow-hidden z-10 min-w-[170px]">
-                  <button onClick={shareWithImage} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39] text-xs text-left text-white transition-colors">
-                    <Smartphone size={12} className="text-purple-400" />
-                    Share via...
+                  <button onClick={() => shareWithImage(false)} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39] text-xs text-left text-white">
+                    <Smartphone size={12} className="text-purple-400" /> Share via...
                   </button>
-                  <button onClick={handleWhatsApp} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39] text-xs text-left text-white transition-colors">
-                    <MessageCircle size={12} className="text-green-400" />
-                    WhatsApp
+                  <button onClick={handleWhatsApp} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39] text-xs text-left text-white">
+                    <MessageCircle size={12} className="text-green-400" /> WhatsApp
                   </button>
-                  <button onClick={handleTelegram} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39] text-xs text-left text-white transition-colors">
-                    <Send size={12} className="text-blue-400" />
-                    Telegram
+                  <button onClick={handleTelegram} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39] text-xs text-left text-white">
+                    <Send size={12} className="text-blue-400" /> Telegram
                   </button>
-                  <button onClick={handleEmail} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39] text-xs text-left text-white transition-colors">
-                    <Mail size={12} className="text-yellow-400" />
-                    Email
+                  <button onClick={handleEmail} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39] text-xs text-left text-white">
+                    <Mail size={12} className="text-yellow-400" /> Email
                   </button>
-                  <button onClick={handleDownload} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39] text-xs text-left text-white transition-colors border-t border-[#2a2e39]">
-                    <Download size={12} className="text-gray-400" />
-                    Download PNG
+                  <button onClick={handleDownload} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39] text-xs text-left text-white border-t border-[#2a2e39]">
+                    <Download size={12} className="text-gray-400" /> Download PNG
                   </button>
                 </div>
               )}
             </div>
-            
             <button onClick={closeEquity} className="p-1 hover:bg-[#2a2e39] rounded">
               <X size={16}/>
             </button>
           </div>
         </div>
 
-        {/* CAPTURE AREA */}
-        <div ref={captureRef} className="bg-[#131722] overflow-hidden flex flex-col flex-1 min-h-0">
-          
-          {/* Brand strip */}
-          <div className="px-2 pt-1.5 flex justify-between items-center flex-shrink-0">
+        {/* Capture area */}
+        <div ref={captureRef} className="bg-[#131722] overflow-y-auto flex-1 min-h-0 p-2">
+          <div className="flex justify-between items-center mb-1">
             <span className="text-xs font-bold">
-              <span className="text-blue-500">Omax</span>
-              <span className="text-white">FX Game</span>
+              <span className="text-blue-500">Omax</span><span className="text-white">FX Game</span>
             </span>
             <span className="text-[9px] text-gray-500 font-mono">{new Date().toLocaleDateString()}</span>
           </div>
-          <div className="px-2 pb-1 flex-shrink-0">
+          <div className="mb-2">
             <span className="text-[11px] text-gray-300 font-bold">{playerName || 'Player'}</span>
           </div>
 
-          {/* Compact stat cards — 4 in a row, tiny */}
-          <div className="grid grid-cols-4 gap-1 px-2 pb-1.5 flex-shrink-0">
-            <div className="bg-[#1e222d] px-2 py-1 rounded">
+          <div className="grid grid-cols-4 gap-1 mb-2">
+            <div className="bg-[#1e222d] px-2 py-1.5 rounded">
               <p className="text-[8px] text-gray-400 uppercase font-bold">Starting</p>
               <p className="text-xs font-bold">${fmtMoney(startBalance, 0)}</p>
             </div>
-            <div className="bg-[#1e222d] px-2 py-1 rounded">
+            <div className="bg-[#1e222d] px-2 py-1.5 rounded">
               <p className="text-[8px] text-gray-400 uppercase font-bold">Equity</p>
               <p className="text-xs font-bold">${fmtMoney(balance, 0)}</p>
             </div>
-            <div className="bg-[#1e222d] px-2 py-1 rounded">
+            <div className="bg-[#1e222d] px-2 py-1.5 rounded">
               <p className="text-[8px] text-gray-400 uppercase font-bold">P&L</p>
               <p className={`text-xs font-bold ${currentPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 ${fmtMoney(currentPnl, 0)}
               </p>
             </div>
-            <div className="bg-[#1e222d] px-2 py-1 rounded">
+            <div className="bg-[#1e222d] px-2 py-1.5 rounded">
               <p className="text-[8px] text-gray-400 uppercase font-bold">Return</p>
               <p className={`text-xs font-bold ${pnlPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {pnlPercent.toFixed(2)}%
@@ -297,21 +234,17 @@ export default function EquityModal() {
             </div>
           </div>
 
-          {/* Chart — compact height so it fits on phone */}
-          <div className="px-2 pb-1.5 flex-1 min-h-0">
+          {/* FIXED HEIGHT for ResponsiveContainer */}
+          <div style={{ width: '100%', height: '240px' }}>
             {tradeHistory.length === 0 ? (
               <div className="flex items-center justify-center h-full text-gray-500 text-xs">
                 No trades yet. Close a trade to see your equity curve!
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={equityData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>
+                <LineChart data={equityData} margin={{ top: 10, right: 15, left: -10, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e222d" />
-                  <XAxis 
-                    dataKey="trade" 
-                    stroke="#666" 
-                    tick={{ fontSize: 9 }}
-                  />
+                  <XAxis dataKey="trade" stroke="#666" tick={{ fontSize: 9 }} />
                   <YAxis 
                     stroke="#666" 
                     domain={[minEquity * 0.98, maxEquity * 1.02]}
@@ -338,7 +271,7 @@ export default function EquityModal() {
             )}
           </div>
 
-          <div className="px-2 pb-1 text-center flex-shrink-0">
+          <div className="text-center mt-2">
             <span className="text-[8px] text-gray-500">Trading Performance Report • OmaxFX Game</span>
           </div>
         </div>
