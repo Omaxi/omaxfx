@@ -66,7 +66,8 @@ function App() {
             if (cancelled) return;
             chunks.push(value);
             loaded += value.length;
-            setLoadingState({ loaded, total });
+            // FIX: total must grow with loaded to account for gzip decompression
+            setLoadingState({ loaded, total: Math.max(total, loaded) });
           }
           const allChunks = new Uint8Array(loaded);
           let position = 0;
