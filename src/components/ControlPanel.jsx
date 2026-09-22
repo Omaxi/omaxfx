@@ -21,7 +21,7 @@ export default function ControlPanel() {
 
   return (
     <div className="flex-shrink-0 bg-[#131722] border-t border-[#2a2e39]">
-      <div className="flex items-center gap-1 px-1.5 py-1.5 overflow-x-auto">
+      <div className="flex items-center justify-center gap-1 px-1.5 py-1.5 overflow-x-auto flex-wrap">
         
         {/* Timeframes */}
         <div className="flex items-center gap-0.5 flex-shrink-0">
@@ -39,8 +39,6 @@ export default function ControlPanel() {
             </button>
           ))}
         </div>
-
-        <div className="flex-1 min-w-2" />
 
         {/* Long/Short draw */}
         {!isDrawingMode ? (

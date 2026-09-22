@@ -9,9 +9,7 @@ body {
   overflow: hidden;
 }
 
-/* ============================================================
-   DARK THEME SCROLLBARS
-   ============================================================ */
+/* Scrollbars */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #0b0e11; border-radius: 3px; }
 ::-webkit-scrollbar-thumb { background: #2a2e39; border-radius: 3px; transition: background 0.2s ease; }
@@ -22,21 +20,12 @@ body {
 ::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
 
 input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
-input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.7);
-  cursor: pointer;
-  opacity: 0.7;
-}
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; opacity: 0.7; }
 input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 
-/* ============================================================
-   CRITICAL: prevent browser gestures from hijacking touch on chart
-   ============================================================ */
+/* Prevent browser gestures on chart */
 .chart-no-touch,
 .chart-no-touch *,
 .chart-no-touch canvas,
@@ -56,4 +45,29 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 html, body, #root {
   height: 100%;
   overscroll-behavior: none;
+}
+
+/* ============================================================
+   SHRINK chart time axis (X-axis timeline) so it doesn't cover chart
+   ============================================================ */
+.chart-no-touch .tv-lightweight-charts {
+  font-size: 9px !important;
+}
+.chart-no-touch .tv-lightweight-charts table tr:last-child td {
+  height: 18px !important;
+  padding: 0 !important;
+  font-size: 9px !important;
+  line-height: 18px !important;
+}
+.chart-no-touch .tv-lightweight-charts table tr:last-child td div {
+  font-size: 9px !important;
+  line-height: 18px !important;
+  padding: 0 3px !important;
+}
+.chart-no-touch .tv-lightweight-charts table tr td {
+  padding: 0 !important;
+}
+/* Also shrink the price axis font */
+.chart-no-touch .tv-lightweight-charts table tr td:last-child {
+  font-size: 9px !important;
 }

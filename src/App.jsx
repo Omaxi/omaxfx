@@ -31,6 +31,14 @@ function App() {
   const soundtrackStarted = useRef(false);
 
   useEffect(() => {
+    if (!loadingState.isActive) {
+      const t1 = setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+      const t2 = setTimeout(() => window.dispatchEvent(new Event('resize')), 300);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+  }, [loadingState.isActive]);
+
+  useEffect(() => {
     let cancelled = false;
     const setLoadingState = useStore.getState().setLoadingState;
     const csvUrl = `${import.meta.env.BASE_URL}data/xauusd.csv`;
@@ -98,7 +106,6 @@ function App() {
     return () => { cancelled = true; };
   }, [setAllData]);
 
-  // 2x speed: 250ms
   useEffect(() => {
     let interval;
     if (isPlaying && currentIndex < rawData.length - 1 && !gameState.isOver) {
@@ -160,7 +167,7 @@ function App() {
         : 'text-blue-400 border-blue-600 bg-blue-900/30';
 
   const handleRestart = () => {
-    if (window.confirm('Restart game? All progress will be lost.')) restartGame();
+    if (window.confirm('Restart session? All progress will be lost.')) restartGame();
   };
 
   const percent = loadingState.total > 0
@@ -174,6 +181,7 @@ function App() {
           <h1 className="text-sm font-bold tracking-wider whitespace-nowrap">
             <span className="text-blue-500">Omax</span>
             <span className="text-white">FX</span>
+            <span className="hidden sm:inline text-gray-400 ml-1">Simulator</span>
           </h1>
           {gameStarted && (
             <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded font-mono font-bold text-[11px] border ${timeBoxClass}`}>
@@ -203,6 +211,7 @@ function App() {
             <button 
               onClick={handleRestart}
               className="p-1 bg-[#1e222d] hover:bg-red-900/50 hover:text-red-400 rounded border border-[#2a2e39]"
+              title="Restart session"
             >
               <RotateCcw size={11} />
             </button>
@@ -237,10 +246,13 @@ function App() {
             <div className="text-center">
               <h1 className="text-2xl font-bold tracking-wider mb-1">
                 <span className="text-blue-500">Omax</span>
-                <span className="text-white">FX Game</span>
+                <span className="text-white">FX Simulator</span>
               </h1>
-              <p className="text-xs text-gray-500">
-                {loadingState.error ? 'Failed to load data' : 'Downloading market data…'}
+              <p className="text-xs text-gray-500 italic">
+                Trading Replay Engine
+              </p>
+              <p className="text-[10px] text-gray-600 mt-2">
+                {loadingState.error ? 'Failed to load data' : 'Loading market data…'}
               </p>
             </div>
             {loadingState.error ? (

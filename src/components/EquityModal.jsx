@@ -6,8 +6,8 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import html2canvas from 'html2canvas-pro';
 
 const sanitizeName = (name) => {
-  if (!name) return 'player';
-  return name.trim().replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase() || 'player';
+  if (!name) return 'trader';
+  return name.trim().replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase() || 'trader';
 };
 
 const fmtDate = (unix) => {
@@ -72,14 +72,14 @@ export default function EquityModal() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${safeName}-equity-${Date.now()}.png`;
+    a.download = `${safeName}-simulator-${Date.now()}.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
-  const shareText = `Check out my OmaxFX Game performance! Return: ${pnlPercent.toFixed(2)}%, Total P&L: $${fmtMoney(currentPnl)}`;
+  const shareText = `Check out my OmaxFX Simulator report! Return: ${pnlPercent.toFixed(2)}%, Total P&L: $${fmtMoney(currentPnl)}`;
 
   const shareImage = async (platform) => {
     setIsCapturing(true);
@@ -87,11 +87,11 @@ export default function EquityModal() {
     try {
       const blob = await captureImage();
       if (!blob) { showToast('Could not generate image.'); return; }
-      const file = new File([blob], `${safeName}-equity.png`, { type: 'image/png' });
+      const file = new File([blob], `${safeName}-simulator.png`, { type: 'image/png' });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
-          await navigator.share({ files: [file], title: 'OmaxFX Game', text: shareText });
+          await navigator.share({ files: [file], title: 'OmaxFX Simulator', text: shareText });
           return;
         } catch (err) {
           if (err.name === 'AbortError') return;
@@ -102,7 +102,7 @@ export default function EquityModal() {
       if (platform === 'email') {
         showToast('Image saved. Opening email...');
         setTimeout(() => {
-          window.location.href = `mailto:?subject=${encodeURIComponent('My OmaxFX Game Performance')}&body=${encodeURIComponent(shareText)}`;
+          window.location.href = `mailto:?subject=${encodeURIComponent('My OmaxFX Simulator Report')}&body=${encodeURIComponent(shareText)}`;
         }, 800);
       } else {
         showToast('Image saved! Open your app and attach it.');
@@ -130,7 +130,7 @@ export default function EquityModal() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center px-2 py-1 border-b border-[#2a2e39] flex-shrink-0">
-          <h2 className="text-sm font-bold">Equity Curve</h2>
+          <h2 className="text-sm font-bold">Performance Report</h2>
           <div className="flex items-center gap-1">
             <div className="relative">
               <button 
@@ -185,20 +185,20 @@ export default function EquityModal() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
               <div style={{ fontSize: '15px', fontWeight: 'bold' }}>
                 <span style={{ color: '#3b82f6' }}>Omax</span>
-                <span style={{ color: '#ffffff' }}>FX Game</span>
+                <span style={{ color: '#ffffff' }}>FX Simulator</span>
               </div>
               <div style={{ fontSize: '10px', color: '#6b7280', fontFamily: 'monospace' }}>
                 {new Date().toLocaleDateString()}
               </div>
             </div>
 
-            {/* Player + Challenge + Period */}
+            {/* Trader + Preset + Period */}
             <div style={{ marginBottom: '12px' }}>
               <div style={{ fontSize: '13px', color: '#ffffff', fontWeight: 'bold', marginBottom: '3px' }}>
-                {playerName || 'Player'}
+                {playerName || 'Trader'}
               </div>
               <div style={{ fontSize: '10px', color: '#9ca3af' }}>
-                <span style={{ color: '#60a5fa', fontWeight: 'bold' }}>CHALLENGE:</span> {presetName}
+                <span style={{ color: '#60a5fa', fontWeight: 'bold' }}>PRESET:</span> {presetName}
                 <span style={{ color: '#6b7280' }}> • </span>
                 <span style={{ color: '#60a5fa', fontWeight: 'bold' }}>PERIOD:</span> {fmtDate(gamePeriod?.from)} → {fmtDate(gamePeriod?.to)}
               </div>
@@ -281,7 +281,7 @@ export default function EquityModal() {
 
             <div style={{ textAlign: 'center', marginTop: '10px' }}>
               <div style={{ fontSize: '9px', color: '#6b7280' }}>
-                Trading Performance Report • OmaxFX Game
+                Session Report • OmaxFX Simulator • Trading Replay Engine
               </div>
             </div>
           </div>

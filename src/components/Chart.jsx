@@ -169,6 +169,7 @@ export default function Chart() {
   const longPressTimerRef = useRef(null);
   const longPressTriggeredRef = useRef(false);
   const startPosRef = useRef({ x: 0, y: 0 });
+  const activePointersRef = useRef(new Set());
 
   const [pendingBtnPos, setPendingBtnPos] = useState([]);
   const [positionBtnPos, setPositionBtnPos] = useState([]);
@@ -179,6 +180,7 @@ export default function Chart() {
     isDrawingMode, isPlaying, togglePlay, stepForward
   } = useStore();
 
+  // Disable chart scroll/pan/zoom while drawing
   useEffect(() => {
     if (!chartRef.current) return;
     const isDrawing = !!activeDrawingTool || !!isDrawingMode;
@@ -263,10 +265,18 @@ export default function Chart() {
       layout: { 
         background: { type: 'solid', color: 'transparent' }, 
         textColor: '#d1d4dc',
-        fontSize: 10,
+        fontSize: 9,
       },
       grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-      timeScale: { timeVisible: true, secondsVisible: false },
+      timeScale: { 
+        timeVisible: true, 
+        secondsVisible: false,
+        borderVisible: false,
+        barSpacing: 6,
+      },
+      rightPriceScale: {
+        borderVisible: false,
+      },
     });
     seriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
       upColor: '#26a69a', downColor: '#ef5350', borderVisible: false,
@@ -274,7 +284,12 @@ export default function Chart() {
       priceLineVisible: false,
       lastValueVisible: true,
     });
-    return () => chartRef.current.remove();
+    // Force initial resize after mount
+    const t = setTimeout(() => {
+      try { chartRef.current.timeScale().fitContent(); } catch (e) {}
+      window.dispatchEvent(new Event('resize'));
+    }, 50);
+    return () => { clearTimeout(t); chartRef.current.remove(); };
   }, []);
 
   useEffect(() => {
@@ -406,6 +421,16 @@ export default function Chart() {
 
     const handlePointerDown = (e) => {
       if (e.button === 2) return;
+      activePointersRef.current.add(e.pointerId);
+
+      // Multi-touch → cancel drawing drag (user is pinching/zooming)
+      if (activePointersRef.current.size > 1) {
+        drawingDragRef.current = null;
+        dragDrawRef.current = null;
+        cancelLongPress();
+        return;
+      }
+
       const state = useStore.getState();
       const { x, y } = getLocalXY(e);
       startPosRef.current = { x, y };
@@ -482,6 +507,13 @@ export default function Chart() {
     };
 
     const handlePointerMove = (e) => {
+      // If multiple pointers active → this is a gesture, don't move drawings
+      if (activePointersRef.current.size > 1) {
+        drawingDragRef.current = null;
+        cancelLongPress();
+        return;
+      }
+
       const state = useStore.getState();
       const { x, y } = getLocalXY(e);
 
@@ -551,7 +583,8 @@ export default function Chart() {
       }
     };
 
-    const handlePointerUp = () => {
+    const handlePointerUp = (e) => {
+      activePointersRef.current.delete(e.pointerId);
       cancelLongPress();
       const wasLongPress = longPressTriggeredRef.current;
       longPressTriggeredRef.current = false;
@@ -623,14 +656,41 @@ export default function Chart() {
 
   useEffect(() => { draftRef.current = null; dragDrawRef.current = null; }, [activeDrawingTool]);
 
+  // ============================================================
+  // VISIBLE DATA — shows the still-forming higher-TF candle so price
+  // stays consistent across timeframes
+  // ============================================================
   const visibleData = useMemo(() => {
     if (!rawData[currentIndex] || displayData.length === 0) return [];
     const currentRawTime = rawData[currentIndex].time;
+    const currentRawClose = rawData[currentIndex].close;
     let filtered = displayData.filter(c => c.time <= currentRawTime);
+
     if (timeframe > 1 && filtered.length > 0) {
+      // Check if the last higher-TF candle is still forming at currentRawTime
       const last = filtered[filtered.length - 1];
       const blockEnd = last.time + timeframe * 60;
-      if (currentRawTime < blockEnd) filtered = filtered.slice(0, -1);
+
+      if (currentRawTime < blockEnd) {
+        // Build the still-forming candle from 1m data up to now
+        const rawInBlock = [];
+        for (let i = currentIndex; i >= 0; i--) {
+          if (rawData[i].time < last.time) break;
+          rawInBlock.unshift(rawData[i]);
+        }
+        if (rawInBlock.length > 0) {
+          // Replace the last (partial) higher-TF candle with the current state
+          filtered = filtered.slice(0, -1);
+          filtered.push({
+            time: last.time,
+            open: rawInBlock[0].open,
+            high: Math.max(...rawInBlock.map(c => c.high)),
+            low: Math.min(...rawInBlock.map(c => c.low)),
+            close: currentRawClose,   // matches 1m close exactly
+            volume: rawInBlock.reduce((s, c) => s + (c.volume || 0), 0),
+          });
+        }
+      }
     }
     return filtered;
   }, [displayData, rawData, currentIndex, timeframe]);
@@ -750,9 +810,8 @@ export default function Chart() {
         ))}
       </div>
 
-      {/* FLOATING BUTTONS — SWAPPED: Step is big & blue on right, Play is small on left */}
+      {/* FLOATING BUTTONS — Play smaller on left, Step big & blue on right */}
       <div className="absolute bottom-3 right-3 z-30 flex items-end gap-2 pointer-events-auto">
-        {/* Play/Pause — smaller, dark, on the LEFT */}
         <button 
           onClick={togglePlay}
           className="w-12 h-12 rounded-full bg-[#1e222d] hover:bg-[#2a2e39] border-2 border-[#2a2e39] text-white flex items-center justify-center shadow-2xl shadow-black/60 active:scale-95 transition-transform"
@@ -760,7 +819,6 @@ export default function Chart() {
         >
           {isPlaying ? <Pause size={20} /> : <Play size={20} />}
         </button>
-        {/* Step — BIG, blue, on the RIGHT */}
         <button 
           onClick={stepForward}
           className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-2xl shadow-blue-900/60 active:scale-95 transition-transform border-2 border-blue-500"

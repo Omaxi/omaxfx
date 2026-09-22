@@ -17,7 +17,7 @@ const fromInputDate = (str, endOfDay = false) => {
 
 const PRESETS = {
   classic: {
-    name: 'Classic', icon: '🎯', desc: 'Balanced — for players who like control',
+    name: 'Classic', icon: '🎯', desc: 'Balanced — for traders who like control',
     rules: { startingBalance: 100000, maxRiskPerTrade: 1, maxDailyLoss: 5, maxDrawdown: 10, countdownMinutes: 60 },
   },
   sprint: {
@@ -25,7 +25,7 @@ const PRESETS = {
     rules: { startingBalance: 100000, maxRiskPerTrade: 1, maxDailyLoss: 3, maxDrawdown: 5, countdownMinutes: 15 },
   },
   marathon: {
-    name: 'Marathon', icon: '🏃', desc: 'Long, patient game — 4 hours',
+    name: 'Marathon', icon: '🏃', desc: 'Long, patient session — 4 hours',
     rules: { startingBalance: 100000, maxRiskPerTrade: 0.5, maxDailyLoss: 10, maxDrawdown: 20, countdownMinutes: 240 },
   },
   yolo: {
@@ -119,17 +119,17 @@ export default function PeriodModal() {
             </div>
             <h1 className="text-base font-bold tracking-wider">
               <span className="text-blue-500">Omax</span>
-              <span className="text-white">FX Game</span>
+              <span className="text-white">FX Simulator</span>
             </h1>
           </div>
-          <p className="text-[10px] text-gray-400">Configure your backtest</p>
+          <p className="text-[10px] text-gray-400">Configure your session</p>
         </div>
 
         <div className="p-3 space-y-3 max-h-[70vh] overflow-y-auto">
           
           <div>
             <h3 className="text-[10px] font-bold uppercase text-gray-400 mb-1.5 flex items-center gap-1.5">
-              <User size={10} /> Player Name
+              <User size={10} /> Trader Name
             </h3>
             <input 
               type="text" value={playerName} maxLength={20}
@@ -192,7 +192,7 @@ export default function PeriodModal() {
 
           <div className="border-t border-[#2a2e39] pt-2">
             <h3 className="text-[10px] font-bold uppercase text-gray-400 mb-1.5 flex items-center gap-1.5">
-              <Shield size={10} /> Rules
+              <Shield size={10} /> Session Rules
             </h3>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
@@ -263,7 +263,7 @@ export default function PeriodModal() {
             className="w-full py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-sm flex items-center justify-center gap-1.5 transition-colors"
           >
             <Play size={14} fill="currentColor" />
-            Start {activePreset?.name} Challenge
+            Start {activePreset?.name} Session
           </button>
         </div>
       </div>

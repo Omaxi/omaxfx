@@ -17,9 +17,9 @@ export default defineConfig(({ command }) => ({
         navigateFallback: 'index.html',
       },
       manifest: {
-        name: 'OmaxFX Game',
+        name: 'OmaxFX Simulator',
         short_name: 'OmaxFX',
-        description: 'Replay trading simulator with drawing tools and challenge rules',
+        description: 'Professional trading simulator and replay engine for XAUUSD. Replay markets, test strategies, master your edge.',
         theme_color: '#0b0e11',
         background_color: '#0b0e11',
         display: 'standalone',
