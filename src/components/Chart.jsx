@@ -3,6 +3,7 @@ import { createChart, CandlestickSeries } from 'lightweight-charts';
 import { useStore } from '../store';
 import { X, Play, Pause, SkipForward, Trash2, Lock } from 'lucide-react';
 import DrawingToolbar from './DrawingToolbar';
+import StylePanel from './StylePanel';
 
 const calcRRR = (entry, sl, tp) => {
   if (entry == null || sl == null || tp == null) return null;
@@ -60,12 +61,15 @@ const computeVolumeProfile = (drawing) => {
 };
 
 const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) => {
-  const color = drawing.color || '#f59e0b';
+  const borderColor = drawing.borderColor || drawing.color || '#f59e0b';
+  const fillColor = drawing.fillColor || (borderColor + '33');
+  const lineWidth = drawing.lineWidth ?? 1;
   const pts = drawing.points.map(p => pointToXY(p)).filter(Boolean);
   if (pts.length === 0) return;
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  ctx.lineWidth = isDraft ? 1.5 : 2;
+  
+  ctx.strokeStyle = borderColor;
+  ctx.fillStyle = fillColor;
+  ctx.lineWidth = isDraft ? 1.5 : lineWidth;
   ctx.setLineDash(isDraft ? [5, 5] : []);
   const canvasW = ctx.canvas.width;
 
@@ -85,27 +89,27 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
     const y = Math.min(pts[0].y, pts[1].y);
     const w = Math.abs(pts[1].x - pts[0].x);
     const h = Math.abs(pts[1].y - pts[0].y);
-    ctx.fillStyle = color + '33';
     ctx.fillRect(x, y, w, h);
+    ctx.strokeRect(x, y, w, h);
   } else if (drawing.type === 'fibonacci' && pts.length === 2) {
     const levels = [0, 0.5, 0.618, 0.764, 1];
     const y1 = pts[0].y, y2 = pts[1].y;
     const x1 = pts[0].x, x2 = pts[1].x;
     const xMin = Math.min(x1, x2);
     const xMax = Math.max(x1, x2);
-    ctx.fillStyle = color + '10';
+    ctx.fillStyle = fillColor;
     ctx.fillRect(xMin, Math.min(y1, y2), xMax - xMin, Math.abs(y2 - y1));
     levels.forEach(level => {
       const y = y1 + (y2 - y1) * level;
       const isKey = level === 0.5 || level === 0.618;
       ctx.beginPath();
-      ctx.strokeStyle = isKey ? color : color + 'aa';
+      ctx.strokeStyle = isKey ? borderColor : borderColor + 'aa';
       ctx.setLineDash(isKey ? [] : [3, 3]);
       ctx.moveTo(xMin, y);
       ctx.lineTo(xMax, y);
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = color;
+      ctx.fillStyle = borderColor;
       ctx.font = 'bold 10px monospace';
       const pct = (level * 100).toFixed(1);
       const price = drawing.points[0].price + (drawing.points[1].price - drawing.points[0].price) * level;
@@ -169,19 +173,7 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
       ctx.moveTo(pts[0].x, pts[0].y);
       ctx.lineTo(pts[1].x, pts[1].y);
       ctx.stroke();
-    } else if (drawing.type === 'rectangle' && pts.length === 2) {
-      const x = Math.min(pts[0].x, pts[1].x);
-      const y = Math.min(pts[0].y, pts[1].y);
-      const w = Math.abs(pts[1].x - pts[0].x);
-      const h = Math.abs(pts[1].y - pts[0].y);
-      ctx.strokeRect(x, y, w, h);
-    } else if (drawing.type === 'fibonacci' && pts.length === 2) {
-      const x1 = Math.min(pts[0].x, pts[1].x);
-      const x2 = Math.max(pts[0].x, pts[1].x);
-      const y1 = Math.min(pts[0].y, pts[1].y);
-      const y2 = Math.max(pts[0].y, pts[1].y);
-      ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-    } else if (drawing.type === 'volumeProfile' && pts.length === 2) {
+    } else if (pts.length === 2) {
       const x1 = Math.min(pts[0].x, pts[1].x);
       const x2 = Math.max(pts[0].x, pts[1].x);
       const y1 = Math.min(pts[0].y, pts[1].y);
@@ -221,11 +213,13 @@ export default function Chart() {
   const { 
     rawData, displayData, currentIndex, positions, pendingOrders, 
     draftPosition, timeframe, cancelPendingOrder, closePosition, activeDrawingTool,
-    isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted
+    isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
+    theme, snapshotDrawings
   } = useStore();
 
   useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
 
+  // Auto-clear selection
   useEffect(() => {
     if (!selectedItem) return;
     if (selectedItem.type === 'drawing') {
@@ -267,6 +261,62 @@ export default function Chart() {
     }
   }, [gameStarted, lockChart]);
 
+  // Chart init
+  useEffect(() => {
+    if (!chartContainerRef.current) return;
+    const t = useStore.getState().theme;
+    chartRef.current = createChart(chartContainerRef.current, {
+      layout: { 
+        background: { type: 'solid', color: t.background }, 
+        textColor: '#d1d4dc',
+        fontSize: 9,
+      },
+      grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+      timeScale: { 
+        timeVisible: true, secondsVisible: false,
+        borderVisible: false, barSpacing: 6, rightOffset: 60,
+      },
+      rightPriceScale: { borderVisible: false },
+      crosshair: {
+        mode: 1,
+        vertLine: {
+          color: 'rgba(128,128,128,0.5)', width: 1, style: 3, visible: true,
+          labelVisible: true, labelBackgroundColor: 'rgba(128,128,128,0.5)',
+        },
+        horzLine: {
+          color: 'rgba(128,128,128,0.5)', width: 1, style: 3, visible: true,
+          labelVisible: true, labelBackgroundColor: 'rgba(128,128,128,0.5)',
+        },
+      },
+    });
+    seriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
+      upColor: t.upBody, downColor: t.downBody, borderVisible: false,
+      wickUpColor: t.upWick, wickDownColor: t.downWick,
+      priceLineVisible: false, lastValueVisible: true,
+    });
+    const timer = setTimeout(() => {
+      try { chartRef.current.timeScale().fitContent(); } catch (e) {}
+      window.dispatchEvent(new Event('resize'));
+    }, 50);
+    return () => { clearTimeout(timer); chartRef.current.remove(); };
+  }, []);
+
+  // Apply theme changes
+  useEffect(() => {
+    if (!chartRef.current || !seriesRef.current) return;
+    try {
+      chartRef.current.applyOptions({
+        layout: { background: { type: 'solid', color: theme.background } },
+      });
+      seriesRef.current.applyOptions({
+        upColor: theme.upBody,
+        downColor: theme.downBody,
+        wickUpColor: theme.upWick,
+        wickDownColor: theme.downWick,
+      });
+    } catch (e) {}
+  }, [theme]);
+
   const timeToX = useCallback((time) => {
     const chart = chartRef.current;
     if (!chart) return null;
@@ -276,13 +326,10 @@ export default function Chart() {
     const step = tf * 60;
     const firstTime = data[0].time;
     const lastTime = data[data.length - 1].time;
-
     let logical;
-    if (time <= firstTime) {
-      logical = (time - firstTime) / step;
-    } else if (time >= lastTime) {
-      logical = (data.length - 1) + (time - lastTime) / step;
-    } else {
+    if (time <= firstTime) logical = (time - firstTime) / step;
+    else if (time >= lastTime) logical = (data.length - 1) + (time - lastTime) / step;
+    else {
       let lo = 0, hi = data.length - 1;
       while (hi - lo > 1) {
         const mid = Math.floor((lo + hi) / 2);
@@ -292,7 +339,6 @@ export default function Chart() {
       const frac = t2 !== t1 ? (time - t1) / (t2 - t1) : 0;
       logical = lo + frac;
     }
-
     try {
       const x = chart.timeScale().logicalToCoordinate(logical);
       return (x === null || !Number.isFinite(x)) ? null : x;
@@ -324,11 +370,9 @@ export default function Chart() {
     const firstTime = data[0].time;
     const lastTime = data[data.length - 1].time;
     let time;
-    if (logical <= 0) {
-      time = firstTime + logical * step;
-    } else if (logical >= data.length - 1) {
-      time = lastTime + (logical - (data.length - 1)) * step;
-    } else {
+    if (logical <= 0) time = firstTime + logical * step;
+    else if (logical >= data.length - 1) time = lastTime + (logical - (data.length - 1)) * step;
+    else {
       const lo = Math.floor(logical);
       const hi = Math.min(lo + 1, data.length - 1);
       const frac = logical - lo;
@@ -339,62 +383,7 @@ export default function Chart() {
     return { time, price };
   }, []);
 
-  // ============================================================
-  // CHART INIT — with crosshair labels grey 50% opacity
-  // ============================================================
-  useEffect(() => {
-    if (!chartContainerRef.current) return;
-    chartRef.current = createChart(chartContainerRef.current, {
-      layout: { 
-        background: { type: 'solid', color: 'transparent' }, 
-        textColor: '#d1d4dc',
-        fontSize: 9,
-      },
-      grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-      timeScale: { 
-        timeVisible: true, 
-        secondsVisible: false,
-        borderVisible: false,
-        barSpacing: 6,
-        rightOffset: 60,
-      },
-      rightPriceScale: { borderVisible: false },
-      // ============================================================
-      // CROSSHAIR — grey 50% opacity labels on both axes
-      // ============================================================
-      crosshair: {
-        mode: 1, // Magnet
-        vertLine: {
-          color: 'rgba(128, 128, 128, 0.5)',
-          width: 1,
-          style: 3, // dashed
-          visible: true,
-          labelVisible: true,
-          labelBackgroundColor: 'rgba(128, 128, 128, 0.5)',
-        },
-        horzLine: {
-          color: 'rgba(128, 128, 128, 0.5)',
-          width: 1,
-          style: 3,
-          visible: true,
-          labelVisible: true,
-          labelBackgroundColor: 'rgba(128, 128, 128, 0.5)',
-        },
-      },
-    });
-    seriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
-      upColor: '#26a69a', downColor: '#ef5350', borderVisible: false,
-      wickUpColor: '#26a69a', wickDownColor: '#ef5350',
-      priceLineVisible: false,
-      lastValueVisible: true,
-    });
-    const t = setTimeout(() => {
-      try { chartRef.current.timeScale().fitContent(); } catch (e) {}
-      window.dispatchEvent(new Event('resize'));
-    }, 50);
-    return () => { clearTimeout(t); chartRef.current.remove(); };
-  }, []);
-
+  // Render loop
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = chartContainerRef.current;
@@ -454,7 +443,6 @@ export default function Chart() {
             else if (sel.lineType === 'tp') livePrice = order.tp;
           }
         }
-
         if (livePrice != null) {
           const y = seriesRef.current.priceToCoordinate(livePrice);
           if (y != null && Number.isFinite(y)) {
@@ -480,6 +468,7 @@ export default function Chart() {
     };
   }, [pointToXY]);
 
+  // Pointer handlers
   useEffect(() => {
     const container = chartContainerRef.current;
     if (!container) return;
@@ -548,8 +537,7 @@ export default function Chart() {
         }
       });
       if (candidates.length === 0) return null;
-      let closest = null;
-      let closestDist = Infinity;
+      let closest = null, closestDist = Infinity;
       for (const c of candidates) {
         const d = Math.abs(y - c.lineY);
         if (d < closestDist) { closestDist = d; closest = c; }
@@ -586,7 +574,7 @@ export default function Chart() {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         const tool = state.activeDrawingTool;
         if (tool === 'horizontal') {
-          state.addDrawing({ type: 'horizontal', points: [point], color: '#f59e0b' });
+          state.addDrawing({ type: 'horizontal', points: [point] });
           state.setActiveDrawingTool(null);
           return;
         }
@@ -594,14 +582,13 @@ export default function Chart() {
           state.addDrawing({
             type: draftRef.current.type,
             points: [draftRef.current.points[0], point],
-            color: '#f59e0b',
           });
           draftRef.current = null;
           state.setActiveDrawingTool(null);
           return;
         }
         dragDrawRef.current = { tool, startPoint: point };
-        draftRef.current = { type: tool, points: [point, point], color: '#f59e0b' };
+        draftRef.current = { type: tool, points: [point, point] };
         return;
       }
 
@@ -641,6 +628,8 @@ export default function Chart() {
             const drawing = state.drawings.find(d => d.id === sel.id);
             const point = xyToPoint(x, y);
             if (drawing && point) {
+              // Snapshot for undo
+              snapshotDrawings();
               dragRef.current = {
                 type: 'drawing',
                 ...drawingHit,
@@ -689,15 +678,12 @@ export default function Chart() {
 
     const handlePointerMove = (e) => {
       if (activePointersRef.current.size > 1) return;
-
       const state = useStore.getState();
       const { x, y } = getLocalXY(e);
 
       const dx = x - touchDownPosRef.current.x;
       const dy = y - touchDownPosRef.current.y;
-      if (activePointersRef.current.size === 1 && Math.hypot(dx, dy) > 25) {
-        resetTapTimer();
-      }
+      if (activePointersRef.current.size === 1 && Math.hypot(dx, dy) > 25) resetTapTimer();
 
       if (dragRef.current) {
         e.preventDefault();
@@ -747,7 +733,6 @@ export default function Chart() {
 
       if (state.activeDrawingTool || state.isDrawingMode) {
         container.style.cursor = 'crosshair';
-        return;
       }
     };
 
@@ -765,7 +750,6 @@ export default function Chart() {
           state.addDrawing({
             type: draftRef.current.type,
             points: draftRef.current.points,
-            color: '#f59e0b',
           });
           draftRef.current = null;
           state.setActiveDrawingTool(null);
@@ -777,9 +761,7 @@ export default function Chart() {
     const handleTouchStart = (e) => {
       if (e.touches.length !== 1) return;
       if (selectedItemRef.current) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
       }
     };
 
@@ -809,12 +791,35 @@ export default function Chart() {
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerUp);
     };
-  }, [xyToPoint, pointToXY, lockChart]);
+  }, [xyToPoint, pointToXY, lockChart, snapshotDrawings]);
 
+  // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e) => {
+      const state = useStore.getState();
+
+      // Undo / Redo
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        state.undoDrawings();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+        e.preventDefault();
+        state.redoDrawings();
+        return;
+      }
+
+      // Delete selected
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemRef.current?.type === 'drawing') {
+        e.preventDefault();
+        state.removeDrawing(selectedItemRef.current.id);
+        setSelectedItem(null);
+        lockChart(false);
+        return;
+      }
+
       if (e.key === 'Escape') {
-        const state = useStore.getState();
         draftRef.current = null;
         dragDrawRef.current = null;
         setSelectedItem(null);
@@ -862,10 +867,8 @@ export default function Chart() {
   useEffect(() => {
     if (!seriesRef.current || !chartRef.current) return;
     if (visibleData.length === 0) return;
-
     const timeScale = chartRef.current.timeScale();
     const tfChanged = lastTimeframeRef.current !== timeframe;
-
     visibleDataRef.current = visibleData;
     seriesRef.current.setData(visibleData);
 
@@ -880,10 +883,8 @@ export default function Chart() {
         const halfBars = Math.floor(visibleBars / 2);
         const len = visibleData.length;
         timeScale.applyOptions({ 
-          barSpacing: targetBarSpacing,
-          rightOffset: halfBars,
-          fixLeftEdge: false,
-          fixRightEdge: false,
+          barSpacing: targetBarSpacing, rightOffset: halfBars,
+          fixLeftEdge: false, fixRightEdge: false,
         });
         const from = len - 1 - halfBars;
         const to = len - 1 + halfBars;
@@ -892,7 +893,6 @@ export default function Chart() {
         try { timeScale.fitContent(); } catch (e2) {}
       }
     }
-
     lastTimeframeRef.current = timeframe;
   }, [visibleData, timeframe]);
 
@@ -960,41 +960,28 @@ export default function Chart() {
   }, [positions, pendingOrders, draftPosition]);
 
   return (
-    <div 
-      className="relative w-full h-full"
-      style={{ backgroundColor: '#0b0e11' }}
-    >
-      <canvas 
-        ref={canvasRef} 
-        className="absolute inset-0 pointer-events-none"
-        style={{ width: '100%', height: '100%', zIndex: 0 }}
-      />
+    <div className="relative w-full h-full" style={{ backgroundColor: theme.background }}>
+      <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }} />
+      <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none' }} />
 
-      <div 
-        ref={chartContainerRef} 
-        className="absolute inset-0 chart-no-touch"
-        style={{ zIndex: 1, touchAction: 'none' }}
-      />
+      {/* Style panel when drawing is selected */}
+      {selectedItem?.type === 'drawing' && (
+        <StylePanel selectedId={selectedItem.id} onClose={() => { setSelectedItem(null); lockChart(false); }} />
+      )}
 
+      {/* Selected drawing quick toolbar */}
       {selectedItem && selectedItem.type === 'drawing' && (
         <div className="absolute top-2 right-2 z-30 flex items-center gap-1 bg-[#1e222d]/95 backdrop-blur border border-white/20 rounded-lg shadow-2xl p-1 pointer-events-auto">
           <span className="text-[10px] text-white/80 font-bold px-2">✦ Selected</span>
           <button
-            onClick={() => {
-              removeDrawing(selectedItem.id);
-              setSelectedItem(null);
-              lockChart(false);
-            }}
+            onClick={() => { removeDrawing(selectedItem.id); setSelectedItem(null); lockChart(false); }}
             className="w-7 h-7 rounded bg-red-600 hover:bg-red-500 text-white flex items-center justify-center"
             title="Delete drawing"
           >
             <Trash2 size={13} />
           </button>
           <button
-            onClick={() => {
-              setSelectedItem(null);
-              lockChart(false);
-            }}
+            onClick={() => { setSelectedItem(null); lockChart(false); }}
             className="w-7 h-7 rounded bg-[#2a2e39] hover:bg-[#3a3e49] text-white flex items-center justify-center"
             title="Deselect"
           >
@@ -1016,43 +1003,29 @@ export default function Chart() {
         </div>
 
         {pendingBtnPos.map(p => (
-          <button
-            key={`p-${p.id}`}
-            onClick={() => cancelPendingOrder(p.id)}
+          <button key={`p-${p.id}`} onClick={() => cancelPendingOrder(p.id)}
             style={{ top: p.y, right: 60 }}
-            className="absolute pointer-events-auto -translate-y-1/2 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400"
-            title="Cancel this order"
-          >
+            className="absolute pointer-events-auto -translate-y-1/2 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400">
             <X size={12} strokeWidth={3.5} />
           </button>
         ))}
 
         {positionBtnPos.map(p => (
-          <button
-            key={`pos-${p.id}`}
-            onClick={() => closePosition(p.id)}
+          <button key={`pos-${p.id}`} onClick={() => closePosition(p.id)}
             style={{ top: p.y, right: 60 }}
-            className="absolute pointer-events-auto -translate-y-1/2 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400"
-            title="Close this position"
-          >
+            className="absolute pointer-events-auto -translate-y-1/2 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400">
             <X size={12} strokeWidth={3.5} />
           </button>
         ))}
       </div>
 
       <div className="absolute bottom-3 right-3 z-30 flex items-end gap-2 pointer-events-auto">
-        <button 
-          onClick={togglePlay}
-          className="w-12 h-12 rounded-full bg-[#1e222d] hover:bg-[#2a2e39] border-2 border-[#2a2e39] text-white flex items-center justify-center shadow-2xl shadow-black/60 active:scale-95 transition-transform"
-          title={isPlaying ? 'Pause' : 'Auto-play'}
-        >
+        <button onClick={togglePlay}
+          className="w-12 h-12 rounded-full bg-[#1e222d] hover:bg-[#2a2e39] border-2 border-[#2a2e39] text-white flex items-center justify-center shadow-2xl shadow-black/60 active:scale-95 transition-transform">
           {isPlaying ? <Pause size={20} /> : <Play size={20} />}
         </button>
-        <button 
-          onClick={stepForward}
-          className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-2xl shadow-blue-900/60 active:scale-95 transition-transform border-2 border-blue-500"
-          title="Step forward"
-        >
+        <button onClick={stepForward}
+          className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-2xl shadow-blue-900/60 active:scale-95 transition-transform border-2 border-blue-500">
           <SkipForward size={30} />
         </button>
       </div>

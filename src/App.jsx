@@ -3,6 +3,8 @@ import ControlPanel from './components/ControlPanel';
 import OrderModal from './components/OrderModal';
 import HistoryModal from './components/HistoryModal';
 import EquityModal from './components/EquityModal';
+import AnalyticsModal from './components/AnalyticsModal';
+import ChartThemeModal from './components/ChartThemeModal';
 import InfoModal from './components/InfoModal';
 import SoundToggle from './components/SoundToggle';
 import PeriodModal from './components/PeriodModal';
@@ -26,7 +28,7 @@ function App() {
     isPlaying, stepForward, currentIndex, rawData, balance, positions, 
     musicEnabled, setAllData, gameStarted, gamePeriod,
     gameState, rules, updateTimeRemaining, endGame, restartGame,
-    loadingState, openInfo
+    loadingState, openInfo, theme
   } = useStore();
   const soundtrackStarted = useRef(false);
 
@@ -175,7 +177,7 @@ function App() {
     : 0;
 
   return (
-    <div className="flex flex-col h-dvh overflow-hidden">
+    <div className="flex flex-col h-dvh overflow-hidden" style={{ backgroundColor: theme.background }}>
       <header className="px-2 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-2">
         <div className="flex items-center gap-2 flex-shrink-0">
           <h1 className="text-sm font-bold tracking-wider whitespace-nowrap">
@@ -236,6 +238,8 @@ function App() {
       <OrderModal />
       <HistoryModal />
       <EquityModal />
+      <AnalyticsModal />
+      <ChartThemeModal />
       <InfoModal />
       <PeriodModal />
       <GameOverModal />

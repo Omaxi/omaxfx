@@ -1,7 +1,6 @@
 import { useStore } from '../store';
-import { Minus, Square, Layers, BarChart2, Trash2 } from 'lucide-react';
+import { Minus, Square, Layers, BarChart2, Trash2, Undo2, Redo2 } from 'lucide-react';
 
-// Custom trendline icon: two anchor dots with a line between them
 const TrendlineIcon = ({ size = 14 }) => (
   <svg
     width={size}
@@ -19,8 +18,6 @@ const TrendlineIcon = ({ size = 14 }) => (
   </svg>
 );
 
-// Cursor tool REMOVED per user request.
-// Default state = no tool active = chart pans normally.
 const TOOLS = [
   { key: 'horizontal',    label: 'Horizontal',     icon: Minus },
   { key: 'trendline',     label: 'Trendline',      icon: TrendlineIcon },
@@ -30,10 +27,40 @@ const TOOLS = [
 ];
 
 export default function DrawingToolbar() {
-  const { activeDrawingTool, setActiveDrawingTool, clearDrawings, drawings } = useStore();
+  const { 
+    activeDrawingTool, setActiveDrawingTool, clearDrawings, drawings,
+    drawingsPast, drawingsFuture, undoDrawings, redoDrawings
+  } = useStore();
+
+  const canUndo = drawingsPast.length > 0;
+  const canRedo = drawingsFuture.length > 0;
 
   return (
     <div className="absolute top-1 left-1 md:top-2 md:left-2 z-20 flex flex-col gap-0.5 md:gap-1 bg-[#131722]/95 backdrop-blur border border-[#2a2e39] rounded-md md:rounded-lg p-0.5 md:p-1 shadow-lg">
+      {/* Undo / Redo */}
+      <button
+        onClick={undoDrawings}
+        disabled={!canUndo}
+        title="Undo (Ctrl+Z)"
+        className={`p-1 md:p-1.5 rounded transition-colors ${
+          canUndo ? 'text-gray-300 hover:text-white hover:bg-[#2a2e39]' : 'text-gray-700 cursor-not-allowed'
+        }`}
+      >
+        <Undo2 size={12} />
+      </button>
+      <button
+        onClick={redoDrawings}
+        disabled={!canRedo}
+        title="Redo (Ctrl+Y)"
+        className={`p-1 md:p-1.5 rounded transition-colors ${
+          canRedo ? 'text-gray-300 hover:text-white hover:bg-[#2a2e39]' : 'text-gray-700 cursor-not-allowed'
+        }`}
+      >
+        <Redo2 size={12} />
+      </button>
+
+      <div className="border-t border-[#2a2e39] my-0.5" />
+
       {TOOLS.map(({ key, label, icon: Icon }) => (
         <button
           key={label}

@@ -5,17 +5,12 @@ import {
 } from './utils/audio';
 
 export const INITIAL_BALANCE = 100000;
-
 const EPSILON = 0.001;
 
 const TZ_OFFSETS = {
-  'UTC-3': -180,
-  'UTC-2': -120,
-  'UTC-1': -60,
-  'UTC':    0,
-  'UTC+1':  60,
-  'UTC+2':  120,
-  'UTC+3':  180,
+  'UTC-3': -180, 'UTC-2': -120, 'UTC-1': -60,
+  'UTC': 0,
+  'UTC+1': 60, 'UTC+2': 120, 'UTC+3': 180,
 };
 
 const getDayKey = (unixSeconds) => {
@@ -40,6 +35,19 @@ const checkRuleViolations = (state, newBalance, newPeak, newDailyLoss) => {
   return null;
 };
 
+const cloneDrawings = (drawings) => drawings.map(d => ({
+  ...d,
+  points: d.points.map(p => ({ ...p })),
+}));
+
+const DEFAULT_THEME = {
+  background: '#0b0e11',
+  upBody: '#26a69a',
+  downBody: '#ef5350',
+  upWick: '#26a69a',
+  downWick: '#ef5350',
+};
+
 export const useStore = create((set) => ({
   allRawData: [],
   rawData: [],        
@@ -58,37 +66,18 @@ export const useStore = create((set) => ({
     const oldOffset = TZ_OFFSETS[state.timezone] ?? 180;
     const newOffset = TZ_OFFSETS[newTz] ?? 180;
     const shiftSec = (newOffset - oldOffset) * 60;
-
     if (shiftSec === 0) return { timezone: newTz };
-
     const shift = (t) => t == null ? t : t + shiftSec;
-
     return {
       timezone: newTz,
       allRawData: state.allRawData.map(c => ({ ...c, time: shift(c.time) })),
       rawData: state.rawData.map(c => ({ ...c, time: shift(c.time) })),
       displayData: state.displayData.map(c => ({ ...c, time: shift(c.time) })),
-      drawings: state.drawings.map(d => ({
-        ...d,
-        points: d.points.map(p => ({ ...p, time: shift(p.time) })),
-      })),
-      tradeHistory: state.tradeHistory.map(t => ({
-        ...t,
-        openTime: shift(t.openTime),
-        closeTime: shift(t.closeTime),
-      })),
-      positions: state.positions.map(p => ({
-        ...p,
-        openTime: shift(p.openTime),
-      })),
-      pendingOrders: state.pendingOrders.map(o => ({
-        ...o,
-        openTime: shift(o.openTime),
-      })),
-      gamePeriod: state.gamePeriod ? {
-        from: shift(state.gamePeriod.from),
-        to: shift(state.gamePeriod.to),
-      } : null,
+      drawings: state.drawings.map(d => ({ ...d, points: d.points.map(p => ({ ...p, time: shift(p.time) })) })),
+      tradeHistory: state.tradeHistory.map(t => ({ ...t, openTime: shift(t.openTime), closeTime: shift(t.closeTime) })),
+      positions: state.positions.map(p => ({ ...p, openTime: shift(p.openTime) })),
+      pendingOrders: state.pendingOrders.map(o => ({ ...o, openTime: shift(o.openTime) })),
+      gamePeriod: state.gamePeriod ? { from: shift(state.gamePeriod.from), to: shift(state.gamePeriod.to) } : null,
     };
   }),
 
@@ -124,6 +113,8 @@ export const useStore = create((set) => ({
   isHistoryOpen: false,
   isEquityOpen: false,
   isInfoOpen: false,
+  isAnalyticsOpen: false,
+  isThemeOpen: false,
   orderSide: 'buy',
 
   isDrawingMode: false,
@@ -131,23 +122,89 @@ export const useStore = create((set) => ({
   drawingStep: null,
   draftPosition: null,
 
+  // ============================================================
+  // DRAWINGS + UNDO/REDO
+  // ============================================================
   drawings: [],
+  drawingsPast: [],
+  drawingsFuture: [],
   activeDrawingTool: null,
 
   setActiveDrawingTool: (tool) => set((state) => ({ 
     activeDrawingTool: state.activeDrawingTool === tool ? null : tool,
   })),
 
-  addDrawing: (drawing) => set((state) => ({ 
-    drawings: [...state.drawings, { ...drawing, id: Date.now() + Math.random() }] 
+  snapshotDrawings: () => set((state) => ({
+    drawingsPast: [...state.drawingsPast.slice(-40), cloneDrawings(state.drawings)],
+    drawingsFuture: [],
   })),
 
-  updateDrawing: (id, points) => set((state) => ({
-    drawings: state.drawings.map(d => d.id === id ? { ...d, points } : d)
+  undoDrawings: () => set((state) => {
+    if (state.drawingsPast.length === 0) return state;
+    const prev = state.drawingsPast[state.drawingsPast.length - 1];
+    return {
+      drawingsPast: state.drawingsPast.slice(0, -1),
+      drawingsFuture: [cloneDrawings(state.drawings), ...state.drawingsFuture.slice(0, 40)],
+      drawings: prev,
+    };
+  }),
+
+  redoDrawings: () => set((state) => {
+    if (state.drawingsFuture.length === 0) return state;
+    const next = state.drawingsFuture[0];
+    return {
+      drawingsPast: [...state.drawingsPast.slice(-40), cloneDrawings(state.drawings)],
+      drawingsFuture: state.drawingsFuture.slice(1),
+      drawings: next,
+    };
+  }),
+
+  addDrawing: (drawing) => set((state) => {
+    const newDrawing = { 
+      ...drawing, 
+      id: Date.now() + Math.random(),
+      color: drawing.color || '#f59e0b',
+      borderColor: drawing.borderColor || drawing.color || '#f59e0b',
+      fillColor: drawing.fillColor || '#f59e0b33',
+      lineWidth: drawing.lineWidth ?? 1,
+    };
+    return {
+      drawingsPast: [...state.drawingsPast.slice(-40), cloneDrawings(state.drawings)],
+      drawingsFuture: [],
+      drawings: [...state.drawings, newDrawing],
+    };
+  }),
+
+  updateDrawing: (id, patch) => set((state) => ({
+    drawings: state.drawings.map(d => {
+      if (d.id !== id) return d;
+      if (Array.isArray(patch)) {
+        // Backwards-compat: array = new points
+        return { ...d, points: patch };
+      }
+      return { ...d, ...patch };
+    })
   })),
 
-  clearDrawings: () => set({ drawings: [], activeDrawingTool: null }),
-  removeDrawing: (id) => set((state) => ({ drawings: state.drawings.filter(d => d.id !== id) })),
+  clearDrawings: () => set((state) => ({
+    drawingsPast: [...state.drawingsPast.slice(-40), cloneDrawings(state.drawings)],
+    drawingsFuture: [],
+    drawings: [],
+    activeDrawingTool: null,
+  })),
+
+  removeDrawing: (id) => set((state) => ({
+    drawingsPast: [...state.drawingsPast.slice(-40), cloneDrawings(state.drawings)],
+    drawingsFuture: [],
+    drawings: state.drawings.filter(d => d.id !== id),
+  })),
+
+  // ============================================================
+  // THEME
+  // ============================================================
+  theme: { ...DEFAULT_THEME },
+  setTheme: (patch) => set((state) => ({ theme: { ...state.theme, ...patch } })),
+  resetTheme: () => set({ theme: { ...DEFAULT_THEME } }),
 
   soundEnabled: true,
   musicEnabled: true,
@@ -175,6 +232,8 @@ export const useStore = create((set) => ({
       draftPosition: null,
       isDrawingMode: false,
       drawings: [],
+      drawingsPast: [],
+      drawingsFuture: [],
       activeDrawingTool: null,
       peakBalance: startBal,
       dailyLoss: { day: startDay, dayStartBalance: startBal },
@@ -204,6 +263,8 @@ export const useStore = create((set) => ({
       draftPosition: null,
       isDrawingMode: false,
       drawings: [],
+      drawingsPast: [],
+      drawingsFuture: [],
       activeDrawingTool: null,
     };
   }),
@@ -241,6 +302,10 @@ export const useStore = create((set) => ({
   closeEquity: () => set({ isEquityOpen: false }),
   openInfo: () => set({ isInfoOpen: true }),
   closeInfo: () => set({ isInfoOpen: false }),
+  openAnalytics: () => set({ isAnalyticsOpen: true }),
+  closeAnalytics: () => set({ isAnalyticsOpen: false }),
+  openTheme: () => set({ isThemeOpen: true }),
+  closeTheme: () => set({ isThemeOpen: false }),
 
   cancelPendingOrder: (orderId) => set((state) => ({
     pendingOrders: state.pendingOrders.filter(o => o.id !== orderId)
