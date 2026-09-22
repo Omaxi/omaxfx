@@ -57,71 +57,130 @@ export default function ControlPanel() {
     setSymbolOpen(false);
   };
 
+  // Symbol dropdown - fixed position, above the button
+  const SymbolDropdown = () => (
+    <>
+      <div
+        className="fixed inset-0"
+        style={{ zIndex: 9998 }}
+        onClick={() => setSymbolOpen(false)}
+      />
+      <div
+        className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[220px] overflow-hidden"
+        style={{
+          zIndex: 9999,
+          left: 8,
+          bottom: 52,
+        }}
+      >
+        <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">
+          Choose Symbol
+        </div>
+        {SYMBOLS.map(s => {
+          const isSelected = symbol === s.code;
+          const isAvailable = s.available;
+          return (
+            <button
+              key={s.code}
+              onClick={() => {
+                if (isAvailable) {
+                  setSymbol(s.code);
+                  setSymbolOpen(false);
+                }
+              }}
+              disabled={!isAvailable}
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left transition-colors ${
+                isAvailable
+                  ? 'text-white hover:bg-[#2a2e39] cursor-pointer'
+                  : 'text-gray-600 cursor-not-allowed'
+              } ${isSelected && isAvailable ? 'bg-blue-600/15' : ''}`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="w-3 flex items-center justify-center">
+                  {isSelected && isAvailable && <Check size={10} className="text-blue-400" />}
+                </span>
+                <span className={isSelected && isAvailable ? 'font-bold' : ''}>{s.code}</span>
+              </div>
+              <span className={`text-[9px] ${isAvailable ? 'text-gray-400' : 'text-gray-700'}`}>
+                {s.source}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+
+  // Timezone dropdown
+  const TzDropdown = () => (
+    <>
+      <div
+        className="fixed inset-0"
+        style={{ zIndex: 9998 }}
+        onClick={() => setTzOpen(false)}
+      />
+      <div
+        className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[160px] overflow-hidden"
+        style={{
+          zIndex: 9999,
+          right: 8,
+          bottom: 52,
+        }}
+      >
+        <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">
+          Timezone
+        </div>
+        {TIMEZONES.map(tz => {
+          const isSelected = timezone === tz.code;
+          const isAvailable = tz.available;
+          return (
+            <button
+              key={tz.code}
+              onClick={() => {
+                if (isAvailable) {
+                  setTimezone(tz.code);
+                  setTzOpen(false);
+                }
+              }}
+              disabled={!isAvailable}
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left transition-colors ${
+                isAvailable
+                  ? 'text-white hover:bg-[#2a2e39] cursor-pointer'
+                  : 'text-gray-600 cursor-not-allowed'
+              } ${isSelected && isAvailable ? 'bg-blue-600/15' : ''}`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="w-3 flex items-center justify-center">
+                  {isSelected && isAvailable && <Check size={10} className="text-blue-400" />}
+                </span>
+                <span className={isSelected && isAvailable ? 'font-bold' : ''}>{tz.label}</span>
+              </div>
+              {!isAvailable && (
+                <span className="text-[9px] text-gray-700">soon</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+
   return (
-    <div className="flex-shrink-0 bg-[#131722] border-t border-[#2a2e39] relative z-40">
+    <div className="flex-shrink-0 bg-[#131722] border-t border-[#2a2e39]">
       <div className="flex items-center justify-between gap-1 px-1.5 py-1.5 overflow-x-auto">
 
-        {/* SYMBOL SELECTOR (left) */}
-        <div className="relative flex-shrink-0 z-50">
-          <button
-            onClick={toggleSymbol}
-            className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors"
-            title="Symbol"
-          >
-            <span>{symbol}</span>
-            <ChevronDown size={10} className={`transition-transform ${symbolOpen ? 'rotate-180' : ''}`} />
-          </button>
+        {/* Symbol button */}
+        <button
+          onClick={toggleSymbol}
+          className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
+          title="Symbol"
+        >
+          <span>{symbol}</span>
+          <ChevronDown size={10} className={`transition-transform ${symbolOpen ? 'rotate-180' : ''}`} />
+        </button>
 
-          {symbolOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setSymbolOpen(false)}
-              />
-              <div className="absolute bottom-full left-0 mb-1 z-[100] bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[200px] overflow-hidden">
-                <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">
-                  Choose Symbol
-                </div>
-                {SYMBOLS.map(s => {
-                  const isSelected = symbol === s.code;
-                  const isAvailable = s.available;
-                  return (
-                    <button
-                      key={s.code}
-                      onClick={() => {
-                        if (isAvailable) {
-                          setSymbol(s.code);
-                          setSymbolOpen(false);
-                        }
-                      }}
-                      disabled={!isAvailable}
-                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left transition-colors ${
-                        isAvailable
-                          ? 'text-white hover:bg-[#2a2e39] cursor-pointer'
-                          : 'text-gray-600 cursor-not-allowed'
-                      } ${isSelected && isAvailable ? 'bg-blue-600/15' : ''}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 flex items-center justify-center">
-                          {isSelected && isAvailable && <Check size={10} className="text-blue-400" />}
-                        </span>
-                        <span className={isSelected && isAvailable ? 'font-bold' : ''}>{s.code}</span>
-                      </div>
-                      <span className={`text-[9px] ${isAvailable ? 'text-gray-400' : 'text-gray-700'}`}>
-                        {s.source}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* MIDDLE — all trading controls */}
+        {/* Middle — trading controls */}
         <div className="flex items-center justify-center gap-1 flex-1 min-w-0 flex-wrap">
-
-          {/* Timeframes */}
           <div className="flex items-center gap-0.5 flex-shrink-0">
             {TIMEFRAMES.map(tf => (
               <button
@@ -138,7 +197,6 @@ export default function ControlPanel() {
             ))}
           </div>
 
-          {/* Long/Short draw */}
           {!isDrawingMode ? (
             <div className="flex items-center gap-1 flex-shrink-0">
               <button 
@@ -163,7 +221,6 @@ export default function ControlPanel() {
             </div>
           )}
 
-          {/* History + Equity */}
           <div className="flex items-center gap-1 flex-shrink-0">
             <button 
               onClick={openHistory} 
@@ -179,7 +236,6 @@ export default function ControlPanel() {
             </button>
           </div>
 
-          {/* Close all + Pending */}
           {positions.length > 0 && (
             <button 
               onClick={closeAllPositions} 
@@ -194,7 +250,6 @@ export default function ControlPanel() {
             </div>
           )}
 
-          {/* BUY / SELL */}
           <div className="flex items-center gap-1 flex-shrink-0">
             <button 
               onClick={() => openOrderModal('buy')} 
@@ -211,63 +266,20 @@ export default function ControlPanel() {
           </div>
         </div>
 
-        {/* TIMEZONE SELECTOR (right) */}
-        <div className="relative flex-shrink-0 z-50">
-          <button
-            onClick={toggleTz}
-            className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors"
-            title="Timezone"
-          >
-            <span>{timezone}</span>
-            <ChevronDown size={10} className={`transition-transform ${tzOpen ? 'rotate-180' : ''}`} />
-          </button>
-
-          {tzOpen && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setTzOpen(false)}
-              />
-              <div className="absolute bottom-full right-0 mb-1 z-[100] bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[140px] overflow-hidden">
-                <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">
-                  Timezone
-                </div>
-                {TIMEZONES.map(tz => {
-                  const isSelected = timezone === tz.code;
-                  const isAvailable = tz.available;
-                  return (
-                    <button
-                      key={tz.code}
-                      onClick={() => {
-                        if (isAvailable) {
-                          setTimezone(tz.code);
-                          setTzOpen(false);
-                        }
-                      }}
-                      disabled={!isAvailable}
-                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left transition-colors ${
-                        isAvailable
-                          ? 'text-white hover:bg-[#2a2e39] cursor-pointer'
-                          : 'text-gray-600 cursor-not-allowed'
-                      } ${isSelected && isAvailable ? 'bg-blue-600/15' : ''}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 flex items-center justify-center">
-                          {isSelected && isAvailable && <Check size={10} className="text-blue-400" />}
-                        </span>
-                        <span className={isSelected && isAvailable ? 'font-bold' : ''}>{tz.label}</span>
-                      </div>
-                      {!isAvailable && (
-                        <span className="text-[9px] text-gray-700">soon</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
+        {/* Timezone button */}
+        <button
+          onClick={toggleTz}
+          className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
+          title="Timezone"
+        >
+          <span>{timezone}</span>
+          <ChevronDown size={10} className={`transition-transform ${tzOpen ? 'rotate-180' : ''}`} />
+        </button>
       </div>
+
+      {/* Dropdowns — rendered as fixed-position overlays */}
+      {symbolOpen && <SymbolDropdown />}
+      {tzOpen && <TzDropdown />}
     </div>
   );
 }
