@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
 import { X, ChevronDown, Check, BarChart3, Palette, Sunrise, Sun, Sunset, ArrowUpDown } from 'lucide-react';
 
@@ -46,6 +46,12 @@ export default function ControlPanel() {
   const [tfOpen, setTfOpen] = useState(false);
   const [jumpOpen, setJumpOpen] = useState(false);
 
+  // Refs for dynamic positioning
+  const tfButtonRef = useRef(null);
+  const jumpButtonRef = useRef(null);
+  const [tfLeft, setTfLeft] = useState(0);
+  const [jumpLeft, setJumpLeft] = useState(0);
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') {
@@ -59,14 +65,29 @@ export default function ControlPanel() {
   const closeAll = () => { setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); };
   const toggleSymbol = () => { const o = !symbolOpen; closeAll(); setSymbolOpen(o); };
   const toggleTz = () => { const o = !tzOpen; closeAll(); setTzOpen(o); };
-  const toggleTf = () => { const o = !tfOpen; closeAll(); setTfOpen(o); };
-  const toggleJump = () => { const o = !jumpOpen; closeAll(); setJumpOpen(o); };
+  
+  const toggleTf = () => {
+    const o = !tfOpen;
+    if (o && tfButtonRef.current) {
+      const rect = tfButtonRef.current.getBoundingClientRect();
+      setTfLeft(Math.max(8, rect.left));
+    }
+    closeAll();
+    setTfOpen(o);
+  };
+
+  const toggleJump = () => {
+    const o = !jumpOpen;
+    if (o && jumpButtonRef.current) {
+      const rect = jumpButtonRef.current.getBoundingClientRect();
+      setJumpLeft(Math.max(8, rect.left));
+    }
+    closeAll();
+    setJumpOpen(o);
+  };
 
   const tfLabel = TIMEFRAMES.find(t => t.value === timeframe)?.label || '1 min';
 
-  // ============================================================
-  // DROPDOWNS
-  // ============================================================
   const SymbolDropdown = () => (
     <>
       <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
@@ -120,13 +141,10 @@ export default function ControlPanel() {
     </>
   );
 
-  // ============================================================
-  // TIMEFRAMES DROPDOWN
-  // ============================================================
   const TimeframeDropdown = () => (
     <>
       <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
-      <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[140px] overflow-hidden" style={{ zIndex: 9999, left: 160, bottom: 52 }}>
+      <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[140px] overflow-hidden" style={{ zIndex: 9999, left: tfLeft, bottom: 52 }}>
         <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">Timeframe</div>
         {TIMEFRAMES.map(tf => {
           const isSelected = timeframe === tf.value;
@@ -147,16 +165,13 @@ export default function ControlPanel() {
     </>
   );
 
-  // ============================================================
-  // JUMP DROPDOWN — with editable session times
-  // ============================================================
   const JumpDropdown = () => (
     <>
       <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
-      <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[260px]" style={{ zIndex: 9999, left: 300, bottom: 52 }}>
+      <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[260px]" style={{ zIndex: 9999, left: jumpLeft, bottom: 52 }}>
         <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide flex justify-between items-center">
           <span>Jump to Session</span>
-          <span className="text-[8px] text-gray-600 normal-case">hour in market time</span>
+          <span className="text-[8px] text-gray-600 normal-case">chart hour</span>
         </div>
         {SESSIONS.map(s => {
           const Icon = s.icon;
@@ -193,7 +208,6 @@ export default function ControlPanel() {
     <div className="flex-shrink-0 bg-[#131722] border-t border-[#2a2e39]">
       <div className="flex items-center justify-between gap-1 px-1.5 py-1.5 overflow-x-auto">
 
-        {/* Symbol dropdown */}
         <button onClick={toggleSymbol}
           className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
           <span>{symbol}</span>
@@ -202,15 +216,13 @@ export default function ControlPanel() {
 
         <div className="flex items-center justify-center gap-1 flex-1 min-w-0 flex-wrap">
 
-          {/* Timeframe dropdown */}
-          <button onClick={toggleTf}
+          <button ref={tfButtonRef} onClick={toggleTf}
             className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
             <span>{tfLabel}</span>
             <ChevronDown size={10} className={`transition-transform ${tfOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          {/* Jump dropdown */}
-          <button onClick={toggleJump}
+          <button ref={jumpButtonRef} onClick={toggleJump}
             className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
             title="Jump to trading session">
             <ArrowUpDown size={10} />
@@ -256,7 +268,6 @@ export default function ControlPanel() {
           </div>
         </div>
 
-        {/* Timezone dropdown */}
         <button onClick={toggleTz}
           className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
           <span>{timezone}</span>

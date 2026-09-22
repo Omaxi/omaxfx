@@ -70,7 +70,6 @@ export const useStore = create((set, get) => ({
   symbol: 'XAUUSD',
   timezone: 'UTC+3',
 
-  // Session start times in "market time" (UTC+3, matches CSV)
   sessionTimes: { asian: 3, london: 10, newyork: 15 },
 
   setSessionTime: (key, hour) => set((state) => ({
@@ -108,9 +107,6 @@ export const useStore = create((set, get) => ({
   sessionName: 'Session 1',
   setSessionName: (name) => set({ sessionName: name }),
 
-  // ============================================================
-  // SAVE / READ / CLEAR / LOAD
-  // ============================================================
   saveSession: () => {
     const s = get();
     if (!s.gameStarted || !s.gamePeriod) return;
@@ -157,7 +153,6 @@ export const useStore = create((set, get) => ({
     try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
   },
 
-  // Load saved session from localStorage into state
   loadSavedSession: () => {
     const state = get();
     const saved = state.readSession();
@@ -378,7 +373,8 @@ export const useStore = create((set, get) => ({
   }),
 
   // ============================================================
-  // JUMP TO SESSION — uses market-hour (UTC+3 reference from CSV)
+  // JUMP TO SESSION — matches chart-displayed hour (UTC)
+  // so clicking "NY @ 15:00" jumps to the candle labeled 15:00
   // ============================================================
   jumpToSession: (session) => set((state) => {
     if (state.rawData.length === 0) return state;
@@ -390,10 +386,7 @@ export const useStore = create((set, get) => ({
     
     for (let i = state.currentIndex + 1; i < maxScan; i++) {
       const d = new Date(state.rawData[i].time * 1000);
-      // Convert to "market hour" (data is UTC+3)
-      const marketHour = (d.getUTCHours() + 3) % 24;
-      const marketMinute = d.getUTCMinutes();
-      if (marketHour === targetHour && marketMinute === 0) {
+      if (d.getUTCHours() === targetHour && d.getUTCMinutes() === 0) {
         targetIndex = i;
         break;
       }

@@ -218,12 +218,6 @@ export default function Chart() {
     theme, snapshotDrawings, recenterToken
   } = useStore();
 
-  const currentCandle = rawData[currentIndex];
-  const currentPrice = currentCandle?.close;
-  const priceColor = currentCandle && currentCandle.open != null
-    ? (currentCandle.close >= currentCandle.open ? theme.upBody : theme.downBody)
-    : theme.upBody;
-
   useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
 
   useEffect(() => {
@@ -267,7 +261,6 @@ export default function Chart() {
     }
   }, [gameStarted, lockChart]);
 
-  // Chart init
   useEffect(() => {
     if (!chartContainerRef.current) return;
     const t = useStore.getState().theme;
@@ -307,7 +300,6 @@ export default function Chart() {
     return () => { clearTimeout(timer); chartRef.current.remove(); };
   }, []);
 
-  // Apply theme
   useEffect(() => {
     if (!seriesRef.current) return;
     try {
@@ -386,7 +378,6 @@ export default function Chart() {
     return { time, price };
   }, []);
 
-  // Render loop
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = chartContainerRef.current;
@@ -471,7 +462,6 @@ export default function Chart() {
     };
   }, [pointToXY]);
 
-  // Pointer handlers
   useEffect(() => {
     const container = chartContainerRef.current;
     if (!container) return;
@@ -860,9 +850,6 @@ export default function Chart() {
     return filtered;
   }, [displayData, rawData, currentIndex, timeframe]);
 
-  // ============================================================
-  // SET DATA + RECENTER (on TF change or jump)
-  // ============================================================
   useEffect(() => {
     if (!seriesRef.current || !chartRef.current) return;
     if (visibleData.length === 0) return;
@@ -891,12 +878,10 @@ export default function Chart() {
           fixRightEdge: false,
         });
         
-        // Horizontal: center last candle
         const from = len - 1 - halfBars;
         const to = len - 1 + halfBars;
         timeScale.setVisibleLogicalRange({ from, to });
         
-        // Vertical: force price scale refit so all candles are visible
         chartRef.current.priceScale('right').applyOptions({ autoScale: false });
         setTimeout(() => {
           if (chartRef.current) {
@@ -979,16 +964,6 @@ export default function Chart() {
     <div className="relative w-full h-full" style={{ backgroundColor: theme.background }}>
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }} />
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none' }} />
-
-      {/* Current price display — top-left corner, next to toolbar */}
-      {currentPrice != null && (
-        <div className="absolute top-2 left-14 z-20 flex items-center gap-1.5 px-2 py-1 bg-[#131722]/90 backdrop-blur border border-[#2a2e39] rounded pointer-events-none">
-          <span className="text-[9px] text-gray-500 font-bold uppercase">Price</span>
-          <span className="text-xs font-bold font-mono" style={{ color: priceColor }}>
-            {currentPrice.toFixed(2)}
-          </span>
-        </div>
-      )}
 
       {selectedItem?.type === 'drawing' && (
         <StylePanel selectedId={selectedItem.id} onClose={() => { setSelectedItem(null); lockChart(false); }} />
