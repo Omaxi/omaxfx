@@ -8,8 +8,6 @@ export const INITIAL_BALANCE = 100000;
 
 const EPSILON = 0.001;
 
-// Base data timezone is UTC+3 (from CSV filename)
-// Offsets are in minutes
 const TZ_OFFSETS = {
   'UTC-3': -180,
   'UTC-2': -120,
@@ -97,7 +95,7 @@ export const useStore = create((set) => ({
   gameStarted: false,
   gamePeriod: null,
   
-  playerName: 'Player',
+  playerName: 'Trader',
   setPlayerName: (name) => set({ playerName: name }),
 
   loadingState: { isActive: true, loaded: 0, total: 0, error: null },

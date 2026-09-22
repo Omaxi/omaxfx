@@ -112,11 +112,7 @@ export default function EquityModal() {
     } finally { setIsCapturing(false); }
   };
 
-  // ============================================================
-  // 2-COLUMN LAYOUT: stats left, chart right
-  // ============================================================
   const PNG_WIDTH = 640;
-  const PNG_HEIGHT = 340;
 
   return (
     <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[60] p-2" onClick={() => setMenuOpen(false)}>
@@ -124,7 +120,6 @@ export default function EquityModal() {
         className="bg-[#131722] rounded-lg w-full max-w-2xl border border-[#2a2e39] overflow-hidden flex flex-col max-h-[96vh] relative" 
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex justify-between items-center px-2 py-1.5 border-b border-[#2a2e39] flex-shrink-0">
           <h2 className="text-sm font-bold">Performance Report</h2>
           <div className="flex items-center gap-1">
@@ -164,7 +159,6 @@ export default function EquityModal() {
         </div>
 
         <div className="overflow-y-auto flex-1 min-h-0 p-2">
-          {/* CAPTURE AREA — 2 columns */}
           <div 
             ref={captureRef}
             style={{
@@ -178,7 +172,6 @@ export default function EquityModal() {
               margin: '0 auto',
             }}
           >
-            {/* Header row */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <div style={{ fontSize: '13px', fontWeight: 'bold' }}>
                 <span style={{ color: '#3b82f6' }}>Omax</span>
@@ -189,7 +182,6 @@ export default function EquityModal() {
               </div>
             </div>
 
-            {/* Player + Preset + Period */}
             <div style={{ marginBottom: '10px' }}>
               <div style={{ fontSize: '12px', color: '#ffffff', fontWeight: 'bold', marginBottom: '2px' }}>
                 {playerName || 'Trader'}
@@ -201,12 +193,7 @@ export default function EquityModal() {
               </div>
             </div>
 
-            {/* ============================================================
-                2 COLUMNS: stats left, chart right
-                ============================================================ */}
             <div style={{ display: 'flex', gap: '10px' }}>
-              
-              {/* LEFT COLUMN — Stats stacked */}
               <div style={{ width: '170px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
                 <StatCard label="Starting" value={`$${fmtMoney(startBalance, 0)}`} />
                 <StatCard label="Final" value={`$${fmtMoney(balance, 0)}`} />
@@ -239,7 +226,6 @@ export default function EquityModal() {
                 />
               </div>
 
-              {/* RIGHT COLUMN — Chart */}
               <div style={{
                 flex: 1,
                 height: '280px',
