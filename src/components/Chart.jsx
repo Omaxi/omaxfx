@@ -170,9 +170,13 @@ export default function Chart() {
   const longPressTriggeredRef = useRef(false);
   const startPosRef = useRef({ x: 0, y: 0 });
   const activePointersRef = useRef(new Set());
+  const isUnlockedRef = useRef(false);
+  const unlockedDragRef = useRef(null);
+  const lastTimeframeRef = useRef(1);
 
   const [pendingBtnPos, setPendingBtnPos] = useState([]);
   const [positionBtnPos, setPositionBtnPos] = useState([]);
+  const [isUnlocked, setIsUnlocked] = useState(false);
 
   const { 
     rawData, displayData, currentIndex, positions, pendingOrders, 
@@ -180,7 +184,7 @@ export default function Chart() {
     isDrawingMode, isPlaying, togglePlay, stepForward
   } = useStore();
 
-  // Disable chart scroll/pan/zoom while drawing
+  // Disable chart scroll/pan/zoom while drawing a drawing tool
   useEffect(() => {
     if (!chartRef.current) return;
     const isDrawing = !!activeDrawingTool || !!isDrawingMode;
@@ -192,9 +196,18 @@ export default function Chart() {
     } catch (e) {}
   }, [activeDrawingTool, isDrawingMode]);
 
+  // Use native time→X coordinate whenever possible
   const timeToX = useCallback((time) => {
     const chart = chartRef.current;
     if (!chart) return null;
+    
+    // Try native first (works for any in-range time)
+    try {
+      const x = chart.timeScale().timeToCoordinate(time);
+      if (x !== null && Number.isFinite(x)) return x;
+    } catch (e) {}
+    
+    // Fallback: interpolate/extrapolate using visible data
     const data = visibleDataRef.current;
     if (data.length === 0) return null;
     const firstTime = data[0].time;
@@ -203,18 +216,9 @@ export default function Chart() {
     if (time <= firstTime) {
       const step = data.length > 1 ? (data[1].time - data[0].time) : 60;
       logical = (time - firstTime) / (step || 60);
-    } else if (time >= lastTime) {
+    } else {
       const step = data.length > 1 ? (data[data.length - 1].time - data[data.length - 2].time) : 60;
       logical = (data.length - 1) + (time - lastTime) / (step || 60);
-    } else {
-      let lo = 0, hi = data.length - 1;
-      while (hi - lo > 1) {
-        const mid = Math.floor((lo + hi) / 2);
-        if (data[mid].time < time) lo = mid; else hi = mid;
-      }
-      const t1 = data[lo].time, t2 = data[hi].time;
-      const frac = t2 !== t1 ? (time - t1) / (t2 - t1) : 0;
-      logical = lo + frac;
     }
     try { return chart.timeScale().logicalToCoordinate(logical); } catch (e) { return null; }
   }, []);
@@ -274,9 +278,7 @@ export default function Chart() {
         borderVisible: false,
         barSpacing: 6,
       },
-      rightPriceScale: {
-        borderVisible: false,
-      },
+      rightPriceScale: { borderVisible: false },
     });
     seriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
       upColor: '#26a69a', downColor: '#ef5350', borderVisible: false,
@@ -284,7 +286,6 @@ export default function Chart() {
       priceLineVisible: false,
       lastValueVisible: true,
     });
-    // Force initial resize after mount
     const t = setTimeout(() => {
       try { chartRef.current.timeScale().fitContent(); } catch (e) {}
       window.dispatchEvent(new Event('resize'));
@@ -419,15 +420,45 @@ export default function Chart() {
       }
     };
 
+    const tryStartDrag = (x, y) => {
+      const state = useStore.getState();
+      const price = seriesRef.current?.coordinateToPrice(y);
+      if (price != null) {
+        const tradeHit = detectTradeHit(price);
+        if (tradeHit) {
+          unlockedDragRef.current = { type: 'trade', data: tradeHit };
+          return true;
+        }
+      }
+      const hit = hitTest(x, y);
+      if (hit) {
+        const drawing = state.drawings.find(d => d.id === hit.drawingId);
+        const point = xyToPoint(x, y);
+        if (drawing && point) {
+          unlockedDragRef.current = {
+            type: 'drawing',
+            data: {
+              ...hit,
+              startMouse: point,
+              originalPoints: drawing.points.map(p => ({ ...p })),
+            },
+          };
+          return true;
+        }
+      }
+      return false;
+    };
+
     const handlePointerDown = (e) => {
       if (e.button === 2) return;
       activePointersRef.current.add(e.pointerId);
 
-      // Multi-touch → cancel drawing drag (user is pinching/zooming)
+      // Multi-touch: cancel any long-press/unlock (user wants to zoom)
       if (activePointersRef.current.size > 1) {
-        drawingDragRef.current = null;
-        dragDrawRef.current = null;
         cancelLongPress();
+        isUnlockedRef.current = false;
+        setIsUnlocked(false);
+        unlockedDragRef.current = null;
         return;
       }
 
@@ -436,47 +467,7 @@ export default function Chart() {
       startPosRef.current = { x, y };
       longPressTriggeredRef.current = false;
 
-      if (state.isDrawingMode && seriesRef.current) {
-        const price = seriesRef.current.coordinateToPrice(y);
-        if (price != null) {
-          state.setDraftPrice(price);
-          e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-        }
-        return;
-      }
-
-      const price = seriesRef.current?.coordinateToPrice(y);
-      if (price != null) {
-        const hit = detectTradeHit(price);
-        if (hit) {
-          tradeDragRef.current = hit;
-          e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-          return;
-        }
-      }
-
-      if (!state.activeDrawingTool) {
-        const hit = hitTest(x, y);
-        if (hit) {
-          const drawing = state.drawings.find(d => d.id === hit.drawingId);
-          const point = xyToPoint(x, y);
-          if (drawing && point) {
-            longPressTimerRef.current = setTimeout(() => {
-              longPressTriggeredRef.current = true;
-              state.removeDrawing(hit.drawingId);
-              drawingDragRef.current = null;
-            }, 600);
-            drawingDragRef.current = {
-              ...hit,
-              startMouse: point,
-              originalPoints: drawing.points.map(p => ({ ...p })),
-            };
-            e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-          }
-          return;
-        }
-      }
-
+      // 1. Drawing tool active → handle it
       if (state.activeDrawingTool) {
         const point = xyToPoint(x, y);
         if (!point) return;
@@ -504,58 +495,84 @@ export default function Chart() {
         draftRef.current = { type: tool, points: [point, point], color: '#f59e0b' };
         return;
       }
-    };
 
-    const handlePointerMove = (e) => {
-      // If multiple pointers active → this is a gesture, don't move drawings
-      if (activePointersRef.current.size > 1) {
-        drawingDragRef.current = null;
-        cancelLongPress();
+      // 2. Long/Short position drawing mode → place next point
+      if (state.isDrawingMode && seriesRef.current) {
+        const price = seriesRef.current.coordinateToPrice(y);
+        if (price != null) {
+          state.setDraftPrice(price);
+          e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        }
         return;
       }
 
-      const state = useStore.getState();
+      // 3. Already unlocked? Start drag immediately
+      if (isUnlockedRef.current) {
+        tryStartDrag(x, y);
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        return;
+      }
+
+      // 4. Otherwise, start the 0.6s long-press timer to unlock
+      //    Do NOT preventDefault — chart pans normally if user moves
+      longPressTimerRef.current = setTimeout(() => {
+        isUnlockedRef.current = true;
+        setIsUnlocked(true);
+        longPressTriggeredRef.current = true;
+        tryStartDrag(startPosRef.current.x, startPosRef.current.y);
+      }, 600);
+    };
+
+    const handlePointerMove = (e) => {
       const { x, y } = getLocalXY(e);
 
+      // Cancel long-press if moved before timer fires
       if (longPressTimerRef.current) {
         const dx = x - startPosRef.current.x;
         const dy = y - startPosRef.current.y;
         if (Math.hypot(dx, dy) > 10) cancelLongPress();
       }
 
-      if (tradeDragRef.current) {
-        const price = seriesRef.current?.coordinateToPrice(y);
-        if (price != null) {
-          const drag = tradeDragRef.current;
-          if (drag.target === 'position') {
-            if (drag.type === 'sl') state.updatePositionSl(drag.positionId, price);
-            else if (drag.type === 'tp') state.updatePositionTp(drag.positionId, price);
-          } else if (drag.target === 'pending') {
-            state.updatePendingOrder(drag.orderId, drag.type, price);
+      // If unlocked, drag whatever is being held
+      if (isUnlockedRef.current) {
+        e.preventDefault();
+        const state = useStore.getState();
+        const drag = unlockedDragRef.current;
+        if (drag) {
+          if (drag.type === 'trade') {
+            const price = seriesRef.current?.coordinateToPrice(y);
+            if (price != null) {
+              const d = drag.data;
+              if (d.target === 'position') {
+                if (d.type === 'sl') state.updatePositionSl(d.positionId, price);
+                else if (d.type === 'tp') state.updatePositionTp(d.positionId, price);
+              } else if (d.target === 'pending') {
+                state.updatePendingOrder(d.orderId, d.type, price);
+              }
+            }
+          } else if (drag.type === 'drawing') {
+            const point = xyToPoint(x, y);
+            if (point) {
+              const inter = drag.data;
+              if (inter.mode === 'drag-point') {
+                const newPoints = inter.originalPoints.map((p, i) => i === inter.pointIndex ? point : p);
+                state.updateDrawing(inter.drawingId, newPoints);
+              } else if (inter.mode === 'drag-body') {
+                const dTime = point.time - inter.startMouse.time;
+                const dPrice = point.price - inter.startMouse.price;
+                const newPoints = inter.originalPoints.map(p => ({
+                  time: p.time + dTime,
+                  price: p.price + dPrice,
+                }));
+                state.updateDrawing(inter.drawingId, newPoints);
+              }
+            }
           }
         }
         return;
       }
 
-      if (drawingDragRef.current && !longPressTriggeredRef.current) {
-        const point = xyToPoint(x, y);
-        if (!point) return;
-        const inter = drawingDragRef.current;
-        if (inter.mode === 'drag-point') {
-          const newPoints = inter.originalPoints.map((p, i) => i === inter.pointIndex ? point : p);
-          state.updateDrawing(inter.drawingId, newPoints);
-        } else if (inter.mode === 'drag-body') {
-          const dTime = point.time - inter.startMouse.time;
-          const dPrice = point.price - inter.startMouse.price;
-          const newPoints = inter.originalPoints.map(p => ({
-            time: p.time + dTime,
-            price: p.price + dPrice,
-          }));
-          state.updateDrawing(inter.drawingId, newPoints);
-        }
-        return;
-      }
-
+      // Draft preview for drawing tools
       if (dragDrawRef.current && draftRef.current) {
         const point = xyToPoint(x, y);
         if (point) {
@@ -568,29 +585,32 @@ export default function Chart() {
         return;
       }
 
+      // Cursor feedback (desktop only)
       if (state.activeDrawingTool || state.isDrawingMode) {
         container.style.cursor = 'crosshair';
         return;
       }
-
+      const state = useStore.getState();
       const hit = hitTest(x, y);
-      if (hit) {
+      if (hit && isUnlockedRef.current) {
         container.style.cursor = hit.mode === 'drag-point' ? 'grab' : 'move';
       } else {
         const p = seriesRef.current?.coordinateToPrice(y);
         const tradeHit = p != null ? detectTradeHit(p) : null;
-        container.style.cursor = tradeHit ? 'ns-resize' : 'default';
+        container.style.cursor = (tradeHit && isUnlockedRef.current) ? 'ns-resize' : 'default';
       }
     };
 
     const handlePointerUp = (e) => {
       activePointersRef.current.delete(e.pointerId);
       cancelLongPress();
-      const wasLongPress = longPressTriggeredRef.current;
-      longPressTriggeredRef.current = false;
-      tradeDragRef.current = null;
+      isUnlockedRef.current = false;
+      setIsUnlocked(false);
+      unlockedDragRef.current = null;
       drawingDragRef.current = null;
+      tradeDragRef.current = null;
 
+      // Commit drag-draw if the user drew something
       if (dragDrawRef.current && draftRef.current) {
         const state = useStore.getState();
         const pts = draftRef.current.points;
@@ -611,7 +631,6 @@ export default function Chart() {
 
       const state = useStore.getState();
       container.style.cursor = (state.activeDrawingTool || state.isDrawingMode) ? 'crosshair' : 'default';
-      return wasLongPress;
     };
 
     const handleContextMenu = (e) => {
@@ -647,6 +666,8 @@ export default function Chart() {
         const state = useStore.getState();
         draftRef.current = null;
         dragDrawRef.current = null;
+        isUnlockedRef.current = false;
+        setIsUnlocked(false);
         if (state.activeDrawingTool) state.setActiveDrawingTool(null);
       }
     };
@@ -656,10 +677,6 @@ export default function Chart() {
 
   useEffect(() => { draftRef.current = null; dragDrawRef.current = null; }, [activeDrawingTool]);
 
-  // ============================================================
-  // VISIBLE DATA — shows the still-forming higher-TF candle so price
-  // stays consistent across timeframes
-  // ============================================================
   const visibleData = useMemo(() => {
     if (!rawData[currentIndex] || displayData.length === 0) return [];
     const currentRawTime = rawData[currentIndex].time;
@@ -667,26 +684,22 @@ export default function Chart() {
     let filtered = displayData.filter(c => c.time <= currentRawTime);
 
     if (timeframe > 1 && filtered.length > 0) {
-      // Check if the last higher-TF candle is still forming at currentRawTime
       const last = filtered[filtered.length - 1];
       const blockEnd = last.time + timeframe * 60;
-
       if (currentRawTime < blockEnd) {
-        // Build the still-forming candle from 1m data up to now
         const rawInBlock = [];
         for (let i = currentIndex; i >= 0; i--) {
           if (rawData[i].time < last.time) break;
           rawInBlock.unshift(rawData[i]);
         }
         if (rawInBlock.length > 0) {
-          // Replace the last (partial) higher-TF candle with the current state
           filtered = filtered.slice(0, -1);
           filtered.push({
             time: last.time,
             open: rawInBlock[0].open,
             high: Math.max(...rawInBlock.map(c => c.high)),
             low: Math.min(...rawInBlock.map(c => c.low)),
-            close: currentRawClose,   // matches 1m close exactly
+            close: currentRawClose,
             volume: rawInBlock.reduce((s, c) => s + (c.volume || 0), 0),
           });
         }
@@ -695,10 +708,32 @@ export default function Chart() {
     return filtered;
   }, [displayData, rawData, currentIndex, timeframe]);
 
+  // Preserve visible time range on timeframe switch
   useEffect(() => {
+    if (!seriesRef.current || !chartRef.current) return;
+    if (visibleData.length === 0) return;
+
+    const timeScale = chartRef.current.timeScale();
+    const tfChanged = lastTimeframeRef.current !== timeframe;
+    let savedRange = null;
+
+    if (tfChanged) {
+      try { savedRange = timeScale.getVisibleRange(); } catch (e) {}
+    }
+
     visibleDataRef.current = visibleData;
-    if (seriesRef.current) seriesRef.current.setData(visibleData);
-  }, [visibleData]);
+    seriesRef.current.setData(visibleData);
+
+    if (tfChanged && savedRange && savedRange.from && savedRange.to) {
+      try {
+        timeScale.setVisibleRange({ from: savedRange.from, to: savedRange.to });
+      } catch (e) {
+        try { timeScale.scrollToRealTime(); } catch (e2) {}
+      }
+    }
+
+    lastTimeframeRef.current = timeframe;
+  }, [visibleData, timeframe]);
 
   useEffect(() => {
     if (!seriesRef.current) return;
@@ -777,8 +812,20 @@ export default function Chart() {
       <div 
         ref={chartContainerRef} 
         className="absolute inset-0 chart-no-touch"
-        style={{ zIndex: 1, touchAction: 'none' }}
+        style={{ 
+          zIndex: 1, 
+          touchAction: 'none',
+          boxShadow: isUnlocked ? 'inset 0 0 0 2px rgba(59, 130, 246, 0.7)' : 'none',
+          transition: 'box-shadow 0.15s ease',
+        }}
       />
+
+      {/* Unlock indicator */}
+      {isUnlocked && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 bg-blue-600/90 backdrop-blur px-2 py-0.5 rounded text-[10px] text-white font-bold pointer-events-none">
+          🔓 Move Mode
+        </div>
+      )}
 
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 20 }}>
         <div className="pointer-events-auto">
@@ -810,19 +857,19 @@ export default function Chart() {
         ))}
       </div>
 
-      {/* FLOATING BUTTONS — Play smaller on left, Step big & blue on right */}
+      {/* Floating buttons */}
       <div className="absolute bottom-3 right-3 z-30 flex items-end gap-2 pointer-events-auto">
         <button 
           onClick={togglePlay}
           className="w-12 h-12 rounded-full bg-[#1e222d] hover:bg-[#2a2e39] border-2 border-[#2a2e39] text-white flex items-center justify-center shadow-2xl shadow-black/60 active:scale-95 transition-transform"
-          title={isPlaying ? 'Pause auto-play' : 'Auto-play'}
+          title={isPlaying ? 'Pause' : 'Auto-play'}
         >
           {isPlaying ? <Pause size={20} /> : <Play size={20} />}
         </button>
         <button 
           onClick={stepForward}
           className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-2xl shadow-blue-900/60 active:scale-95 transition-transform border-2 border-blue-500"
-          title="Step forward one candle"
+          title="Step forward"
         >
           <SkipForward size={30} />
         </button>

@@ -37,6 +37,12 @@ export const useStore = create((set) => ({
   timeframe: 1,
   currentIndex: 0,    
   isPlaying: false,   
+
+  // Symbol & Timezone
+  symbol: 'XAUUSD',
+  timezone: 'UTC+3',
+  setSymbol: (code) => set({ symbol: code }),
+  setTimezone: (tz) => set({ timezone: tz }),
   
   gameStarted: false,
   gamePeriod: null,
@@ -154,14 +160,12 @@ export const useStore = create((set) => ({
     };
   }),
 
-  // FIX: No time-scaling. Drawings keep their absolute time/price
-  // so they never disappear, and remain anchored to real market moments.
   setTimeframe: (newTimeframe) => set((state) => {
     if (newTimeframe === state.timeframe) return state;
     return {
       timeframe: newTimeframe,
       displayData: aggregateData(state.rawData, newTimeframe),
-      drawings: state.drawings,   // preserved unchanged
+      drawings: state.drawings,
     };
   }),
 
@@ -372,7 +376,7 @@ export const useStore = create((set) => ({
     const atEnd = nextIndex >= state.rawData.length - 1;
     if (!gameOverReason && atEnd) {
       gameOverReason = 'period_end';
-      gameOverMessage = 'You reached the end of the backtesting period.';
+      gameOverMessage = 'You reached the end of the session period.';
     }
 
     const newGameState = gameOverReason

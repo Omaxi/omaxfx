@@ -210,19 +210,19 @@ function App() {
           {gameStarted && (
             <button 
               onClick={handleRestart}
-              className="p-1 bg-[#1e222d] hover:bg-red-900/50 hover:text-red-400 rounded border border-[#2a2e39]"
+              className="w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-red-900/50 hover:text-red-400 rounded flex items-center justify-center"
               title="Restart session"
             >
-              <RotateCcw size={11} />
+              <RotateCcw size={13} />
             </button>
           )}
           <SoundToggle />
           <button 
             onClick={openInfo}
-            className="p-1 bg-[#1e222d] hover:bg-blue-900/50 hover:text-blue-400 rounded border border-[#2a2e39]"
+            className="w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 hover:text-blue-400 rounded flex items-center justify-center"
             title="Quick guide"
           >
-            <Info size={11} />
+            <Info size={13} />
           </button>
         </div>
       </header>
@@ -248,9 +248,7 @@ function App() {
                 <span className="text-blue-500">Omax</span>
                 <span className="text-white">FX Simulator</span>
               </h1>
-              <p className="text-xs text-gray-500 italic">
-                Trading Replay Engine
-              </p>
+              <p className="text-xs text-gray-500 italic">Trading Replay Engine</p>
               <p className="text-[10px] text-gray-600 mt-2">
                 {loadingState.error ? 'Failed to load data' : 'Loading market data…'}
               </p>
