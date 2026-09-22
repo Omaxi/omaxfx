@@ -21,10 +21,13 @@ const SYMBOLS = [
 ];
 
 const TIMEZONES = [
-  { code: 'UTC+3', label: 'UTC+3' },
-  { code: 'UTC+2', label: 'UTC+2' },
-  { code: 'UTC+1', label: 'UTC+1' },
+  { code: 'UTC-3', label: 'UTC-3' },
+  { code: 'UTC-2', label: 'UTC-2' },
+  { code: 'UTC-1', label: 'UTC-1' },
   { code: 'UTC',   label: 'UTC'   },
+  { code: 'UTC+1', label: 'UTC+1' },
+  { code: 'UTC+2', label: 'UTC+2' },
+  { code: 'UTC+3', label: 'UTC+3' },
 ];
 
 export default function ControlPanel() {
@@ -106,10 +109,10 @@ export default function ControlPanel() {
     <>
       <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setTzOpen(false)} />
       <div
-        className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[160px] overflow-hidden"
+        className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[160px] overflow-hidden max-h-[70vh] overflow-y-auto"
         style={{ zIndex: 9999, right: 8, bottom: 52 }}
       >
-        <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">
+        <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide sticky top-0 bg-[#1e222d]">
           Timezone
         </div>
         {TIMEZONES.map(tz => {

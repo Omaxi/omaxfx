@@ -243,16 +243,11 @@ export default function Chart() {
     } catch (e) {}
   }, [activeDrawingTool, isDrawingMode]);
 
-  // ============================================================
-  // FIXED timeToX — uses logical coordinates, never returns null
-  // for in-range times, and extrapolates correctly for out-of-range
-  // ============================================================
   const timeToX = useCallback((time) => {
     const chart = chartRef.current;
     if (!chart) return null;
     const data = visibleDataRef.current;
     if (data.length < 2) return null;
-
     const tf = useStore.getState().timeframe;
     const step = tf * 60;
     const firstTime = data[0].time;
@@ -481,37 +476,35 @@ export default function Chart() {
       return null;
     };
 
-    // ============================================================
-    // FIXED: pixel-based trade line detection (not price-based)
-    // ============================================================
+    // FIXED: pixel-based trade line detection with bigger tolerance
     const detectTradeHit = (x, y) => {
       if (!seriesRef.current) return null;
       const state = useStore.getState();
-      const PIXEL_TOL = 16; // pixels above/below line
+      const PIXEL_TOL = 28; // increased for mobile
       const candidates = [];
       
       state.positions.forEach(pos => {
         if (pos.sl != null) {
           const lineY = seriesRef.current.priceToCoordinate(pos.sl);
-          if (lineY != null) candidates.push({ target: 'position', positionId: pos.id, type: 'sl', price: pos.sl, lineY });
+          if (lineY != null && Number.isFinite(lineY)) candidates.push({ target: 'position', positionId: pos.id, type: 'sl', price: pos.sl, lineY });
         }
         if (pos.tp != null) {
           const lineY = seriesRef.current.priceToCoordinate(pos.tp);
-          if (lineY != null) candidates.push({ target: 'position', positionId: pos.id, type: 'tp', price: pos.tp, lineY });
+          if (lineY != null && Number.isFinite(lineY)) candidates.push({ target: 'position', positionId: pos.id, type: 'tp', price: pos.tp, lineY });
         }
       });
       state.pendingOrders.forEach(order => {
         if (order.entryPrice != null) {
           const lineY = seriesRef.current.priceToCoordinate(order.entryPrice);
-          if (lineY != null) candidates.push({ target: 'pending', orderId: order.id, type: 'entry', price: order.entryPrice, lineY });
+          if (lineY != null && Number.isFinite(lineY)) candidates.push({ target: 'pending', orderId: order.id, type: 'entry', price: order.entryPrice, lineY });
         }
         if (order.sl != null) {
           const lineY = seriesRef.current.priceToCoordinate(order.sl);
-          if (lineY != null) candidates.push({ target: 'pending', orderId: order.id, type: 'sl', price: order.sl, lineY });
+          if (lineY != null && Number.isFinite(lineY)) candidates.push({ target: 'pending', orderId: order.id, type: 'sl', price: order.sl, lineY });
         }
         if (order.tp != null) {
           const lineY = seriesRef.current.priceToCoordinate(order.tp);
-          if (lineY != null) candidates.push({ target: 'pending', orderId: order.id, type: 'tp', price: order.tp, lineY });
+          if (lineY != null && Number.isFinite(lineY)) candidates.push({ target: 'pending', orderId: order.id, type: 'tp', price: order.tp, lineY });
         }
       });
 
@@ -531,14 +524,11 @@ export default function Chart() {
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     };
 
-    const tradeKey = (t) => `${t.target}:${t.positionId || t.orderId}:${t.type}`;
-
     const handlePointerDown = (e) => {
       if (e.button === 2) return;
       activePointersRef.current.add(e.pointerId);
 
       if (activePointersRef.current.size > 1) {
-        setSelectedItem(null);
         dragRef.current = null;
         return;
       }
@@ -546,6 +536,7 @@ export default function Chart() {
       const state = useStore.getState();
       const { x, y } = getLocalXY(e);
 
+      // 1. Drawing tool active
       if (state.activeDrawingTool) {
         const point = xyToPoint(x, y);
         if (!point) return;
@@ -571,6 +562,7 @@ export default function Chart() {
         return;
       }
 
+      // 2. Long/Short position drawing mode
       if (state.isDrawingMode && seriesRef.current) {
         const price = seriesRef.current.coordinateToPrice(y);
         if (price != null) {
@@ -580,48 +572,46 @@ export default function Chart() {
         return;
       }
 
-      // Selection model
+      // ============================================================
+      // 3. Selection + drag (TradingView model: tap = select AND start drag)
+      // ============================================================
       const drawingHit = hitTestDrawings(x, y);
       const tradeHit = !drawingHit ? detectTradeHit(x, y) : null;
 
-      // If already selected, and user is tapping the same thing → start drag
-      if (selectedItem) {
-        if (selectedItem.type === 'drawing' && drawingHit && drawingHit.drawingId === selectedItem.id) {
-          const drawing = state.drawings.find(d => d.id === selectedItem.id);
-          const point = xyToPoint(x, y);
-          if (drawing && point) {
-            dragRef.current = {
-              type: 'drawing',
-              ...drawingHit,
-              startMouse: point,
-              originalPoints: drawing.points.map(p => ({ ...p })),
-            };
-            e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-            return;
-          }
-        }
-        if (selectedItem.type === 'trade' && tradeHit && tradeKey(tradeHit) === selectedItem.key) {
-          dragRef.current = { type: 'trade', data: tradeHit };
-          e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-          return;
-        }
-      }
-
+      // Drawing hit
       if (drawingHit) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-        const same = selectedItem?.type === 'drawing' && selectedItem.id === drawingHit.drawingId;
-        setSelectedItem(same ? null : { type: 'drawing', id: drawingHit.drawingId });
+        const drawing = state.drawings.find(d => d.id === drawingHit.drawingId);
+        const point = xyToPoint(x, y);
+        if (drawing && point) {
+          setSelectedItem({ type: 'drawing', id: drawingHit.drawingId });
+          dragRef.current = {
+            type: 'drawing',
+            ...drawingHit,
+            startMouse: point,
+            originalPoints: drawing.points.map(p => ({ ...p })),
+          };
+        }
         return;
       }
 
+      // Trade line hit
       if (tradeHit) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-        const key = tradeKey(tradeHit);
-        const same = selectedItem?.type === 'trade' && selectedItem.key === key;
-        setSelectedItem(same ? null : { type: 'trade', key, ...tradeHit });
+        setSelectedItem({
+          type: 'trade',
+          key: `${tradeHit.target}:${tradeHit.positionId || tradeHit.orderId}:${tradeHit.type}`,
+          price: tradeHit.price,
+          target: tradeHit.target,
+          positionId: tradeHit.positionId,
+          orderId: tradeHit.orderId,
+          lineType: tradeHit.type,
+        });
+        dragRef.current = { type: 'trade', data: tradeHit };
         return;
       }
 
+      // Empty tap → deselect
       if (selectedItem) setSelectedItem(null);
     };
 
@@ -635,7 +625,7 @@ export default function Chart() {
         const drag = dragRef.current;
         if (drag.type === 'trade') {
           const price = seriesRef.current?.coordinateToPrice(y);
-          if (price != null) {
+          if (price != null && Number.isFinite(price)) {
             const d = drag.data;
             if (d.target === 'position') {
               if (d.type === 'sl') state.updatePositionSl(d.positionId, price);
@@ -781,9 +771,7 @@ export default function Chart() {
     return filtered;
   }, [displayData, rawData, currentIndex, timeframe]);
 
-  // ============================================================
-  // TF switch: INSTANT center (no animation)
-  // ============================================================
+  // TF switch: instant center
   useEffect(() => {
     if (!seriesRef.current || !chartRef.current) return;
     if (visibleData.length === 0) return;
@@ -806,7 +794,6 @@ export default function Chart() {
         const halfBars = Math.floor(visibleBars / 2);
         const len = visibleData.length;
         
-        // Set barSpacing and rightOffset first
         timeScale.applyOptions({ 
           barSpacing: targetBarSpacing,
           rightOffset: halfBars,
@@ -814,7 +801,6 @@ export default function Chart() {
           fixRightEdge: false,
         });
         
-        // INSTANT: use setVisibleLogicalRange (no animation)
         const from = len - 1 - halfBars;
         const to = len - 1 + halfBars;
         timeScale.setVisibleLogicalRange({ from, to });

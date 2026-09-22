@@ -9,11 +9,15 @@ export const INITIAL_BALANCE = 100000;
 const EPSILON = 0.001;
 
 // Base data timezone is UTC+3 (from CSV filename)
+// Offsets are in minutes
 const TZ_OFFSETS = {
-  'UTC': 0,
-  'UTC+1': 60,
-  'UTC+2': 120,
-  'UTC+3': 180,
+  'UTC-3': -180,
+  'UTC-2': -120,
+  'UTC-1': -60,
+  'UTC':    0,
+  'UTC+1':  60,
+  'UTC+2':  120,
+  'UTC+3':  180,
 };
 
 const getDayKey = (unixSeconds) => {
@@ -47,11 +51,10 @@ export const useStore = create((set) => ({
   isPlaying: false,   
 
   symbol: 'XAUUSD',
-  timezone: 'UTC+3',   // matches base CSV timezone
+  timezone: 'UTC+3',
 
   setSymbol: (code) => set({ symbol: code }),
 
-  // Shift all time-based data by the delta between old and new timezone
   setTimezone: (newTz) => set((state) => {
     if (newTz === state.timezone) return state;
     const oldOffset = TZ_OFFSETS[state.timezone] ?? 180;
