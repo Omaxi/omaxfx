@@ -10,7 +10,7 @@ export default defineConfig(({ command }) => ({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'sounds/*.mp3'],
+      includeAssets: ['favicon.png', 'sounds/*.mp3'],
       devOptions: {
         enabled: true,
         type: 'module',
