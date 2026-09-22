@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { createChart, CandlestickSeries } from 'lightweight-charts';
 import { useStore } from '../store';
-import { X, Play, Pause, SkipForward, Trash2 } from 'lucide-react';
+import { X, Play, Pause, SkipForward, Trash2, Lock } from 'lucide-react';
 import DrawingToolbar from './DrawingToolbar';
 
 const calcRRR = (entry, sl, tp) => {
@@ -208,6 +208,12 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
   }
 };
 
+// ============================================================
+// Double-tap tuning constants
+// ============================================================
+const DOUBLE_TAP_TIME = 500; // ms
+const DOUBLE_TAP_DIST = 50;  // px
+
 export default function Chart() {
   const chartContainerRef = useRef();
   const canvasRef = useRef();
@@ -221,6 +227,10 @@ export default function Chart() {
   const visibleDataRef = useRef([]);
   const lastTimeframeRef = useRef(1);
   const activePointersRef = useRef(new Set());
+  const lastTapRef = useRef({ time: 0, x: 0, y: 0 });
+  const touchDownPosRef = useRef({ x: 0, y: 0 });
+  const chartLockedRef = useRef(false);
+  const selectedItemRef = useRef(null);
 
   const [pendingBtnPos, setPendingBtnPos] = useState([]);
   const [positionBtnPos, setPositionBtnPos] = useState([]);
@@ -229,19 +239,40 @@ export default function Chart() {
   const { 
     rawData, displayData, currentIndex, positions, pendingOrders, 
     draftPosition, timeframe, cancelPendingOrder, closePosition, activeDrawingTool,
-    isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing
+    isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted
   } = useStore();
 
-  useEffect(() => {
+  // Keep ref in sync so pointer handlers always see latest without re-binding
+  useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
+
+  // ============================================================
+  // LOCK CHART — synchronous, no React delay
+  // ============================================================
+  const lockChart = useCallback((locked) => {
     if (!chartRef.current) return;
-    const isDrawing = !!activeDrawingTool || !!isDrawingMode;
+    if (chartLockedRef.current === locked) return;
     try {
       chartRef.current.applyOptions({
-        handleScroll: !isDrawing,
-        handleScale: !isDrawing,
+        handleScroll: !locked,
+        handleScale: !locked,
       });
+      chartLockedRef.current = locked;
     } catch (e) {}
-  }, [activeDrawingTool, isDrawingMode]);
+  }, []);
+
+  // Sync lock with state changes
+  useEffect(() => {
+    const shouldLock = !!activeDrawingTool || !!isDrawingMode || !!selectedItem;
+    lockChart(shouldLock);
+  }, [activeDrawingTool, isDrawingMode, selectedItem, lockChart]);
+
+  // Clear selection on game restart
+  useEffect(() => {
+    if (!gameStarted) {
+      setSelectedItem(null);
+      lockChart(false);
+    }
+  }, [gameStarted, lockChart]);
 
   const timeToX = useCallback((time) => {
     const chart = chartRef.current;
@@ -315,6 +346,7 @@ export default function Chart() {
     return { time, price };
   }, []);
 
+  // Chart init
   useEffect(() => {
     if (!chartContainerRef.current) return;
     chartRef.current = createChart(chartContainerRef.current, {
@@ -346,6 +378,7 @@ export default function Chart() {
     return () => { clearTimeout(t); chartRef.current.remove(); };
   }, []);
 
+  // Render loop
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = chartContainerRef.current;
@@ -381,15 +414,16 @@ export default function Chart() {
       const alive = new Set(state.drawings);
       for (const key of cache.keys()) if (!alive.has(key)) cache.delete(key);
 
-      const selectedId = selectedItem?.type === 'drawing' ? selectedItem.id : null;
+      const sel = selectedItemRef.current;
+      const selectedId = sel?.type === 'drawing' ? sel.id : null;
       state.drawings.forEach(d => {
         if (d.type === 'volumeProfile' && !cache.has(d)) cache.set(d, computeVolumeProfile(d));
         drawShape(ctx, d, pointToXY, false, cache, d.id === selectedId);
       });
       if (draftRef.current) drawShape(ctx, draftRef.current, pointToXY, true, cache, false);
 
-      if (selectedItem?.type === 'trade' && seriesRef.current) {
-        const { price } = selectedItem;
+      if (sel?.type === 'trade' && seriesRef.current) {
+        const { price } = sel;
         if (price != null) {
           const y = seriesRef.current.priceToCoordinate(price);
           if (y != null) {
@@ -401,29 +435,6 @@ export default function Chart() {
             ctx.lineTo(paneW, y);
             ctx.stroke();
             ctx.setLineDash([]);
-            const labelText = '✦ Selected — drag to move';
-            ctx.font = 'bold 10px system-ui';
-            const textW = ctx.measureText(labelText).width;
-            const pillW = textW + 12;
-            const pillH = 18;
-            const pillX = paneW / 2 - pillW / 2;
-            const pillY = y - 28;
-            ctx.fillStyle = '#3b82f6';
-            ctx.beginPath();
-            const r = 9;
-            ctx.moveTo(pillX + r, pillY);
-            ctx.lineTo(pillX + pillW - r, pillY);
-            ctx.quadraticCurveTo(pillX + pillW, pillY, pillX + pillW, pillY + r);
-            ctx.lineTo(pillX + pillW, pillY + pillH - r);
-            ctx.quadraticCurveTo(pillX + pillW, pillY + pillH, pillX + pillW - r, pillY + pillH);
-            ctx.lineTo(pillX + r, pillY + pillH);
-            ctx.quadraticCurveTo(pillX, pillY + pillH, pillX, pillY + pillH - r);
-            ctx.lineTo(pillX, pillY + r);
-            ctx.quadraticCurveTo(pillX, pillY, pillX + r, pillY);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText(labelText, pillX + 6, pillY + 13);
           }
         }
       }
@@ -436,8 +447,11 @@ export default function Chart() {
       cancelAnimationFrame(rafId);
       ro.disconnect();
     };
-  }, [pointToXY, selectedItem]);
+  }, [pointToXY]);
 
+  // ============================================================
+  // INTERACTION — pointer handlers
+  // ============================================================
   useEffect(() => {
     const container = chartContainerRef.current;
     if (!container) return;
@@ -476,13 +490,11 @@ export default function Chart() {
       return null;
     };
 
-    // FIXED: pixel-based trade line detection with bigger tolerance
     const detectTradeHit = (x, y) => {
       if (!seriesRef.current) return null;
       const state = useStore.getState();
-      const PIXEL_TOL = 28; // increased for mobile
+      const PIXEL_TOL = 28;
       const candidates = [];
-      
       state.positions.forEach(pos => {
         if (pos.sl != null) {
           const lineY = seriesRef.current.priceToCoordinate(pos.sl);
@@ -507,7 +519,6 @@ export default function Chart() {
           if (lineY != null && Number.isFinite(lineY)) candidates.push({ target: 'pending', orderId: order.id, type: 'tp', price: order.tp, lineY });
         }
       });
-
       if (candidates.length === 0) return null;
       let closest = null;
       let closestDist = Infinity;
@@ -524,19 +535,31 @@ export default function Chart() {
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     };
 
+    const resetTapTimer = () => {
+      lastTapRef.current = { time: 0, x: 0, y: 0 };
+    };
+
+    const tradeKey = (t) => `${t.target}:${t.positionId ?? t.orderId}:${t.type}`;
+
+    // ============================================================
+    // POINTER DOWN
+    // ============================================================
     const handlePointerDown = (e) => {
       if (e.button === 2) return;
       activePointersRef.current.add(e.pointerId);
 
+      // Multi-touch: cancel drag, reset tap timer (user is zooming)
       if (activePointersRef.current.size > 1) {
+        resetTapTimer();
         dragRef.current = null;
         return;
       }
 
       const state = useStore.getState();
       const { x, y } = getLocalXY(e);
+      touchDownPosRef.current = { x, y };
 
-      // 1. Drawing tool active
+      // ---- 1. Drawing tool active ----
       if (state.activeDrawingTool) {
         const point = xyToPoint(x, y);
         if (!point) return;
@@ -562,7 +585,7 @@ export default function Chart() {
         return;
       }
 
-      // 2. Long/Short position drawing mode
+      // ---- 2. Long/Short position drawing mode ----
       if (state.isDrawingMode && seriesRef.current) {
         const price = seriesRef.current.coordinateToPrice(y);
         if (price != null) {
@@ -572,54 +595,111 @@ export default function Chart() {
         return;
       }
 
-      // ============================================================
-      // 3. Selection + drag (TradingView model: tap = select AND start drag)
-      // ============================================================
+      // ---- 3. Compute double-tap ----
+      const now = Date.now();
+      const last = lastTapRef.current;
+      const isDoubleTap = (now - last.time) < DOUBLE_TAP_TIME 
+                       && Math.hypot(x - last.x, y - last.y) < DOUBLE_TAP_DIST;
+
+      // Hit test
       const drawingHit = hitTestDrawings(x, y);
       const tradeHit = !drawingHit ? detectTradeHit(x, y) : null;
 
-      // Drawing hit
-      if (drawingHit) {
+      const sel = selectedItemRef.current;
+
+      // ============================================================
+      // CASE A: Something is ALREADY selected
+      // ============================================================
+      if (sel) {
+        // Block ALL chart events while selected
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-        const drawing = state.drawings.find(d => d.id === drawingHit.drawingId);
-        const point = xyToPoint(x, y);
-        if (drawing && point) {
-          setSelectedItem({ type: 'drawing', id: drawingHit.drawingId });
-          dragRef.current = {
-            type: 'drawing',
-            ...drawingHit,
-            startMouse: point,
-            originalPoints: drawing.points.map(p => ({ ...p })),
-          };
+
+        if (isDoubleTap) {
+          // Deselect + unlock
+          resetTapTimer();
+          setSelectedItem(null);
+          lockChart(false);
+          return;
+        }
+
+        // Save this tap for potential future double-tap
+        lastTapRef.current = { time: now, x, y };
+
+        // Try to start drag on selected item
+        if (sel.type === 'drawing') {
+          if (drawingHit && drawingHit.drawingId === sel.id) {
+            const drawing = state.drawings.find(d => d.id === sel.id);
+            const point = xyToPoint(x, y);
+            if (drawing && point) {
+              dragRef.current = {
+                type: 'drawing',
+                ...drawingHit,
+                startMouse: point,
+                originalPoints: drawing.points.map(p => ({ ...p })),
+              };
+            }
+          }
+        } else if (sel.type === 'trade') {
+          if (tradeHit && tradeKey(tradeHit) === sel.key) {
+            dragRef.current = { type: 'trade', data: tradeHit };
+          }
         }
         return;
       }
 
-      // Trade line hit
-      if (tradeHit) {
-        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-        setSelectedItem({
-          type: 'trade',
-          key: `${tradeHit.target}:${tradeHit.positionId || tradeHit.orderId}:${tradeHit.type}`,
-          price: tradeHit.price,
-          target: tradeHit.target,
-          positionId: tradeHit.positionId,
-          orderId: tradeHit.orderId,
-          lineType: tradeHit.type,
-        });
-        dragRef.current = { type: 'trade', data: tradeHit };
+      // ============================================================
+      // CASE B: Nothing selected — only respond to DOUBLE-TAP
+      // ============================================================
+      if (isDoubleTap) {
+        resetTapTimer();
+
+        if (drawingHit) {
+          e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+          lockChart(true);
+          setSelectedItem({ type: 'drawing', id: drawingHit.drawingId });
+          return;
+        }
+
+        if (tradeHit) {
+          e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+          lockChart(true);
+          setSelectedItem({
+            type: 'trade',
+            key: tradeKey(tradeHit),
+            price: tradeHit.price,
+            target: tradeHit.target,
+            positionId: tradeHit.positionId,
+            orderId: tradeHit.orderId,
+            lineType: tradeHit.type,
+          });
+          return;
+        }
+        // Double-tap on empty space → nothing
         return;
       }
 
-      // Empty tap → deselect
-      if (selectedItem) setSelectedItem(null);
+      // Single tap, nothing selected → remember tap for future double-tap
+      lastTapRef.current = { time: now, x, y };
+      // DO NOT preventDefault → chart pans/zooms normally
     };
 
+    // ============================================================
+    // POINTER MOVE
+    // ============================================================
     const handlePointerMove = (e) => {
       if (activePointersRef.current.size > 1) return;
+
       const state = useStore.getState();
       const { x, y } = getLocalXY(e);
 
+      // Cancel tap-timer if user moved significantly (this was a drag, not a tap)
+      const dx = x - touchDownPosRef.current.x;
+      const dy = y - touchDownPosRef.current.y;
+      if (activePointersRef.current.size === 1 && Math.hypot(dx, dy) > 25) {
+        resetTapTimer();
+      }
+
+      // Active drag → move the selected item
       if (dragRef.current) {
         e.preventDefault();
         const drag = dragRef.current;
@@ -654,6 +734,7 @@ export default function Chart() {
         return;
       }
 
+      // Draft drawing preview
       if (dragDrawRef.current && draftRef.current) {
         const point = xyToPoint(x, y);
         if (point) {
@@ -672,10 +753,14 @@ export default function Chart() {
       }
     };
 
+    // ============================================================
+    // POINTER UP
+    // ============================================================
     const handlePointerUp = (e) => {
       activePointersRef.current.delete(e.pointerId);
       dragRef.current = null;
 
+      // Commit draft drawing
       if (dragDrawRef.current && draftRef.current) {
         const state = useStore.getState();
         const pts = draftRef.current.points;
@@ -695,6 +780,23 @@ export default function Chart() {
       }
     };
 
+    // ============================================================
+    // TOUCHSTART PRE-EMPTIVE LOCK (mobile only)
+    // Fires before lightweight-charts' internal touch handlers
+    // ============================================================
+    const handleTouchStart = (e) => {
+      if (e.touches.length !== 1) return;
+      // If a selection exists, block ALL touches — this freezes the chart completely
+      if (selectedItemRef.current) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+      }
+    };
+
+    // ============================================================
+    // CONTEXT MENU (right-click desktop)
+    // ============================================================
     const handleContextMenu = (e) => {
       const state = useStore.getState();
       if (state.activeDrawingTool) return;
@@ -703,12 +805,14 @@ export default function Chart() {
       if (hit) {
         e.preventDefault();
         state.removeDrawing(hit.drawingId);
-        if (selectedItem?.type === 'drawing' && selectedItem.id === hit.drawingId) {
+        if (selectedItemRef.current?.type === 'drawing' && selectedItemRef.current.id === hit.drawingId) {
           setSelectedItem(null);
+          lockChart(false);
         }
       }
     };
 
+    container.addEventListener('touchstart', handleTouchStart, { capture: true, passive: false });
     container.addEventListener('pointerdown', handlePointerDown, true);
     container.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('pointermove', handlePointerMove, { passive: false });
@@ -716,14 +820,16 @@ export default function Chart() {
     window.addEventListener('pointercancel', handlePointerUp);
 
     return () => {
+      container.removeEventListener('touchstart', handleTouchStart, { capture: true });
       container.removeEventListener('pointerdown', handlePointerDown, true);
       container.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerUp);
     };
-  }, [xyToPoint, pointToXY, selectedItem]);
+  }, [xyToPoint, pointToXY, lockChart]);
 
+  // ESC → deselect
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') {
@@ -731,12 +837,13 @@ export default function Chart() {
         draftRef.current = null;
         dragDrawRef.current = null;
         setSelectedItem(null);
+        lockChart(false);
         if (state.activeDrawingTool) state.setActiveDrawingTool(null);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [lockChart]);
 
   useEffect(() => { draftRef.current = null; dragDrawRef.current = null; }, [activeDrawingTool]);
 
@@ -788,19 +895,16 @@ export default function Chart() {
         const chartWidth = container ? container.clientWidth : 800;
         const priceAxisW = chartRef.current.priceScale('right').width();
         const paneWidth = Math.max(100, chartWidth - priceAxisW);
-        
         const targetBarSpacing = 6;
         const visibleBars = Math.max(20, Math.floor(paneWidth / targetBarSpacing));
         const halfBars = Math.floor(visibleBars / 2);
         const len = visibleData.length;
-        
         timeScale.applyOptions({ 
           barSpacing: targetBarSpacing,
           rightOffset: halfBars,
           fixLeftEdge: false,
           fixRightEdge: false,
         });
-        
         const from = len - 1 - halfBars;
         const to = len - 1 + halfBars;
         timeScale.setVisibleLogicalRange({ from, to });
@@ -812,6 +916,7 @@ export default function Chart() {
     lastTimeframeRef.current = timeframe;
   }, [visibleData, timeframe]);
 
+  // X-button positions
   useEffect(() => {
     if (!seriesRef.current) return;
     let rafId;
@@ -842,6 +947,7 @@ export default function Chart() {
     return () => cancelAnimationFrame(rafId);
   }, [pendingOrders, positions]);
 
+  // Price lines
   useEffect(() => {
     if (!seriesRef.current) return;
     linesRef.current.forEach(line => seriesRef.current.removePriceLine(line));
@@ -892,6 +998,7 @@ export default function Chart() {
         style={{ zIndex: 1, touchAction: 'none' }}
       />
 
+      {/* Selected drawing toolbar */}
       {selectedItem && selectedItem.type === 'drawing' && (
         <div className="absolute top-2 right-2 z-30 flex items-center gap-1 bg-[#1e222d]/95 backdrop-blur border border-blue-500/60 rounded-lg shadow-2xl p-1 pointer-events-auto">
           <span className="text-[10px] text-blue-400 font-bold px-2">✦ Selected</span>
@@ -899,6 +1006,7 @@ export default function Chart() {
             onClick={() => {
               removeDrawing(selectedItem.id);
               setSelectedItem(null);
+              lockChart(false);
             }}
             className="w-7 h-7 rounded bg-red-600 hover:bg-red-500 text-white flex items-center justify-center"
             title="Delete drawing"
@@ -906,12 +1014,23 @@ export default function Chart() {
             <Trash2 size={13} />
           </button>
           <button
-            onClick={() => setSelectedItem(null)}
+            onClick={() => {
+              setSelectedItem(null);
+              lockChart(false);
+            }}
             className="w-7 h-7 rounded bg-[#2a2e39] hover:bg-[#3a3e49] text-white flex items-center justify-center"
             title="Deselect"
           >
             <X size={13} />
           </button>
+        </div>
+      )}
+
+      {/* Locked indicator */}
+      {selectedItem && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-blue-600/90 backdrop-blur px-3 py-1 rounded-full text-[10px] text-white font-bold pointer-events-none shadow-lg">
+          <Lock size={10} />
+          <span>Locked — double-tap chart to unlock</span>
         </div>
       )}
 
