@@ -59,9 +59,6 @@ const computeVolumeProfile = (drawing) => {
   return { buckets, maxVol, priceMin, priceMax, bucketSize, BUCKETS, pocIdx };
 };
 
-// ============================================================
-// DRAW SHAPE — with subtle thin white selection overlay
-// ============================================================
 const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) => {
   const color = drawing.color || '#f59e0b';
   const pts = drawing.points.map(p => pointToXY(p)).filter(Boolean);
@@ -156,9 +153,6 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
     }
   }
 
-  // ============================================================
-  // SELECTION OVERLAY — thin white dashed line following the shape
-  // ============================================================
   if (isSelected) {
     ctx.setLineDash([3, 3]);
     ctx.strokeStyle = '#ffffff';
@@ -232,7 +226,6 @@ export default function Chart() {
 
   useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
 
-  // Auto-clear selection if the item no longer exists
   useEffect(() => {
     if (!selectedItem) return;
     if (selectedItem.type === 'drawing') {
@@ -346,6 +339,9 @@ export default function Chart() {
     return { time, price };
   }, []);
 
+  // ============================================================
+  // CHART INIT — with crosshair labels grey 50% opacity
+  // ============================================================
   useEffect(() => {
     if (!chartContainerRef.current) return;
     chartRef.current = createChart(chartContainerRef.current, {
@@ -363,6 +359,28 @@ export default function Chart() {
         rightOffset: 60,
       },
       rightPriceScale: { borderVisible: false },
+      // ============================================================
+      // CROSSHAIR — grey 50% opacity labels on both axes
+      // ============================================================
+      crosshair: {
+        mode: 1, // Magnet
+        vertLine: {
+          color: 'rgba(128, 128, 128, 0.5)',
+          width: 1,
+          style: 3, // dashed
+          visible: true,
+          labelVisible: true,
+          labelBackgroundColor: 'rgba(128, 128, 128, 0.5)',
+        },
+        horzLine: {
+          color: 'rgba(128, 128, 128, 0.5)',
+          width: 1,
+          style: 3,
+          visible: true,
+          labelVisible: true,
+          labelBackgroundColor: 'rgba(128, 128, 128, 0.5)',
+        },
+      },
     });
     seriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
       upColor: '#26a69a', downColor: '#ef5350', borderVisible: false,
@@ -377,9 +395,6 @@ export default function Chart() {
     return () => { clearTimeout(t); chartRef.current.remove(); };
   }, []);
 
-  // ============================================================
-  // RENDER LOOP — trade selection uses LIVE price from store
-  // ============================================================
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = chartContainerRef.current;
@@ -423,11 +438,7 @@ export default function Chart() {
       });
       if (draftRef.current) drawShape(ctx, draftRef.current, pointToXY, true, cache, false);
 
-      // ============================================================
-      // TRADE LINE SELECTION — thin white dashed, follows LIVE price
-      // ============================================================
       if (sel?.type === 'trade' && seriesRef.current) {
-        // Look up live price from store
         let livePrice = null;
         if (sel.target === 'position') {
           const pos = state.positions.find(p => p.id === sel.positionId);
@@ -469,9 +480,6 @@ export default function Chart() {
     };
   }, [pointToXY]);
 
-  // ============================================================
-  // INTERACTION
-  // ============================================================
   useEffect(() => {
     const container = chartContainerRef.current;
     if (!container) return;
@@ -616,7 +624,6 @@ export default function Chart() {
 
       const sel = selectedItemRef.current;
 
-      // CASE A: Something selected
       if (sel) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
 
@@ -650,7 +657,6 @@ export default function Chart() {
         return;
       }
 
-      // CASE B: Nothing selected
       if (isDoubleTap) {
         resetTapTimer();
 

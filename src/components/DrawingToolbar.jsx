@@ -1,10 +1,29 @@
 import { useStore } from '../store';
-import { MousePointer2, Minus, TrendingUp, Square, Layers, BarChart2, Trash2 } from 'lucide-react';
+import { Minus, Square, Layers, BarChart2, Trash2 } from 'lucide-react';
 
+// Custom trendline icon: two anchor dots with a line between them
+const TrendlineIcon = ({ size = 14 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="5" cy="19" r="2" fill="currentColor" stroke="none" />
+    <circle cx="19" cy="5" r="2" fill="currentColor" stroke="none" />
+    <line x1="6.5" y1="17.5" x2="17.5" y2="6.5" />
+  </svg>
+);
+
+// Cursor tool REMOVED per user request.
+// Default state = no tool active = chart pans normally.
 const TOOLS = [
-  { key: null,            label: 'Cursor',         icon: MousePointer2 },
   { key: 'horizontal',    label: 'Horizontal',     icon: Minus },
-  { key: 'trendline',     label: 'Trendline',      icon: TrendingUp },
+  { key: 'trendline',     label: 'Trendline',      icon: TrendlineIcon },
   { key: 'rectangle',     label: 'Rectangle',      icon: Square },
   { key: 'fibonacci',     label: 'Fibonacci',      icon: Layers },
   { key: 'volumeProfile', label: 'Volume Profile', icon: BarChart2 },
@@ -21,15 +40,12 @@ export default function DrawingToolbar() {
           onClick={() => setActiveDrawingTool(key)}
           title={label}
           className={`p-1 md:p-1.5 rounded transition-colors ${
-            activeDrawingTool === key && key !== null
+            activeDrawingTool === key
               ? 'bg-blue-600 text-white'
-              : key === null && activeDrawingTool === null
-                ? 'text-gray-400'
-                : 'text-gray-400 hover:text-white hover:bg-[#2a2e39]'
+              : 'text-gray-400 hover:text-white hover:bg-[#2a2e39]'
           }`}
         >
-          <Icon size={12} className="md:hidden" />
-          <Icon size={14} className="hidden md:block" />
+          <Icon size={12} />
         </button>
       ))}
       
@@ -41,8 +57,7 @@ export default function DrawingToolbar() {
             title={`Clear ALL drawings (${drawings.length})`}
             className="p-1 md:p-1.5 rounded text-red-400 hover:bg-red-900/40 transition-colors"
           >
-            <Trash2 size={12} className="md:hidden" />
-            <Trash2 size={14} className="hidden md:block" />
+            <Trash2 size={12} />
           </button>
         </>
       )}
