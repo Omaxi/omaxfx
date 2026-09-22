@@ -219,7 +219,6 @@ export default function Chart() {
 
   useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
 
-  // Auto-clear selection
   useEffect(() => {
     if (!selectedItem) return;
     if (selectedItem.type === 'drawing') {
@@ -261,13 +260,15 @@ export default function Chart() {
     }
   }, [gameStarted, lockChart]);
 
-  // Chart init
+  // ============================================================
+  // CHART INIT — background stays TRANSPARENT so drawings show through
+  // ============================================================
   useEffect(() => {
     if (!chartContainerRef.current) return;
     const t = useStore.getState().theme;
     chartRef.current = createChart(chartContainerRef.current, {
       layout: { 
-        background: { type: 'solid', color: t.background }, 
+        background: { type: 'solid', color: 'transparent' },  // <-- TRANSPARENT
         textColor: '#d1d4dc',
         fontSize: 9,
       },
@@ -301,13 +302,10 @@ export default function Chart() {
     return () => { clearTimeout(timer); chartRef.current.remove(); };
   }, []);
 
-  // Apply theme changes
+  // Apply theme changes — only candle colors (bg stays transparent)
   useEffect(() => {
-    if (!chartRef.current || !seriesRef.current) return;
+    if (!seriesRef.current) return;
     try {
-      chartRef.current.applyOptions({
-        layout: { background: { type: 'solid', color: theme.background } },
-      });
       seriesRef.current.applyOptions({
         upColor: theme.upBody,
         downColor: theme.downBody,
@@ -628,7 +626,6 @@ export default function Chart() {
             const drawing = state.drawings.find(d => d.id === sel.id);
             const point = xyToPoint(x, y);
             if (drawing && point) {
-              // Snapshot for undo
               snapshotDrawings();
               dragRef.current = {
                 type: 'drawing',
@@ -793,12 +790,9 @@ export default function Chart() {
     };
   }, [xyToPoint, pointToXY, lockChart, snapshotDrawings]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e) => {
       const state = useStore.getState();
-
-      // Undo / Redo
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
         e.preventDefault();
         state.undoDrawings();
@@ -809,8 +803,6 @@ export default function Chart() {
         state.redoDrawings();
         return;
       }
-
-      // Delete selected
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItemRef.current?.type === 'drawing') {
         e.preventDefault();
         state.removeDrawing(selectedItemRef.current.id);
@@ -818,7 +810,6 @@ export default function Chart() {
         lockChart(false);
         return;
       }
-
       if (e.key === 'Escape') {
         draftRef.current = null;
         dragDrawRef.current = null;
@@ -964,12 +955,10 @@ export default function Chart() {
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }} />
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none' }} />
 
-      {/* Style panel when drawing is selected */}
       {selectedItem?.type === 'drawing' && (
         <StylePanel selectedId={selectedItem.id} onClose={() => { setSelectedItem(null); lockChart(false); }} />
       )}
 
-      {/* Selected drawing quick toolbar */}
       {selectedItem && selectedItem.type === 'drawing' && (
         <div className="absolute top-2 right-2 z-30 flex items-center gap-1 bg-[#1e222d]/95 backdrop-blur border border-white/20 rounded-lg shadow-2xl p-1 pointer-events-auto">
           <span className="text-[10px] text-white/80 font-bold px-2">✦ Selected</span>
