@@ -184,7 +184,6 @@ export default function Chart() {
     isDrawingMode, isPlaying, togglePlay, stepForward
   } = useStore();
 
-  // Disable chart scroll/pan/zoom while drawing a drawing tool
   useEffect(() => {
     if (!chartRef.current) return;
     const isDrawing = !!activeDrawingTool || !!isDrawingMode;
@@ -196,18 +195,13 @@ export default function Chart() {
     } catch (e) {}
   }, [activeDrawingTool, isDrawingMode]);
 
-  // Use native time→X coordinate whenever possible
   const timeToX = useCallback((time) => {
     const chart = chartRef.current;
     if (!chart) return null;
-    
-    // Try native first (works for any in-range time)
     try {
       const x = chart.timeScale().timeToCoordinate(time);
       if (x !== null && Number.isFinite(x)) return x;
     } catch (e) {}
-    
-    // Fallback: interpolate/extrapolate using visible data
     const data = visibleDataRef.current;
     if (data.length === 0) return null;
     const firstTime = data[0].time;
@@ -347,10 +341,10 @@ export default function Chart() {
     if (!container) return;
     container.style.touchAction = 'none';
 
-    const hitTest = (x, y) => {
+    // Hit test for drawing ENDPOINTS only (most precise)
+    const hitTestEndpoints = (x, y) => {
       const state = useStore.getState();
-      const TOL = 14;
-      const HANDLE_TOL = 20;
+      const HANDLE_TOL = 22;
       for (let i = state.drawings.length - 1; i >= 0; i--) {
         const d = state.drawings[i];
         const pts = d.points.map(p => pointToXY(p)).filter(Boolean);
@@ -360,6 +354,18 @@ export default function Chart() {
             return { drawingId: d.id, mode: 'drag-point', pointIndex: j };
           }
         }
+      }
+      return null;
+    };
+
+    // Hit test for drawing BODIES (lines / rectangle areas)
+    const hitTestBodies = (x, y) => {
+      const state = useStore.getState();
+      const TOL = 14;
+      for (let i = state.drawings.length - 1; i >= 0; i--) {
+        const d = state.drawings[i];
+        const pts = d.points.map(p => pointToXY(p)).filter(Boolean);
+        if (pts.length === 0) continue;
         if (d.type === 'horizontal' && pts[0]) {
           if (Math.abs(y - pts[0].y) < TOL) return { drawingId: d.id, mode: 'drag-body' };
         } else if (d.type === 'trendline' && pts.length === 2) {
@@ -386,6 +392,7 @@ export default function Chart() {
       const p2 = seriesRef.current.coordinateToPrice(15);
       return Math.abs(p1 - p2);
     };
+
     const detectTradeHit = (price) => {
       const state = useStore.getState();
       const cands = [];
@@ -420,8 +427,31 @@ export default function Chart() {
       }
     };
 
+    // ============================================================
+    // FIXED: Prioritize drawings (endpoints > trades > bodies)
+    // ============================================================
     const tryStartDrag = (x, y) => {
       const state = useStore.getState();
+      
+      // 1. Drawing ENDPOINTS first
+      const endpoint = hitTestEndpoints(x, y);
+      if (endpoint) {
+        const drawing = state.drawings.find(d => d.id === endpoint.drawingId);
+        const point = xyToPoint(x, y);
+        if (drawing && point) {
+          unlockedDragRef.current = {
+            type: 'drawing',
+            data: {
+              ...endpoint,
+              startMouse: point,
+              originalPoints: drawing.points.map(p => ({ ...p })),
+            },
+          };
+          return true;
+        }
+      }
+
+      // 2. Trade lines
       const price = seriesRef.current?.coordinateToPrice(y);
       if (price != null) {
         const tradeHit = detectTradeHit(price);
@@ -430,15 +460,17 @@ export default function Chart() {
           return true;
         }
       }
-      const hit = hitTest(x, y);
-      if (hit) {
-        const drawing = state.drawings.find(d => d.id === hit.drawingId);
+
+      // 3. Drawing BODIES last
+      const body = hitTestBodies(x, y);
+      if (body) {
+        const drawing = state.drawings.find(d => d.id === body.drawingId);
         const point = xyToPoint(x, y);
         if (drawing && point) {
           unlockedDragRef.current = {
             type: 'drawing',
             data: {
-              ...hit,
+              ...body,
               startMouse: point,
               originalPoints: drawing.points.map(p => ({ ...p })),
             },
@@ -446,6 +478,7 @@ export default function Chart() {
           return true;
         }
       }
+
       return false;
     };
 
@@ -453,7 +486,6 @@ export default function Chart() {
       if (e.button === 2) return;
       activePointersRef.current.add(e.pointerId);
 
-      // Multi-touch: cancel any long-press/unlock (user wants to zoom)
       if (activePointersRef.current.size > 1) {
         cancelLongPress();
         isUnlockedRef.current = false;
@@ -467,7 +499,7 @@ export default function Chart() {
       startPosRef.current = { x, y };
       longPressTriggeredRef.current = false;
 
-      // 1. Drawing tool active → handle it
+      // 1. Drawing tool active
       if (state.activeDrawingTool) {
         const point = xyToPoint(x, y);
         if (!point) return;
@@ -479,7 +511,6 @@ export default function Chart() {
           state.setActiveDrawingTool(null);
           return;
         }
-
         if (draftRef.current && !dragDrawRef.current) {
           state.addDrawing({
             type: draftRef.current.type,
@@ -490,13 +521,12 @@ export default function Chart() {
           state.setActiveDrawingTool(null);
           return;
         }
-
         dragDrawRef.current = { tool, startPoint: point };
         draftRef.current = { type: tool, points: [point, point], color: '#f59e0b' };
         return;
       }
 
-      // 2. Long/Short position drawing mode → place next point
+      // 2. Long/Short position drawing
       if (state.isDrawingMode && seriesRef.current) {
         const price = seriesRef.current.coordinateToPrice(y);
         if (price != null) {
@@ -506,15 +536,14 @@ export default function Chart() {
         return;
       }
 
-      // 3. Already unlocked? Start drag immediately
+      // 3. Already unlocked → immediate drag
       if (isUnlockedRef.current) {
         tryStartDrag(x, y);
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         return;
       }
 
-      // 4. Otherwise, start the 0.6s long-press timer to unlock
-      //    Do NOT preventDefault — chart pans normally if user moves
+      // 4. Start long-press timer to unlock
       longPressTimerRef.current = setTimeout(() => {
         isUnlockedRef.current = true;
         setIsUnlocked(true);
@@ -526,14 +555,12 @@ export default function Chart() {
     const handlePointerMove = (e) => {
       const { x, y } = getLocalXY(e);
 
-      // Cancel long-press if moved before timer fires
       if (longPressTimerRef.current) {
         const dx = x - startPosRef.current.x;
         const dy = y - startPosRef.current.y;
         if (Math.hypot(dx, dy) > 10) cancelLongPress();
       }
 
-      // If unlocked, drag whatever is being held
       if (isUnlockedRef.current) {
         e.preventDefault();
         const state = useStore.getState();
@@ -572,7 +599,6 @@ export default function Chart() {
         return;
       }
 
-      // Draft preview for drawing tools
       if (dragDrawRef.current && draftRef.current) {
         const point = xyToPoint(x, y);
         if (point) {
@@ -585,13 +611,12 @@ export default function Chart() {
         return;
       }
 
-      // Cursor feedback (desktop only)
       if (state.activeDrawingTool || state.isDrawingMode) {
         container.style.cursor = 'crosshair';
         return;
       }
       const state = useStore.getState();
-      const hit = hitTest(x, y);
+      const hit = hitTestEndpoints(x, y) || hitTestBodies(x, y);
       if (hit && isUnlockedRef.current) {
         container.style.cursor = hit.mode === 'drag-point' ? 'grab' : 'move';
       } else {
@@ -610,7 +635,6 @@ export default function Chart() {
       drawingDragRef.current = null;
       tradeDragRef.current = null;
 
-      // Commit drag-draw if the user drew something
       if (dragDrawRef.current && draftRef.current) {
         const state = useStore.getState();
         const pts = draftRef.current.points;
@@ -637,7 +661,7 @@ export default function Chart() {
       const state = useStore.getState();
       if (state.activeDrawingTool) return;
       const { x, y } = getLocalXY(e);
-      const hit = hitTest(x, y);
+      const hit = hitTestEndpoints(x, y) || hitTestBodies(x, y);
       if (hit) {
         e.preventDefault();
         state.removeDrawing(hit.drawingId);
@@ -708,27 +732,31 @@ export default function Chart() {
     return filtered;
   }, [displayData, rawData, currentIndex, timeframe]);
 
-  // Preserve visible time range on timeframe switch
+  // ============================================================
+  // FIXED: On TF switch, reset zoom to show last ~150 candles
+  // at consistent width. Prevents candles from becoming huge.
+  // ============================================================
   useEffect(() => {
     if (!seriesRef.current || !chartRef.current) return;
     if (visibleData.length === 0) return;
 
     const timeScale = chartRef.current.timeScale();
     const tfChanged = lastTimeframeRef.current !== timeframe;
-    let savedRange = null;
-
-    if (tfChanged) {
-      try { savedRange = timeScale.getVisibleRange(); } catch (e) {}
-    }
 
     visibleDataRef.current = visibleData;
     seriesRef.current.setData(visibleData);
 
-    if (tfChanged && savedRange && savedRange.from && savedRange.to) {
+    if (tfChanged) {
+      const len = visibleData.length;
+      const windowSize = Math.min(150, len);
+      const from = Math.max(0, len - windowSize);
+      const to = len - 1;
       try {
-        timeScale.setVisibleRange({ from: savedRange.from, to: savedRange.to });
+        timeScale.setVisibleLogicalRange({ from, to });
+        // Reset bar spacing to keep candles readable
+        timeScale.applyOptions({ barSpacing: 6 });
       } catch (e) {
-        try { timeScale.scrollToRealTime(); } catch (e2) {}
+        try { timeScale.fitContent(); } catch (e2) {}
       }
     }
 
@@ -820,7 +848,6 @@ export default function Chart() {
         }}
       />
 
-      {/* Unlock indicator */}
       {isUnlocked && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 bg-blue-600/90 backdrop-blur px-2 py-0.5 rounded text-[10px] text-white font-bold pointer-events-none">
           🔓 Move Mode
@@ -857,7 +884,6 @@ export default function Chart() {
         ))}
       </div>
 
-      {/* Floating buttons */}
       <div className="absolute bottom-3 right-3 z-30 flex items-end gap-2 pointer-events-auto">
         <button 
           onClick={togglePlay}

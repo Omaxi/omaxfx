@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { X, ChevronDown, Check } from 'lucide-react';
 
@@ -37,7 +37,6 @@ export default function ControlPanel() {
   const [symbolOpen, setSymbolOpen] = useState(false);
   const [tzOpen, setTzOpen] = useState(false);
 
-  // Close dropdowns on Escape
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') {
@@ -59,13 +58,11 @@ export default function ControlPanel() {
   };
 
   return (
-    <div className="flex-shrink-0 bg-[#131722] border-t border-[#2a2e39]">
+    <div className="flex-shrink-0 bg-[#131722] border-t border-[#2a2e39] relative z-40">
       <div className="flex items-center justify-between gap-1 px-1.5 py-1.5 overflow-x-auto">
 
-        {/* ============================================================
-            SYMBOL SELECTOR (left)
-            ============================================================ */}
-        <div className="relative flex-shrink-0">
+        {/* SYMBOL SELECTOR (left) */}
+        <div className="relative flex-shrink-0 z-50">
           <button
             onClick={toggleSymbol}
             className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors"
@@ -77,12 +74,11 @@ export default function ControlPanel() {
 
           {symbolOpen && (
             <>
-              {/* Click-outside catcher */}
               <div
-                className="fixed inset-0 z-30"
+                className="fixed inset-0 z-40"
                 onClick={() => setSymbolOpen(false)}
               />
-              <div className="absolute bottom-full left-0 mb-1 z-40 bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[200px] overflow-hidden">
+              <div className="absolute bottom-full left-0 mb-1 z-[100] bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[200px] overflow-hidden">
                 <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">
                   Choose Symbol
                 </div>
@@ -122,9 +118,7 @@ export default function ControlPanel() {
           )}
         </div>
 
-        {/* ============================================================
-            MIDDLE — all trading controls
-            ============================================================ */}
+        {/* MIDDLE — all trading controls */}
         <div className="flex items-center justify-center gap-1 flex-1 min-w-0 flex-wrap">
 
           {/* Timeframes */}
@@ -217,10 +211,8 @@ export default function ControlPanel() {
           </div>
         </div>
 
-        {/* ============================================================
-            TIMEZONE SELECTOR (right)
-            ============================================================ */}
-        <div className="relative flex-shrink-0">
+        {/* TIMEZONE SELECTOR (right) */}
+        <div className="relative flex-shrink-0 z-50">
           <button
             onClick={toggleTz}
             className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors"
@@ -233,10 +225,10 @@ export default function ControlPanel() {
           {tzOpen && (
             <>
               <div
-                className="fixed inset-0 z-30"
+                className="fixed inset-0 z-40"
                 onClick={() => setTzOpen(false)}
               />
-              <div className="absolute bottom-full right-0 mb-1 z-40 bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[140px] overflow-hidden">
+              <div className="absolute bottom-full right-0 mb-1 z-[100] bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[140px] overflow-hidden">
                 <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">
                   Timezone
                 </div>
