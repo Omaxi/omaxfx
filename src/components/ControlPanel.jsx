@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { X, ChevronDown, Check, BarChart3, Palette } from 'lucide-react';
+import { X, ChevronDown, Check, BarChart3, Palette, Sunrise, Sun, Sunset } from 'lucide-react';
 
 const TIMEFRAMES = [
   { label: '1m', value: 1 }, { label: '5m', value: 5 }, { label: '15m', value: 15 },
@@ -26,7 +26,7 @@ export default function ControlPanel() {
     positions, setTimeframe, timeframe, closeAllPositions, openOrderModal,
     pendingOrders, startDrawing, isDrawingMode, drawingStep, clearDraft,
     openHistory, openEquity, openAnalytics, openTheme,
-    symbol, setSymbol, timezone, setTimezone
+    symbol, setSymbol, timezone, setTimezone, jumpToSession
   } = useStore();
 
   const [symbolOpen, setSymbolOpen] = useState(false);
@@ -116,6 +116,28 @@ export default function ControlPanel() {
                 {tf.label}
               </button>
             ))}
+          </div>
+
+          {/* Session jump buttons */}
+          <div className="flex items-center gap-0.5 flex-shrink-0 border-l border-[#2a2e39] pl-1 ml-0.5">
+            <button onClick={() => jumpToSession('asian')}
+              title="Jump to next Asian session (00:00 UTC)"
+              className="flex items-center gap-0.5 px-1.5 py-1 rounded text-[9px] font-bold text-orange-400 hover:text-orange-300 hover:bg-[#2a2e39] transition-colors">
+              <Sunrise size={10} />
+              ASIA
+            </button>
+            <button onClick={() => jumpToSession('london')}
+              title="Jump to next London session (08:00 UTC)"
+              className="flex items-center gap-0.5 px-1.5 py-1 rounded text-[9px] font-bold text-blue-400 hover:text-blue-300 hover:bg-[#2a2e39] transition-colors">
+              <Sun size={10} />
+              LDN
+            </button>
+            <button onClick={() => jumpToSession('newyork')}
+              title="Jump to next New York session (13:00 UTC)"
+              className="flex items-center gap-0.5 px-1.5 py-1 rounded text-[9px] font-bold text-purple-400 hover:text-purple-300 hover:bg-[#2a2e39] transition-colors">
+              <Sunset size={10} />
+              NY
+            </button>
           </div>
 
           {!isDrawingMode ? (

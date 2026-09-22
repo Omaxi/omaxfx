@@ -7,10 +7,19 @@ import {
 export const INITIAL_BALANCE = 100000;
 const EPSILON = 0.001;
 
+const SESSION_KEY = 'omaxfx-session-v1';
+
 const TZ_OFFSETS = {
   'UTC-3': -180, 'UTC-2': -120, 'UTC-1': -60,
   'UTC': 0,
   'UTC+1': 60, 'UTC+2': 120, 'UTC+3': 180,
+};
+
+// Trading sessions (UTC reference hours)
+export const SESSION_UTC_HOURS = {
+  asian: 0,     // 00:00 UTC — Tokyo open
+  london: 8,    // 08:00 UTC — London open
+  newyork: 13,  // 13:00 UTC — NY open
 };
 
 const getDayKey = (unixSeconds) => {
@@ -41,14 +50,23 @@ const cloneDrawings = (drawings) => drawings.map(d => ({
 }));
 
 const DEFAULT_THEME = {
-  background: '#0b0e11',
+  background: '#131722',
   upBody: '#26a69a',
   downBody: '#ef5350',
   upWick: '#26a69a',
   downWick: '#ef5350',
 };
 
-export const useStore = create((set) => ({
+const DEFAULT_RULES = {
+  startingBalance: INITIAL_BALANCE,
+  maxRiskPerTrade: 1,
+  maxDailyLoss: 5,
+  maxDrawdown: 10,
+  countdownMinutes: 60,
+  presetName: 'Custom',
+};
+
+export const useStore = create((set, get) => ({
   allRawData: [],
   rawData: [],        
   displayData: [],    
@@ -83,21 +101,66 @@ export const useStore = create((set) => ({
 
   gameStarted: false,
   gamePeriod: null,
+  isPeriodModalOpen: false,
+  openPeriodModal: () => set({ isPeriodModalOpen: true }),
+  closePeriodModal: () => set({ isPeriodModalOpen: false }),
   
+  // Session name + persistence
+  sessionName: 'Session 1',
+  setSessionName: (name) => set({ sessionName: name }),
+
+  saveSession: () => {
+    const s = get();
+    if (!s.gameStarted || !s.gamePeriod) return;
+    try {
+      const payload = {
+        version: 1,
+        savedAt: Date.now(),
+        sessionName: s.sessionName,
+        playerName: s.playerName,
+        gamePeriod: s.gamePeriod,
+        rules: s.rules,
+        currentIndex: s.currentIndex,
+        timeframe: s.timeframe,
+        symbol: s.symbol,
+        timezone: s.timezone,
+        balance: s.balance,
+        peakBalance: s.peakBalance,
+        positions: s.positions,
+        tradeHistory: s.tradeHistory,
+        pendingOrders: s.pendingOrders,
+        drawings: s.drawings,
+        drawingsPast: s.drawingsPast,
+        drawingsFuture: s.drawingsFuture,
+        dailyLoss: s.dailyLoss,
+        gameState: s.gameState,
+        theme: s.theme,
+      };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+    } catch (e) {
+      console.warn('Failed to save session:', e);
+    }
+  },
+
+  readSession: () => {
+    try {
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) { return null; }
+  },
+
+  clearSession: () => {
+    try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+  },
+
   playerName: 'Trader',
   setPlayerName: (name) => set({ playerName: name }),
 
   loadingState: { isActive: true, loaded: 0, total: 0, error: null },
   setLoadingState: (patch) => set((state) => ({ loadingState: { ...state.loadingState, ...patch } })),
 
-  rules: {
-    startingBalance: INITIAL_BALANCE,
-    maxRiskPerTrade: 1,
-    maxDailyLoss: 5,
-    maxDrawdown: 10,
-    countdownMinutes: 60,
-    presetName: 'Custom',
-  },
+  rules: { ...DEFAULT_RULES },
 
   gameState: { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
 
@@ -122,9 +185,6 @@ export const useStore = create((set) => ({
   drawingStep: null,
   draftPosition: null,
 
-  // ============================================================
-  // DRAWINGS + UNDO/REDO
-  // ============================================================
   drawings: [],
   drawingsPast: [],
   drawingsFuture: [],
@@ -178,10 +238,7 @@ export const useStore = create((set) => ({
   updateDrawing: (id, patch) => set((state) => ({
     drawings: state.drawings.map(d => {
       if (d.id !== id) return d;
-      if (Array.isArray(patch)) {
-        // Backwards-compat: array = new points
-        return { ...d, points: patch };
-      }
+      if (Array.isArray(patch)) return { ...d, points: patch };
       return { ...d, ...patch };
     })
   })),
@@ -199,9 +256,6 @@ export const useStore = create((set) => ({
     drawings: state.drawings.filter(d => d.id !== id),
   })),
 
-  // ============================================================
-  // THEME
-  // ============================================================
   theme: { ...DEFAULT_THEME },
   setTheme: (patch) => set((state) => ({ theme: { ...state.theme, ...patch } })),
   resetTheme: () => set({ theme: { ...DEFAULT_THEME } }),
@@ -222,6 +276,7 @@ export const useStore = create((set) => ({
       displayData: aggregateData(filtered, state.timeframe),
       gamePeriod: { from, to },
       gameStarted: true,
+      isPeriodModalOpen: false,
       rules,
       currentIndex: 0,
       isPlaying: false,
@@ -250,10 +305,12 @@ export const useStore = create((set) => ({
     gameState: { ...state.gameState, timeRemaining: seconds },
   })),
 
-  restartGame: () => set((state) => {
+  restartGame: () => {
+    const state = get();
     if (state.soundEnabled) playRestart();
-    return {
+    set({
       gameStarted: false,
+      isPeriodModalOpen: true,
       gameState: { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
       currentIndex: 0,
       isPlaying: false,
@@ -266,8 +323,8 @@ export const useStore = create((set) => ({
       drawingsPast: [],
       drawingsFuture: [],
       activeDrawingTool: null,
-    };
-  }),
+    });
+  },
 
   setTimeframe: (newTimeframe) => set((state) => {
     if (newTimeframe === state.timeframe) return state;
@@ -276,6 +333,31 @@ export const useStore = create((set) => ({
       displayData: aggregateData(state.rawData, newTimeframe),
       drawings: state.drawings,
     };
+  }),
+
+  // Jump to next trading session (returns the target index)
+  jumpToSession: (session) => set((state) => {
+    if (state.rawData.length === 0) return state;
+    
+    const tzOffsetHours = (TZ_OFFSETS[state.timezone] ?? 180) / 60;
+    const shiftHours = tzOffsetHours - 3; // initial was UTC+3
+    const targetUtcHour = SESSION_UTC_HOURS[session];
+    if (targetUtcHour == null) return state;
+    
+    const maxScan = Math.min(state.rawData.length, state.currentIndex + 3000);
+    let targetIndex = -1;
+    
+    for (let i = state.currentIndex + 1; i < maxScan; i++) {
+      const rawTime = state.rawData[i].time - shiftHours * 3600;
+      const d = new Date(rawTime * 1000);
+      if (d.getUTCHours() === targetUtcHour && d.getUTCMinutes() === 0) {
+        targetIndex = i;
+        break;
+      }
+    }
+    
+    if (targetIndex === -1) return state;
+    return { currentIndex: targetIndex, isPlaying: false };
   }),
 
   startDrawing: (side) => set({ 

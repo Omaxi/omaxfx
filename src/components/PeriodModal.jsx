@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { Calendar, Play, Shield, Clock, Target, TrendingDown, User, Sparkles } from 'lucide-react';
+import { Calendar, Play, Shield, Clock, Target, TrendingDown, User, Sparkles, X } from 'lucide-react';
 
 const toInputDate = (unixSeconds) => {
   const d = new Date(unixSeconds * 1000);
@@ -40,7 +40,10 @@ const PRESETS = {
 };
 
 export default function PeriodModal() {
-  const { allRawData, gameStarted, startGame, playerName, setPlayerName } = useStore();
+  const { 
+    allRawData, isPeriodModalOpen, closePeriodModal, gameStarted, startGame, 
+    playerName, setPlayerName, sessionName, setSessionName, theme 
+  } = useStore();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [presetKey, setPresetKey] = useState('classic');
@@ -69,7 +72,7 @@ export default function PeriodModal() {
     }
   }, [presetKey]);
 
-  if (allRawData.length === 0 || gameStarted) return null;
+  if (allRawData.length === 0 || !isPeriodModalOpen) return null;
 
   const minDate = toInputDate(allRawData[0].time);
   const maxDate = toInputDate(allRawData[allRawData.length - 1].time);
@@ -108,35 +111,63 @@ export default function PeriodModal() {
     });
   };
 
+  const handleCancel = () => {
+    if (gameStarted) closePeriodModal();
+  };
+
   return (
     <div className="fixed inset-0 bg-[#0b0e11]/95 backdrop-blur flex items-center justify-center z-50 p-2 overflow-y-auto">
       <div className="bg-[#131722] rounded-xl w-full max-w-sm border border-[#2a2e39] overflow-hidden shadow-2xl my-2">
         
-        <div className="p-3 border-b border-[#2a2e39]">
-          <div className="flex items-center gap-2 mb-0.5">
-            <div className="bg-blue-600 rounded p-1.5">
-              <Calendar size={14} />
+        <div className="p-3 border-b border-[#2a2e39] flex justify-between items-start">
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <div className="bg-blue-600 rounded p-1.5">
+                <Calendar size={14} />
+              </div>
+              <h1 className="text-base font-bold tracking-wider">
+                <span className="text-blue-500">Omax</span>
+                <span className="text-white">FX Simulator</span>
+              </h1>
             </div>
-            <h1 className="text-base font-bold tracking-wider">
-              <span className="text-blue-500">Omax</span>
-              <span className="text-white">FX Simulator</span>
-            </h1>
+            <p className="text-[10px] text-gray-400">Configure your session</p>
           </div>
-          <p className="text-[10px] text-gray-400">Configure your session</p>
+          {gameStarted && (
+            <button 
+              onClick={handleCancel}
+              className="p-1 hover:bg-[#2a2e39] rounded text-gray-400 hover:text-white"
+              title="Cancel"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
         <div className="p-3 space-y-3 max-h-[70vh] overflow-y-auto">
           
-          <div>
-            <h3 className="text-[10px] font-bold uppercase text-gray-400 mb-1.5 flex items-center gap-1.5">
-              <User size={10} /> Trader Name
-            </h3>
-            <input 
-              type="text" value={playerName} maxLength={20}
-              onChange={(e) => setPlayerName(e.target.value)}
-              placeholder="Enter your name"
-              className="w-full p-1.5 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-xs focus:border-blue-500 outline-none"
-            />
+          <div className="grid grid-cols-1 gap-2">
+            <div>
+              <h3 className="text-[10px] font-bold uppercase text-gray-400 mb-1 flex items-center gap-1.5">
+                <User size={10} /> Session Name
+              </h3>
+              <input 
+                type="text" value={sessionName} maxLength={30}
+                onChange={(e) => setSessionName(e.target.value)}
+                placeholder="Session 1"
+                className="w-full p-1.5 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-xs focus:border-blue-500 outline-none"
+              />
+            </div>
+            <div>
+              <h3 className="text-[10px] font-bold uppercase text-gray-400 mb-1 flex items-center gap-1.5">
+                <User size={10} /> Trader Name
+              </h3>
+              <input 
+                type="text" value={playerName} maxLength={20}
+                onChange={(e) => setPlayerName(e.target.value)}
+                placeholder="Enter your name"
+                className="w-full p-1.5 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-xs focus:border-blue-500 outline-none"
+              />
+            </div>
           </div>
 
           <div className="border-t border-[#2a2e39] pt-2">
@@ -257,10 +288,18 @@ export default function PeriodModal() {
           )}
         </div>
 
-        <div className="p-2 border-t border-[#2a2e39]">
+        <div className="p-2 border-t border-[#2a2e39] flex gap-2">
+          {gameStarted && (
+            <button
+              onClick={handleCancel}
+              className="flex-1 py-2 bg-[#2a2e39] hover:bg-[#3a3e49] rounded-lg font-bold text-sm text-gray-300 transition-colors"
+            >
+              Cancel
+            </button>
+          )}
           <button
             onClick={handleStart}
-            className="w-full py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-sm flex items-center justify-center gap-1.5 transition-colors"
+            className="flex-[2] py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-sm flex items-center justify-center gap-1.5 transition-colors"
           >
             <Play size={14} fill="currentColor" />
             Start {activePreset?.name} Session

@@ -3,8 +3,8 @@ import { useStore } from '../store';
 import { X, Palette, RotateCcw } from 'lucide-react';
 
 const BACKGROUND_PRESETS = [
-  { name: 'Midnight', value: '#0b0e11' },
   { name: 'Dark', value: '#131722' },
+  { name: 'Midnight', value: '#0b0e11' },
   { name: 'Charcoal', value: '#1a1a1a' },
   { name: 'Navy', value: '#0a1929' },
   { name: 'Black', value: '#000000' },
@@ -32,7 +32,6 @@ export default function ChartThemeModal() {
         className="bg-[#131722] rounded-lg w-full max-w-md border border-[#2a2e39] overflow-hidden flex flex-col max-h-[96vh]" 
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex justify-between items-center px-3 py-2 border-b border-[#2a2e39] flex-shrink-0">
           <div className="flex items-center gap-2">
             <Palette size={16} className="text-blue-400" />
@@ -52,7 +51,6 @@ export default function ChartThemeModal() {
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex border-b border-[#2a2e39] flex-shrink-0">
           {[
             { key: 'background', label: 'Background' },
@@ -72,10 +70,8 @@ export default function ChartThemeModal() {
           ))}
         </div>
 
-        {/* Body */}
         <div className="overflow-y-auto flex-1 p-3 space-y-4">
 
-          {/* BACKGROUND TAB */}
           {activeTab === 'background' && (
             <>
               <div>
@@ -124,7 +120,6 @@ export default function ChartThemeModal() {
             </>
           )}
 
-          {/* CANDLES TAB */}
           {activeTab === 'candles' && (
             <>
               <div>
@@ -189,7 +184,6 @@ export default function ChartThemeModal() {
                 ))}
               </div>
 
-              {/* Live Preview */}
               <div className="border-t border-[#2a2e39] pt-3">
                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-2">Preview</div>
                 <div 
