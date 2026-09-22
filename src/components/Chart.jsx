@@ -153,19 +153,12 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
     }
   }
 
-  // ============================================================
-  // SELECTION VISUALS (TradingView style)
-  // ============================================================
   if (isSelected) {
     ctx.setLineDash([]);
-
-    // Bounding box
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     if (drawing.type === 'horizontal') {
-      minX = 0;
-      maxX = ctx.canvas.width;
-      minY = pts[0].y - 6;
-      maxY = pts[0].y + 6;
+      minX = 0; maxX = ctx.canvas.width;
+      minY = pts[0].y - 6; maxY = pts[0].y + 6;
     } else {
       pts.forEach(p => {
         if (p.x < minX) minX = p.x;
@@ -173,25 +166,19 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
         if (p.x > maxX) maxX = p.x;
         if (p.y > maxY) maxY = p.y;
       });
-      minX -= 6; minY -= 6;
-      maxX += 6; maxY += 6;
+      minX -= 6; minY -= 6; maxX += 6; maxY += 6;
     }
-
-    // Dashed selection border
     ctx.strokeStyle = '#3b82f6';
     ctx.lineWidth = 1.5;
     ctx.setLineDash([6, 4]);
     ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
     ctx.setLineDash([]);
 
-    // Corner handles (only for non-horizontal multi-point)
     if (drawing.type !== 'horizontal') {
       const HANDLE_SIZE = 10;
       const corners = [
-        { x: minX, y: minY },
-        { x: maxX, y: minY },
-        { x: minX, y: maxY },
-        { x: maxX, y: maxY },
+        { x: minX, y: minY }, { x: maxX, y: minY },
+        { x: minX, y: maxY }, { x: maxX, y: maxY },
       ];
       corners.forEach(c => {
         ctx.fillStyle = '#3b82f6';
@@ -200,8 +187,6 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
         ctx.lineWidth = 1.5;
         ctx.strokeRect(c.x - HANDLE_SIZE / 2, c.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
       });
-
-      // Endpoint anchors (smaller dots on the actual points)
       pts.forEach(p => {
         ctx.beginPath();
         ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
@@ -212,7 +197,6 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
         ctx.stroke();
       });
     } else {
-      // Horizontal: endpoint on the right
       ctx.beginPath();
       ctx.arc(maxX - 20, pts[0].y, 6, 0, Math.PI * 2);
       ctx.fillStyle = '#3b82f6';
@@ -236,12 +220,11 @@ export default function Chart() {
   const profileCacheRef = useRef(new Map());
   const visibleDataRef = useRef([]);
   const lastTimeframeRef = useRef(1);
-  const longPressTimerRef = useRef(null);
   const activePointersRef = useRef(new Set());
 
   const [pendingBtnPos, setPendingBtnPos] = useState([]);
   const [positionBtnPos, setPositionBtnPos] = useState([]);
-  const [selectedItem, setSelectedItem] = useState(null); // { type: 'drawing'|'trade', id, key }
+  const [selectedItem, setSelectedItem] = useState(null);
 
   const { 
     rawData, displayData, currentIndex, positions, pendingOrders, 
@@ -249,7 +232,6 @@ export default function Chart() {
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing
   } = useStore();
 
-  // Disable chart scroll while drawing tool active
   useEffect(() => {
     if (!chartRef.current) return;
     const isDrawing = !!activeDrawingTool || !!isDrawingMode;
@@ -261,26 +243,41 @@ export default function Chart() {
     } catch (e) {}
   }, [activeDrawingTool, isDrawingMode]);
 
+  // ============================================================
+  // FIXED timeToX — uses logical coordinates, never returns null
+  // for in-range times, and extrapolates correctly for out-of-range
+  // ============================================================
   const timeToX = useCallback((time) => {
     const chart = chartRef.current;
     if (!chart) return null;
-    try {
-      const x = chart.timeScale().timeToCoordinate(time);
-      if (x !== null && Number.isFinite(x)) return x;
-    } catch (e) {}
     const data = visibleDataRef.current;
-    if (data.length === 0) return null;
+    if (data.length < 2) return null;
+
+    const tf = useStore.getState().timeframe;
+    const step = tf * 60;
     const firstTime = data[0].time;
     const lastTime = data[data.length - 1].time;
+
     let logical;
     if (time <= firstTime) {
-      const step = data.length > 1 ? (data[1].time - data[0].time) : 60;
-      logical = (time - firstTime) / (step || 60);
+      logical = (time - firstTime) / step;
+    } else if (time >= lastTime) {
+      logical = (data.length - 1) + (time - lastTime) / step;
     } else {
-      const step = data.length > 1 ? (data[data.length - 1].time - data[data.length - 2].time) : 60;
-      logical = (data.length - 1) + (time - lastTime) / (step || 60);
+      let lo = 0, hi = data.length - 1;
+      while (hi - lo > 1) {
+        const mid = Math.floor((lo + hi) / 2);
+        if (data[mid].time < time) lo = mid; else hi = mid;
+      }
+      const t1 = data[lo].time, t2 = data[hi].time;
+      const frac = t2 !== t1 ? (time - t1) / (t2 - t1) : 0;
+      logical = lo + frac;
     }
-    try { return chart.timeScale().logicalToCoordinate(logical); } catch (e) { return null; }
+
+    try {
+      const x = chart.timeScale().logicalToCoordinate(logical);
+      return (x === null || !Number.isFinite(x)) ? null : x;
+    } catch (e) { return null; }
   }, []);
 
   const pointToXY = useCallback((point) => {
@@ -300,18 +297,18 @@ export default function Chart() {
     const price = series.coordinateToPrice(y);
     if (price == null) return null;
     const data = visibleDataRef.current;
-    if (data.length === 0) return null;
+    if (data.length < 2) return null;
+    const tf = useStore.getState().timeframe;
+    const step = tf * 60;
     const logical = chart.timeScale().coordinateToLogical(x);
     if (logical == null) return null;
     const firstTime = data[0].time;
     const lastTime = data[data.length - 1].time;
     let time;
     if (logical <= 0) {
-      const step = data.length > 1 ? (data[1].time - data[0].time) : 60;
-      time = firstTime + logical * (step || 60);
+      time = firstTime + logical * step;
     } else if (logical >= data.length - 1) {
-      const step = data.length > 1 ? (data[data.length - 1].time - data[data.length - 2].time) : 60;
-      time = lastTime + (logical - (data.length - 1)) * (step || 60);
+      time = lastTime + (logical - (data.length - 1)) * step;
     } else {
       const lo = Math.floor(logical);
       const hi = Math.min(lo + 1, data.length - 1);
@@ -323,7 +320,6 @@ export default function Chart() {
     return { time, price };
   }, []);
 
-  // Chart init
   useEffect(() => {
     if (!chartContainerRef.current) return;
     chartRef.current = createChart(chartContainerRef.current, {
@@ -338,7 +334,7 @@ export default function Chart() {
         secondsVisible: false,
         borderVisible: false,
         barSpacing: 6,
-        rightOffset: 75,
+        rightOffset: 60,
       },
       rightPriceScale: { borderVisible: false },
     });
@@ -355,7 +351,6 @@ export default function Chart() {
     return () => { clearTimeout(t); chartRef.current.remove(); };
   }, []);
 
-  // Canvas render loop
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = chartContainerRef.current;
@@ -398,7 +393,6 @@ export default function Chart() {
       });
       if (draftRef.current) drawShape(ctx, draftRef.current, pointToXY, true, cache, false);
 
-      // Trade line selection visual
       if (selectedItem?.type === 'trade' && seriesRef.current) {
         const { price } = selectedItem;
         if (price != null) {
@@ -412,7 +406,6 @@ export default function Chart() {
             ctx.lineTo(paneW, y);
             ctx.stroke();
             ctx.setLineDash([]);
-            // Blue pill label
             const labelText = '✦ Selected — drag to move';
             ctx.font = 'bold 10px system-ui';
             const textW = ctx.measureText(labelText).width;
@@ -450,7 +443,6 @@ export default function Chart() {
     };
   }, [pointToXY, selectedItem]);
 
-  // Pointer handlers
   useEffect(() => {
     const container = chartContainerRef.current;
     if (!container) return;
@@ -460,19 +452,15 @@ export default function Chart() {
       const state = useStore.getState();
       const HANDLE_TOL = 22;
       const BODY_TOL = 14;
-      
       for (let i = state.drawings.length - 1; i >= 0; i--) {
         const d = state.drawings[i];
         const pts = d.points.map(p => pointToXY(p)).filter(Boolean);
         if (pts.length === 0) continue;
-
-        // Endpoints first (higher priority)
         for (let j = 0; j < pts.length; j++) {
           if (Math.hypot(x - pts[j].x, y - pts[j].y) < HANDLE_TOL) {
             return { drawingId: d.id, mode: 'drag-point', pointIndex: j };
           }
         }
-        // Bodies
         if (d.type === 'horizontal' && pts[0]) {
           if (Math.abs(y - pts[0].y) < BODY_TOL) return { drawingId: d.id, mode: 'drag-body' };
         } else if (d.type === 'trendline' && pts.length === 2) {
@@ -493,45 +481,54 @@ export default function Chart() {
       return null;
     };
 
-    const getTol = () => {
-      if (!seriesRef.current) return 0;
-      const p1 = seriesRef.current.coordinateToPrice(0);
-      const p2 = seriesRef.current.coordinateToPrice(15);
-      return Math.abs(p1 - p2);
-    };
-
-    const detectTradeHit = (price) => {
+    // ============================================================
+    // FIXED: pixel-based trade line detection (not price-based)
+    // ============================================================
+    const detectTradeHit = (x, y) => {
+      if (!seriesRef.current) return null;
       const state = useStore.getState();
-      const cands = [];
+      const PIXEL_TOL = 16; // pixels above/below line
+      const candidates = [];
+      
       state.positions.forEach(pos => {
-        if (pos.sl != null) cands.push({ target: 'position', positionId: pos.id, type: 'sl', price: pos.sl });
-        if (pos.tp != null) cands.push({ target: 'position', positionId: pos.id, type: 'tp', price: pos.tp });
+        if (pos.sl != null) {
+          const lineY = seriesRef.current.priceToCoordinate(pos.sl);
+          if (lineY != null) candidates.push({ target: 'position', positionId: pos.id, type: 'sl', price: pos.sl, lineY });
+        }
+        if (pos.tp != null) {
+          const lineY = seriesRef.current.priceToCoordinate(pos.tp);
+          if (lineY != null) candidates.push({ target: 'position', positionId: pos.id, type: 'tp', price: pos.tp, lineY });
+        }
       });
       state.pendingOrders.forEach(order => {
-        if (order.entryPrice != null) cands.push({ target: 'pending', orderId: order.id, type: 'entry', price: order.entryPrice });
-        if (order.sl != null) cands.push({ target: 'pending', orderId: order.id, type: 'sl', price: order.sl });
-        if (order.tp != null) cands.push({ target: 'pending', orderId: order.id, type: 'tp', price: order.tp });
+        if (order.entryPrice != null) {
+          const lineY = seriesRef.current.priceToCoordinate(order.entryPrice);
+          if (lineY != null) candidates.push({ target: 'pending', orderId: order.id, type: 'entry', price: order.entryPrice, lineY });
+        }
+        if (order.sl != null) {
+          const lineY = seriesRef.current.priceToCoordinate(order.sl);
+          if (lineY != null) candidates.push({ target: 'pending', orderId: order.id, type: 'sl', price: order.sl, lineY });
+        }
+        if (order.tp != null) {
+          const lineY = seriesRef.current.priceToCoordinate(order.tp);
+          if (lineY != null) candidates.push({ target: 'pending', orderId: order.id, type: 'tp', price: order.tp, lineY });
+        }
       });
-      if (cands.length === 0) return null;
-      let closest = cands[0];
-      let dist = Math.abs(price - closest.price);
-      for (const c of cands) {
-        const d = Math.abs(price - c.price);
-        if (d < dist) { dist = d; closest = c; }
+
+      if (candidates.length === 0) return null;
+      let closest = null;
+      let closestDist = Infinity;
+      for (const c of candidates) {
+        const d = Math.abs(y - c.lineY);
+        if (d < closestDist) { closestDist = d; closest = c; }
       }
-      return dist > getTol() ? null : closest;
+      if (closestDist > PIXEL_TOL) return null;
+      return closest;
     };
 
     const getLocalXY = (e) => {
       const rect = container.getBoundingClientRect();
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    };
-
-    const cancelLongPress = () => {
-      if (longPressTimerRef.current) {
-        clearTimeout(longPressTimerRef.current);
-        longPressTimerRef.current = null;
-      }
     };
 
     const tradeKey = (t) => `${t.target}:${t.positionId || t.orderId}:${t.type}`;
@@ -540,9 +537,7 @@ export default function Chart() {
       if (e.button === 2) return;
       activePointersRef.current.add(e.pointerId);
 
-      // Multi-touch → deselect + let chart pan
       if (activePointersRef.current.size > 1) {
-        cancelLongPress();
         setSelectedItem(null);
         dragRef.current = null;
         return;
@@ -551,7 +546,6 @@ export default function Chart() {
       const state = useStore.getState();
       const { x, y } = getLocalXY(e);
 
-      // Drawing tool active → handle it
       if (state.activeDrawingTool) {
         const point = xyToPoint(x, y);
         if (!point) return;
@@ -577,7 +571,6 @@ export default function Chart() {
         return;
       }
 
-      // Long/Short position drawing
       if (state.isDrawingMode && seriesRef.current) {
         const price = seriesRef.current.coordinateToPrice(y);
         if (price != null) {
@@ -587,14 +580,11 @@ export default function Chart() {
         return;
       }
 
-      // ============================================================
-      // SELECTION MODEL
-      // ============================================================
+      // Selection model
       const drawingHit = hitTestDrawings(x, y);
-      const price = seriesRef.current?.coordinateToPrice(y);
-      const tradeHit = !drawingHit && price != null ? detectTradeHit(price) : null;
+      const tradeHit = !drawingHit ? detectTradeHit(x, y) : null;
 
-      // If something is already selected, check if user clicked ON it → start drag
+      // If already selected, and user is tapping the same thing → start drag
       if (selectedItem) {
         if (selectedItem.type === 'drawing' && drawingHit && drawingHit.drawingId === selectedItem.id) {
           const drawing = state.drawings.find(d => d.id === selectedItem.id);
@@ -617,37 +607,22 @@ export default function Chart() {
         }
       }
 
-      // Click on a drawing?
       if (drawingHit) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-        const sameAsSelected = selectedItem?.type === 'drawing' && selectedItem.id === drawingHit.drawingId;
-        if (sameAsSelected) {
-          // Deselect
-          setSelectedItem(null);
-        } else {
-          // Select new
-          setSelectedItem({ type: 'drawing', id: drawingHit.drawingId });
-        }
+        const same = selectedItem?.type === 'drawing' && selectedItem.id === drawingHit.drawingId;
+        setSelectedItem(same ? null : { type: 'drawing', id: drawingHit.drawingId });
         return;
       }
 
-      // Click on a trade line?
       if (tradeHit) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         const key = tradeKey(tradeHit);
-        const sameAsSelected = selectedItem?.type === 'trade' && selectedItem.key === key;
-        if (sameAsSelected) {
-          setSelectedItem(null);
-        } else {
-          setSelectedItem({ type: 'trade', key, ...tradeHit });
-        }
+        const same = selectedItem?.type === 'trade' && selectedItem.key === key;
+        setSelectedItem(same ? null : { type: 'trade', key, ...tradeHit });
         return;
       }
 
-      // Click on empty space → deselect (and allow chart pan)
-      if (selectedItem) {
-        setSelectedItem(null);
-      }
+      if (selectedItem) setSelectedItem(null);
     };
 
     const handlePointerMove = (e) => {
@@ -689,7 +664,6 @@ export default function Chart() {
         return;
       }
 
-      // Draft preview
       if (dragDrawRef.current && draftRef.current) {
         const point = xyToPoint(x, y);
         if (point) {
@@ -702,26 +676,14 @@ export default function Chart() {
         return;
       }
 
-      // Cursor feedback
       if (state.activeDrawingTool || state.isDrawingMode) {
         container.style.cursor = 'crosshair';
         return;
-      }
-      const hit = hitTestDrawings(x, y);
-      if (hit && selectedItem) {
-        container.style.cursor = hit.mode === 'drag-point' ? 'grab' : 'move';
-      } else if (hit) {
-        container.style.cursor = 'pointer';
-      } else {
-        const p = seriesRef.current?.coordinateToPrice(y);
-        const tradeHit = p != null ? detectTradeHit(p) : null;
-        container.style.cursor = tradeHit ? 'pointer' : 'default';
       }
     };
 
     const handlePointerUp = (e) => {
       activePointersRef.current.delete(e.pointerId);
-      cancelLongPress();
       dragRef.current = null;
 
       if (dragDrawRef.current && draftRef.current) {
@@ -764,7 +726,6 @@ export default function Chart() {
     window.addEventListener('pointercancel', handlePointerUp);
 
     return () => {
-      cancelLongPress();
       container.removeEventListener('pointerdown', handlePointerDown, true);
       container.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('pointermove', handlePointerMove);
@@ -773,7 +734,6 @@ export default function Chart() {
     };
   }, [xyToPoint, pointToXY, selectedItem]);
 
-  // ESC deselects
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') {
@@ -822,7 +782,7 @@ export default function Chart() {
   }, [displayData, rawData, currentIndex, timeframe]);
 
   // ============================================================
-  // TF switch: center the current candle
+  // TF switch: INSTANT center (no animation)
   // ============================================================
   useEffect(() => {
     if (!seriesRef.current || !chartRef.current) return;
@@ -838,20 +798,26 @@ export default function Chart() {
       try {
         const container = chartContainerRef.current;
         const chartWidth = container ? container.clientWidth : 800;
+        const priceAxisW = chartRef.current.priceScale('right').width();
+        const paneWidth = Math.max(100, chartWidth - priceAxisW);
+        
         const targetBarSpacing = 6;
-        const visibleBars = Math.max(20, Math.floor(chartWidth / targetBarSpacing));
+        const visibleBars = Math.max(20, Math.floor(paneWidth / targetBarSpacing));
         const halfBars = Math.floor(visibleBars / 2);
-
+        const len = visibleData.length;
+        
+        // Set barSpacing and rightOffset first
         timeScale.applyOptions({ 
           barSpacing: targetBarSpacing,
           rightOffset: halfBars,
           fixLeftEdge: false,
           fixRightEdge: false,
         });
-
-        // scrollToRealTime puts the last bar at rightOffset bars from the right edge.
-        // With rightOffset = halfBars, the last candle appears in the center.
-        timeScale.scrollToRealTime();
+        
+        // INSTANT: use setVisibleLogicalRange (no animation)
+        const from = len - 1 - halfBars;
+        const to = len - 1 + halfBars;
+        timeScale.setVisibleLogicalRange({ from, to });
       } catch (e) {
         try { timeScale.fitContent(); } catch (e2) {}
       }
@@ -860,7 +826,6 @@ export default function Chart() {
     lastTimeframeRef.current = timeframe;
   }, [visibleData, timeframe]);
 
-  // X button positions
   useEffect(() => {
     if (!seriesRef.current) return;
     let rafId;
@@ -891,7 +856,6 @@ export default function Chart() {
     return () => cancelAnimationFrame(rafId);
   }, [pendingOrders, positions]);
 
-  // Price lines
   useEffect(() => {
     if (!seriesRef.current) return;
     linesRef.current.forEach(line => seriesRef.current.removePriceLine(line));
@@ -942,7 +906,6 @@ export default function Chart() {
         style={{ zIndex: 1, touchAction: 'none' }}
       />
 
-      {/* Selection toolbar (top-right) */}
       {selectedItem && selectedItem.type === 'drawing' && (
         <div className="absolute top-2 right-2 z-30 flex items-center gap-1 bg-[#1e222d]/95 backdrop-blur border border-blue-500/60 rounded-lg shadow-2xl p-1 pointer-events-auto">
           <span className="text-[10px] text-blue-400 font-bold px-2">✦ Selected</span>

@@ -55,11 +55,7 @@ export default function EquityModal() {
     try {
       await new Promise(r => setTimeout(r, 100));
       const canvas = await html2canvas(captureRef.current, {
-        backgroundColor: '#131722',
-        scale: 2,
-        logging: false,
-        useCORS: true,
-        allowTaint: true,
+        backgroundColor: '#131722', scale: 2, logging: false, useCORS: true, allowTaint: true,
       });
       return new Promise(resolve => canvas.toBlob(blob => resolve(blob), 'image/png', 0.95));
     } catch (err) {
@@ -89,16 +85,12 @@ export default function EquityModal() {
       const blob = await captureImage();
       if (!blob) { showToast('Could not generate image.'); return; }
       const file = new File([blob], `${safeName}-simulator.png`, { type: 'image/png' });
-
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({ files: [file], title: 'OmaxFX Simulator', text: shareText });
           return;
-        } catch (err) {
-          if (err.name === 'AbortError') return;
-        }
+        } catch (err) { if (err.name === 'AbortError') return; }
       }
-
       downloadImage(blob);
       if (platform === 'email') {
         showToast('Image saved. Opening email...');
@@ -108,9 +100,7 @@ export default function EquityModal() {
       } else {
         showToast('Image saved! Open your app and attach it.');
       }
-    } finally {
-      setIsCapturing(false);
-    }
+    } finally { setIsCapturing(false); }
   };
 
   const handleDownload = async () => {
@@ -122,13 +112,16 @@ export default function EquityModal() {
     } finally { setIsCapturing(false); }
   };
 
-  // Compact width so it fits phone screens
-  const PNG_WIDTH = 460;
+  // ============================================================
+  // 2-COLUMN LAYOUT: stats left, chart right
+  // ============================================================
+  const PNG_WIDTH = 640;
+  const PNG_HEIGHT = 340;
 
   return (
     <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[60] p-2" onClick={() => setMenuOpen(false)}>
       <div 
-        className="bg-[#131722] rounded-lg w-full max-w-md border border-[#2a2e39] overflow-hidden flex flex-col max-h-[96vh] relative" 
+        className="bg-[#131722] rounded-lg w-full max-w-2xl border border-[#2a2e39] overflow-hidden flex flex-col max-h-[96vh] relative" 
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -145,7 +138,7 @@ export default function EquityModal() {
                 {isCapturing ? 'Generating…' : 'Share'}
               </button>
               {menuOpen && (
-                <div className="absolute right-0 top-full mt-1 bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl overflow-hidden z-10 min-w-[170px]">
+                <div className="absolute right-0 top-full mt-1 bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl overflow-hidden z-[100] min-w-[170px]">
                   <button onClick={() => shareImage('native')} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39] text-xs text-left text-white">
                     <Smartphone size={12} className="text-purple-400" /> Share via...
                   </button>
@@ -171,7 +164,7 @@ export default function EquityModal() {
         </div>
 
         <div className="overflow-y-auto flex-1 min-h-0 p-2">
-          {/* Capture area - uses inline styles so html2canvas renders correctly */}
+          {/* CAPTURE AREA — 2 columns */}
           <div 
             ref={captureRef}
             style={{
@@ -185,8 +178,8 @@ export default function EquityModal() {
               margin: '0 auto',
             }}
           >
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            {/* Header row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <div style={{ fontSize: '13px', fontWeight: 'bold' }}>
                 <span style={{ color: '#3b82f6' }}>Omax</span>
                 <span style={{ color: '#ffffff' }}>FX Simulator</span>
@@ -197,7 +190,7 @@ export default function EquityModal() {
             </div>
 
             {/* Player + Preset + Period */}
-            <div style={{ marginBottom: '8px' }}>
+            <div style={{ marginBottom: '10px' }}>
               <div style={{ fontSize: '12px', color: '#ffffff', fontWeight: 'bold', marginBottom: '2px' }}>
                 {playerName || 'Trader'}
               </div>
@@ -208,87 +201,90 @@ export default function EquityModal() {
               </div>
             </div>
 
-            {/* Stats — 2 rows of 3 */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '6px' }}>
-              <div style={{ backgroundColor: '#1e222d', padding: '6px 8px', borderRadius: '5px' }}>
-                <div style={{ fontSize: '7px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Starting</div>
-                <div style={{ fontSize: '11px', color: '#ffffff', fontWeight: 'bold', marginTop: '2px' }}>${fmtMoney(startBalance, 0)}</div>
+            {/* ============================================================
+                2 COLUMNS: stats left, chart right
+                ============================================================ */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              
+              {/* LEFT COLUMN — Stats stacked */}
+              <div style={{ width: '170px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                <StatCard label="Starting" value={`$${fmtMoney(startBalance, 0)}`} />
+                <StatCard label="Final" value={`$${fmtMoney(balance, 0)}`} />
+                <StatCard 
+                  label="P&L" 
+                  value={`${currentPnl >= 0 ? '+' : ''}$${fmtMoney(currentPnl, 0)}`}
+                  color={currentPnl >= 0 ? '#22c55e' : '#ef4444'} 
+                />
+                <StatCard 
+                  label="Return" 
+                  value={`${currentPnl >= 0 ? '+' : ''}${pnlPercent.toFixed(2)}%`}
+                  color={pnlPercent >= 0 ? '#22c55e' : '#ef4444'} 
+                />
+                <StatCard 
+                  label="Trades" 
+                  value={
+                    <span>
+                      {totalTrades}
+                      <span style={{ fontSize: '10px', marginLeft: '6px', fontWeight: 'bold' }}>
+                        <span style={{ color: '#22c55e' }}>{wins}</span>
+                        <span style={{ color: '#6b7280' }}>/</span>
+                        <span style={{ color: '#ef4444' }}>{losses}</span>
+                      </span>
+                    </span>
+                  } 
+                />
+                <StatCard 
+                  label="Win Rate" 
+                  value={`${totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(0) : 0}%`} 
+                />
               </div>
-              <div style={{ backgroundColor: '#1e222d', padding: '6px 8px', borderRadius: '5px' }}>
-                <div style={{ fontSize: '7px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Final</div>
-                <div style={{ fontSize: '11px', color: '#ffffff', fontWeight: 'bold', marginTop: '2px' }}>${fmtMoney(balance, 0)}</div>
-              </div>
-              <div style={{ backgroundColor: '#1e222d', padding: '6px 8px', borderRadius: '5px' }}>
-                <div style={{ fontSize: '7px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>P&L</div>
-                <div style={{ fontSize: '11px', color: currentPnl >= 0 ? '#22c55e' : '#ef4444', fontWeight: 'bold', marginTop: '2px' }}>
-                  ${fmtMoney(currentPnl, 0)}
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '10px' }}>
-              <div style={{ backgroundColor: '#1e222d', padding: '6px 8px', borderRadius: '5px' }}>
-                <div style={{ fontSize: '7px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Return</div>
-                <div style={{ fontSize: '11px', color: pnlPercent >= 0 ? '#22c55e' : '#ef4444', fontWeight: 'bold', marginTop: '2px' }}>
-                  {pnlPercent.toFixed(2)}%
-                </div>
-              </div>
-              <div style={{ backgroundColor: '#1e222d', padding: '6px 8px', borderRadius: '5px' }}>
-                <div style={{ fontSize: '7px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Trades</div>
-                <div style={{ fontSize: '11px', color: '#ffffff', fontWeight: 'bold', marginTop: '2px' }}>
-                  {totalTrades}
-                  <span style={{ fontSize: '9px', fontWeight: 'bold', marginLeft: '4px' }}>
-                    <span style={{ color: '#22c55e' }}>{wins}</span>
-                    <span style={{ color: '#6b7280' }}>/</span>
-                    <span style={{ color: '#ef4444' }}>{losses}</span>
-                  </span>
-                </div>
-              </div>
-              <div style={{ backgroundColor: '#1e222d', padding: '6px 8px', borderRadius: '5px' }}>
-                <div style={{ fontSize: '7px', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.5px' }}>Win Rate</div>
-                <div style={{ fontSize: '11px', color: '#ffffff', fontWeight: 'bold', marginTop: '2px' }}>
-                  {totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(0) : 0}%
-                </div>
-              </div>
-            </div>
 
-            {/* Chart */}
-            <div style={{ width: '100%', height: '180px', backgroundColor: '#0b0e11', borderRadius: '5px', padding: '4px' }}>
-              {tradeHistory.length === 0 ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6b7280', fontSize: '11px' }}>
-                  No trades yet
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={equityData} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e222d" />
-                    <XAxis dataKey="trade" stroke="#666" tick={{ fontSize: 8, fill: '#9ca3af' }} />
-                    <YAxis 
-                      stroke="#666" 
-                      domain={[minEquity * 0.98, maxEquity * 1.02]}
-                      tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`}
-                      tick={{ fontSize: 8, fill: '#9ca3af' }}
-                      width={42}
-                    />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#1e222d', border: '1px solid #2a2e39', borderRadius: '5px', fontSize: '10px', color: '#ffffff' }}
-                      itemStyle={{ color: '#ffffff' }}
-                      labelStyle={{ color: '#9ca3af' }}
-                      formatter={(value) => [`$${fmtMoney(value)}`, 'Balance']}
-                      labelFormatter={(label) => `Trade #${label}`}
-                    />
-                    <ReferenceLine y={startBalance} stroke="#444" strokeDasharray="3 3" />
-                    <Line 
-                      type="monotone" 
-                      dataKey="balance" 
-                      stroke="#26a69a" 
-                      strokeWidth={2} 
-                      dot={false}
-                      activeDot={{ r: 3, fill: '#26a69a' }}
-                      isAnimationActive={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
+              {/* RIGHT COLUMN — Chart */}
+              <div style={{
+                flex: 1,
+                height: '280px',
+                backgroundColor: '#0b0e11',
+                borderRadius: '6px',
+                padding: '6px',
+                minWidth: 0,
+              }}>
+                {tradeHistory.length === 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6b7280', fontSize: '11px' }}>
+                    No trades yet
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={equityData} margin={{ top: 10, right: 12, left: -10, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e222d" />
+                      <XAxis dataKey="trade" stroke="#666" tick={{ fontSize: 9, fill: '#9ca3af' }} />
+                      <YAxis 
+                        stroke="#666" 
+                        domain={[minEquity * 0.98, maxEquity * 1.02]}
+                        tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`}
+                        tick={{ fontSize: 9, fill: '#9ca3af' }}
+                        width={48}
+                      />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1e222d', border: '1px solid #2a2e39', borderRadius: '6px', fontSize: '11px', color: '#ffffff' }}
+                        itemStyle={{ color: '#ffffff' }}
+                        labelStyle={{ color: '#9ca3af' }}
+                        formatter={(value) => [`$${fmtMoney(value)}`, 'Balance']}
+                        labelFormatter={(label) => `Trade #${label}`}
+                      />
+                      <ReferenceLine y={startBalance} stroke="#444" strokeDasharray="3 3" />
+                      <Line 
+                        type="monotone" 
+                        dataKey="balance" 
+                        stroke="#26a69a" 
+                        strokeWidth={2} 
+                        dot={false}
+                        activeDot={{ r: 4, fill: '#26a69a' }}
+                        isAnimationActive={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
             </div>
 
             <div style={{ textAlign: 'center', marginTop: '8px' }}>
@@ -300,11 +296,31 @@ export default function EquityModal() {
         </div>
 
         {toast && (
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-[#1e222d] border border-blue-500/50 px-3 py-1.5 rounded text-xs text-white shadow-2xl z-20 whitespace-nowrap">
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-[#1e222d] border border-blue-500/50 px-3 py-1.5 rounded text-xs text-white shadow-2xl z-[100] whitespace-nowrap">
             {toast}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, color }) {
+  return (
+    <div style={{ backgroundColor: '#1e222d', padding: '6px 8px', borderRadius: '5px' }}>
+      <div style={{
+        fontSize: '7px',
+        color: '#9ca3af',
+        textTransform: 'uppercase',
+        fontWeight: 'bold',
+        letterSpacing: '0.5px',
+      }}>{label}</div>
+      <div style={{
+        fontSize: '12px',
+        color: color || '#ffffff',
+        fontWeight: 'bold',
+        marginTop: '2px',
+      }}>{value}</div>
     </div>
   );
 }

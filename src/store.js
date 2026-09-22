@@ -8,6 +8,14 @@ export const INITIAL_BALANCE = 100000;
 
 const EPSILON = 0.001;
 
+// Base data timezone is UTC+3 (from CSV filename)
+const TZ_OFFSETS = {
+  'UTC': 0,
+  'UTC+1': 60,
+  'UTC+2': 120,
+  'UTC+3': 180,
+};
+
 const getDayKey = (unixSeconds) => {
   const d = new Date(unixSeconds * 1000);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -38,12 +46,51 @@ export const useStore = create((set) => ({
   currentIndex: 0,    
   isPlaying: false,   
 
-  // Symbol & Timezone
   symbol: 'XAUUSD',
-  timezone: 'UTC+3',
+  timezone: 'UTC+3',   // matches base CSV timezone
+
   setSymbol: (code) => set({ symbol: code }),
-  setTimezone: (tz) => set({ timezone: tz }),
-  
+
+  // Shift all time-based data by the delta between old and new timezone
+  setTimezone: (newTz) => set((state) => {
+    if (newTz === state.timezone) return state;
+    const oldOffset = TZ_OFFSETS[state.timezone] ?? 180;
+    const newOffset = TZ_OFFSETS[newTz] ?? 180;
+    const shiftSec = (newOffset - oldOffset) * 60;
+
+    if (shiftSec === 0) return { timezone: newTz };
+
+    const shift = (t) => t == null ? t : t + shiftSec;
+
+    return {
+      timezone: newTz,
+      allRawData: state.allRawData.map(c => ({ ...c, time: shift(c.time) })),
+      rawData: state.rawData.map(c => ({ ...c, time: shift(c.time) })),
+      displayData: state.displayData.map(c => ({ ...c, time: shift(c.time) })),
+      drawings: state.drawings.map(d => ({
+        ...d,
+        points: d.points.map(p => ({ ...p, time: shift(p.time) })),
+      })),
+      tradeHistory: state.tradeHistory.map(t => ({
+        ...t,
+        openTime: shift(t.openTime),
+        closeTime: shift(t.closeTime),
+      })),
+      positions: state.positions.map(p => ({
+        ...p,
+        openTime: shift(p.openTime),
+      })),
+      pendingOrders: state.pendingOrders.map(o => ({
+        ...o,
+        openTime: shift(o.openTime),
+      })),
+      gamePeriod: state.gamePeriod ? {
+        from: shift(state.gamePeriod.from),
+        to: shift(state.gamePeriod.to),
+      } : null,
+    };
+  }),
+
   gameStarted: false,
   gamePeriod: null,
   
