@@ -6,20 +6,12 @@ import {
 
 export const INITIAL_BALANCE = 100000;
 const EPSILON = 0.001;
-
 const SESSION_KEY = 'omaxfx-session-v1';
 
 const TZ_OFFSETS = {
   'UTC-3': -180, 'UTC-2': -120, 'UTC-1': -60,
   'UTC': 0,
   'UTC+1': 60, 'UTC+2': 120, 'UTC+3': 180,
-};
-
-// Trading sessions (UTC reference hours)
-export const SESSION_UTC_HOURS = {
-  asian: 0,     // 00:00 UTC — Tokyo open
-  london: 8,    // 08:00 UTC — London open
-  newyork: 13,  // 13:00 UTC — NY open
 };
 
 const getDayKey = (unixSeconds) => {
@@ -73,9 +65,17 @@ export const useStore = create((set, get) => ({
   timeframe: 1,
   currentIndex: 0,    
   isPlaying: false,   
+  recenterToken: 0,
 
   symbol: 'XAUUSD',
   timezone: 'UTC+3',
+
+  // Session start times in "market time" (UTC+3, matches CSV)
+  sessionTimes: { asian: 3, london: 10, newyork: 15 },
+
+  setSessionTime: (key, hour) => set((state) => ({
+    sessionTimes: { ...state.sessionTimes, [key]: Math.max(0, Math.min(23, Number(hour) || 0)) }
+  })),
 
   setSymbol: (code) => set({ symbol: code }),
 
@@ -105,10 +105,12 @@ export const useStore = create((set, get) => ({
   openPeriodModal: () => set({ isPeriodModalOpen: true }),
   closePeriodModal: () => set({ isPeriodModalOpen: false }),
   
-  // Session name + persistence
   sessionName: 'Session 1',
   setSessionName: (name) => set({ sessionName: name }),
 
+  // ============================================================
+  // SAVE / READ / CLEAR / LOAD
+  // ============================================================
   saveSession: () => {
     const s = get();
     if (!s.gameStarted || !s.gamePeriod) return;
@@ -135,6 +137,7 @@ export const useStore = create((set, get) => ({
         dailyLoss: s.dailyLoss,
         gameState: s.gameState,
         theme: s.theme,
+        sessionTimes: s.sessionTimes,
       };
       localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
     } catch (e) {
@@ -152,6 +155,44 @@ export const useStore = create((set, get) => ({
 
   clearSession: () => {
     try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+  },
+
+  // Load saved session from localStorage into state
+  loadSavedSession: () => {
+    const state = get();
+    const saved = state.readSession();
+    if (!saved || !saved.gamePeriod) return false;
+    const filtered = state.allRawData.filter(c => c.time >= saved.gamePeriod.from && c.time <= saved.gamePeriod.to);
+    if (filtered.length === 0) return false;
+    const tf = saved.timeframe || 1;
+    set({
+      rawData: filtered,
+      displayData: aggregateData(filtered, tf),
+      gameStarted: true,
+      isPeriodModalOpen: false,
+      gamePeriod: saved.gamePeriod,
+      rules: saved.rules || DEFAULT_RULES,
+      currentIndex: Math.min(saved.currentIndex || 0, filtered.length - 1),
+      timeframe: tf,
+      symbol: saved.symbol || 'XAUUSD',
+      timezone: saved.timezone || 'UTC+3',
+      balance: saved.balance ?? INITIAL_BALANCE,
+      peakBalance: saved.peakBalance ?? INITIAL_BALANCE,
+      positions: saved.positions || [],
+      tradeHistory: saved.tradeHistory || [],
+      pendingOrders: saved.pendingOrders || [],
+      drawings: saved.drawings || [],
+      drawingsPast: saved.drawingsPast || [],
+      drawingsFuture: saved.drawingsFuture || [],
+      dailyLoss: saved.dailyLoss || { day: null, dayStartBalance: INITIAL_BALANCE },
+      gameState: saved.gameState || { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
+      playerName: saved.playerName || 'Trader',
+      sessionName: saved.sessionName || 'Session 1',
+      theme: saved.theme || DEFAULT_THEME,
+      sessionTimes: saved.sessionTimes || { asian: 3, london: 10, newyork: 15 },
+      recenterToken: state.recenterToken + 1,
+    });
+    return true;
   },
 
   playerName: 'Trader',
@@ -293,6 +334,7 @@ export const useStore = create((set, get) => ({
       peakBalance: startBal,
       dailyLoss: { day: startDay, dayStartBalance: startBal },
       gameState: { isOver: false, reason: null, message: '', startTime: Date.now(), timeRemaining: rules.countdownMinutes ? rules.countdownMinutes * 60 : null },
+      recenterToken: state.recenterToken + 1,
     };
   }),
 
@@ -335,29 +377,34 @@ export const useStore = create((set, get) => ({
     };
   }),
 
-  // Jump to next trading session (returns the target index)
+  // ============================================================
+  // JUMP TO SESSION — uses market-hour (UTC+3 reference from CSV)
+  // ============================================================
   jumpToSession: (session) => set((state) => {
     if (state.rawData.length === 0) return state;
+    const targetHour = state.sessionTimes[session];
+    if (targetHour == null) return state;
     
-    const tzOffsetHours = (TZ_OFFSETS[state.timezone] ?? 180) / 60;
-    const shiftHours = tzOffsetHours - 3; // initial was UTC+3
-    const targetUtcHour = SESSION_UTC_HOURS[session];
-    if (targetUtcHour == null) return state;
-    
-    const maxScan = Math.min(state.rawData.length, state.currentIndex + 3000);
+    const maxScan = Math.min(state.rawData.length, state.currentIndex + 5000);
     let targetIndex = -1;
     
     for (let i = state.currentIndex + 1; i < maxScan; i++) {
-      const rawTime = state.rawData[i].time - shiftHours * 3600;
-      const d = new Date(rawTime * 1000);
-      if (d.getUTCHours() === targetUtcHour && d.getUTCMinutes() === 0) {
+      const d = new Date(state.rawData[i].time * 1000);
+      // Convert to "market hour" (data is UTC+3)
+      const marketHour = (d.getUTCHours() + 3) % 24;
+      const marketMinute = d.getUTCMinutes();
+      if (marketHour === targetHour && marketMinute === 0) {
         targetIndex = i;
         break;
       }
     }
     
     if (targetIndex === -1) return state;
-    return { currentIndex: targetIndex, isPlaying: false };
+    return { 
+      currentIndex: targetIndex, 
+      isPlaying: false,
+      recenterToken: state.recenterToken + 1,
+    };
   }),
 
   startDrawing: (side) => set({ 

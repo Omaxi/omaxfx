@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { X, ChevronDown, Check, BarChart3, Palette, Sunrise, Sun, Sunset } from 'lucide-react';
+import { X, ChevronDown, Check, BarChart3, Palette, Sunrise, Sun, Sunset, ArrowUpDown } from 'lucide-react';
 
 const TIMEFRAMES = [
-  { label: '1m', value: 1 }, { label: '5m', value: 5 }, { label: '15m', value: 15 },
-  { label: '30m', value: 30 }, { label: '1h', value: 60 }, { label: '4h', value: 240 },
-  { label: 'D', value: 1440 }, { label: 'W', value: 10080 },
+  { label: '1 min', value: 1 },
+  { label: '5 min', value: 5 },
+  { label: '15 min', value: 15 },
+  { label: '30 min', value: 30 },
+  { label: '1 hour', value: 60 },
+  { label: '4 hours', value: 240 },
+  { label: 'Daily', value: 1440 },
+  { label: 'Weekly', value: 10080 },
 ];
 
 const SYMBOLS = [
@@ -21,31 +26,50 @@ const TIMEZONES = [
   { code: 'UTC+1', label: 'UTC+1' }, { code: 'UTC+2', label: 'UTC+2' }, { code: 'UTC+3', label: 'UTC+3' },
 ];
 
+const SESSIONS = [
+  { key: 'asian',   label: 'Asian',    icon: Sunrise, color: 'text-orange-400' },
+  { key: 'london',  label: 'London',   icon: Sun,     color: 'text-blue-400' },
+  { key: 'newyork', label: 'New York', icon: Sunset,  color: 'text-purple-400' },
+];
+
 export default function ControlPanel() {
   const { 
     positions, setTimeframe, timeframe, closeAllPositions, openOrderModal,
     pendingOrders, startDrawing, isDrawingMode, drawingStep, clearDraft,
     openHistory, openEquity, openAnalytics, openTheme,
-    symbol, setSymbol, timezone, setTimezone, jumpToSession
+    symbol, setSymbol, timezone, setTimezone,
+    sessionTimes, setSessionTime, jumpToSession
   } = useStore();
 
   const [symbolOpen, setSymbolOpen] = useState(false);
   const [tzOpen, setTzOpen] = useState(false);
+  const [tfOpen, setTfOpen] = useState(false);
+  const [jumpOpen, setJumpOpen] = useState(false);
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') { setSymbolOpen(false); setTzOpen(false); }
+      if (e.key === 'Escape') {
+        setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const toggleSymbol = () => { setSymbolOpen(o => !o); setTzOpen(false); };
-  const toggleTz = () => { setTzOpen(o => !o); setSymbolOpen(false); };
+  const closeAll = () => { setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); };
+  const toggleSymbol = () => { const o = !symbolOpen; closeAll(); setSymbolOpen(o); };
+  const toggleTz = () => { const o = !tzOpen; closeAll(); setTzOpen(o); };
+  const toggleTf = () => { const o = !tfOpen; closeAll(); setTfOpen(o); };
+  const toggleJump = () => { const o = !jumpOpen; closeAll(); setJumpOpen(o); };
 
+  const tfLabel = TIMEFRAMES.find(t => t.value === timeframe)?.label || '1 min';
+
+  // ============================================================
+  // DROPDOWNS
+  // ============================================================
   const SymbolDropdown = () => (
     <>
-      <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setSymbolOpen(false)} />
+      <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
       <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[220px] overflow-hidden" style={{ zIndex: 9999, left: 8, bottom: 52 }}>
         <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">Choose Symbol</div>
         {SYMBOLS.map(s => {
@@ -53,7 +77,7 @@ export default function ControlPanel() {
           const isAvailable = s.available;
           return (
             <button key={s.code}
-              onClick={() => { if (isAvailable) { setSymbol(s.code); setSymbolOpen(false); } }}
+              onClick={() => { if (isAvailable) { setSymbol(s.code); closeAll(); } }}
               disabled={!isAvailable}
               className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left transition-colors ${
                 isAvailable ? 'text-white hover:bg-[#2a2e39] cursor-pointer' : 'text-gray-600 cursor-not-allowed'
@@ -74,14 +98,14 @@ export default function ControlPanel() {
 
   const TzDropdown = () => (
     <>
-      <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setTzOpen(false)} />
+      <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
       <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[160px] overflow-hidden max-h-[70vh] overflow-y-auto" style={{ zIndex: 9999, right: 8, bottom: 52 }}>
         <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide sticky top-0 bg-[#1e222d]">Timezone</div>
         {TIMEZONES.map(tz => {
           const isSelected = timezone === tz.code;
           return (
             <button key={tz.code}
-              onClick={() => { setTimezone(tz.code); setTzOpen(false); }}
+              onClick={() => { setTimezone(tz.code); closeAll(); }}
               className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left text-white hover:bg-[#2a2e39] cursor-pointer ${isSelected ? 'bg-blue-600/15' : ''}`}>
               <div className="flex items-center gap-2">
                 <span className="w-3 flex items-center justify-center">
@@ -96,10 +120,80 @@ export default function ControlPanel() {
     </>
   );
 
+  // ============================================================
+  // TIMEFRAMES DROPDOWN
+  // ============================================================
+  const TimeframeDropdown = () => (
+    <>
+      <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
+      <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[140px] overflow-hidden" style={{ zIndex: 9999, left: 160, bottom: 52 }}>
+        <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">Timeframe</div>
+        {TIMEFRAMES.map(tf => {
+          const isSelected = timeframe === tf.value;
+          return (
+            <button key={tf.value}
+              onClick={() => { setTimeframe(tf.value); closeAll(); }}
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left text-white hover:bg-[#2a2e39] cursor-pointer ${isSelected ? 'bg-blue-600/15' : ''}`}>
+              <div className="flex items-center gap-2">
+                <span className="w-3 flex items-center justify-center">
+                  {isSelected && <Check size={10} className="text-blue-400" />}
+                </span>
+                <span className={isSelected ? 'font-bold' : ''}>{tf.label}</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+
+  // ============================================================
+  // JUMP DROPDOWN — with editable session times
+  // ============================================================
+  const JumpDropdown = () => (
+    <>
+      <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
+      <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[260px]" style={{ zIndex: 9999, left: 300, bottom: 52 }}>
+        <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide flex justify-between items-center">
+          <span>Jump to Session</span>
+          <span className="text-[8px] text-gray-600 normal-case">hour in market time</span>
+        </div>
+        {SESSIONS.map(s => {
+          const Icon = s.icon;
+          const hour = sessionTimes[s.key];
+          return (
+            <div key={s.key} className="flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39]/40">
+              <Icon size={12} className={s.color} />
+              <span className="text-xs text-white font-bold w-16">{s.label}</span>
+              <input
+                type="number"
+                min="0"
+                max="23"
+                value={hour}
+                onChange={(e) => setSessionTime(s.key, e.target.value)}
+                className="w-12 bg-[#131722] text-white text-[11px] font-mono px-1.5 py-0.5 rounded border border-[#2a2e39] outline-none text-center focus:border-blue-500"
+                title="Hour (0-23)"
+              />
+              <span className="text-[10px] text-gray-500 font-mono">:00</span>
+              <div className="flex-1" />
+              <button
+                onClick={() => { jumpToSession(s.key); closeAll(); }}
+                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded"
+              >
+                Jump
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+
   return (
     <div className="flex-shrink-0 bg-[#131722] border-t border-[#2a2e39]">
       <div className="flex items-center justify-between gap-1 px-1.5 py-1.5 overflow-x-auto">
 
+        {/* Symbol dropdown */}
         <button onClick={toggleSymbol}
           className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
           <span>{symbol}</span>
@@ -107,38 +201,22 @@ export default function ControlPanel() {
         </button>
 
         <div className="flex items-center justify-center gap-1 flex-1 min-w-0 flex-wrap">
-          <div className="flex items-center gap-0.5 flex-shrink-0">
-            {TIMEFRAMES.map(tf => (
-              <button key={tf.value} onClick={() => setTimeframe(tf.value)}
-                className={`px-1.5 py-1 rounded text-[10px] font-bold transition-colors ${
-                  timeframe === tf.value ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-[#2a2e39]'
-                }`}>
-                {tf.label}
-              </button>
-            ))}
-          </div>
 
-          {/* Session jump buttons */}
-          <div className="flex items-center gap-0.5 flex-shrink-0 border-l border-[#2a2e39] pl-1 ml-0.5">
-            <button onClick={() => jumpToSession('asian')}
-              title="Jump to next Asian session (00:00 UTC)"
-              className="flex items-center gap-0.5 px-1.5 py-1 rounded text-[9px] font-bold text-orange-400 hover:text-orange-300 hover:bg-[#2a2e39] transition-colors">
-              <Sunrise size={10} />
-              ASIA
-            </button>
-            <button onClick={() => jumpToSession('london')}
-              title="Jump to next London session (08:00 UTC)"
-              className="flex items-center gap-0.5 px-1.5 py-1 rounded text-[9px] font-bold text-blue-400 hover:text-blue-300 hover:bg-[#2a2e39] transition-colors">
-              <Sun size={10} />
-              LDN
-            </button>
-            <button onClick={() => jumpToSession('newyork')}
-              title="Jump to next New York session (13:00 UTC)"
-              className="flex items-center gap-0.5 px-1.5 py-1 rounded text-[9px] font-bold text-purple-400 hover:text-purple-300 hover:bg-[#2a2e39] transition-colors">
-              <Sunset size={10} />
-              NY
-            </button>
-          </div>
+          {/* Timeframe dropdown */}
+          <button onClick={toggleTf}
+            className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
+            <span>{tfLabel}</span>
+            <ChevronDown size={10} className={`transition-transform ${tfOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Jump dropdown */}
+          <button onClick={toggleJump}
+            className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
+            title="Jump to trading session">
+            <ArrowUpDown size={10} />
+            <span>Jump</span>
+            <ChevronDown size={10} className={`transition-transform ${jumpOpen ? 'rotate-180' : ''}`} />
+          </button>
 
           {!isDrawingMode ? (
             <div className="flex items-center gap-1 flex-shrink-0">
@@ -178,6 +256,7 @@ export default function ControlPanel() {
           </div>
         </div>
 
+        {/* Timezone dropdown */}
         <button onClick={toggleTz}
           className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
           <span>{timezone}</span>
@@ -187,6 +266,8 @@ export default function ControlPanel() {
 
       {symbolOpen && <SymbolDropdown />}
       {tzOpen && <TzDropdown />}
+      {tfOpen && <TimeframeDropdown />}
+      {jumpOpen && <JumpDropdown />}
     </div>
   );
 }

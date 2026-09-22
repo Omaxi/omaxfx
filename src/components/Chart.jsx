@@ -200,6 +200,7 @@ export default function Chart() {
   const profileCacheRef = useRef(new Map());
   const visibleDataRef = useRef([]);
   const lastTimeframeRef = useRef(1);
+  const lastRecenterRef = useRef(0);
   const activePointersRef = useRef(new Set());
   const lastTapRef = useRef({ time: 0, x: 0, y: 0 });
   const touchDownPosRef = useRef({ x: 0, y: 0 });
@@ -214,8 +215,14 @@ export default function Chart() {
     rawData, displayData, currentIndex, positions, pendingOrders, 
     draftPosition, timeframe, cancelPendingOrder, closePosition, activeDrawingTool,
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
-    theme, snapshotDrawings
+    theme, snapshotDrawings, recenterToken
   } = useStore();
+
+  const currentCandle = rawData[currentIndex];
+  const currentPrice = currentCandle?.close;
+  const priceColor = currentCandle && currentCandle.open != null
+    ? (currentCandle.close >= currentCandle.open ? theme.upBody : theme.downBody)
+    : theme.upBody;
 
   useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
 
@@ -260,15 +267,13 @@ export default function Chart() {
     }
   }, [gameStarted, lockChart]);
 
-  // ============================================================
-  // CHART INIT — background stays TRANSPARENT so drawings show through
-  // ============================================================
+  // Chart init
   useEffect(() => {
     if (!chartContainerRef.current) return;
     const t = useStore.getState().theme;
     chartRef.current = createChart(chartContainerRef.current, {
       layout: { 
-        background: { type: 'solid', color: 'transparent' },  // <-- TRANSPARENT
+        background: { type: 'solid', color: 'transparent' },
         textColor: '#d1d4dc',
         fontSize: 9,
       },
@@ -302,7 +307,7 @@ export default function Chart() {
     return () => { clearTimeout(timer); chartRef.current.remove(); };
   }, []);
 
-  // Apply theme changes — only candle colors (bg stays transparent)
+  // Apply theme
   useEffect(() => {
     if (!seriesRef.current) return;
     try {
@@ -855,15 +860,20 @@ export default function Chart() {
     return filtered;
   }, [displayData, rawData, currentIndex, timeframe]);
 
+  // ============================================================
+  // SET DATA + RECENTER (on TF change or jump)
+  // ============================================================
   useEffect(() => {
     if (!seriesRef.current || !chartRef.current) return;
     if (visibleData.length === 0) return;
     const timeScale = chartRef.current.timeScale();
     const tfChanged = lastTimeframeRef.current !== timeframe;
+    const jumpChanged = lastRecenterRef.current !== recenterToken;
+    
     visibleDataRef.current = visibleData;
     seriesRef.current.setData(visibleData);
 
-    if (tfChanged) {
+    if (tfChanged || jumpChanged) {
       try {
         const container = chartContainerRef.current;
         const chartWidth = container ? container.clientWidth : 800;
@@ -873,19 +883,34 @@ export default function Chart() {
         const visibleBars = Math.max(20, Math.floor(paneWidth / targetBarSpacing));
         const halfBars = Math.floor(visibleBars / 2);
         const len = visibleData.length;
+        
         timeScale.applyOptions({ 
-          barSpacing: targetBarSpacing, rightOffset: halfBars,
-          fixLeftEdge: false, fixRightEdge: false,
+          barSpacing: targetBarSpacing,
+          rightOffset: halfBars,
+          fixLeftEdge: false,
+          fixRightEdge: false,
         });
+        
+        // Horizontal: center last candle
         const from = len - 1 - halfBars;
         const to = len - 1 + halfBars;
         timeScale.setVisibleLogicalRange({ from, to });
+        
+        // Vertical: force price scale refit so all candles are visible
+        chartRef.current.priceScale('right').applyOptions({ autoScale: false });
+        setTimeout(() => {
+          if (chartRef.current) {
+            chartRef.current.priceScale('right').applyOptions({ autoScale: true });
+          }
+        }, 0);
       } catch (e) {
         try { timeScale.fitContent(); } catch (e2) {}
       }
     }
+
     lastTimeframeRef.current = timeframe;
-  }, [visibleData, timeframe]);
+    lastRecenterRef.current = recenterToken;
+  }, [visibleData, timeframe, recenterToken]);
 
   useEffect(() => {
     if (!seriesRef.current) return;
@@ -954,6 +979,16 @@ export default function Chart() {
     <div className="relative w-full h-full" style={{ backgroundColor: theme.background }}>
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }} />
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none' }} />
+
+      {/* Current price display — top-left corner, next to toolbar */}
+      {currentPrice != null && (
+        <div className="absolute top-2 left-14 z-20 flex items-center gap-1.5 px-2 py-1 bg-[#131722]/90 backdrop-blur border border-[#2a2e39] rounded pointer-events-none">
+          <span className="text-[9px] text-gray-500 font-bold uppercase">Price</span>
+          <span className="text-xs font-bold font-mono" style={{ color: priceColor }}>
+            {currentPrice.toFixed(2)}
+          </span>
+        </div>
+      )}
 
       {selectedItem?.type === 'drawing' && (
         <StylePanel selectedId={selectedItem.id} onClose={() => { setSelectedItem(null); lockChart(false); }} />

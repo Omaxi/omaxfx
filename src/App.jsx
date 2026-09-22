@@ -15,7 +15,7 @@ import { useEffect, useRef } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney, fmtMB } from './utils/format';
 import Papa from 'papaparse';
-import { Clock, RotateCcw, Info, Save } from 'lucide-react';
+import { Clock, RotateCcw, Info } from 'lucide-react';
 
 const formatTime = (sec) => {
   if (sec == null) return '∞';
@@ -34,9 +34,7 @@ function App() {
   } = useStore();
   const soundtrackStarted = useRef(false);
   const restoredRef = useRef(false);
-  const sessionNameInputRef = useRef(null);
 
-  // Force layout resize after CSV loads
   useEffect(() => {
     if (!loadingState.isActive) {
       const t1 = setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
@@ -45,7 +43,6 @@ function App() {
     }
   }, [loadingState.isActive]);
 
-  // Load CSV
   useEffect(() => {
     let cancelled = false;
     const setLoadingState = useStore.getState().setLoadingState;
@@ -91,7 +88,6 @@ function App() {
                 const day = dateStr.substring(6, 8);
                 const timeStr = row.time;
                 const paddedTime = timeStr.length === 7 ? `0${timeStr}` : timeStr;
-                // Data is UTC+3 — append offset so parse is browser-tz-independent
                 const isoString = `${year}-${month}-${day}T${paddedTime}+03:00`;
                 return {
                   time: new Date(isoString).getTime() / 1000,
@@ -115,9 +111,7 @@ function App() {
     return () => { cancelled = true; };
   }, [setAllData]);
 
-  // ============================================================
-  // RESTORE SAVED SESSION once CSV is loaded
-  // ============================================================
+  // AUTO-RESTORE saved session on first load
   useEffect(() => {
     if (allRawData.length === 0) return;
     if (restoredRef.current) return;
@@ -125,54 +119,20 @@ function App() {
 
     const saved = useStore.getState().readSession();
     if (!saved || !saved.gameStarted || !saved.gamePeriod) {
-      // No saved session → open period modal
       useStore.getState().openPeriodModal();
       return;
     }
 
-    const { from, to } = saved.gamePeriod;
-    const filtered = allRawData.filter(c => c.time >= from && c.time <= to);
-    if (filtered.length === 0) {
-      useStore.getState().openPeriodModal();
-      return;
-    }
-
-    const tf = saved.timeframe || 1;
-    useStore.setState({
-      rawData: filtered,
-      displayData: aggregateData(filtered, tf),
-      gameStarted: true,
-      isPeriodModalOpen: false,
-      gamePeriod: saved.gamePeriod,
-      rules: saved.rules || { startingBalance: INITIAL_BALANCE, maxRiskPerTrade: 1, maxDailyLoss: 5, maxDrawdown: 10, countdownMinutes: 60, presetName: 'Custom' },
-      currentIndex: Math.min(saved.currentIndex || 0, filtered.length - 1),
-      timeframe: tf,
-      symbol: saved.symbol || 'XAUUSD',
-      timezone: saved.timezone || 'UTC+3',
-      balance: saved.balance ?? INITIAL_BALANCE,
-      peakBalance: saved.peakBalance ?? INITIAL_BALANCE,
-      positions: saved.positions || [],
-      tradeHistory: saved.tradeHistory || [],
-      pendingOrders: saved.pendingOrders || [],
-      drawings: saved.drawings || [],
-      drawingsPast: saved.drawingsPast || [],
-      drawingsFuture: saved.drawingsFuture || [],
-      dailyLoss: saved.dailyLoss || { day: null, dayStartBalance: INITIAL_BALANCE },
-      gameState: saved.gameState || { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
-      playerName: saved.playerName || 'Trader',
-      sessionName: saved.sessionName || 'Session 1',
-      theme: saved.theme || { background: '#131722', upBody: '#26a69a', downBody: '#ef5350', upWick: '#26a69a', downWick: '#ef5350' },
-    });
+    // Use the store's built-in loader
+    const ok = useStore.getState().loadSavedSession();
+    if (!ok) useStore.getState().openPeriodModal();
   }, [allRawData]);
 
-  // ============================================================
-  // AUTOSAVE — debounced write to localStorage on state changes
-  // ============================================================
+  // AUTOSAVE debounced
   useEffect(() => {
     let t = null;
     const unsub = useStore.subscribe((state) => {
       if (!state.gameStarted) return;
-      // Only track key change indicators
       const key = [
         state.currentIndex,
         state.balance.toFixed(2),
@@ -184,6 +144,7 @@ function App() {
         state.timeframe,
         state.symbol,
         state.timezone,
+        state.sessionName,
       ].join('|');
       if (key === App._lastSaveKey) return;
       App._lastSaveKey = key;
@@ -195,15 +156,11 @@ function App() {
     return () => { unsub(); if (t) clearTimeout(t); };
   }, []);
 
-  // ============================================================
-  // KEYBOARD SHORTCUTS
-  // ============================================================
+  // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e) => {
-      // Ignore if user is typing in an input
       const tag = e.target.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-      // If a button is focused, let the button handle Space itself
       if (tag === 'BUTTON') return;
       
       const state = useStore.getState();
@@ -228,7 +185,6 @@ function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  // Auto-play
   useEffect(() => {
     let interval;
     if (isPlaying && currentIndex < rawData.length - 1 && !gameState.isOver) {
@@ -237,7 +193,6 @@ function App() {
     return () => clearInterval(interval);
   }, [isPlaying, currentIndex, rawData, stepForward, gameState.isOver]);
 
-  // Countdown
   useEffect(() => {
     if (!gameStarted || gameState.isOver || !rules.countdownMinutes) return;
     const interval = setInterval(() => {
@@ -254,7 +209,6 @@ function App() {
     return () => clearInterval(interval);
   }, [gameStarted, gameState.isOver, gameState.startTime, rules.countdownMinutes, endGame, updateTimeRemaining]);
 
-  // Soundtrack
   useEffect(() => {
     const startAudio = () => {
       if (!soundtrackStarted.current && musicEnabled) {
@@ -292,7 +246,6 @@ function App() {
         : 'text-blue-400 border-blue-600 bg-blue-900/30';
 
   const handleNewSession = () => {
-    // Save current first, then open period modal (no prompt)
     try { saveSession(); } catch (e) {}
     restartGame();
   };
@@ -317,11 +270,10 @@ function App() {
                 <span>{formatTime(timeRemaining)}</span>
               </div>
               <input
-                ref={sessionNameInputRef}
                 type="text"
                 value={sessionName}
                 onChange={(e) => setSessionName(e.target.value)}
-                onBlur={() => { try { useStore.getState().saveSession(); } catch (e) {} }}
+                onBlur={() => { try { saveSession(); } catch (e) {} }}
                 maxLength={30}
                 title="Session name — click to rename"
                 className="hidden md:block bg-transparent text-gray-400 hover:text-white focus:text-white text-[11px] font-bold outline-none border border-transparent hover:border-[#2a2e39] focus:border-blue-500 rounded px-1.5 py-0.5 w-32 transition-colors"

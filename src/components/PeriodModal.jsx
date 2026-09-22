@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { Calendar, Play, Shield, Clock, Target, TrendingDown, User, Sparkles, X } from 'lucide-react';
+import { Calendar, Play, Shield, Clock, Target, TrendingDown, User, Sparkles, X, History as HistoryIcon } from 'lucide-react';
 
 const toInputDate = (unixSeconds) => {
   const d = new Date(unixSeconds * 1000);
@@ -42,7 +42,8 @@ const PRESETS = {
 export default function PeriodModal() {
   const { 
     allRawData, isPeriodModalOpen, closePeriodModal, gameStarted, startGame, 
-    playerName, setPlayerName, sessionName, setSessionName, theme 
+    playerName, setPlayerName, sessionName, setSessionName,
+    readSession, loadSavedSession
   } = useStore();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -53,6 +54,7 @@ export default function PeriodModal() {
   const [maxDrawdown, setMaxDrawdown] = useState(10);
   const [countdownMinutes, setCountdownMinutes] = useState(60);
   const [error, setError] = useState('');
+  const [savedSession, setSavedSession] = useState(null);
 
   useEffect(() => {
     if (allRawData.length > 0) {
@@ -60,6 +62,14 @@ export default function PeriodModal() {
       setTo(toInputDate(allRawData[allRawData.length - 1].time));
     }
   }, [allRawData]);
+
+  // Check for saved session each time modal opens
+  useEffect(() => {
+    if (isPeriodModalOpen) {
+      const s = readSession();
+      setSavedSession(s);
+    }
+  }, [isPeriodModalOpen, readSession]);
 
   useEffect(() => {
     const preset = PRESETS[presetKey];
@@ -111,9 +121,12 @@ export default function PeriodModal() {
     });
   };
 
-  const handleCancel = () => {
-    if (gameStarted) closePeriodModal();
+  const handleLoadSaved = () => {
+    const ok = loadSavedSession();
+    if (!ok) setError('Saved session not found or data missing');
   };
+
+  const savedDate = savedSession?.savedAt ? new Date(savedSession.savedAt).toLocaleString() : '';
 
   return (
     <div className="fixed inset-0 bg-[#0b0e11]/95 backdrop-blur flex items-center justify-center z-50 p-2 overflow-y-auto">
@@ -134,7 +147,7 @@ export default function PeriodModal() {
           </div>
           {gameStarted && (
             <button 
-              onClick={handleCancel}
+              onClick={closePeriodModal}
               className="p-1 hover:bg-[#2a2e39] rounded text-gray-400 hover:text-white"
               title="Cancel"
             >
@@ -144,6 +157,25 @@ export default function PeriodModal() {
         </div>
 
         <div className="p-3 space-y-3 max-h-[70vh] overflow-y-auto">
+
+          {/* Load Saved Session */}
+          {savedSession && (
+            <button
+              onClick={handleLoadSaved}
+              className="w-full flex items-center justify-between gap-2 p-2 bg-gradient-to-r from-emerald-900/40 to-blue-900/40 hover:from-emerald-900/60 hover:to-blue-900/60 border border-emerald-600/50 rounded-lg transition-colors"
+            >
+              <div className="flex items-center gap-2 text-left">
+                <HistoryIcon size={16} className="text-emerald-400 flex-shrink-0" />
+                <div>
+                  <div className="text-xs font-bold text-white">Resume Last Session</div>
+                  <div className="text-[9px] text-gray-400">
+                    "{savedSession.sessionName || 'Session'}" — {savedSession.tradeHistory?.length || 0} trades — {savedDate}
+                  </div>
+                </div>
+              </div>
+              <span className="text-[10px] text-emerald-400 font-bold">LOAD →</span>
+            </button>
+          )}
           
           <div className="grid grid-cols-1 gap-2">
             <div>
@@ -291,7 +323,7 @@ export default function PeriodModal() {
         <div className="p-2 border-t border-[#2a2e39] flex gap-2">
           {gameStarted && (
             <button
-              onClick={handleCancel}
+              onClick={closePeriodModal}
               className="flex-1 py-2 bg-[#2a2e39] hover:bg-[#3a3e49] rounded-lg font-bold text-sm text-gray-300 transition-colors"
             >
               Cancel
