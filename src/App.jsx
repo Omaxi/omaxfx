@@ -9,6 +9,7 @@ import InfoModal from './components/InfoModal';
 import SoundToggle from './components/SoundToggle';
 import PeriodModal from './components/PeriodModal';
 import GameOverModal from './components/GameOverModal';
+import CelebrationOverlay from './components/CelebrationOverlay';
 import { useStore, INITIAL_BALANCE } from './store';
 import { aggregateData } from './utils/timeframe';
 import { useEffect, useRef } from 'react';
@@ -111,7 +112,6 @@ function App() {
     return () => { cancelled = true; };
   }, [setAllData]);
 
-  // AUTO-RESTORE saved session on first load
   useEffect(() => {
     if (allRawData.length === 0) return;
     if (restoredRef.current) return;
@@ -123,12 +123,10 @@ function App() {
       return;
     }
 
-    // Use the store's built-in loader
     const ok = useStore.getState().loadSavedSession();
     if (!ok) useStore.getState().openPeriodModal();
   }, [allRawData]);
 
-  // AUTOSAVE debounced
   useEffect(() => {
     let t = null;
     const unsub = useStore.subscribe((state) => {
@@ -156,7 +154,6 @@ function App() {
     return () => { unsub(); if (t) clearTimeout(t); };
   }, []);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e) => {
       const tag = e.target.tagName;
@@ -332,6 +329,9 @@ function App() {
       <InfoModal />
       <PeriodModal />
       <GameOverModal />
+
+      {/* Fireworks when TP is hit */}
+      <CelebrationOverlay />
 
       {loadingState.isActive && (
         <div className="fixed inset-0 bg-[#0b0e11] z-[100] flex items-center justify-center">
