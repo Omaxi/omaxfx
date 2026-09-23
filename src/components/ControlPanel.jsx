@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import { X, ChevronDown, Check, BarChart3, Palette, Sunrise, Sun, Sunset, ArrowUpDown } from 'lucide-react';
+import { X, ChevronDown, Check, BarChart3, Palette, Sunrise, Sun, Sunset, ArrowUpDown, CandlestickChart } from 'lucide-react';
 
 const TIMEFRAMES = [
   { label: '1 min', value: 1 },
@@ -11,6 +11,11 @@ const TIMEFRAMES = [
   { label: '4 hours', value: 240 },
   { label: 'Daily', value: 1440 },
   { label: 'Weekly', value: 10080 },
+];
+
+const CHART_TYPES = [
+  { label: 'Candles', value: 'candle' },
+  { label: 'Line', value: 'line' },
 ];
 
 const SYMBOLS = [
@@ -38,31 +43,36 @@ export default function ControlPanel() {
     pendingOrders, startDrawing, isDrawingMode, drawingStep, clearDraft,
     openHistory, openEquity, openAnalytics, openTheme,
     symbol, setSymbol, timezone, setTimezone,
-    sessionTimes, setSessionTime, jumpToSession
+    sessionTimes, setSessionTime, jumpToSession,
+    chartType, setChartType
   } = useStore();
 
   const [symbolOpen, setSymbolOpen] = useState(false);
   const [tzOpen, setTzOpen] = useState(false);
   const [tfOpen, setTfOpen] = useState(false);
   const [jumpOpen, setJumpOpen] = useState(false);
+  const [ctOpen, setCtOpen] = useState(false);
 
-  // Refs for dynamic positioning
   const tfButtonRef = useRef(null);
   const jumpButtonRef = useRef(null);
+  const ctButtonRef = useRef(null);
   const [tfLeft, setTfLeft] = useState(0);
   const [jumpLeft, setJumpLeft] = useState(0);
+  const [ctLeft, setCtLeft] = useState(0);
 
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') {
-        setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false);
+        setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const closeAll = () => { setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); };
+  const closeAll = () => { 
+    setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false);
+  };
   const toggleSymbol = () => { const o = !symbolOpen; closeAll(); setSymbolOpen(o); };
   const toggleTz = () => { const o = !tzOpen; closeAll(); setTzOpen(o); };
   
@@ -84,6 +94,16 @@ export default function ControlPanel() {
     }
     closeAll();
     setJumpOpen(o);
+  };
+
+  const toggleCt = () => {
+    const o = !ctOpen;
+    if (o && ctButtonRef.current) {
+      const rect = ctButtonRef.current.getBoundingClientRect();
+      setCtLeft(Math.max(8, rect.left));
+    }
+    closeAll();
+    setCtOpen(o);
   };
 
   const tfLabel = TIMEFRAMES.find(t => t.value === timeframe)?.label || '1 min';
@@ -165,6 +185,30 @@ export default function ControlPanel() {
     </>
   );
 
+  const ChartTypeDropdown = () => (
+    <>
+      <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
+      <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[130px] overflow-hidden" style={{ zIndex: 9999, left: ctLeft, bottom: 52 }}>
+        <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">Chart</div>
+        {CHART_TYPES.map(ct => {
+          const isSelected = chartType === ct.value;
+          return (
+            <button key={ct.value}
+              onClick={() => { setChartType(ct.value); closeAll(); }}
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left text-white hover:bg-[#2a2e39] cursor-pointer ${isSelected ? 'bg-blue-600/15' : ''}`}>
+              <div className="flex items-center gap-2">
+                <span className="w-3 flex items-center justify-center">
+                  {isSelected && <Check size={10} className="text-blue-400" />}
+                </span>
+                <span className={isSelected ? 'font-bold' : ''}>{ct.label}</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </>
+  );
+
   const JumpDropdown = () => (
     <>
       <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
@@ -220,6 +264,14 @@ export default function ControlPanel() {
             className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
             <span>{tfLabel}</span>
             <ChevronDown size={10} className={`transition-transform ${tfOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Chart type button */}
+          <button ref={ctButtonRef} onClick={toggleCt}
+            className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
+            title="Chart type">
+            <CandlestickChart size={11} />
+            <ChevronDown size={10} className={`transition-transform ${ctOpen ? 'rotate-180' : ''}`} />
           </button>
 
           <button ref={jumpButtonRef} onClick={toggleJump}
@@ -278,6 +330,7 @@ export default function ControlPanel() {
       {symbolOpen && <SymbolDropdown />}
       {tzOpen && <TzDropdown />}
       {tfOpen && <TimeframeDropdown />}
+      {ctOpen && <ChartTypeDropdown />}
       {jumpOpen && <JumpDropdown />}
     </div>
   );

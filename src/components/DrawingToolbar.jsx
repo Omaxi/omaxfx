@@ -1,5 +1,5 @@
 import { useStore } from '../store';
-import { Minus, Square, Layers, BarChart2, Trash2, Undo2, Redo2 } from 'lucide-react';
+import { Minus, Square, Layers, BarChart2, Trash2, Undo2, Redo2, Pencil } from 'lucide-react';
 
 const TrendlineIcon = ({ size = 14 }) => (
   <svg
@@ -29,31 +29,48 @@ const TOOLS = [
 export default function DrawingToolbar() {
   const { 
     activeDrawingTool, setActiveDrawingTool, clearDrawings, drawings,
-    drawingsPast, drawingsFuture, undoDrawings, redoDrawings
+    drawingsPast, drawingsFuture, undoDrawings, redoDrawings,
+    isPencilMode, setPencilMode
   } = useStore();
 
   const canUndo = drawingsPast.length > 0;
   const canRedo = drawingsFuture.length > 0;
+  const locked = isPencilMode; // when pencil active, other tools locked
 
   return (
     <div className="absolute top-1 left-1 md:top-2 md:left-2 z-20 flex flex-col gap-0.5 md:gap-1 bg-[#131722]/95 backdrop-blur border border-[#2a2e39] rounded-md md:rounded-lg p-0.5 md:p-1 shadow-lg">
+      {/* Pencil — top priority button */}
+      <button
+        onClick={() => setPencilMode(!isPencilMode)}
+        title={isPencilMode ? 'Exit pencil (clears strokes)' : 'Freehand pencil'}
+        className={`p-1 md:p-1.5 rounded transition-colors ${
+          isPencilMode
+            ? 'bg-blue-600 text-white'
+            : 'text-gray-300 hover:text-white hover:bg-[#2a2e39]'
+        }`}
+      >
+        <Pencil size={12} />
+      </button>
+
+      <div className="border-t border-[#2a2e39] my-0.5" />
+
       {/* Undo / Redo */}
       <button
         onClick={undoDrawings}
-        disabled={!canUndo}
+        disabled={!canUndo || locked}
         title="Undo (Ctrl+Z)"
         className={`p-1 md:p-1.5 rounded transition-colors ${
-          canUndo ? 'text-gray-300 hover:text-white hover:bg-[#2a2e39]' : 'text-gray-700 cursor-not-allowed'
+          !canUndo || locked ? 'text-gray-700 cursor-not-allowed' : 'text-gray-300 hover:text-white hover:bg-[#2a2e39]'
         }`}
       >
         <Undo2 size={12} />
       </button>
       <button
         onClick={redoDrawings}
-        disabled={!canRedo}
+        disabled={!canRedo || locked}
         title="Redo (Ctrl+Y)"
         className={`p-1 md:p-1.5 rounded transition-colors ${
-          canRedo ? 'text-gray-300 hover:text-white hover:bg-[#2a2e39]' : 'text-gray-700 cursor-not-allowed'
+          !canRedo || locked ? 'text-gray-700 cursor-not-allowed' : 'text-gray-300 hover:text-white hover:bg-[#2a2e39]'
         }`}
       >
         <Redo2 size={12} />
@@ -65,18 +82,21 @@ export default function DrawingToolbar() {
         <button
           key={label}
           onClick={() => setActiveDrawingTool(key)}
-          title={label}
+          disabled={locked}
+          title={locked ? 'Exit pencil mode first' : label}
           className={`p-1 md:p-1.5 rounded transition-colors ${
-            activeDrawingTool === key
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-400 hover:text-white hover:bg-[#2a2e39]'
+            locked
+              ? 'text-gray-700 cursor-not-allowed'
+              : activeDrawingTool === key
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-400 hover:text-white hover:bg-[#2a2e39]'
           }`}
         >
           <Icon size={12} />
         </button>
       ))}
       
-      {drawings.length > 0 && (
+      {drawings.length > 0 && !locked && (
         <>
           <div className="border-t border-[#2a2e39] my-0.5" />
           <button

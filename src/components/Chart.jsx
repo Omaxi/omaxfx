@@ -1,5 +1,5 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
-import { createChart, CandlestickSeries } from 'lightweight-charts';
+import { createChart, CandlestickSeries, LineSeries } from 'lightweight-charts';
 import { useStore } from '../store';
 import { X, Play, Pause, SkipForward, Trash2, Lock } from 'lucide-react';
 import DrawingToolbar from './DrawingToolbar';
@@ -185,14 +185,40 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
   }
 };
 
+const drawPencilStroke = (ctx, stroke) => {
+  if (!stroke.points || stroke.points.length < 2) return;
+  ctx.strokeStyle = stroke.color || '#3b82f6';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+  for (let i = 1; i < stroke.points.length; i++) {
+    ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+  }
+  ctx.stroke();
+};
+
 const DOUBLE_TAP_TIME = 500;
 const DOUBLE_TAP_DIST = 50;
+
+const PENCIL_COLORS = [
+  '#ffffff', '#ef5350', '#26a69a', '#3b82f6',
+  '#f59e0b', '#a855f7', '#22c55e', '#06b6d4',
+];
+
+// X button horizontal offset from right edge.
+// 60px = price axis width. Labels extend ~120-160px left of that.
+// Setting to 200 places the X safely outside the left edge of any label.
+const X_BUTTON_OFFSET_FROM_RIGHT = 200;
 
 export default function Chart() {
   const chartContainerRef = useRef();
   const canvasRef = useRef();
   const chartRef = useRef();
   const seriesRef = useRef();
+  const lineSeriesRef = useRef();
   const linesRef = useRef([]);
   const dragRef = useRef(null);
   const draftRef = useRef(null);
@@ -206,6 +232,7 @@ export default function Chart() {
   const touchDownPosRef = useRef({ x: 0, y: 0 });
   const chartLockedRef = useRef(false);
   const selectedItemRef = useRef(null);
+  const currentPencilRef = useRef(null);
 
   const [pendingBtnPos, setPendingBtnPos] = useState([]);
   const [positionBtnPos, setPositionBtnPos] = useState([]);
@@ -215,7 +242,9 @@ export default function Chart() {
     rawData, displayData, currentIndex, positions, pendingOrders, 
     draftPosition, timeframe, cancelPendingOrder, closePosition, activeDrawingTool,
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
-    theme, snapshotDrawings, recenterToken
+    theme, snapshotDrawings, recenterToken,
+    isPencilMode, pencilColor, pencilStrokes, addPencilStroke, setPencilColor,
+    chartType
   } = useStore();
 
   useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
@@ -250,9 +279,9 @@ export default function Chart() {
   }, []);
 
   useEffect(() => {
-    const shouldLock = !!activeDrawingTool || !!isDrawingMode || !!selectedItem;
+    const shouldLock = !!activeDrawingTool || !!isDrawingMode || !!selectedItem || !!isPencilMode;
     lockChart(shouldLock);
-  }, [activeDrawingTool, isDrawingMode, selectedItem, lockChart]);
+  }, [activeDrawingTool, isDrawingMode, selectedItem, isPencilMode, lockChart]);
 
   useEffect(() => {
     if (!gameStarted) {
@@ -264,6 +293,8 @@ export default function Chart() {
   useEffect(() => {
     if (!chartContainerRef.current) return;
     const t = useStore.getState().theme;
+    const ct = useStore.getState().chartType;
+    
     chartRef.current = createChart(chartContainerRef.current, {
       layout: { 
         background: { type: 'solid', color: 'transparent' },
@@ -288,11 +319,24 @@ export default function Chart() {
         },
       },
     });
+
     seriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
       upColor: t.upBody, downColor: t.downBody, borderVisible: false,
       wickUpColor: t.upWick, wickDownColor: t.downWick,
       priceLineVisible: false, lastValueVisible: true,
+      visible: ct === 'candle',
     });
+
+    lineSeriesRef.current = chartRef.current.addSeries(LineSeries, {
+      color: t.upBody,
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      crosshairMarkerVisible: true,
+      crosshairMarkerRadius: 4,
+      visible: ct === 'line',
+    });
+
     const timer = setTimeout(() => {
       try { chartRef.current.timeScale().fitContent(); } catch (e) {}
       window.dispatchEvent(new Event('resize'));
@@ -301,7 +345,7 @@ export default function Chart() {
   }, []);
 
   useEffect(() => {
-    if (!seriesRef.current) return;
+    if (!seriesRef.current || !lineSeriesRef.current) return;
     try {
       seriesRef.current.applyOptions({
         upColor: theme.upBody,
@@ -309,8 +353,17 @@ export default function Chart() {
         wickUpColor: theme.upWick,
         wickDownColor: theme.downWick,
       });
+      lineSeriesRef.current.applyOptions({ color: theme.upBody });
     } catch (e) {}
   }, [theme]);
+
+  useEffect(() => {
+    if (!seriesRef.current || !lineSeriesRef.current) return;
+    try {
+      seriesRef.current.applyOptions({ visible: chartType === 'candle' });
+      lineSeriesRef.current.applyOptions({ visible: chartType === 'line' });
+    } catch (e) {}
+  }, [chartType]);
 
   const timeToX = useCallback((time) => {
     const chart = chartRef.current;
@@ -420,6 +473,9 @@ export default function Chart() {
         drawShape(ctx, d, pointToXY, false, cache, d.id === selectedId);
       });
       if (draftRef.current) drawShape(ctx, draftRef.current, pointToXY, true, cache, false);
+
+      state.pencilStrokes.forEach(s => drawPencilStroke(ctx, s));
+      if (currentPencilRef.current) drawPencilStroke(ctx, currentPencilRef.current);
 
       if (sel?.type === 'trade' && seriesRef.current) {
         let livePrice = null;
@@ -561,6 +617,15 @@ export default function Chart() {
       const { x, y } = getLocalXY(e);
       touchDownPosRef.current = { x, y };
 
+      if (state.isPencilMode) {
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        currentPencilRef.current = {
+          color: state.pencilColor,
+          points: [{ x, y }],
+        };
+        return;
+      }
+
       if (state.activeDrawingTool) {
         const point = xyToPoint(x, y);
         if (!point) return;
@@ -669,9 +734,16 @@ export default function Chart() {
     };
 
     const handlePointerMove = (e) => {
-      if (activePointersRef.current.size > 1) return;
       const state = useStore.getState();
       const { x, y } = getLocalXY(e);
+
+      if (state.isPencilMode && currentPencilRef.current) {
+        e.preventDefault();
+        currentPencilRef.current.points.push({ x, y });
+        return;
+      }
+
+      if (activePointersRef.current.size > 1) return;
 
       const dx = x - touchDownPosRef.current.x;
       const dy = y - touchDownPosRef.current.y;
@@ -729,11 +801,21 @@ export default function Chart() {
     };
 
     const handlePointerUp = (e) => {
+      const state = useStore.getState();
       activePointersRef.current.delete(e.pointerId);
+
+      if (state.isPencilMode && currentPencilRef.current) {
+        const stroke = currentPencilRef.current;
+        currentPencilRef.current = null;
+        if (stroke.points.length > 1) {
+          useStore.getState().addPencilStroke(stroke);
+        }
+        return;
+      }
+
       dragRef.current = null;
 
       if (dragDrawRef.current && draftRef.current) {
-        const state = useStore.getState();
         const pts = draftRef.current.points;
         const p1 = pointToXY(pts[0]);
         const p2 = pointToXY(pts[1]);
@@ -752,6 +834,8 @@ export default function Chart() {
 
     const handleTouchStart = (e) => {
       if (e.touches.length !== 1) return;
+      const state = useStore.getState();
+      if (state.isPencilMode) return;
       if (selectedItemRef.current) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
       }
@@ -759,7 +843,7 @@ export default function Chart() {
 
     const handleContextMenu = (e) => {
       const state = useStore.getState();
-      if (state.activeDrawingTool) return;
+      if (state.activeDrawingTool || state.isPencilMode) return;
       const { x, y } = getLocalXY(e);
       const hit = hitTestDrawings(x, y);
       if (hit) {
@@ -851,14 +935,16 @@ export default function Chart() {
   }, [displayData, rawData, currentIndex, timeframe]);
 
   useEffect(() => {
-    if (!seriesRef.current || !chartRef.current) return;
+    if (!seriesRef.current || !lineSeriesRef.current || !chartRef.current) return;
     if (visibleData.length === 0) return;
+    
     const timeScale = chartRef.current.timeScale();
     const tfChanged = lastTimeframeRef.current !== timeframe;
     const jumpChanged = lastRecenterRef.current !== recenterToken;
     
     visibleDataRef.current = visibleData;
     seriesRef.current.setData(visibleData);
+    lineSeriesRef.current.setData(visibleData.map(d => ({ time: d.time, value: d.close })));
 
     if (tfChanged || jumpChanged) {
       try {
@@ -965,11 +1051,43 @@ export default function Chart() {
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }} />
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none' }} />
 
-      {selectedItem?.type === 'drawing' && (
+      {isPencilMode && (
+        <div
+          className="absolute inset-0"
+          style={{ zIndex: 15, cursor: 'crosshair', touchAction: 'none' }}
+        />
+      )}
+
+      {isPencilMode && (
+        <div 
+          className="absolute top-2 right-2 z-30 flex flex-col gap-1.5 bg-[#1e222d]/95 backdrop-blur border border-[#2a2e39] rounded-lg shadow-2xl p-2"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wide text-center px-1">Pencil</div>
+          <div className="grid grid-cols-2 gap-1">
+            {PENCIL_COLORS.map(c => (
+              <button
+                key={c}
+                onClick={() => setPencilColor(c)}
+                className={`w-6 h-6 rounded border-2 transition-transform hover:scale-110 ${
+                  pencilColor === c ? 'border-white' : 'border-transparent'
+                }`}
+                style={{ backgroundColor: c }}
+                title={c}
+              />
+            ))}
+          </div>
+          <div className="text-[8px] text-gray-500 text-center pt-1 border-t border-[#2a2e39]">
+            Exit pencil to clear
+          </div>
+        </div>
+      )}
+
+      {selectedItem?.type === 'drawing' && !isPencilMode && (
         <StylePanel selectedId={selectedItem.id} onClose={() => { setSelectedItem(null); lockChart(false); }} />
       )}
 
-      {selectedItem && selectedItem.type === 'drawing' && (
+      {selectedItem && selectedItem.type === 'drawing' && !isPencilMode && (
         <div className="absolute top-2 right-2 z-30 flex items-center gap-1 bg-[#1e222d]/95 backdrop-blur border border-white/20 rounded-lg shadow-2xl p-1 pointer-events-auto">
           <span className="text-[10px] text-white/80 font-bold px-2">✦ Selected</span>
           <button
@@ -989,7 +1107,7 @@ export default function Chart() {
         </div>
       )}
 
-      {selectedItem && (
+      {selectedItem && !isPencilMode && (
         <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-[#1e222d]/90 backdrop-blur border border-white/20 px-3 py-1 rounded-full text-[10px] text-white font-bold pointer-events-none shadow-lg">
           <Lock size={10} />
           <span>Locked — double-tap chart to unlock</span>
@@ -1001,18 +1119,22 @@ export default function Chart() {
           <DrawingToolbar />
         </div>
 
+        {/* X buttons for PENDING orders — moved LEFT of the label */}
         {pendingBtnPos.map(p => (
           <button key={`p-${p.id}`} onClick={() => cancelPendingOrder(p.id)}
-            style={{ top: p.y, right: 60 }}
-            className="absolute pointer-events-auto -translate-y-1/2 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400">
+            style={{ top: p.y, right: X_BUTTON_OFFSET_FROM_RIGHT }}
+            className="absolute pointer-events-auto -translate-y-1/2 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400"
+            title="Cancel this order">
             <X size={12} strokeWidth={3.5} />
           </button>
         ))}
 
+        {/* X buttons for POSITIONS — moved LEFT of the label */}
         {positionBtnPos.map(p => (
           <button key={`pos-${p.id}`} onClick={() => closePosition(p.id)}
-            style={{ top: p.y, right: 60 }}
-            className="absolute pointer-events-auto -translate-y-1/2 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400">
+            style={{ top: p.y, right: X_BUTTON_OFFSET_FROM_RIGHT }}
+            className="absolute pointer-events-auto -translate-y-1/2 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400"
+            title="Close this position">
             <X size={12} strokeWidth={3.5} />
           </button>
         ))}

@@ -122,6 +122,7 @@ export const useStore = create((set, get) => ({
         timeframe: s.timeframe,
         symbol: s.symbol,
         timezone: s.timezone,
+        chartType: s.chartType,
         balance: s.balance,
         peakBalance: s.peakBalance,
         positions: s.positions,
@@ -171,6 +172,7 @@ export const useStore = create((set, get) => ({
       timeframe: tf,
       symbol: saved.symbol || 'XAUUSD',
       timezone: saved.timezone || 'UTC+3',
+      chartType: saved.chartType || 'candle',
       balance: saved.balance ?? INITIAL_BALANCE,
       peakBalance: saved.peakBalance ?? INITIAL_BALANCE,
       positions: saved.positions || [],
@@ -221,14 +223,21 @@ export const useStore = create((set, get) => ({
   drawingStep: null,
   draftPosition: null,
 
+  // ============================================================
+  // DRAWINGS
+  // ============================================================
   drawings: [],
   drawingsPast: [],
   drawingsFuture: [],
   activeDrawingTool: null,
 
-  setActiveDrawingTool: (tool) => set((state) => ({ 
-    activeDrawingTool: state.activeDrawingTool === tool ? null : tool,
-  })),
+  setActiveDrawingTool: (tool) => set((state) => {
+    // If pencil mode is active, ignore — user must deselect pencil first
+    if (state.isPencilMode) return state;
+    return { 
+      activeDrawingTool: state.activeDrawingTool === tool ? null : tool,
+    };
+  }),
 
   snapshotDrawings: () => set((state) => ({
     drawingsPast: [...state.drawingsPast.slice(-40), cloneDrawings(state.drawings)],
@@ -292,6 +301,33 @@ export const useStore = create((set, get) => ({
     drawings: state.drawings.filter(d => d.id !== id),
   })),
 
+  // ============================================================
+  // PENCIL MODE
+  // ============================================================
+  isPencilMode: false,
+  pencilColor: '#3b82f6',
+  pencilStrokes: [],
+
+  setPencilMode: (active) => set((state) => ({
+    isPencilMode: active,
+    pencilStrokes: [],  // clear all hand drawings when entering OR leaving
+    activeDrawingTool: active ? null : state.activeDrawingTool,
+  })),
+
+  setPencilColor: (c) => set({ pencilColor: c }),
+
+  addPencilStroke: (stroke) => set((state) => ({
+    pencilStrokes: [...state.pencilStrokes, { ...stroke, id: Date.now() + Math.random() }]
+  })),
+
+  clearPencil: () => set({ pencilStrokes: [] }),
+
+  // ============================================================
+  // CHART TYPE
+  // ============================================================
+  chartType: 'candle',
+  setChartType: (t) => set({ chartType: t }),
+
   theme: { ...DEFAULT_THEME },
   setTheme: (patch) => set((state) => ({ theme: { ...state.theme, ...patch } })),
   resetTheme: () => set({ theme: { ...DEFAULT_THEME } }),
@@ -326,6 +362,8 @@ export const useStore = create((set, get) => ({
       drawingsPast: [],
       drawingsFuture: [],
       activeDrawingTool: null,
+      isPencilMode: false,
+      pencilStrokes: [],
       peakBalance: startBal,
       dailyLoss: { day: startDay, dayStartBalance: startBal },
       gameState: { isOver: false, reason: null, message: '', startTime: Date.now(), timeRemaining: rules.countdownMinutes ? rules.countdownMinutes * 60 : null },
@@ -360,6 +398,8 @@ export const useStore = create((set, get) => ({
       drawingsPast: [],
       drawingsFuture: [],
       activeDrawingTool: null,
+      isPencilMode: false,
+      pencilStrokes: [],
     });
   },
 
@@ -372,10 +412,6 @@ export const useStore = create((set, get) => ({
     };
   }),
 
-  // ============================================================
-  // JUMP TO SESSION — matches chart-displayed hour (UTC)
-  // so clicking "NY @ 15:00" jumps to the candle labeled 15:00
-  // ============================================================
   jumpToSession: (session) => set((state) => {
     if (state.rawData.length === 0) return state;
     const targetHour = state.sessionTimes[session];
