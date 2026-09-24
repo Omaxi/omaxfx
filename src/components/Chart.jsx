@@ -452,6 +452,20 @@ export default function Chart() {
     const ro = new ResizeObserver(resizeCanvas);
     ro.observe(container);
 
+    // Helper to snap times to the nearest visible candle
+    const findClosestCandleTime = (targetTime) => {
+      const data = visibleDataRef.current;
+      if (data.length === 0) return targetTime;
+      if (targetTime <= data[0].time) return data[0].time;
+      if (targetTime >= data[data.length - 1].time) return data[data.length - 1].time;
+      let lo = 0, hi = data.length - 1;
+      while (hi - lo > 1) {
+        const mid = Math.floor((lo + hi) / 2);
+        if (data[mid].time < targetTime) lo = mid; else hi = mid;
+      }
+      return (targetTime - data[lo].time) < (data[hi].time - targetTime) ? data[lo].time : data[hi].time;
+    };
+
     let rafId;
     const draw = () => {
       const ctx = canvas.getContext('2d');
@@ -474,13 +488,18 @@ export default function Chart() {
       const alive = new Set(state.drawings);
       for (const key of cache.keys()) if (!alive.has(key)) cache.delete(key);
 
-      // 1. Draw trade history (Entry/Exit boxes)
+      // 1. Draw trade history (Entry/Exit boxes + SL area)
       const tradeHistory = state.tradeHistory || [];
       tradeHistory.forEach(trade => {
-        const x1 = timeToX(trade.openTime);
-        const x2 = timeToX(trade.closeTime);
+        // Snap times to current visible candles to prevent timeframe shifting
+        const openTime = findClosestCandleTime(trade.openTime);
+        const closeTime = findClosestCandleTime(trade.closeTime);
+
+        const x1 = timeToX(openTime);
+        const x2 = timeToX(closeTime);
         const yEntry = seriesRef.current?.priceToCoordinate(trade.entryPrice);
         const yExit = seriesRef.current?.priceToCoordinate(trade.exitPrice);
+        const ySL = trade.sl != null ? seriesRef.current?.priceToCoordinate(trade.sl) : null;
 
         if (x1 == null || x2 == null || yEntry == null || yExit == null) return;
         
@@ -489,28 +508,32 @@ export default function Chart() {
         if (x1 < 0 && x2 < 0) return;
 
         const isWin = trade.pnl >= 0;
-        const color = isWin ? '#26a69a' : '#ef5350';
-        const bgColor = isWin ? 'rgba(38, 166, 154, 0.15)' : 'rgba(239, 83, 80, 0.15)';
+        const resultColor = isWin ? '#26a69a' : '#ef5350';
+        const resultBgColor = isWin ? 'rgba(38, 166, 154, 0.25)' : 'rgba(239, 83, 80, 0.25)';
+        const slBgColor = 'rgba(239, 83, 80, 0.15)';
 
-        // Bounding box for the trade
         const minX = Math.min(x1, x2);
         const maxX = Math.max(x1, x2);
-        const minY = Math.min(yEntry, yExit);
-        const maxY = Math.max(yEntry, yExit);
         const w = Math.max(2, maxX - minX);
-        const h = Math.max(2, maxY - minY);
 
-        // Draw filled box
-        ctx.fillStyle = bgColor;
-        ctx.fillRect(minX, minY, w, h);
-        
-        // Draw border
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(minX, minY, w, h);
+        // Draw SL area (if available)
+        if (ySL != null) {
+          const minY_SL = Math.min(yEntry, ySL);
+          const maxY_SL = Math.max(yEntry, ySL);
+          const h_SL = Math.max(2, maxY_SL - minY_SL);
+          ctx.fillStyle = slBgColor;
+          ctx.fillRect(minX, minY_SL, w, h_SL);
+        }
+
+        // Draw Result area (no border)
+        const minY_Result = Math.min(yEntry, yExit);
+        const maxY_Result = Math.max(yEntry, yExit);
+        const h_Result = Math.max(2, maxY_Result - minY_Result);
+        ctx.fillStyle = resultBgColor;
+        ctx.fillRect(minX, minY_Result, w, h_Result);
 
         // Draw entry marker (small box)
-        ctx.fillStyle = color;
+        ctx.fillStyle = resultColor;
         ctx.fillRect(x1 - 3, yEntry - 3, 6, 6);
         
         // Draw exit marker (small box)
@@ -520,17 +543,17 @@ export default function Chart() {
         ctx.beginPath();
         ctx.moveTo(x1, yEntry);
         ctx.lineTo(x2, yExit);
-        ctx.strokeStyle = color;
+        ctx.strokeStyle = resultColor;
         ctx.setLineDash([3, 3]);
         ctx.stroke();
         ctx.setLineDash([]);
 
         // Draw PnL label
         if (w > 40) {
-          ctx.fillStyle = color;
+          ctx.fillStyle = resultColor;
           ctx.font = 'bold 9px monospace';
           const pnlText = `${isWin ? '+' : ''}${trade.pnl.toFixed(1)}`;
-          ctx.fillText(pnlText, minX + 5, minY + 12);
+          ctx.fillText(pnlText, minX + 5, minY_Result + 12);
         }
       });
 
