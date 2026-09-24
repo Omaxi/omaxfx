@@ -335,6 +335,11 @@ export default function Chart() {
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 4,
       visible: ct === 'line',
+      // FIX: Pull autoscale range from candlestick series to align vertically
+      autoscaleInfoProvider: () => {
+        if (!seriesRef.current) return null;
+        return seriesRef.current.autoscaleInfoProvider()();
+      },
     });
 
     const timer = setTimeout(() => {
@@ -968,12 +973,8 @@ export default function Chart() {
         const to = len - 1 + halfBars;
         timeScale.setVisibleLogicalRange({ from, to });
         
-        chartRef.current.priceScale('right').applyOptions({ autoScale: false });
-        setTimeout(() => {
-          if (chartRef.current) {
-            chartRef.current.priceScale('right').applyOptions({ autoScale: true });
-          }
-        }, 0);
+        // FIX: Removed autoScale: false + setTimeout flicker. Just ensure autoScale is true.
+        chartRef.current.priceScale('right').applyOptions({ autoScale: true });
       } catch (e) {
         try { timeScale.fitContent(); } catch (e2) {}
       }
@@ -1048,8 +1049,11 @@ export default function Chart() {
 
   return (
     <div className="relative w-full h-full" style={{ backgroundColor: theme.background }}>
-      <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 0 }} />
-      <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none' }} />
+      {/* FIX: Chart container gets zIndex 1 */}
+      <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none', background: 'transparent' }} />
+      
+      {/* FIX: Drawing canvas gets zIndex 2, so it renders on top of the chart */}
+      <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
 
       {isPencilMode && (
         <div
