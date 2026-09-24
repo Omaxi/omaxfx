@@ -5,10 +5,10 @@ import { useStore } from '../store';
 const TP_COLORS = ['#26a69a', '#22c55e', '#4ade80', '#86efac', '#fbbf24', '#f59e0b', '#fde047'];
 
 const fireTPCelebration = () => {
-  // Stage 1: Main central burst
+  // Single, centered burst only
   confetti({
-    particleCount: 150,
-    spread: 360, // Full 360 spread for a beautiful centered explosion
+    particleCount: 180,
+    spread: 360,
     origin: { x: 0.5, y: 0.5 },
     colors: TP_COLORS,
     startVelocity: 45,
@@ -16,21 +16,6 @@ const fireTPCelebration = () => {
     ticks: 220,
     disableForReducedMotion: true,
   });
-
-  // Stage 2: Final sparkle shower from above (centered)
-  setTimeout(() => {
-    confetti({
-      particleCount: 90,
-      spread: 140,
-      origin: { x: 0.5, y: 0.35 },
-      colors: TP_COLORS,
-      startVelocity: 30,
-      scalar: 0.9,
-      ticks: 180,
-      gravity: 0.9,
-      disableForReducedMotion: true,
-    });
-  }, 380);
 };
 
 export default function CelebrationOverlay() {
