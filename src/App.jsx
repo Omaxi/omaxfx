@@ -26,9 +26,6 @@ const formatTime = (sec) => {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
-// =========================================================================
-// SYMBOL CONFIGURATION
-// =========================================================================
 const CANONICAL_OFFSET = 180; // UTC+3 in minutes
 
 const SYMBOL_CONFIG = [
@@ -38,9 +35,6 @@ const SYMBOL_CONFIG = [
   { code: 'GBPAUD', file: 'gbpaud.csv', sourceOffset: 0,    available: false },
 ];
 
-// =========================================================================
-// FORMAT-AGNOSTIC DATE/TIME PARSER
-// =========================================================================
 const parseDateTimeToUnix = (dateStr, timeStr) => {
   if (!dateStr || timeStr == null) return null;
 
@@ -89,7 +83,6 @@ function App() {
   const soundtrackStarted = useRef(false);
   const restoredRef = useRef(false);
 
-  // Auto-dismiss the symbol warning toast after 5 seconds
   useEffect(() => {
     if (!symbolWarning) return;
     const t = setTimeout(() => clearSymbolWarning(), 5000);
@@ -104,9 +97,6 @@ function App() {
     }
   }, [loadingState.isActive]);
 
-  // ============================================================
-  // CSV LOADING
-  // ============================================================
   useEffect(() => {
     let cancelled = false;
     const setLoadingState = useStore.getState().setLoadingState;
@@ -327,6 +317,14 @@ function App() {
 
   return (
     <div className="flex flex-col h-dvh overflow-hidden" style={{ backgroundColor: theme.background }}>
+      {/* Hidden audio elements — preloaded by the browser at app startup */}
+      <audio
+        id="sfx-tphit"
+        src={`${import.meta.env.BASE_URL}tphit.mp3`}
+        preload="auto"
+        style={{ display: 'none' }}
+      />
+
       <header className="px-2 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-2">
         <div className="flex items-center gap-2 flex-shrink-0">
           <h1 className="text-sm font-bold tracking-wider whitespace-nowrap">
@@ -419,13 +417,12 @@ function App() {
 
       <CelebrationOverlay />
 
-      {/* Symbol data-range warning toast */}
       {symbolWarning && (
         <div
           className="fixed left-1/2 -translate-x-1/2 z-[200] pointer-events-none"
           style={{ top: '56px' }}
         >
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-[#1e222d]/98 backdrop-blur border border-amber-500/60 rounded-lg shadow-2xl shadow-black/60 animate-fade-in">
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-[#1e222d]/98 backdrop-blur border border-amber-500/60 rounded-lg shadow-2xl shadow-black/60">
             <AlertTriangle size={16} className="text-amber-400 flex-shrink-0" />
             <div className="flex flex-col">
               <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wide">
