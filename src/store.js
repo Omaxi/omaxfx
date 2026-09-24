@@ -272,6 +272,7 @@ export const useStore = create((set, get) => ({
       borderColor: drawing.borderColor || drawing.color || '#f59e0b',
       fillColor: drawing.fillColor || '#f59e0b33',
       lineWidth: drawing.lineWidth ?? 1,
+      showBorder: drawing.showBorder !== false, // default to true
     };
     return {
       drawingsPast: [...state.drawingsPast.slice(-40), cloneDrawings(state.drawings)],

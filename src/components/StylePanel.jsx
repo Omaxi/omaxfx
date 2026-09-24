@@ -15,6 +15,7 @@ export default function StylePanel({ selectedId, onClose }) {
   const currentBorder = drawing.borderColor || drawing.color || '#f59e0b';
   const currentFill = drawing.fillColor || (currentBorder + '33');
   const currentWidth = drawing.lineWidth ?? 1;
+  const showBorder = drawing.showBorder !== false; // Default to true
 
   const supportsFill = ['rectangle', 'fibonacci', 'volumeProfile'].includes(drawing.type);
 
@@ -40,6 +41,17 @@ export default function StylePanel({ selectedId, onClose }) {
       </div>
 
       <div className="p-3 space-y-3">
+        {/* Show Border Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="text-[10px] text-gray-400 uppercase font-bold">Show Border Line</div>
+          <button
+            onClick={() => commit({ showBorder: !showBorder })}
+            className={`w-8 h-4 rounded-full transition-colors relative ${showBorder ? 'bg-blue-600' : 'bg-[#2a2e39]'}`}
+          >
+            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${showBorder ? 'left-4' : 'left-0.5'}`} />
+          </button>
+        </div>
+
         {/* Border/Line color */}
         <div>
           <div className="text-[10px] text-gray-400 uppercase font-bold mb-1.5">Line Color</div>
@@ -119,39 +131,41 @@ export default function StylePanel({ selectedId, onClose }) {
           </div>
         )}
 
-        {/* Line width */}
-        <div>
-          <div className="text-[10px] text-gray-400 uppercase font-bold mb-1.5">
-            Line Width — {currentWidth}px
+        {/* Line width — only show if border is enabled */}
+        {showBorder && (
+          <div>
+            <div className="text-[10px] text-gray-400 uppercase font-bold mb-1.5">
+              Line Width — {currentWidth}px
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min="1"
+                max="6"
+                step="1"
+                value={currentWidth}
+                onChange={(e) => commit({ lineWidth: Number(e.target.value) })}
+                className="flex-1 accent-blue-500"
+              />
+              <span className="text-[11px] text-gray-300 font-mono w-6 text-right">{currentWidth}</span>
+            </div>
+            <div className="flex gap-1 mt-2">
+              {[1, 2, 3, 4].map(w => (
+                <button
+                  key={w}
+                  onClick={() => commit({ lineWidth: w })}
+                  className={`flex-1 py-1 rounded text-[10px] font-bold transition-colors ${
+                    currentWidth === w 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-[#1e222d] text-gray-400 hover:bg-[#2a2e39]'
+                  }`}
+                >
+                  {w}px
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="range"
-              min="1"
-              max="6"
-              step="1"
-              value={currentWidth}
-              onChange={(e) => commit({ lineWidth: Number(e.target.value) })}
-              className="flex-1 accent-blue-500"
-            />
-            <span className="text-[11px] text-gray-300 font-mono w-6 text-right">{currentWidth}</span>
-          </div>
-          <div className="flex gap-1 mt-2">
-            {[1, 2, 3, 4].map(w => (
-              <button
-                key={w}
-                onClick={() => commit({ lineWidth: w })}
-                className={`flex-1 py-1 rounded text-[10px] font-bold transition-colors ${
-                  currentWidth === w 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-[#1e222d] text-gray-400 hover:bg-[#2a2e39]'
-                }`}
-              >
-                {w}px
-              </button>
-            ))}
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

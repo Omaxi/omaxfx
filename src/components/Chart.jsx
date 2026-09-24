@@ -64,6 +64,7 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
   const borderColor = drawing.borderColor || drawing.color || '#f59e0b';
   const fillColor = drawing.fillColor || (borderColor + '33');
   const lineWidth = drawing.lineWidth ?? 1;
+  const showBorder = drawing.showBorder !== false; // Default to true
   const pts = drawing.points.map(p => pointToXY(p)).filter(Boolean);
   if (pts.length === 0) return;
   
@@ -75,22 +76,26 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
 
   if (drawing.type === 'horizontal') {
     const { y } = pts[0];
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(canvasW, y);
-    ctx.stroke();
+    if (showBorder) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvasW, y);
+      ctx.stroke();
+    }
   } else if (drawing.type === 'trendline' && pts.length === 2) {
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    ctx.lineTo(pts[1].x, pts[1].y);
-    ctx.stroke();
+    if (showBorder) {
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      ctx.lineTo(pts[1].x, pts[1].y);
+      ctx.stroke();
+    }
   } else if (drawing.type === 'rectangle' && pts.length === 2) {
     const x = Math.min(pts[0].x, pts[1].x);
     const y = Math.min(pts[0].y, pts[1].y);
     const w = Math.abs(pts[1].x - pts[0].x);
     const h = Math.abs(pts[1].y - pts[0].y);
     ctx.fillRect(x, y, w, h);
-    ctx.strokeRect(x, y, w, h);
+    if (showBorder) ctx.strokeRect(x, y, w, h);
   } else if (drawing.type === 'fibonacci' && pts.length === 2) {
     const levels = [0, 0.5, 0.618, 0.764, 1];
     const y1 = pts[0].y, y2 = pts[1].y;
@@ -100,6 +105,7 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
     ctx.fillStyle = fillColor;
     ctx.fillRect(xMin, Math.min(y1, y2), xMax - xMin, Math.abs(y2 - y1));
     levels.forEach(level => {
+      if (!showBorder) return;
       const y = y1 + (y2 - y1) * level;
       const isKey = level === 0.5 || level === 0.618;
       ctx.beginPath();
@@ -141,18 +147,20 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
         }
         ctx.fillRect(x1, barTop, barWidth, barBottom - barTop);
       }
-      const pocPrice = priceMin + (pocIdx + 0.5) * bucketSize;
-      const pocY = pointToXY({ time: drawing.points[0].time, price: pocPrice })?.y;
-      if (pocY != null) {
-        ctx.strokeStyle = '#ef4444';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(x1, pocY);
-        ctx.lineTo(x2, pocY);
-        ctx.stroke();
-        ctx.fillStyle = '#ef4444';
-        ctx.font = 'bold 9px monospace';
-        ctx.fillText('POC', x1 + 4, pocY - 3);
+      if (showBorder) {
+        const pocPrice = priceMin + (pocIdx + 0.5) * bucketSize;
+        const pocY = pointToXY({ time: drawing.points[0].time, price: pocPrice })?.y;
+        if (pocY != null) {
+          ctx.strokeStyle = '#ef4444';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(x1, pocY);
+          ctx.lineTo(x2, pocY);
+          ctx.stroke();
+          ctx.fillStyle = '#ef4444';
+          ctx.font = 'bold 9px monospace';
+          ctx.fillText('POC', x1 + 4, pocY - 3);
+        }
       }
     }
   }
@@ -335,7 +343,6 @@ export default function Chart() {
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 4,
       visible: ct === 'line',
-      // autoscaleInfoProvider removed entirely — it was causing a runtime crash
     });
 
     const timer = setTimeout(() => {
@@ -467,6 +474,67 @@ export default function Chart() {
       const alive = new Set(state.drawings);
       for (const key of cache.keys()) if (!alive.has(key)) cache.delete(key);
 
+      // 1. Draw trade history (Entry/Exit boxes)
+      const tradeHistory = state.tradeHistory || [];
+      tradeHistory.forEach(trade => {
+        const x1 = timeToX(trade.openTime);
+        const x2 = timeToX(trade.closeTime);
+        const yEntry = seriesRef.current?.priceToCoordinate(trade.entryPrice);
+        const yExit = seriesRef.current?.priceToCoordinate(trade.exitPrice);
+
+        if (x1 == null || x2 == null || yEntry == null || yExit == null) return;
+        
+        // Skip if entirely off-screen
+        if (x1 > paneW && x2 > paneW) return;
+        if (x1 < 0 && x2 < 0) return;
+
+        const isWin = trade.pnl >= 0;
+        const color = isWin ? '#26a69a' : '#ef5350';
+        const bgColor = isWin ? 'rgba(38, 166, 154, 0.15)' : 'rgba(239, 83, 80, 0.15)';
+
+        // Bounding box for the trade
+        const minX = Math.min(x1, x2);
+        const maxX = Math.max(x1, x2);
+        const minY = Math.min(yEntry, yExit);
+        const maxY = Math.max(yEntry, yExit);
+        const w = Math.max(2, maxX - minX);
+        const h = Math.max(2, maxY - minY);
+
+        // Draw filled box
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(minX, minY, w, h);
+        
+        // Draw border
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(minX, minY, w, h);
+
+        // Draw entry marker (small box)
+        ctx.fillStyle = color;
+        ctx.fillRect(x1 - 3, yEntry - 3, 6, 6);
+        
+        // Draw exit marker (small box)
+        ctx.fillRect(x2 - 3, yExit - 3, 6, 6);
+
+        // Draw connecting line
+        ctx.beginPath();
+        ctx.moveTo(x1, yEntry);
+        ctx.lineTo(x2, yExit);
+        ctx.strokeStyle = color;
+        ctx.setLineDash([3, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw PnL label
+        if (w > 40) {
+          ctx.fillStyle = color;
+          ctx.font = 'bold 9px monospace';
+          const pnlText = `${isWin ? '+' : ''}${trade.pnl.toFixed(1)}`;
+          ctx.fillText(pnlText, minX + 5, minY + 12);
+        }
+      });
+
+      // 2. Draw user drawings
       const sel = selectedItemRef.current;
       const selectedId = sel?.type === 'drawing' ? sel.id : null;
       state.drawings.forEach(d => {
@@ -475,9 +543,11 @@ export default function Chart() {
       });
       if (draftRef.current) drawShape(ctx, draftRef.current, pointToXY, true, cache, false);
 
+      // 3. Draw pencil strokes
       state.pencilStrokes.forEach(s => drawPencilStroke(ctx, s));
       if (currentPencilRef.current) drawPencilStroke(ctx, currentPencilRef.current);
 
+      // 4. Draw selected trade line indicator
       if (sel?.type === 'trade' && seriesRef.current) {
         let livePrice = null;
         if (sel.target === 'position') {
@@ -517,7 +587,7 @@ export default function Chart() {
       cancelAnimationFrame(rafId);
       ro.disconnect();
     };
-  }, [pointToXY]);
+  }, [pointToXY, timeToX]);
 
   useEffect(() => {
     const container = chartContainerRef.current;
@@ -868,7 +938,7 @@ export default function Chart() {
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerUp);
     };
-  }, [xyToPoint, pointToXY, lockChart, snapshotDrawings]);
+  }, [xyToPoint, pointToXY, lockChart, snapshotDrawings, timeToX]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -969,7 +1039,6 @@ export default function Chart() {
         const to = len - 1 + halfBars;
         timeScale.setVisibleLogicalRange({ from, to });
         
-        // Removed the autoScale: false + setTimeout block to prevent flickering
         chartRef.current.priceScale('right').applyOptions({ autoScale: true });
       } catch (e) {
         try { timeScale.fitContent(); } catch (e2) {}
@@ -1050,8 +1119,6 @@ export default function Chart() {
       
       {/* Drawing canvas is at zIndex 2, pointer-events-none so clicks pass through to chart */}
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
-
-      {/* REMOVED: the isPencilMode overlay that was blocking clicks */}
 
       {isPencilMode && (
         <div 
