@@ -50,9 +50,21 @@ const SYMBOL_CONFIG = [
     sourceOffset: -300,   // UTC-5
     available: true,
   },
-  { code: 'EURUSD', files: ['eurusd.csv'], sourceOffset: -300, available: false },
-  { code: 'CHFJPY', files: ['chfjpy.csv'], sourceOffset: 0,    available: false },
-  { code: 'GBPAUD', files: ['gbpaud.csv'], sourceOffset: 0,    available: false },
+  {
+    code: 'EURUSD',
+    files: [
+      'eurusd_2020.csv',
+      'eurusd_2021.csv',
+      'eurusd_2022.csv',
+      'eurusd_2023.csv',
+      'eurusd_2024.csv',
+      'eurusd_2025.csv',
+    ],
+    sourceOffset: -300,   // UTC-5
+    available: true,
+  },
+  { code: 'CHFJPY', files: ['chfjpy.csv'], sourceOffset: 0, available: false },
+  { code: 'GBPAUD', files: ['gbpaud.csv'], sourceOffset: 0, available: false },
 ];
 
 // =========================================================================
@@ -356,8 +368,7 @@ function App() {
 
   return (
     <div className="flex flex-col h-dvh overflow-hidden" style={{ backgroundColor: theme.background }}>
-      {/* Hidden audio element — preloaded by the browser at page load.
-          Path matches the actual file location: public/sounds/tphit.mp3 */}
+      {/* Hidden audio element — preloaded by the browser at page load. */}
       <audio
         id="sfx-tphit"
         src={`${import.meta.env.BASE_URL}sounds/tphit.mp3`}

@@ -24,7 +24,7 @@ const CHART_TYPES = [
 // =========================================================================
 const SYMBOLS = [
   { code: 'XAUUSD', source: 'Dukascopy', available: true },
-  { code: 'EURUSD', source: 'Dukascopy', available: false },
+  { code: 'EURUSD', source: 'Dukascopy', available: true },
   { code: 'CHFJPY', source: 'Dukascopy', available: false },
   { code: 'GBPAUD', source: 'Dukascopy', available: false },
 ];
