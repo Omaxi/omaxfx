@@ -7,8 +7,8 @@ const TP_COLORS = ['#26a69a', '#22c55e', '#4ade80', '#86efac', '#fbbf24', '#f59e
 const fireTPCelebration = () => {
   // Stage 1: Main central burst
   confetti({
-    particleCount: 120,
-    spread: 90,
+    particleCount: 150,
+    spread: 360, // Full 360 spread for a beautiful centered explosion
     origin: { x: 0.5, y: 0.5 },
     colors: TP_COLORS,
     startVelocity: 45,
@@ -17,29 +17,7 @@ const fireTPCelebration = () => {
     disableForReducedMotion: true,
   });
 
-  // Stage 2: Side cannons after a beat
-  setTimeout(() => {
-    confetti({
-      particleCount: 60,
-      angle: 60,
-      spread: 70,
-      origin: { x: 0, y: 0.7 },
-      colors: TP_COLORS,
-      startVelocity: 55,
-      disableForReducedMotion: true,
-    });
-    confetti({
-      particleCount: 60,
-      angle: 120,
-      spread: 70,
-      origin: { x: 1, y: 0.7 },
-      colors: TP_COLORS,
-      startVelocity: 55,
-      disableForReducedMotion: true,
-    });
-  }, 180);
-
-  // Stage 3: Final sparkle shower from above
+  // Stage 2: Final sparkle shower from above (centered)
   setTimeout(() => {
     confetti({
       particleCount: 90,
