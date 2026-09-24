@@ -266,15 +266,12 @@ export default function Chart() {
 
   useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
 
-  // Validate / clear selection when a drawing is deleted OR becomes hidden
-  // by the current timeframe.
   useEffect(() => {
     if (!selectedItem) return;
     if (selectedItem.type === 'drawing') {
       const d = useStore.getState().drawings.find(x => x.id === selectedItem.id);
       if (!d) { setSelectedItem(null); lockChart(false); return; }
       const currentTf = useStore.getState().timeframe;
-      // Drawing hidden on current TF → deselect silently
       if (d.timeframe != null && currentTf > d.timeframe) {
         setSelectedItem(null);
         lockChart(false);
@@ -563,9 +560,7 @@ export default function Chart() {
         }
       });
 
-      // 2. Draw user drawings.
-      // Hide drawings whose creation timeframe is LOWER than the current one.
-      // Legacy drawings (no timeframe field) are always shown.
+      // 2. Draw user drawings
       const sel = selectedItemRef.current;
       const selectedId = sel?.type === 'drawing' ? sel.id : null;
       state.drawings.forEach(d => {
@@ -635,7 +630,6 @@ export default function Chart() {
       const ctx = canvas.getContext('2d');
       for (let i = state.drawings.length - 1; i >= 0; i--) {
         const d = state.drawings[i];
-        // Skip drawings hidden on the current timeframe
         if (d.timeframe != null && currentTf > d.timeframe) continue;
         const pts = d.points.map(p => pointToXY(p)).filter(Boolean);
         if (pts.length === 0) continue;
@@ -1047,32 +1041,25 @@ export default function Chart() {
 
   useEffect(() => { draftRef.current = null; dragDrawRef.current = null; }, [activeDrawingTool]);
 
+  // =========================================================================
+  // VISIBLE DATA
+  // -------------------------------------------------------------------------
+  // For higher timeframes (5m, 15m, 1h, ...), we HIDE the current forming
+  // candle. It only appears once its block has fully elapsed.
+  // Result: every candle that appears is already printed in its closed
+  // state, matching the 1m behaviour.
+  // =========================================================================
   const visibleData = useMemo(() => {
     if (!rawData[currentIndex] || displayData.length === 0) return [];
     const currentRawTime = rawData[currentIndex].time;
-    const currentRawClose = rawData[currentIndex].close;
     let filtered = displayData.filter(c => c.time <= currentRawTime);
 
     if (timeframe > 1 && filtered.length > 0) {
       const last = filtered[filtered.length - 1];
       const blockEnd = last.time + timeframe * 60;
+      // The current block isn't complete yet → hide it entirely.
       if (currentRawTime < blockEnd) {
-        const rawInBlock = [];
-        for (let i = currentIndex; i >= 0; i--) {
-          if (rawData[i].time < last.time) break;
-          rawInBlock.unshift(rawData[i]);
-        }
-        if (rawInBlock.length > 0) {
-          filtered = filtered.slice(0, -1);
-          filtered.push({
-            time: last.time,
-            open: rawInBlock[0].open,
-            high: Math.max(...rawInBlock.map(c => c.high)),
-            low: Math.min(...rawInBlock.map(c => c.low)),
-            close: currentRawClose,
-            volume: rawInBlock.reduce((s, c) => s + (c.volume || 0), 0),
-          });
-        }
+        filtered = filtered.slice(0, -1);
       }
     }
     return filtered;
@@ -1080,7 +1067,15 @@ export default function Chart() {
 
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current || !chartRef.current) return;
-    if (visibleData.length === 0) return;
+    if (visibleData.length === 0) {
+      // Clear the series when there's nothing to show yet
+      try {
+        seriesRef.current.setData([]);
+        lineSeriesRef.current.setData([]);
+      } catch (e) {}
+      visibleDataRef.current = [];
+      return;
+    }
     
     const timeScale = chartRef.current.timeScale();
     const tfChanged = lastTimeframeRef.current !== timeframe;
