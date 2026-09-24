@@ -335,11 +335,7 @@ export default function Chart() {
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 4,
       visible: ct === 'line',
-      // FIX: Pull autoscale range from candlestick series to align vertically
-      autoscaleInfoProvider: () => {
-        if (!seriesRef.current) return null;
-        return seriesRef.current.autoscaleInfoProvider()();
-      },
+      // autoscaleInfoProvider removed entirely — it was causing a runtime crash
     });
 
     const timer = setTimeout(() => {
@@ -800,7 +796,7 @@ export default function Chart() {
         return;
       }
 
-      if (state.activeDrawingTool || state.isDrawingMode) {
+      if (state.activeDrawingTool || state.isDrawingMode || state.isPencilMode) {
         container.style.cursor = 'crosshair';
       }
     };
@@ -973,7 +969,7 @@ export default function Chart() {
         const to = len - 1 + halfBars;
         timeScale.setVisibleLogicalRange({ from, to });
         
-        // FIX: Removed autoScale: false + setTimeout flicker. Just ensure autoScale is true.
+        // Removed the autoScale: false + setTimeout block to prevent flickering
         chartRef.current.priceScale('right').applyOptions({ autoScale: true });
       } catch (e) {
         try { timeScale.fitContent(); } catch (e2) {}
@@ -1049,18 +1045,13 @@ export default function Chart() {
 
   return (
     <div className="relative w-full h-full" style={{ backgroundColor: theme.background }}>
-      {/* FIX: Chart container gets zIndex 1 */}
-      <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none', background: 'transparent' }} />
+      {/* Chart container is at zIndex 1 */}
+      <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none', cursor: isPencilMode ? 'crosshair' : 'default' }} />
       
-      {/* FIX: Drawing canvas gets zIndex 2, so it renders on top of the chart */}
+      {/* Drawing canvas is at zIndex 2, pointer-events-none so clicks pass through to chart */}
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
 
-      {isPencilMode && (
-        <div
-          className="absolute inset-0"
-          style={{ zIndex: 15, cursor: 'crosshair', touchAction: 'none' }}
-        />
-      )}
+      {/* REMOVED: the isPencilMode overlay that was blocking clicks */}
 
       {isPencilMode && (
         <div 
