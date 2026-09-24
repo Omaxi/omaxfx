@@ -461,6 +461,7 @@ export default function Chart() {
     const ro = new ResizeObserver(resizeCanvas);
     ro.observe(container);
 
+    // Snap a target time to the nearest visible candle's time.
     const findClosestCandleTime = (targetTime) => {
       const data = visibleDataRef.current;
       if (data.length === 0) return targetTime;
@@ -496,6 +497,13 @@ export default function Chart() {
       const alive = new Set(state.drawings);
       for (const key of cache.keys()) if (!alive.has(key)) cache.delete(key);
 
+      // Snapped version of pointToXY used for user drawings so that
+      // drawings "stick" to candle boundaries on every timeframe.
+      const snappedPointToXY = (point) => {
+        const snappedTime = findClosestCandleTime(point.time);
+        return pointToXY({ time: snappedTime, price: point.price });
+      };
+
       // 1. Draw trade history (Entry/Exit boxes + SL area + TP area)
       const tradeHistory = state.tradeHistory || [];
       tradeHistory.forEach(trade => {
@@ -524,7 +532,6 @@ export default function Chart() {
         const maxX = Math.max(x1, x2);
         const w = Math.max(2, maxX - minX);
 
-        // Draw SL area
         if (ySL != null) {
           const minY_SL = Math.min(yEntry, ySL);
           const maxY_SL = Math.max(yEntry, ySL);
@@ -533,7 +540,6 @@ export default function Chart() {
           ctx.fillRect(minX, minY_SL, w, h_SL);
         }
 
-        // Draw TP area
         if (yTP != null) {
           const minY_TP = Math.min(yEntry, yTP);
           const maxY_TP = Math.max(yEntry, yTP);
@@ -542,14 +548,12 @@ export default function Chart() {
           ctx.fillRect(minX, minY_TP, w, h_TP);
         }
 
-        // Draw Result area
         const minY_Result = Math.min(yEntry, yExit);
         const maxY_Result = Math.max(yEntry, yExit);
         const h_Result = Math.max(2, maxY_Result - minY_Result);
         ctx.fillStyle = resultBgColor;
         ctx.fillRect(minX, minY_Result, w, h_Result);
 
-        // Draw PnL label
         if (w > 40) {
           ctx.fillStyle = resultColor;
           ctx.font = 'bold 9px monospace';
@@ -558,16 +562,16 @@ export default function Chart() {
         }
       });
 
-      // 2. Draw user drawings
+      // 2. Draw user drawings — snapped to candles for cross-timeframe stability
       const sel = selectedItemRef.current;
       const selectedId = sel?.type === 'drawing' ? sel.id : null;
       state.drawings.forEach(d => {
         if (d.type === 'volumeProfile' && !cache.has(d)) cache.set(d, computeVolumeProfile(d));
-        drawShape(ctx, d, pointToXY, false, cache, d.id === selectedId);
+        drawShape(ctx, d, snappedPointToXY, false, cache, d.id === selectedId);
       });
-      if (draftRef.current) drawShape(ctx, draftRef.current, pointToXY, true, cache, false);
+      if (draftRef.current) drawShape(ctx, draftRef.current, snappedPointToXY, true, cache, false);
 
-      // 3. Draw pencil strokes
+      // 3. Draw pencil strokes (free-hand — not snapped)
       state.pencilStrokes.forEach(s => drawPencilStroke(ctx, s));
       if (currentPencilRef.current) drawPencilStroke(ctx, currentPencilRef.current);
 
