@@ -23,46 +23,48 @@ const MUSIC_VOLUME = 0.1;
 const TP_HIT_URL = `${import.meta.env.BASE_URL}tphit.mp3`;
 const TP_HIT_VOLUME = 0.6;
 
-// Preloader: an HTMLAudio element created at module load.
-// `preload='auto'` tells the browser to start buffering immediately.
-// This guarantees the very first `.play()` call has data ready.
+console.log('[SFX] tphit.mp3 expected at:', TP_HIT_URL);
+
 let tpHitPreloader = null;
-let tpHitFailed = false;
 
 const initTpHitPreloader = () => {
-  if (tpHitPreloader || tpHitFailed) return;
+  if (tpHitPreloader) return;
   try {
     tpHitPreloader = new Audio(TP_HIT_URL);
     tpHitPreloader.preload = 'auto';
     tpHitPreloader.volume = TP_HIT_VOLUME;
-    tpHitPreloader.addEventListener('error', () => {
-      console.warn('[SFX] Failed to load tphit.mp3, using synth fallback.');
-      tpHitFailed = true;
+
+    tpHitPreloader.addEventListener('canplaythrough', () => {
+      console.log('[SFX] tphit.mp3 preloaded successfully ✓');
     });
-    // Load the resource without needing user interaction
+    tpHitPreloader.addEventListener('error', () => {
+      console.warn('[SFX] tphit.mp3 failed to load at', TP_HIT_URL);
+    });
+
     try { tpHitPreloader.load(); } catch (_) {}
   } catch (e) {
-    tpHitFailed = true;
+    console.warn('[SFX] Failed to create tphit preloader:', e);
+    tpHitPreloader = null;
   }
 };
 initTpHitPreloader();
 
-// Play the custom MP3.
-// Each call spawns a fresh Audio instance reading from the browser cache,
-// so overlapping TP hits don't cut each other off and each playback starts
-// from the beginning.
 const playTPHitCustom = () => {
   try {
-    const audio = new Audio(TP_HIT_URL);
+    // cloneNode() reuses the already-buffered resource → instant playback
+    const audio = tpHitPreloader
+      ? tpHitPreloader.cloneNode(true)
+      : new Audio(TP_HIT_URL);
     audio.volume = TP_HIT_VOLUME;
     const p = audio.play();
     if (p && typeof p.catch === 'function') {
-      p.catch(() => {
-        // Autoplay blocked or file missing — silent fallback
+      p.catch((err) => {
+        console.warn('[SFX] tphit.mp3 play failed:', err);
         playTPHitSynthFallback();
       });
     }
   } catch (e) {
+    console.warn('[SFX] tphit.mp3 exception:', e);
     playTPHitSynthFallback();
   }
 };
@@ -108,10 +110,6 @@ const playTPHitSynthFallback = () => {
 };
 
 export const playTPHit = () => {
-  if (tpHitFailed) {
-    playTPHitSynthFallback();
-    return;
-  }
   playTPHitCustom();
 };
 

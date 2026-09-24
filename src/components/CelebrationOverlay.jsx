@@ -5,7 +5,6 @@ import { useStore } from '../store';
 const TP_COLORS = ['#26a69a', '#22c55e', '#4ade80', '#86efac', '#fbbf24', '#f59e0b', '#fde047'];
 
 const fireTPCelebration = () => {
-  // Single, centered burst only
   confetti({
     particleCount: 180,
     spread: 360,
@@ -27,9 +26,15 @@ export default function CelebrationOverlay() {
     tradeCountRef.current = useStore.getState().tradeHistory.length;
 
     const unsubscribe = useStore.subscribe((state) => {
+      // If the user turned fireworks off, keep our counter in sync but do nothing
+      if (!state.enableFireworks) {
+        tradeCountRef.current = state.tradeHistory.length;
+        return;
+      }
+
       const len = state.tradeHistory.length;
 
-      // Session was reset (Restart / Load) — reset our counter silently
+      // Session reset — resync silently
       if (len < tradeCountRef.current) {
         tradeCountRef.current = len;
         return;
@@ -43,7 +48,6 @@ export default function CelebrationOverlay() {
         const hasTp = newTrades.some(t => t.reason === 'TP');
         if (hasTp) {
           const now = Date.now();
-          // Throttle — avoid stacking bursts if multiple TPs hit within one auto-play tick
           if (now - lastFireRef.current > 600) {
             lastFireRef.current = now;
             fireTPCelebration();
