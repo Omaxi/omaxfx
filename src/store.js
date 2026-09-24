@@ -19,9 +19,6 @@ const getDayKey = (unixSeconds) => {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 };
 
-// Format a Unix timestamp as dd.mm.yyyy using its UTC representation
-// (this matches what the chart displays, since all data is stored on
-// a uniform "UTC+3-as-UTC" scale after load).
 const formatRangeDate = (unixSeconds) => {
   const d = new Date(unixSeconds * 1000);
   const dd = String(d.getUTCDate()).padStart(2, '0');
@@ -85,8 +82,6 @@ export const useStore = create((set, get) => ({
   symbol: 'XAUUSD',
   timezone: 'UTC+3',
 
-  // Toast shown when a symbol switch is rejected because the current
-  // time is outside the target's data range.
   symbolWarning: null,
   clearSymbolWarning: () => set({ symbolWarning: null }),
 
@@ -112,32 +107,22 @@ export const useStore = create((set, get) => ({
     return { allRawDataBySymbol: nextCache };
   }),
 
-  // ============================================================
-  // SYMBOL SWITCHING — with data-range guard
-  // ============================================================
   setSymbol: (code) => set((state) => {
     if (code === state.symbol) return state;
 
     const newData = state.allRawDataBySymbol[code];
     if (!newData || newData.length === 0) {
-      // Symbol never loaded — silently reject
-      return { symbolWarning: {
-        code,
-        message: `${code} data is not available`,
-      } };
+      return { symbolWarning: { code, message: `${code} data is not available` } };
     }
 
-    // Where is the user right now?
     const oldData = state.rawData;
     const currentCandle = oldData[state.currentIndex];
-    // If somehow there is no current candle, allow the switch (fresh session)
     const currentTime = currentCandle ? currentCandle.time : null;
 
     const firstTime = newData[0].time;
     const lastTime = newData[newData.length - 1].time;
 
     if (currentTime != null && (currentTime < firstTime || currentTime > lastTime)) {
-      // Out of range — do NOT switch, just warn
       return {
         symbolWarning: {
           code,
@@ -148,7 +133,6 @@ export const useStore = create((set, get) => ({
       };
     }
 
-    // In range — find equivalent index by time
     let newIndex = 0;
     if (currentTime != null) {
       for (let i = 0; i < newData.length; i++) {
@@ -168,9 +152,6 @@ export const useStore = create((set, get) => ({
     };
   }),
 
-  // ============================================================
-  // TIMEZONE — shifts display for ALL cached symbols uniformly
-  // ============================================================
   setTimezone: (newTz) => set((state) => {
     if (newTz === state.timezone) return state;
     const oldOffset = TZ_OFFSETS[state.timezone] ?? 180;
@@ -378,7 +359,11 @@ export const useStore = create((set, get) => ({
       fillColor: drawing.fillColor || '#f59e0b33',
       lineWidth: drawing.lineWidth ?? 1,
       showBorder: drawing.showBorder !== false,
-      symbol: state.symbol, // tag with the symbol it was created on
+      symbol: state.symbol,
+      // Tag with the timeframe the drawing was created on.
+      // It will be visible on this TF and all LOWER TFs (more granular),
+      // but hidden when the user switches to a HIGHER (less granular) TF.
+      timeframe: state.timeframe,
     };
     return {
       drawingsPast: [...state.drawingsPast.slice(-40), cloneDrawings(state.drawings)],

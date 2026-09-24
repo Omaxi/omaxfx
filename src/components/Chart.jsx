@@ -266,11 +266,19 @@ export default function Chart() {
 
   useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
 
+  // Validate / clear selection when a drawing is deleted OR becomes hidden
+  // by the current timeframe.
   useEffect(() => {
     if (!selectedItem) return;
     if (selectedItem.type === 'drawing') {
-      const exists = useStore.getState().drawings.some(d => d.id === selectedItem.id);
-      if (!exists) { setSelectedItem(null); lockChart(false); }
+      const d = useStore.getState().drawings.find(x => x.id === selectedItem.id);
+      if (!d) { setSelectedItem(null); lockChart(false); return; }
+      const currentTf = useStore.getState().timeframe;
+      // Drawing hidden on current TF → deselect silently
+      if (d.timeframe != null && currentTf > d.timeframe) {
+        setSelectedItem(null);
+        lockChart(false);
+      }
     } else if (selectedItem.type === 'trade') {
       const state = useStore.getState();
       let exists = false;
@@ -281,7 +289,7 @@ export default function Chart() {
       }
       if (!exists) { setSelectedItem(null); lockChart(false); }
     }
-  }, [positions, pendingOrders, selectedItem]);
+  }, [positions, pendingOrders, selectedItem, timeframe]);
 
   const lockChart = useCallback((locked) => {
     if (!chartRef.current) return;
@@ -461,7 +469,6 @@ export default function Chart() {
     const ro = new ResizeObserver(resizeCanvas);
     ro.observe(container);
 
-    // Snap a target time to the nearest visible candle's time.
     const findClosestCandleTime = (targetTime) => {
       const data = visibleDataRef.current;
       if (data.length === 0) return targetTime;
@@ -493,22 +500,10 @@ export default function Chart() {
       ctx.rect(0, 0, paneW, paneH);
       ctx.clip();
       const state = useStore.getState();
+      const currentTf = state.timeframe;
       const cache = profileCacheRef.current;
       const alive = new Set(state.drawings);
       for (const key of cache.keys()) if (!alive.has(key)) cache.delete(key);
-
-      // Snap a point's time ONLY if it falls inside the visible candle range.
-      // Outside the range, keep the raw time so drawings can extend past the candles.
-      const snappedPointToXY = (point) => {
-        const data = visibleDataRef.current;
-        if (data.length === 0) return pointToXY(point);
-        const firstTime = data[0].time;
-        const lastTime = data[data.length - 1].time;
-        if (point.time >= firstTime && point.time <= lastTime) {
-          return pointToXY({ time: findClosestCandleTime(point.time), price: point.price });
-        }
-        return pointToXY(point);
-      };
 
       // 1. Draw trade history (Entry/Exit boxes + SL area + TP area)
       const tradeHistory = state.tradeHistory || [];
@@ -568,16 +563,19 @@ export default function Chart() {
         }
       });
 
-      // 2. Draw user drawings (snapped only inside the visible range)
+      // 2. Draw user drawings.
+      // Hide drawings whose creation timeframe is LOWER than the current one.
+      // Legacy drawings (no timeframe field) are always shown.
       const sel = selectedItemRef.current;
       const selectedId = sel?.type === 'drawing' ? sel.id : null;
       state.drawings.forEach(d => {
+        if (d.timeframe != null && currentTf > d.timeframe) return;
         if (d.type === 'volumeProfile' && !cache.has(d)) cache.set(d, computeVolumeProfile(d));
-        drawShape(ctx, d, snappedPointToXY, false, cache, d.id === selectedId);
+        drawShape(ctx, d, pointToXY, false, cache, d.id === selectedId);
       });
-      if (draftRef.current) drawShape(ctx, draftRef.current, snappedPointToXY, true, cache, false);
+      if (draftRef.current) drawShape(ctx, draftRef.current, pointToXY, true, cache, false);
 
-      // 3. Draw pencil strokes (free-hand — not snapped)
+      // 3. Draw pencil strokes
       state.pencilStrokes.forEach(s => drawPencilStroke(ctx, s));
       if (currentPencilRef.current) drawPencilStroke(ctx, currentPencilRef.current);
 
@@ -630,12 +628,15 @@ export default function Chart() {
 
     const hitTestDrawings = (x, y) => {
       const state = useStore.getState();
+      const currentTf = state.timeframe;
       const HANDLE_TOL = 22;
       const BODY_TOL = 14;
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       for (let i = state.drawings.length - 1; i >= 0; i--) {
         const d = state.drawings[i];
+        // Skip drawings hidden on the current timeframe
+        if (d.timeframe != null && currentTf > d.timeframe) continue;
         const pts = d.points.map(p => pointToXY(p)).filter(Boolean);
         if (pts.length === 0) continue;
         
