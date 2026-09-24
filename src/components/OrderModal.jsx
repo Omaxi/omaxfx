@@ -3,13 +3,36 @@ import { useStore } from '../store';
 import { fmtMoney } from '../utils/format';
 import { X, AlertTriangle } from 'lucide-react';
 
-const round2 = (n) => Math.round(n * 100) / 100;
+// =========================================================================
+// Per-symbol price configuration
+// -------------------------------------------------------------------------
+//   pointSize  → the value of 1 "point" in price terms
+//   precision  → number of decimals shown / rounded to
+// =========================================================================
+const SYMBOL_META = {
+  XAUUSD: { pointSize: 0.01,   precision: 2 },
+  EURUSD: { pointSize: 0.0001, precision: 4 },
+};
+const DEFAULT_META = { pointSize: 0.01, precision: 2 };
+
+// Default distance for a market order (in points):
+const DEFAULT_SL_POINTS = 100;
+const DEFAULT_TP_POINTS = 200;
+
+const roundTo = (n, precision) => {
+  const factor = Math.pow(10, precision);
+  return Math.round(n * factor) / factor;
+};
 
 export default function OrderModal() {
   const { 
     isOrderModalOpen, closeOrderModal, orderSide, placeOrder, 
-    balance, rawData, currentIndex, draftPosition, clearDraft, rules
+    balance, rawData, currentIndex, draftPosition, clearDraft, rules,
+    symbol,
   } = useStore();
+
+  const meta = SYMBOL_META[symbol] ?? DEFAULT_META;
+  const { pointSize, precision } = meta;
 
   const [orderType, setOrderType] = useState('market');
   const [riskPercent, setRiskPercent] = useState(1);
@@ -25,21 +48,49 @@ export default function OrderModal() {
     if (riskPercent > maxRisk) setRiskPercent(maxRisk);
   }, [maxRisk, riskPercent]);
 
+  // Whenever the modal opens (or the side / symbol / current price changes
+  // while it's open), recompute the default entry / SL / TP.
   useEffect(() => {
-    if (isOrderModalOpen) {
-      if (draftPosition) {
-        setEntryPrice(round2(draftPosition.entry || currentPrice));
-        setSlPrice(round2(draftPosition.sl || (orderSide === 'buy' ? currentPrice - 2 : currentPrice + 2)));
-        setTpPrice(round2(draftPosition.tp || (orderSide === 'buy' ? currentPrice + 4 : currentPrice - 4)));
-        setOrderType('limit');
-      } else {
-        setEntryPrice(round2(currentPrice));
-        setSlPrice(round2(orderSide === 'buy' ? currentPrice - 2 : currentPrice + 2));
-        setTpPrice(round2(orderSide === 'buy' ? currentPrice + 4 : currentPrice - 4));
-        setOrderType('market');
-      }
+    if (!isOrderModalOpen) return;
+
+    if (draftPosition) {
+      // User dragged a position on the chart → use those prices
+      setEntryPrice(roundTo(draftPosition.entry || currentPrice, precision));
+      setSlPrice(roundTo(draftPosition.sl || (orderSide === 'buy'
+        ? currentPrice - DEFAULT_SL_POINTS * pointSize
+        : currentPrice + DEFAULT_SL_POINTS * pointSize), precision));
+      setTpPrice(roundTo(draftPosition.tp || (orderSide === 'buy'
+        ? currentPrice + DEFAULT_TP_POINTS * pointSize
+        : currentPrice - DEFAULT_TP_POINTS * pointSize), precision));
+      setOrderType('limit');
+    } else {
+      // Market order default: SL = 100 points away, TP = 200 points away
+      setEntryPrice(roundTo(currentPrice, precision));
+      setSlPrice(roundTo(orderSide === 'buy'
+        ? currentPrice - DEFAULT_SL_POINTS * pointSize
+        : currentPrice + DEFAULT_SL_POINTS * pointSize, precision));
+      setTpPrice(roundTo(orderSide === 'buy'
+        ? currentPrice + DEFAULT_TP_POINTS * pointSize
+        : currentPrice - DEFAULT_TP_POINTS * pointSize, precision));
+      setOrderType('market');
     }
-  }, [isOrderModalOpen, draftPosition, orderSide, currentPrice]);
+  }, [isOrderModalOpen, draftPosition, orderSide, currentPrice, precision, pointSize]);
+
+  // When the user flips between Market / Limit / Stop, re-apply market defaults
+  // only when switching TO market. Switching away keeps whatever they typed.
+  useEffect(() => {
+    if (!isOrderModalOpen) return;
+    if (orderType !== 'market') return;
+    if (draftPosition) return;
+
+    setEntryPrice(roundTo(currentPrice, precision));
+    setSlPrice(roundTo(orderSide === 'buy'
+      ? currentPrice - DEFAULT_SL_POINTS * pointSize
+      : currentPrice + DEFAULT_SL_POINTS * pointSize, precision));
+    setTpPrice(roundTo(orderSide === 'buy'
+      ? currentPrice + DEFAULT_TP_POINTS * pointSize
+      : currentPrice - DEFAULT_TP_POINTS * pointSize, precision));
+  }, [orderType, isOrderModalOpen, currentPrice, orderSide, precision, pointSize, draftPosition]);
 
   const validation = useMemo(() => {
     const errors = [];
@@ -94,6 +145,10 @@ export default function OrderModal() {
     closeOrderModal();
   };
 
+  // Input step depends on the symbol's precision so the spinner arrows
+  // move by 1 point per click.
+  const inputStep = precision === 4 ? '0.0001' : '0.01';
+
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
       <div className="bg-[#131722] rounded-2xl w-full max-w-md border border-[#2a2e39] overflow-hidden max-h-[95vh] flex flex-col">
@@ -146,7 +201,7 @@ export default function OrderModal() {
             {orderType === 'market' ? (
               <div className="bg-[#1e222d] p-3 rounded text-sm">
                 <span className="text-gray-400">Entry at market: </span>
-                <span className="font-mono font-bold text-white">{currentPrice.toFixed(2)}</span>
+                <span className="font-mono font-bold text-white">{currentPrice.toFixed(precision)}</span>
               </div>
             ) : (
               <div>
@@ -154,7 +209,7 @@ export default function OrderModal() {
                 <input 
                   type="number" 
                   value={entryPrice} 
-                  step="0.01"
+                  step={inputStep}
                   onChange={(e) => setEntryPrice(Number(e.target.value))} 
                   className="w-full mt-1 p-3 bg-[#1e222d] rounded border border-[#2a2e39]" 
                 />
@@ -167,7 +222,7 @@ export default function OrderModal() {
                 <input 
                   type="number" 
                   value={slPrice} 
-                  step="0.01"
+                  step={inputStep}
                   onChange={(e) => setSlPrice(Number(e.target.value))} 
                   className={`w-full mt-1 p-3 bg-[#1e222d] rounded border ${
                     validation.errors.some(e => e.includes('Stop Loss')) ? 'border-red-500' : 'border-[#2a2e39]'
@@ -179,7 +234,7 @@ export default function OrderModal() {
                 <input 
                   type="number" 
                   value={tpPrice} 
-                  step="0.01"
+                  step={inputStep}
                   onChange={(e) => setTpPrice(Number(e.target.value))} 
                   className={`w-full mt-1 p-3 bg-[#1e222d] rounded border ${
                     validation.errors.some(e => e.includes('Take Profit')) ? 'border-red-500' : 'border-[#2a2e39]'

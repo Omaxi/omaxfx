@@ -261,7 +261,7 @@ export default function Chart() {
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
     theme, snapshotDrawings, recenterToken,
     isPencilMode, pencilColor, pencilStrokes, addPencilStroke, setPencilColor,
-    chartType, tradeHistory
+    chartType, tradeHistory, symbol
   } = useStore();
 
   useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
@@ -342,11 +342,21 @@ export default function Chart() {
       },
     });
 
+    // Per-symbol price format at init: EURUSD gets 4 decimals, others get 2.
+    const initialSymbol = useStore.getState().symbol;
+    const initialPrecision = initialSymbol === 'EURUSD' ? 4 : 2;
+    const initialMinMove   = initialSymbol === 'EURUSD' ? 0.0001 : 0.01;
+
     seriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
       upColor: t.upBody, downColor: t.downBody, borderVisible: false,
       wickUpColor: t.upWick, wickDownColor: t.downWick,
       priceLineVisible: false, lastValueVisible: true,
       visible: ct === 'candle',
+      priceFormat: {
+        type: 'price',
+        precision: initialPrecision,
+        minMove: initialMinMove,
+      },
     });
 
     lineSeriesRef.current = chartRef.current.addSeries(LineSeries, {
@@ -357,6 +367,11 @@ export default function Chart() {
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 4,
       visible: ct === 'line',
+      priceFormat: {
+        type: 'price',
+        precision: initialPrecision,
+        minMove: initialMinMove,
+      },
     });
 
     const timer = setTimeout(() => {
@@ -365,6 +380,22 @@ export default function Chart() {
     }, 50);
     return () => { clearTimeout(timer); chartRef.current.remove(); };
   }, []);
+
+  // Update price format when the active symbol changes.
+  // EURUSD shows 4 decimals (e.g. 1.1212), XAUUSD shows 2 (e.g. 1916.62).
+  useEffect(() => {
+    if (!seriesRef.current || !lineSeriesRef.current) return;
+    const precision = symbol === 'EURUSD' ? 4 : 2;
+    const minMove   = symbol === 'EURUSD' ? 0.0001 : 0.01;
+    try {
+      seriesRef.current.applyOptions({
+        priceFormat: { type: 'price', precision, minMove },
+      });
+      lineSeriesRef.current.applyOptions({
+        priceFormat: { type: 'price', precision, minMove },
+      });
+    } catch (e) {}
+  }, [symbol]);
 
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
@@ -1041,14 +1072,6 @@ export default function Chart() {
 
   useEffect(() => { draftRef.current = null; dragDrawRef.current = null; }, [activeDrawingTool]);
 
-  // =========================================================================
-  // VISIBLE DATA
-  // -------------------------------------------------------------------------
-  // For higher timeframes (5m, 15m, 1h, ...), we HIDE the current forming
-  // candle. It only appears once its block has fully elapsed.
-  // Result: every candle that appears is already printed in its closed
-  // state, matching the 1m behaviour.
-  // =========================================================================
   const visibleData = useMemo(() => {
     if (!rawData[currentIndex] || displayData.length === 0) return [];
     const currentRawTime = rawData[currentIndex].time;
@@ -1057,7 +1080,6 @@ export default function Chart() {
     if (timeframe > 1 && filtered.length > 0) {
       const last = filtered[filtered.length - 1];
       const blockEnd = last.time + timeframe * 60;
-      // The current block isn't complete yet → hide it entirely.
       if (currentRawTime < blockEnd) {
         filtered = filtered.slice(0, -1);
       }
@@ -1068,7 +1090,6 @@ export default function Chart() {
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current || !chartRef.current) return;
     if (visibleData.length === 0) {
-      // Clear the series when there's nothing to show yet
       try {
         seriesRef.current.setData([]);
         lineSeriesRef.current.setData([]);

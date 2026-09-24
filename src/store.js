@@ -14,6 +14,20 @@ const TZ_OFFSETS = {
   'UTC+1': 60, 'UTC+2': 120, 'UTC+3': 180,
 };
 
+// =========================================================================
+// Per-symbol contract multiplier (units per 1 lot).
+// -------------------------------------------------------------------------
+// XAUUSD: 100 oz / lot        → $1 price move × 100      = $100 / lot
+// EURUSD: 100,000 units / lot → 0.0001 price move × 100k = $10  / lot
+// =========================================================================
+const SYMBOL_CONTRACT = {
+  XAUUSD: 100,
+  EURUSD: 100000,
+};
+const DEFAULT_CONTRACT = 100;
+
+const getContractSize = (symbol) => SYMBOL_CONTRACT[symbol] ?? DEFAULT_CONTRACT;
+
 const getDayKey = (unixSeconds) => {
   const d = new Date(unixSeconds * 1000);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -613,7 +627,8 @@ export const useStore = create((set, get) => ({
     const exitPrice = currentCandle.close;
     const isBuy = pos.type === 'buy';
     const priceDiff = isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice;
-    const pnl = priceDiff * 100 * pos.size;
+    const contractSize = getContractSize(pos.symbol || state.symbol);
+    const pnl = priceDiff * contractSize * pos.size;
     if (state.soundEnabled) playPositionClosed();
     const newBalance = state.balance + pnl;
     const newPeak = Math.max(state.peakBalance, newBalance);
@@ -640,7 +655,8 @@ export const useStore = create((set, get) => ({
     state.positions.forEach(pos => {
       const isBuy = pos.type === 'buy';
       const priceDiff = isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice;
-      const pnl = priceDiff * 100 * pos.size;
+      const contractSize = getContractSize(pos.symbol || state.symbol);
+      const pnl = priceDiff * contractSize * pos.size;
       newBalance += pnl;
       newHistory.push({ ...pos, exitPrice, pnl, reason: 'MANUAL', closeTime: currentCandle.time });
     });
@@ -688,7 +704,8 @@ export const useStore = create((set, get) => ({
         if (pos.sl) {
           const hitSl = isBuy ? candle.low <= pos.sl : candle.high >= pos.sl;
           if (hitSl) {
-            const pnl = (isBuy ? pos.sl - pos.entryPrice : pos.entryPrice - pos.sl) * 100 * pos.size;
+            const contractSize = getContractSize(pos.symbol || state.symbol);
+            const pnl = (isBuy ? pos.sl - pos.entryPrice : pos.entryPrice - pos.sl) * contractSize * pos.size;
             newBalance += pnl;
             newHistory.push({ ...pos, exitPrice: pos.sl, pnl, reason: 'SL', closeTime: candle.time });
             closed = true; slHit = true;
@@ -697,7 +714,8 @@ export const useStore = create((set, get) => ({
         if (!closed && pos.tp) {
           const hitTp = isBuy ? candle.high >= pos.tp : candle.low <= pos.tp;
           if (hitTp) {
-            const pnl = (isBuy ? pos.tp - pos.entryPrice : pos.entryPrice - pos.tp) * 100 * pos.size;
+            const contractSize = getContractSize(pos.symbol || state.symbol);
+            const pnl = (isBuy ? pos.tp - pos.entryPrice : pos.entryPrice - pos.tp) * contractSize * pos.size;
             newBalance += pnl;
             newHistory.push({ ...pos, exitPrice: pos.tp, pnl, reason: 'TP', closeTime: candle.time });
             closed = true; tpHit = true;
@@ -766,7 +784,8 @@ export const useStore = create((set, get) => ({
     if (state.gameState.isOver) return state;
     if (riskPercent > state.rules.maxRiskPerTrade + EPSILON) return state;
     const currentPrice = state.rawData[state.currentIndex].close;
-    const lots = riskAmount / (Math.abs(entryPrice - slPrice) * 100);
+    const contractSize = getContractSize(state.symbol);
+    const lots = riskAmount / (Math.abs(entryPrice - slPrice) * contractSize);
     const openTime = state.rawData[state.currentIndex].time;
     const newOrder = {
       id: Date.now() + Math.random(),
