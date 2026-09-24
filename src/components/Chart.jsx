@@ -250,6 +250,7 @@ export default function Chart() {
   const chartLockedRef = useRef(false);
   const selectedItemRef = useRef(null);
   const currentPencilRef = useRef(null);
+  const lastCelebratedTradeRef = useRef(null);
 
   const [pendingBtnPos, setPendingBtnPos] = useState([]);
   const [positionBtnPos, setPositionBtnPos] = useState([]);
@@ -265,15 +266,16 @@ export default function Chart() {
     chartType, enableFireworks, tradeHistory
   } = useStore();
 
-  // Fireworks trigger
+  // Fireworks trigger - only once per unique trade ID, centered on screen
   useEffect(() => {
     if (!enableFireworks) return;
     const lastTrade = tradeHistory[tradeHistory.length - 1];
-    if (lastTrade && lastTrade.pnl > 0) {
+    if (lastTrade && lastTrade.pnl > 0 && lastTrade.id !== lastCelebratedTradeRef.current) {
+      lastCelebratedTradeRef.current = lastTrade.id;
       confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { y: 0.6 },
+        particleCount: 120,
+        spread: 100,
+        origin: { x: 0.5, y: 0.5 },
         colors: ['#26a69a', '#4ade80', '#facc15', '#ffffff']
       });
     }
@@ -511,6 +513,12 @@ export default function Chart() {
       const alive = new Set(state.drawings);
       for (const key of cache.keys()) if (!alive.has(key)) cache.delete(key);
 
+      // Helper to snap drawing points to the current visible candles
+      const snappedPointToXY = (point) => {
+        const snappedTime = findClosestCandleTime(point.time);
+        return pointToXY({ time: snappedTime, price: point.price });
+      };
+
       // 1. Draw trade history (Entry/Exit boxes + SL area + TP area)
       const tradeHistory = state.tradeHistory || [];
       tradeHistory.forEach(trade => {
@@ -573,16 +581,16 @@ export default function Chart() {
         }
       });
 
-      // 2. Draw user drawings
+      // 2. Draw user drawings (snapped to current timeframe)
       const sel = selectedItemRef.current;
       const selectedId = sel?.type === 'drawing' ? sel.id : null;
       state.drawings.forEach(d => {
         if (d.type === 'volumeProfile' && !cache.has(d)) cache.set(d, computeVolumeProfile(d));
-        drawShape(ctx, d, pointToXY, false, cache, d.id === selectedId);
+        drawShape(ctx, d, snappedPointToXY, false, cache, d.id === selectedId);
       });
-      if (draftRef.current) drawShape(ctx, draftRef.current, pointToXY, true, cache, false);
+      if (draftRef.current) drawShape(ctx, draftRef.current, snappedPointToXY, true, cache, false);
 
-      // 3. Draw pencil strokes
+      // 3. Draw pencil strokes (freehand, not snapped as they are exact pixel paths)
       state.pencilStrokes.forEach(s => drawPencilStroke(ctx, s));
       if (currentPencilRef.current) drawPencilStroke(ctx, currentPencilRef.current);
 
