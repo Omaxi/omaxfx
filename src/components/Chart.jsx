@@ -75,7 +75,12 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
   ctx.setLineDash(isDraft ? [5, 5] : []);
   const canvasW = ctx.canvas.width;
 
-  if (drawing.type === 'horizontal') {
+  if (drawing.type === 'text' && pts.length === 1) {
+    ctx.font = `${drawing.fontSize || 14}px ${drawing.fontFamily || 'sans-serif'}`;
+    ctx.fillStyle = borderColor;
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(drawing.text, pts[0].x, pts[0].y);
+  } else if (drawing.type === 'horizontal') {
     const { y } = pts[0];
     if (showBorder) {
       ctx.beginPath();
@@ -171,7 +176,13 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1;
 
-    if (drawing.type === 'horizontal') {
+    if (drawing.type === 'text' && pts.length === 1) {
+      ctx.font = `${drawing.fontSize || 14}px ${drawing.fontFamily || 'sans-serif'}`;
+      const metrics = ctx.measureText(drawing.text);
+      const width = metrics.width;
+      const height = drawing.fontSize || 14;
+      ctx.strokeRect(pts[0].x - 2, pts[0].y - height - 2, width + 4, height + 6);
+    } else if (drawing.type === 'horizontal') {
       const { y } = pts[0];
       ctx.beginPath();
       ctx.moveTo(0, y);
@@ -243,6 +254,7 @@ export default function Chart() {
   const [pendingBtnPos, setPendingBtnPos] = useState([]);
   const [positionBtnPos, setPositionBtnPos] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [textInput, setTextInput] = useState(null);
 
   const { 
     rawData, displayData, currentIndex, positions, pendingOrders, 
@@ -299,9 +311,9 @@ export default function Chart() {
   }, []);
 
   useEffect(() => {
-    const shouldLock = !!activeDrawingTool || !!isDrawingMode || !!selectedItem || !!isPencilMode;
+    const shouldLock = !!activeDrawingTool || !!isDrawingMode || !!selectedItem || !!isPencilMode || !!textInput;
     lockChart(shouldLock);
-  }, [activeDrawingTool, isDrawingMode, selectedItem, isPencilMode, lockChart]);
+  }, [activeDrawingTool, isDrawingMode, selectedItem, isPencilMode, textInput, lockChart]);
 
   useEffect(() => {
     if (!gameStarted) {
@@ -536,7 +548,7 @@ export default function Chart() {
           ctx.fillRect(minX, minY_SL, w, h_SL);
         }
 
-        // Draw TP area (even if not hit)
+        // Draw TP area
         if (yTP != null) {
           const minY_TP = Math.min(yEntry, yTP);
           const maxY_TP = Math.max(yEntry, yTP);
@@ -551,8 +563,6 @@ export default function Chart() {
         const h_Result = Math.max(2, maxY_Result - minY_Result);
         ctx.fillStyle = resultBgColor;
         ctx.fillRect(minX, minY_Result, w, h_Result);
-
-        // REMOVED: Entry marker and Exit marker small squares
 
         // Draw PnL label
         if (w > 40) {
@@ -627,10 +637,27 @@ export default function Chart() {
       const state = useStore.getState();
       const HANDLE_TOL = 22;
       const BODY_TOL = 14;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
       for (let i = state.drawings.length - 1; i >= 0; i--) {
         const d = state.drawings[i];
         const pts = d.points.map(p => pointToXY(p)).filter(Boolean);
         if (pts.length === 0) continue;
+        
+        if (d.type === 'text' && pts[0]) {
+          ctx.font = `${d.fontSize || 14}px ${d.fontFamily || 'sans-serif'}`;
+          const metrics = ctx.measureText(d.text);
+          const width = metrics.width;
+          const height = d.fontSize || 14;
+          const left = pts[0].x;
+          const right = pts[0].x + width;
+          const top = pts[0].y - height;
+          const bottom = pts[0].y + 4;
+          if (x >= left - 4 && x <= right + 4 && y >= top - 4 && y <= bottom + 4) {
+            return { drawingId: d.id, mode: 'drag-body' };
+          }
+        }
+
         for (let j = 0; j < pts.length; j++) {
           if (Math.hypot(x - pts[j].x, y - pts[j].y) < HANDLE_TOL) {
             return { drawingId: d.id, mode: 'drag-point', pointIndex: j };
@@ -731,6 +758,12 @@ export default function Chart() {
         if (!point) return;
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         const tool = state.activeDrawingTool;
+        
+        if (tool === 'text') {
+          setTextInput({ x, y, time: point.time, price: point.price, value: '' });
+          return;
+        }
+
         if (tool === 'horizontal') {
           state.addDrawing({ type: 'horizontal', points: [point] });
           state.setActiveDrawingTool(null);
@@ -807,6 +840,19 @@ export default function Chart() {
         resetTapTimer();
 
         if (drawingHit) {
+          const drawing = state.drawings.find(d => d.id === drawingHit.drawingId);
+          if (drawing && drawing.type === 'text') {
+            e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+            const point = drawing.points[0];
+            const x = timeToX(point.time);
+            const y = seriesRef.current?.priceToCoordinate(point.price);
+            if (x != null && y != null) {
+              lockChart(true);
+              setTextInput({ x, y, time: point.time, price: point.price, value: drawing.text, id: drawing.id });
+              setSelectedItem(null);
+              return;
+            }
+          }
           e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
           lockChart(true);
           setSelectedItem({ type: 'drawing', id: drawingHit.drawingId });
@@ -936,7 +982,7 @@ export default function Chart() {
       if (e.touches.length !== 1) return;
       const state = useStore.getState();
       if (state.isPencilMode) return;
-      if (selectedItemRef.current) {
+      if (selectedItemRef.current || textInput) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
       }
     };
@@ -967,7 +1013,7 @@ export default function Chart() {
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerUp);
     };
-  }, [xyToPoint, pointToXY, lockChart, snapshotDrawings, timeToX]);
+  }, [xyToPoint, pointToXY, lockChart, snapshotDrawings, timeToX, textInput]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -993,6 +1039,7 @@ export default function Chart() {
         draftRef.current = null;
         dragDrawRef.current = null;
         setSelectedItem(null);
+        setTextInput(null);
         lockChart(false);
         if (state.activeDrawingTool) state.setActiveDrawingTool(null);
       }
@@ -1141,6 +1188,28 @@ export default function Chart() {
     }
   }, [positions, pendingOrders, draftPosition]);
 
+  const commitText = () => {
+    if (!textInput) return;
+    const { time, price, value, id } = textInput;
+    const state = useStore.getState();
+    if (value.trim()) {
+      if (id) {
+        state.updateDrawing(id, { text: value.trim() });
+      } else {
+        state.addDrawing({
+          type: 'text',
+          points: [{ time, price }],
+          text: value.trim(),
+          fontSize: 14,
+          color: '#ffffff',
+          borderColor: '#ffffff',
+        });
+      }
+    }
+    setTextInput(null);
+    state.setActiveDrawingTool(null);
+  };
+
   return (
     <div className="relative w-full h-full" style={{ backgroundColor: theme.background }}>
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none', cursor: isPencilMode ? 'crosshair' : 'default' }} />
@@ -1225,6 +1294,24 @@ export default function Chart() {
           </button>
         ))}
       </div>
+
+      {textInput && (
+        <div style={{ position: 'absolute', top: textInput.y, left: textInput.x, zIndex: 100 }}>
+          <input
+            autoFocus
+            type="text"
+            value={textInput.value}
+            onChange={(e) => setTextInput({ ...textInput, value: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitText();
+              if (e.key === 'Escape') setTextInput(null);
+            }}
+            onBlur={commitText}
+            className="bg-[#1e222d] border-2 border-blue-500 text-white px-2 py-1 text-sm outline-none rounded shadow-xl min-w-[150px]"
+            placeholder="Type note..."
+          />
+        </div>
+      )}
 
       <div className="absolute bottom-3 right-3 z-30 flex items-end gap-2 pointer-events-auto">
         <button onClick={togglePlay}
