@@ -10,13 +10,14 @@ import SoundToggle from './components/SoundToggle';
 import PeriodModal from './components/PeriodModal';
 import GameOverModal from './components/GameOverModal';
 import CelebrationOverlay from './components/CelebrationOverlay';
+import LoadingScreen from './components/LoadingScreen';
 import { useStore, INITIAL_BALANCE } from './store';
 import { aggregateData } from './utils/timeframe';
 import { useEffect, useRef } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney, fmtMB } from './utils/format';
 import Papa from 'papaparse';
-import { Clock, RotateCcw, Info } from 'lucide-react';
+import { Clock, RotateCcw, Info, Sparkles } from 'lucide-react';
 
 const formatTime = (sec) => {
   if (sec == null) return '∞';
@@ -31,7 +32,8 @@ function App() {
     musicEnabled, setAllData, gameStarted, gamePeriod,
     gameState, rules, updateTimeRemaining, endGame, restartGame,
     loadingState, openInfo, theme, allRawData,
-    sessionName, setSessionName, saveSession
+    sessionName, setSessionName, saveSession,
+    enableFireworks, toggleFireworks
   } = useStore();
   const soundtrackStarted = useRef(false);
   const restoredRef = useRef(false);
@@ -66,7 +68,6 @@ function App() {
             if (cancelled) return;
             chunks.push(value);
             loaded += value.length;
-            // FIX: total must grow with loaded to account for gzip decompression
             setLoadingState({ loaded, total: Math.max(total, loaded) });
           }
           const allChunks = new Uint8Array(loaded);
@@ -248,10 +249,6 @@ function App() {
     restartGame();
   };
 
-  const percent = loadingState.total > 0
-    ? Math.min(100, Math.round((loadingState.loaded / loadingState.total) * 100))
-    : 0;
-
   return (
     <div className="flex flex-col h-dvh overflow-hidden" style={{ backgroundColor: theme.background }}>
       <header className="px-2 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-2">
@@ -306,6 +303,20 @@ function App() {
             </button>
           )}
           <SoundToggle />
+          
+          {/* Fireworks Toggle */}
+          <button
+            onClick={toggleFireworks}
+            className={`w-7 h-7 border rounded flex items-center justify-center transition-colors ${
+              enableFireworks
+                ? 'bg-yellow-900/30 border-yellow-600/50 text-yellow-400 hover:bg-yellow-900/50'
+                : 'bg-[#1e222d] border-[#2a2e39] text-gray-500 hover:text-gray-300'
+            }`}
+            title={enableFireworks ? 'Disable Fireworks' : 'Enable Fireworks'}
+          >
+            <Sparkles size={13} />
+          </button>
+
           <button 
             onClick={openInfo}
             className="w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 hover:text-blue-400 rounded flex items-center justify-center"
@@ -334,40 +345,8 @@ function App() {
       {/* Fireworks when TP is hit */}
       <CelebrationOverlay />
 
-      {loadingState.isActive && (
-        <div className="fixed inset-0 bg-[#0b0e11] z-[100] flex items-center justify-center">
-          <div className="w-80 max-w-[90vw] space-y-4">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold tracking-wider mb-1">
-                <span className="text-blue-500">Omax</span>
-                <span className="text-white">FX Simulator</span>
-              </h1>
-              <p className="text-xs text-gray-500 italic">Trading Replay Engine</p>
-              <p className="text-[10px] text-gray-600 mt-2">
-                {loadingState.error ? 'Failed to load data' : 'Loading market data…'}
-              </p>
-            </div>
-            {loadingState.error ? (
-              <div className="bg-red-900/30 border border-red-700 rounded-lg p-3 text-red-400 text-xs">
-                {loadingState.error}
-              </div>
-            ) : (
-              <>
-                <div className="h-2 bg-[#1e222d] rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-200"
-                    style={{ width: `${percent}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-gray-500 font-mono">
-                  <span>{fmtMB(loadingState.loaded)} / {loadingState.total > 0 ? fmtMB(loadingState.total) : '…'}</span>
-                  <span>{loadingState.total > 0 ? `${percent}%` : '…'}</span>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Loading Screen */}
+      {loadingState.isActive && <LoadingScreen />}
     </div>
   );
 }

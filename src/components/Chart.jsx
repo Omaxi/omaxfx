@@ -1,9 +1,10 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { createChart, CandlestickSeries, LineSeries } from 'lightweight-charts';
 import { useStore } from '../store';
-import { X, Play, Pause, SkipForward, Trash2, Lock } from 'lucide-react';
+import { X, Play, Pause, SkipForward, Trash2, Lock, Sparkles } from 'lucide-react';
 import DrawingToolbar from './DrawingToolbar';
 import StylePanel from './StylePanel';
+import confetti from 'canvas-confetti';
 
 const calcRRR = (entry, sl, tp) => {
   if (entry == null || sl == null || tp == null) return null;
@@ -64,7 +65,7 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
   const borderColor = drawing.borderColor || drawing.color || '#f59e0b';
   const fillColor = drawing.fillColor || (borderColor + '33');
   const lineWidth = drawing.lineWidth ?? 1;
-  const showBorder = drawing.showBorder !== false; // Default to true
+  const showBorder = drawing.showBorder !== false;
   const pts = drawing.points.map(p => pointToXY(p)).filter(Boolean);
   if (pts.length === 0) return;
   
@@ -216,9 +217,6 @@ const PENCIL_COLORS = [
   '#f59e0b', '#a855f7', '#22c55e', '#06b6d4',
 ];
 
-// X button horizontal offset from right edge.
-// 60px = price axis width. Labels extend ~120-160px left of that.
-// Setting to 200 places the X safely outside the left edge of any label.
 const X_BUTTON_OFFSET_FROM_RIGHT = 200;
 
 export default function Chart() {
@@ -252,8 +250,22 @@ export default function Chart() {
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
     theme, snapshotDrawings, recenterToken,
     isPencilMode, pencilColor, pencilStrokes, addPencilStroke, setPencilColor,
-    chartType
+    chartType, enableFireworks, toggleFireworks, tradeHistory
   } = useStore();
+
+  // Fireworks trigger
+  useEffect(() => {
+    if (!enableFireworks) return;
+    const lastTrade = tradeHistory[tradeHistory.length - 1];
+    if (lastTrade && lastTrade.pnl > 0) {
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#26a69a', '#4ade80', '#facc15', '#ffffff']
+      });
+    }
+  }, [tradeHistory, enableFireworks]);
 
   useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
 
@@ -452,7 +464,6 @@ export default function Chart() {
     const ro = new ResizeObserver(resizeCanvas);
     ro.observe(container);
 
-    // Helper to snap times to the nearest visible candle
     const findClosestCandleTime = (targetTime) => {
       const data = visibleDataRef.current;
       if (data.length === 0) return targetTime;
@@ -488,10 +499,9 @@ export default function Chart() {
       const alive = new Set(state.drawings);
       for (const key of cache.keys()) if (!alive.has(key)) cache.delete(key);
 
-      // 1. Draw trade history (Entry/Exit boxes + SL area)
+      // 1. Draw trade history (Entry/Exit boxes + SL area + TP area)
       const tradeHistory = state.tradeHistory || [];
       tradeHistory.forEach(trade => {
-        // Snap times to current visible candles to prevent timeframe shifting
         const openTime = findClosestCandleTime(trade.openTime);
         const closeTime = findClosestCandleTime(trade.closeTime);
 
@@ -500,10 +510,10 @@ export default function Chart() {
         const yEntry = seriesRef.current?.priceToCoordinate(trade.entryPrice);
         const yExit = seriesRef.current?.priceToCoordinate(trade.exitPrice);
         const ySL = trade.sl != null ? seriesRef.current?.priceToCoordinate(trade.sl) : null;
+        const yTP = trade.tp != null ? seriesRef.current?.priceToCoordinate(trade.tp) : null;
 
         if (x1 == null || x2 == null || yEntry == null || yExit == null) return;
         
-        // Skip if entirely off-screen
         if (x1 > paneW && x2 > paneW) return;
         if (x1 < 0 && x2 < 0) return;
 
@@ -511,12 +521,13 @@ export default function Chart() {
         const resultColor = isWin ? '#26a69a' : '#ef5350';
         const resultBgColor = isWin ? 'rgba(38, 166, 154, 0.25)' : 'rgba(239, 83, 80, 0.25)';
         const slBgColor = 'rgba(239, 83, 80, 0.15)';
+        const tpBgColor = 'rgba(38, 166, 154, 0.15)';
 
         const minX = Math.min(x1, x2);
         const maxX = Math.max(x1, x2);
         const w = Math.max(2, maxX - minX);
 
-        // Draw SL area (if available)
+        // Draw SL area
         if (ySL != null) {
           const minY_SL = Math.min(yEntry, ySL);
           const maxY_SL = Math.max(yEntry, ySL);
@@ -525,21 +536,28 @@ export default function Chart() {
           ctx.fillRect(minX, minY_SL, w, h_SL);
         }
 
-        // Draw Result area (no border)
+        // Draw TP area (even if not hit)
+        if (yTP != null) {
+          const minY_TP = Math.min(yEntry, yTP);
+          const maxY_TP = Math.max(yEntry, yTP);
+          const h_TP = Math.max(2, maxY_TP - minY_TP);
+          ctx.fillStyle = tpBgColor;
+          ctx.fillRect(minX, minY_TP, w, h_TP);
+        }
+
+        // Draw Result area
         const minY_Result = Math.min(yEntry, yExit);
         const maxY_Result = Math.max(yEntry, yExit);
         const h_Result = Math.max(2, maxY_Result - minY_Result);
         ctx.fillStyle = resultBgColor;
         ctx.fillRect(minX, minY_Result, w, h_Result);
 
-        // Draw entry marker (small box)
+        // Draw entry marker
         ctx.fillStyle = resultColor;
         ctx.fillRect(x1 - 3, yEntry - 3, 6, 6);
         
-        // Draw exit marker (small box)
+        // Draw exit marker
         ctx.fillRect(x2 - 3, yExit - 3, 6, 6);
-
-        // REMOVED: Draw connecting line block
 
         // Draw PnL label
         if (w > 40) {
@@ -1130,10 +1148,7 @@ export default function Chart() {
 
   return (
     <div className="relative w-full h-full" style={{ backgroundColor: theme.background }}>
-      {/* Chart container is at zIndex 1 */}
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none', cursor: isPencilMode ? 'crosshair' : 'default' }} />
-      
-      {/* Drawing canvas is at zIndex 2, pointer-events-none so clicks pass through to chart */}
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
 
       {isPencilMode && (
@@ -1197,7 +1212,6 @@ export default function Chart() {
           <DrawingToolbar />
         </div>
 
-        {/* X buttons for PENDING orders — moved LEFT of the label */}
         {pendingBtnPos.map(p => (
           <button key={`p-${p.id}`} onClick={() => cancelPendingOrder(p.id)}
             style={{ top: p.y, right: X_BUTTON_OFFSET_FROM_RIGHT }}
@@ -1207,7 +1221,6 @@ export default function Chart() {
           </button>
         ))}
 
-        {/* X buttons for POSITIONS — moved LEFT of the label */}
         {positionBtnPos.map(p => (
           <button key={`pos-${p.id}`} onClick={() => closePosition(p.id)}
             style={{ top: p.y, right: X_BUTTON_OFFSET_FROM_RIGHT }}
@@ -1219,6 +1232,17 @@ export default function Chart() {
       </div>
 
       <div className="absolute bottom-3 right-3 z-30 flex items-end gap-2 pointer-events-auto">
+        {/* Fireworks Toggle Button */}
+        <button onClick={toggleFireworks}
+          className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors border-2 ${
+            enableFireworks 
+              ? 'bg-yellow-600/20 border-yellow-500 text-yellow-400 hover:bg-yellow-600/40' 
+              : 'bg-[#1e222d] border-[#2a2e39] text-gray-500 hover:text-gray-300'
+          }`}
+          title={enableFireworks ? 'Disable Fireworks' : 'Enable Fireworks'}>
+          <Sparkles size={18} />
+        </button>
+
         <button onClick={togglePlay}
           className="w-12 h-12 rounded-full bg-[#1e222d] hover:bg-[#2a2e39] border-2 border-[#2a2e39] text-white flex items-center justify-center shadow-2xl shadow-black/60 active:scale-95 transition-transform">
           {isPlaying ? <Pause size={20} /> : <Play size={20} />}

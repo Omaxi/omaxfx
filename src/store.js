@@ -135,6 +135,7 @@ export const useStore = create((set, get) => ({
         gameState: s.gameState,
         theme: s.theme,
         sessionTimes: s.sessionTimes,
+        enableFireworks: s.enableFireworks,
       };
       localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
     } catch (e) {
@@ -187,6 +188,7 @@ export const useStore = create((set, get) => ({
       sessionName: saved.sessionName || 'Session 1',
       theme: saved.theme || DEFAULT_THEME,
       sessionTimes: saved.sessionTimes || { asian: 3, london: 10, newyork: 15 },
+      enableFireworks: saved.enableFireworks ?? true,
       recenterToken: state.recenterToken + 1,
     });
     return true;
@@ -232,7 +234,6 @@ export const useStore = create((set, get) => ({
   activeDrawingTool: null,
 
   setActiveDrawingTool: (tool) => set((state) => {
-    // If pencil mode is active, ignore — user must deselect pencil first
     if (state.isPencilMode) return state;
     return { 
       activeDrawingTool: state.activeDrawingTool === tool ? null : tool,
@@ -272,7 +273,7 @@ export const useStore = create((set, get) => ({
       borderColor: drawing.borderColor || drawing.color || '#f59e0b',
       fillColor: drawing.fillColor || '#f59e0b33',
       lineWidth: drawing.lineWidth ?? 1,
-      showBorder: drawing.showBorder !== false, // default to true
+      showBorder: drawing.showBorder !== false,
     };
     return {
       drawingsPast: [...state.drawingsPast.slice(-40), cloneDrawings(state.drawings)],
@@ -311,7 +312,7 @@ export const useStore = create((set, get) => ({
 
   setPencilMode: (active) => set((state) => ({
     isPencilMode: active,
-    pencilStrokes: [],  // clear all hand drawings when entering OR leaving
+    pencilStrokes: [],
     activeDrawingTool: active ? null : state.activeDrawingTool,
   })),
 
@@ -324,10 +325,13 @@ export const useStore = create((set, get) => ({
   clearPencil: () => set({ pencilStrokes: [] }),
 
   // ============================================================
-  // CHART TYPE
+  // CHART TYPE & SETTINGS
   // ============================================================
   chartType: 'candle',
   setChartType: (t) => set({ chartType: t }),
+
+  enableFireworks: true,
+  toggleFireworks: () => set((state) => ({ enableFireworks: !state.enableFireworks })),
 
   theme: { ...DEFAULT_THEME },
   setTheme: (patch) => set((state) => ({ theme: { ...state.theme, ...patch } })),
