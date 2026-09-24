@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { createChart, CandlestickSeries, LineSeries } from 'lightweight-charts';
 import { useStore } from '../store';
-import { X, Play, Pause, SkipForward, Trash2, Lock, Sparkles } from 'lucide-react';
+import { X, Play, Pause, SkipForward, Trash2, Lock } from 'lucide-react';
 import DrawingToolbar from './DrawingToolbar';
 import StylePanel from './StylePanel';
 import confetti from 'canvas-confetti';
@@ -250,7 +250,7 @@ export default function Chart() {
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
     theme, snapshotDrawings, recenterToken,
     isPencilMode, pencilColor, pencilStrokes, addPencilStroke, setPencilColor,
-    chartType, enableFireworks, toggleFireworks, tradeHistory
+    chartType, enableFireworks, tradeHistory
   } = useStore();
 
   // Fireworks trigger
@@ -1232,16 +1232,7 @@ export default function Chart() {
       </div>
 
       <div className="absolute bottom-3 right-3 z-30 flex items-end gap-2 pointer-events-auto">
-        {/* Fireworks Toggle Button */}
-        <button onClick={toggleFireworks}
-          className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-colors border-2 ${
-            enableFireworks 
-              ? 'bg-yellow-600/20 border-yellow-500 text-yellow-400 hover:bg-yellow-600/40' 
-              : 'bg-[#1e222d] border-[#2a2e39] text-gray-500 hover:text-gray-300'
-          }`}
-          title={enableFireworks ? 'Disable Fireworks' : 'Enable Fireworks'}>
-          <Sparkles size={18} />
-        </button>
+        {/* REMOVED: Fireworks Toggle Button */}
 
         <button onClick={togglePlay}
           className="w-12 h-12 rounded-full bg-[#1e222d] hover:bg-[#2a2e39] border-2 border-[#2a2e39] text-white flex items-center justify-center shadow-2xl shadow-black/60 active:scale-95 transition-transform">
