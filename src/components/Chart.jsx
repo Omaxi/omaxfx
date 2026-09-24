@@ -539,14 +539,7 @@ export default function Chart() {
         // Draw exit marker (small box)
         ctx.fillRect(x2 - 3, yExit - 3, 6, 6);
 
-        // Draw connecting line
-        ctx.beginPath();
-        ctx.moveTo(x1, yEntry);
-        ctx.lineTo(x2, yExit);
-        ctx.strokeStyle = resultColor;
-        ctx.setLineDash([3, 3]);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        // REMOVED: Draw connecting line block
 
         // Draw PnL label
         if (w > 40) {
