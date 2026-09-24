@@ -497,11 +497,17 @@ export default function Chart() {
       const alive = new Set(state.drawings);
       for (const key of cache.keys()) if (!alive.has(key)) cache.delete(key);
 
-      // Snapped version of pointToXY used for user drawings so that
-      // drawings "stick" to candle boundaries on every timeframe.
+      // Snap a point's time ONLY if it falls inside the visible candle range.
+      // Outside the range, keep the raw time so drawings can extend past the candles.
       const snappedPointToXY = (point) => {
-        const snappedTime = findClosestCandleTime(point.time);
-        return pointToXY({ time: snappedTime, price: point.price });
+        const data = visibleDataRef.current;
+        if (data.length === 0) return pointToXY(point);
+        const firstTime = data[0].time;
+        const lastTime = data[data.length - 1].time;
+        if (point.time >= firstTime && point.time <= lastTime) {
+          return pointToXY({ time: findClosestCandleTime(point.time), price: point.price });
+        }
+        return pointToXY(point);
       };
 
       // 1. Draw trade history (Entry/Exit boxes + SL area + TP area)
@@ -562,7 +568,7 @@ export default function Chart() {
         }
       });
 
-      // 2. Draw user drawings — snapped to candles for cross-timeframe stability
+      // 2. Draw user drawings (snapped only inside the visible range)
       const sel = selectedItemRef.current;
       const selectedId = sel?.type === 'drawing' ? sel.id : null;
       state.drawings.forEach(d => {

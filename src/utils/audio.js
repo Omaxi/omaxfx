@@ -1,6 +1,6 @@
 // ============================================================
 // SOUND EFFECTS — synthesized via Web Audio API
-// CUSTOM SOUNDS — loaded from /public via HTMLAudio (instant first play)
+// CUSTOM SOUNDS — fetched + decoded to AudioBuffer for instant playback
 // SOUNDTRACK — HTMLAudio routed through Web Audio for volume control
 // ============================================================
 
@@ -17,54 +17,58 @@ const SFX_VOLUME_MULTIPLIER = 1.5;
 const MUSIC_VOLUME = 0.1;
 
 // ============================================================
-// CUSTOM TP HIT SOUND — HTMLAudio with instant preload
+// CUSTOM TP HIT SOUND
 // ============================================================
-// File lives at: public/tphit.mp3
+// File must be at: public/tphit.mp3
 const TP_HIT_URL = `${import.meta.env.BASE_URL}tphit.mp3`;
-const TP_HIT_VOLUME = 0.6;
+const TP_HIT_GAIN = 0.9;
 
-console.log('[SFX] tphit.mp3 expected at:', TP_HIT_URL);
+let tpHitBuffer = null;
+let tpHitLoadPromise = null;
+let tpHitFailed = false;
 
-let tpHitPreloader = null;
+console.log('[SFX] tphit.mp3 expected URL:', TP_HIT_URL);
 
-const initTpHitPreloader = () => {
-  if (tpHitPreloader) return;
-  try {
-    tpHitPreloader = new Audio(TP_HIT_URL);
-    tpHitPreloader.preload = 'auto';
-    tpHitPreloader.volume = TP_HIT_VOLUME;
+const loadTpHit = () => {
+  if (tpHitBuffer) return Promise.resolve(tpHitBuffer);
+  if (tpHitLoadPromise) return tpHitLoadPromise;
 
-    tpHitPreloader.addEventListener('canplaythrough', () => {
-      console.log('[SFX] tphit.mp3 preloaded successfully ✓');
+  tpHitLoadPromise = fetch(TP_HIT_URL)
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+      return res.arrayBuffer();
+    })
+    .then(buf => getCtx().decodeAudioData(buf))
+    .then(decoded => {
+      tpHitBuffer = decoded;
+      console.log('[SFX] tphit.mp3 loaded ✓');
+      return decoded;
+    })
+    .catch(err => {
+      console.warn('[SFX] tphit.mp3 failed to load:', err, '→ using synth fallback');
+      tpHitFailed = true;
+      tpHitLoadPromise = null;
+      return null;
     });
-    tpHitPreloader.addEventListener('error', () => {
-      console.warn('[SFX] tphit.mp3 failed to load at', TP_HIT_URL);
-    });
 
-    try { tpHitPreloader.load(); } catch (_) {}
-  } catch (e) {
-    console.warn('[SFX] Failed to create tphit preloader:', e);
-    tpHitPreloader = null;
-  }
+  return tpHitLoadPromise;
 };
-initTpHitPreloader();
 
-const playTPHitCustom = () => {
+// Kick off eagerly on module load
+loadTpHit();
+
+const playTpHitBuffer = () => {
   try {
-    // cloneNode() reuses the already-buffered resource → instant playback
-    const audio = tpHitPreloader
-      ? tpHitPreloader.cloneNode(true)
-      : new Audio(TP_HIT_URL);
-    audio.volume = TP_HIT_VOLUME;
-    const p = audio.play();
-    if (p && typeof p.catch === 'function') {
-      p.catch((err) => {
-        console.warn('[SFX] tphit.mp3 play failed:', err);
-        playTPHitSynthFallback();
-      });
-    }
+    const ctx = getCtx();
+    const source = ctx.createBufferSource();
+    source.buffer = tpHitBuffer;
+    const gain = ctx.createGain();
+    gain.gain.value = TP_HIT_GAIN;
+    source.connect(gain);
+    gain.connect(ctx.destination);
+    source.start(0);
   } catch (e) {
-    console.warn('[SFX] tphit.mp3 exception:', e);
+    console.warn('[SFX] tphit buffer play failed:', e);
     playTPHitSynthFallback();
   }
 };
@@ -101,7 +105,7 @@ export const playPositionClosed = () => {
   playTone(400, 0.15, 'sine', 0.08, 0.08);
 };
 
-// Synth fallback — only used if tphit.mp3 fails to load/play
+// Synth fallback — only used if tphit.mp3 fetch/decode fails
 const playTPHitSynthFallback = () => {
   playTone(523.25, 0.15, 'sine', 0.15);
   playTone(659.25, 0.15, 'sine', 0.15, 0.1);
@@ -110,7 +114,17 @@ const playTPHitSynthFallback = () => {
 };
 
 export const playTPHit = () => {
-  playTPHitCustom();
+  if (tpHitBuffer) {
+    playTpHitBuffer();
+    return;
+  }
+  if (tpHitFailed) {
+    playTPHitSynthFallback();
+    return;
+  }
+  // Still loading — trigger a load attempt and use synth for this one time
+  loadTpHit();
+  playTPHitSynthFallback();
 };
 
 export const playSLHit = () => {
