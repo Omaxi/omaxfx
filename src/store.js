@@ -19,6 +19,17 @@ const getDayKey = (unixSeconds) => {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 };
 
+// Format a Unix timestamp as dd.mm.yyyy using its UTC representation
+// (this matches what the chart displays, since all data is stored on
+// a uniform "UTC+3-as-UTC" scale after load).
+const formatRangeDate = (unixSeconds) => {
+  const d = new Date(unixSeconds * 1000);
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
+  return `${dd}.${mm}.${yyyy}`;
+};
+
 const checkRuleViolations = (state, newBalance, newPeak, newDailyLoss) => {
   if (state.rules.maxDailyLoss && newDailyLoss.dayStartBalance > 0) {
     const dailyLossAmt = newDailyLoss.dayStartBalance - newBalance;
@@ -59,6 +70,10 @@ const DEFAULT_RULES = {
 };
 
 export const useStore = create((set, get) => ({
+  // ============================================================
+  // MULTI-SYMBOL DATA CACHE
+  // ============================================================
+  allRawDataBySymbol: {},
   allRawData: [],
   rawData: [],        
   displayData: [],    
@@ -70,14 +85,92 @@ export const useStore = create((set, get) => ({
   symbol: 'XAUUSD',
   timezone: 'UTC+3',
 
+  // Toast shown when a symbol switch is rejected because the current
+  // time is outside the target's data range.
+  symbolWarning: null,
+  clearSymbolWarning: () => set({ symbolWarning: null }),
+
   sessionTimes: { asian: 3, london: 10, newyork: 15 },
 
   setSessionTime: (key, hour) => set((state) => ({
     sessionTimes: { ...state.sessionTimes, [key]: Math.max(0, Math.min(23, Number(hour) || 0)) }
   })),
 
-  setSymbol: (code) => set({ symbol: code }),
+  setAllData: (data) => set((state) => {
+    const symbol = state.symbol;
+    return {
+      allRawDataBySymbol: { ...state.allRawDataBySymbol, [symbol]: data },
+      allRawData: data,
+    };
+  }),
 
+  setAllDataForSymbol: (symbol, data) => set((state) => {
+    const nextCache = { ...state.allRawDataBySymbol, [symbol]: data };
+    if (state.symbol === symbol) {
+      return { allRawDataBySymbol: nextCache, allRawData: data };
+    }
+    return { allRawDataBySymbol: nextCache };
+  }),
+
+  // ============================================================
+  // SYMBOL SWITCHING — with data-range guard
+  // ============================================================
+  setSymbol: (code) => set((state) => {
+    if (code === state.symbol) return state;
+
+    const newData = state.allRawDataBySymbol[code];
+    if (!newData || newData.length === 0) {
+      // Symbol never loaded — silently reject
+      return { symbolWarning: {
+        code,
+        message: `${code} data is not available`,
+      } };
+    }
+
+    // Where is the user right now?
+    const oldData = state.rawData;
+    const currentCandle = oldData[state.currentIndex];
+    // If somehow there is no current candle, allow the switch (fresh session)
+    const currentTime = currentCandle ? currentCandle.time : null;
+
+    const firstTime = newData[0].time;
+    const lastTime = newData[newData.length - 1].time;
+
+    if (currentTime != null && (currentTime < firstTime || currentTime > lastTime)) {
+      // Out of range — do NOT switch, just warn
+      return {
+        symbolWarning: {
+          code,
+          from: firstTime,
+          to: lastTime,
+          message: `${code} data range: ${formatRangeDate(firstTime)} - ${formatRangeDate(lastTime)}`,
+        },
+      };
+    }
+
+    // In range — find equivalent index by time
+    let newIndex = 0;
+    if (currentTime != null) {
+      for (let i = 0; i < newData.length; i++) {
+        if (newData[i].time > currentTime) break;
+        newIndex = i;
+      }
+    }
+
+    return {
+      symbol: code,
+      allRawData: newData,
+      rawData: newData,
+      displayData: aggregateData(newData, state.timeframe),
+      currentIndex: newIndex,
+      recenterToken: state.recenterToken + 1,
+      symbolWarning: null,
+    };
+  }),
+
+  // ============================================================
+  // TIMEZONE — shifts display for ALL cached symbols uniformly
+  // ============================================================
   setTimezone: (newTz) => set((state) => {
     if (newTz === state.timezone) return state;
     const oldOffset = TZ_OFFSETS[state.timezone] ?? 180;
@@ -85,8 +178,15 @@ export const useStore = create((set, get) => ({
     const shiftSec = (newOffset - oldOffset) * 60;
     if (shiftSec === 0) return { timezone: newTz };
     const shift = (t) => t == null ? t : t + shiftSec;
+
+    const shiftedCache = {};
+    for (const [k, arr] of Object.entries(state.allRawDataBySymbol)) {
+      shiftedCache[k] = arr.map(c => ({ ...c, time: shift(c.time) }));
+    }
+
     return {
       timezone: newTz,
+      allRawDataBySymbol: shiftedCache,
       allRawData: state.allRawData.map(c => ({ ...c, time: shift(c.time) })),
       rawData: state.rawData.map(c => ({ ...c, time: shift(c.time) })),
       displayData: state.displayData.map(c => ({ ...c, time: shift(c.time) })),
@@ -159,10 +259,17 @@ export const useStore = create((set, get) => ({
     const state = get();
     const saved = state.readSession();
     if (!saved || !saved.gamePeriod) return false;
-    const filtered = state.allRawData.filter(c => c.time >= saved.gamePeriod.from && c.time <= saved.gamePeriod.to);
+
+    const savedSymbol = saved.symbol || 'XAUUSD';
+    const symbolData = state.allRawDataBySymbol[savedSymbol];
+    if (!symbolData || symbolData.length === 0) return false;
+
+    const filtered = symbolData.filter(c => c.time >= saved.gamePeriod.from && c.time <= saved.gamePeriod.to);
     if (filtered.length === 0) return false;
     const tf = saved.timeframe || 1;
     set({
+      symbol: savedSymbol,
+      allRawData: symbolData,
       rawData: filtered,
       displayData: aggregateData(filtered, tf),
       gameStarted: true,
@@ -171,7 +278,6 @@ export const useStore = create((set, get) => ({
       rules: saved.rules || DEFAULT_RULES,
       currentIndex: Math.min(saved.currentIndex || 0, filtered.length - 1),
       timeframe: tf,
-      symbol: saved.symbol || 'XAUUSD',
       timezone: saved.timezone || 'UTC+3',
       chartType: saved.chartType || 'candle',
       balance: saved.balance ?? INITIAL_BALANCE,
@@ -225,9 +331,7 @@ export const useStore = create((set, get) => ({
   drawingStep: null,
   draftPosition: null,
 
-  // ============================================================
   // DRAWINGS
-  // ============================================================
   drawings: [],
   drawingsPast: [],
   drawingsFuture: [],
@@ -274,6 +378,7 @@ export const useStore = create((set, get) => ({
       fillColor: drawing.fillColor || '#f59e0b33',
       lineWidth: drawing.lineWidth ?? 1,
       showBorder: drawing.showBorder !== false,
+      symbol: state.symbol, // tag with the symbol it was created on
     };
     return {
       drawingsPast: [...state.drawingsPast.slice(-40), cloneDrawings(state.drawings)],
@@ -303,9 +408,7 @@ export const useStore = create((set, get) => ({
     drawings: state.drawings.filter(d => d.id !== id),
   })),
 
-  // ============================================================
   // PENCIL MODE
-  // ============================================================
   isPencilMode: false,
   pencilColor: '#3b82f6',
   pencilStrokes: [],
@@ -324,9 +427,7 @@ export const useStore = create((set, get) => ({
 
   clearPencil: () => set({ pencilStrokes: [] }),
 
-  // ============================================================
   // CHART TYPE & SETTINGS
-  // ============================================================
   chartType: 'candle',
   setChartType: (t) => set({ chartType: t }),
 
@@ -342,10 +443,9 @@ export const useStore = create((set, get) => ({
   toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
   toggleMusic: () => set((state) => ({ musicEnabled: !state.musicEnabled })),
 
-  setAllData: (data) => set({ allRawData: data }),
-
   startGame: (from, to, rules) => set((state) => {
-    const filtered = state.allRawData.filter(c => c.time >= from && c.time <= to);
+    const symbolData = state.allRawDataBySymbol[state.symbol] || state.allRawData;
+    const filtered = symbolData.filter(c => c.time >= from && c.time <= to);
     const startBal = rules.startingBalance;
     const startDay = filtered[0] ? getDayKey(filtered[0].time) : null;
     return {
@@ -688,7 +788,8 @@ export const useStore = create((set, get) => ({
       size: Number(lots.toFixed(2)),
       riskPercent, riskAmount,
       isPending: type !== 'market',
-      openTime
+      openTime,
+      symbol: state.symbol,
     };
     if (state.soundEnabled) playOrderPlaced();
     if (type === 'market') {

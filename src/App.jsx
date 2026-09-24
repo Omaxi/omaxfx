@@ -17,7 +17,7 @@ import { useEffect, useRef } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney, fmtMB } from './utils/format';
 import Papa from 'papaparse';
-import { Clock, RotateCcw, Info, Sparkles } from 'lucide-react';
+import { Clock, RotateCcw, Info, Sparkles, AlertTriangle } from 'lucide-react';
 
 const formatTime = (sec) => {
   if (sec == null) return '∞';
@@ -26,17 +26,75 @@ const formatTime = (sec) => {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
+// =========================================================================
+// SYMBOL CONFIGURATION
+// =========================================================================
+const CANONICAL_OFFSET = 180; // UTC+3 in minutes
+
+const SYMBOL_CONFIG = [
+  { code: 'XAUUSD', file: 'xauusd.csv', sourceOffset: 180,  available: true  },
+  { code: 'EURUSD', file: 'eurusd.csv', sourceOffset: -300, available: true  },
+  { code: 'CHFJPY', file: 'chfjpy.csv', sourceOffset: 0,    available: false },
+  { code: 'GBPAUD', file: 'gbpaud.csv', sourceOffset: 0,    available: false },
+];
+
+// =========================================================================
+// FORMAT-AGNOSTIC DATE/TIME PARSER
+// =========================================================================
+const parseDateTimeToUnix = (dateStr, timeStr) => {
+  if (!dateStr || timeStr == null) return null;
+
+  const dateClean = String(dateStr).replace(/\D/g, '');
+  if (dateClean.length !== 8) return null;
+  const year  = dateClean.substring(0, 4);
+  const month = dateClean.substring(4, 6);
+  const day   = dateClean.substring(6, 8);
+
+  const timeClean = String(timeStr).trim();
+  const parts = timeClean.split(':');
+  if (parts.length < 2) return null;
+  const hour   = String(parts[0]).padStart(2, '0');
+  const minute = String(parts[1]).padStart(2, '0');
+  const second = parts[2] ? String(parts[2].split('.')[0]).padStart(2, '0') : '00';
+
+  const h = parseInt(hour, 10);
+  const m = parseInt(minute, 10);
+  const s = parseInt(second, 10);
+  const mo = parseInt(month, 10);
+  const d = parseInt(day, 10);
+  if (
+    h < 0 || h > 23 ||
+    m < 0 || m > 59 ||
+    s < 0 || s > 59 ||
+    mo < 1 || mo > 12 ||
+    d < 1 || d > 31
+  ) return null;
+
+  const isoString = `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
+  const ms = new Date(isoString).getTime();
+  if (isNaN(ms)) return null;
+  return ms / 1000;
+};
+
 function App() {
   const { 
     isPlaying, stepForward, currentIndex, rawData, balance, positions, 
-    musicEnabled, setAllData, gameStarted, gamePeriod,
+    musicEnabled, setAllDataForSymbol, gameStarted, gamePeriod,
     gameState, rules, updateTimeRemaining, endGame, restartGame,
-    loadingState, openInfo, theme, allRawData,
+    loadingState, openInfo, theme,
     sessionName, setSessionName, saveSession,
-    enableFireworks, toggleFireworks
+    enableFireworks, toggleFireworks,
+    symbolWarning, clearSymbolWarning,
   } = useStore();
   const soundtrackStarted = useRef(false);
   const restoredRef = useRef(false);
+
+  // Auto-dismiss the symbol warning toast after 5 seconds
+  useEffect(() => {
+    if (!symbolWarning) return;
+    const t = setTimeout(() => clearSymbolWarning(), 5000);
+    return () => clearTimeout(t);
+  }, [symbolWarning, clearSymbolWarning]);
 
   useEffect(() => {
     if (!loadingState.isActive) {
@@ -46,76 +104,94 @@ function App() {
     }
   }, [loadingState.isActive]);
 
+  // ============================================================
+  // CSV LOADING
+  // ============================================================
   useEffect(() => {
     let cancelled = false;
     const setLoadingState = useStore.getState().setLoadingState;
-    const csvUrl = `${import.meta.env.BASE_URL}data/xauusd.csv`;
 
-    const loadCSV = async () => {
-      try {
-        setLoadingState({ isActive: true, loaded: 0, total: 0, error: null });
-        const response = await fetch(csvUrl);
-        if (!response.ok) throw new Error(`Failed to fetch CSV: ${response.status}`);
-        const contentLength = response.headers.get('Content-Length');
-        const total = contentLength ? parseInt(contentLength, 10) : 0;
-        let loaded = 0, csvText = '';
-        if (response.body && response.body.getReader) {
-          const reader = response.body.getReader();
-          const chunks = [];
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            if (cancelled) return;
-            chunks.push(value);
-            loaded += value.length;
-            setLoadingState({ loaded, total: Math.max(total, loaded) });
-          }
-          const allChunks = new Uint8Array(loaded);
-          let position = 0;
-          for (const chunk of chunks) { allChunks.set(chunk, position); position += chunk.length; }
-          csvText = new TextDecoder('utf-8').decode(allChunks);
-        } else {
-          csvText = await response.text();
-          loaded = csvText.length;
-          setLoadingState({ loaded, total: loaded });
-        }
+    const parseCSV = (csvText, sourceOffset) => {
+      return new Promise((resolve) => {
         Papa.parse(csvText, {
-          header: true, dynamicTyping: true,
+          header: true,
+          dynamicTyping: false,
+          skipEmptyLines: true,
           complete: (results) => {
+            const targetOffset = CANONICAL_OFFSET;
+            const shiftSec = (targetOffset - sourceOffset) * 60;
+
             const formattedData = results.data
-              .filter(row => row.date && row.close)
               .map(row => {
-                const dateStr = row.date.toString();
-                const year = dateStr.substring(0, 4);
-                const month = dateStr.substring(4, 6);
-                const day = dateStr.substring(6, 8);
-                const timeStr = row.time;
-                const paddedTime = timeStr.length === 7 ? `0${timeStr}` : timeStr;
-                const isoString = `${year}-${month}-${day}T${paddedTime}+03:00`;
+                const rawTime = parseDateTimeToUnix(row.date, row.time);
+                if (rawTime == null) return null;
+                const open  = Number(row.open);
+                const high  = Number(row.high);
+                const low   = Number(row.low);
+                const close = Number(row.close);
+                if (!Number.isFinite(open) || !Number.isFinite(high) ||
+                    !Number.isFinite(low)  || !Number.isFinite(close)) return null;
                 return {
-                  time: new Date(isoString).getTime() / 1000,
-                  open: row.open, high: row.high, low: row.low, close: row.close,
+                  time: rawTime + shiftSec,
+                  open, high, low, close,
                   volume: Number(row.volume) || 0,
                 };
               })
-              .filter(row => !isNaN(row.time))
+              .filter(Boolean)
               .sort((a, b) => a.time - b.time);
-            setAllData(formattedData);
-            setLoadingState({ isActive: false });
+            resolve(formattedData);
           },
-          error: (err) => setLoadingState({ isActive: false, error: err.message }),
+          error: () => resolve([]),
         });
+      });
+    };
+
+    const loadAll = async () => {
+      try {
+        setLoadingState({ isActive: true, loaded: 0, total: 0, error: null });
+
+        const available = SYMBOL_CONFIG.filter(s => s.available);
+        let totalBytes = 0;
+        let loadedBytes = 0;
+        const buffers = {};
+
+        for (const sym of available) {
+          if (cancelled) return;
+          const url = `${import.meta.env.BASE_URL}data/${sym.file}`;
+          const res = await fetch(url);
+          if (!res.ok) {
+            console.warn(`Skipping ${sym.code}: ${res.status}`);
+            continue;
+          }
+          const contentLength = res.headers.get('Content-Length');
+          const buf = await res.arrayBuffer();
+          buffers[sym.code] = { buf, sourceOffset: sym.sourceOffset };
+          loadedBytes += buf.byteLength;
+          totalBytes += contentLength ? parseInt(contentLength, 10) : buf.byteLength;
+          setLoadingState({ loaded: loadedBytes, total: Math.max(totalBytes, loadedBytes) });
+        }
+
+        for (const [code, { buf, sourceOffset }] of Object.entries(buffers)) {
+          if (cancelled) return;
+          const csvText = new TextDecoder('utf-8').decode(buf);
+          const data = await parseCSV(csvText, sourceOffset);
+          useStore.getState().setAllDataForSymbol(code, data);
+        }
+
+        setLoadingState({ isActive: false });
       } catch (err) {
         console.error('CSV load error:', err);
         setLoadingState({ isActive: false, error: err.message });
       }
     };
-    loadCSV();
+
+    loadAll();
     return () => { cancelled = true; };
-  }, [setAllData]);
+  }, []);
 
   useEffect(() => {
-    if (allRawData.length === 0) return;
+    const state = useStore.getState();
+    if (!state.allRawDataBySymbol.XAUUSD) return;
     if (restoredRef.current) return;
     restoredRef.current = true;
 
@@ -127,7 +203,7 @@ function App() {
 
     const ok = useStore.getState().loadSavedSession();
     if (!ok) useStore.getState().openPeriodModal();
-  }, [allRawData]);
+  }, [loadingState.isActive]);
 
   useEffect(() => {
     let t = null;
@@ -304,7 +380,6 @@ function App() {
           )}
           <SoundToggle />
           
-          {/* Fireworks Toggle */}
           <button
             onClick={toggleFireworks}
             className={`w-7 h-7 border rounded flex items-center justify-center transition-colors ${
@@ -342,10 +417,28 @@ function App() {
       <PeriodModal />
       <GameOverModal />
 
-      {/* Fireworks when TP is hit */}
       <CelebrationOverlay />
 
-      {/* Loading Screen */}
+      {/* Symbol data-range warning toast */}
+      {symbolWarning && (
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-[200] pointer-events-none"
+          style={{ top: '56px' }}
+        >
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-[#1e222d]/98 backdrop-blur border border-amber-500/60 rounded-lg shadow-2xl shadow-black/60 animate-fade-in">
+            <AlertTriangle size={16} className="text-amber-400 flex-shrink-0" />
+            <div className="flex flex-col">
+              <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wide">
+                Symbol unavailable at this time
+              </span>
+              <span className="text-xs text-white font-mono">
+                {symbolWarning.message}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {loadingState.isActive && <LoadingScreen />}
     </div>
   );

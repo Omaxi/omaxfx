@@ -1,5 +1,6 @@
 // ============================================================
 // SOUND EFFECTS — synthesized via Web Audio API
+// CUSTOM SOUNDS — loaded from /public via HTMLAudio (instant first play)
 // SOUNDTRACK — HTMLAudio routed through Web Audio for volume control
 // ============================================================
 
@@ -15,6 +16,60 @@ const getCtx = () => {
 const SFX_VOLUME_MULTIPLIER = 1.5;
 const MUSIC_VOLUME = 0.1;
 
+// ============================================================
+// CUSTOM TP HIT SOUND — HTMLAudio with instant preload
+// ============================================================
+// File lives at: public/tphit.mp3
+const TP_HIT_URL = `${import.meta.env.BASE_URL}tphit.mp3`;
+const TP_HIT_VOLUME = 0.6;
+
+// Preloader: an HTMLAudio element created at module load.
+// `preload='auto'` tells the browser to start buffering immediately.
+// This guarantees the very first `.play()` call has data ready.
+let tpHitPreloader = null;
+let tpHitFailed = false;
+
+const initTpHitPreloader = () => {
+  if (tpHitPreloader || tpHitFailed) return;
+  try {
+    tpHitPreloader = new Audio(TP_HIT_URL);
+    tpHitPreloader.preload = 'auto';
+    tpHitPreloader.volume = TP_HIT_VOLUME;
+    tpHitPreloader.addEventListener('error', () => {
+      console.warn('[SFX] Failed to load tphit.mp3, using synth fallback.');
+      tpHitFailed = true;
+    });
+    // Load the resource without needing user interaction
+    try { tpHitPreloader.load(); } catch (_) {}
+  } catch (e) {
+    tpHitFailed = true;
+  }
+};
+initTpHitPreloader();
+
+// Play the custom MP3.
+// Each call spawns a fresh Audio instance reading from the browser cache,
+// so overlapping TP hits don't cut each other off and each playback starts
+// from the beginning.
+const playTPHitCustom = () => {
+  try {
+    const audio = new Audio(TP_HIT_URL);
+    audio.volume = TP_HIT_VOLUME;
+    const p = audio.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => {
+        // Autoplay blocked or file missing — silent fallback
+        playTPHitSynthFallback();
+      });
+    }
+  } catch (e) {
+    playTPHitSynthFallback();
+  }
+};
+
+// ============================================================
+// SYNTHESIZED TONES
+// ============================================================
 const playTone = (freq, duration, type = 'sine', volume = 0.15, delay = 0) => {
   try {
     const ctx = getCtx();
@@ -44,11 +99,20 @@ export const playPositionClosed = () => {
   playTone(400, 0.15, 'sine', 0.08, 0.08);
 };
 
-export const playTPHit = () => {
+// Synth fallback — only used if tphit.mp3 fails to load/play
+const playTPHitSynthFallback = () => {
   playTone(523.25, 0.15, 'sine', 0.15);
   playTone(659.25, 0.15, 'sine', 0.15, 0.1);
   playTone(783.99, 0.2, 'sine', 0.15, 0.2);
   playTone(1046.5, 0.35, 'sine', 0.12, 0.32);
+};
+
+export const playTPHit = () => {
+  if (tpHitFailed) {
+    playTPHitSynthFallback();
+    return;
+  }
+  playTPHitCustom();
 };
 
 export const playSLHit = () => {

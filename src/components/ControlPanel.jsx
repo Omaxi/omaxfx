@@ -18,9 +18,14 @@ const CHART_TYPES = [
   { label: 'Line', value: 'line' },
 ];
 
+// =========================================================================
+// SYMBOLS LIST
+// Set `available: true` when the CSV file is present in /public/data/.
+// The code expects the file to be named exactly: <code>.csv  (lowercase)
+// =========================================================================
 const SYMBOLS = [
   { code: 'XAUUSD', source: 'Dukascopy', available: true },
-  { code: 'EURUSD', source: 'Dukascopy', available: false },
+  { code: 'EURUSD', source: 'Dukascopy', available: true },
   { code: 'CHFJPY', source: 'Dukascopy', available: false },
   { code: 'GBPAUD', source: 'Dukascopy', available: false },
 ];
@@ -111,8 +116,11 @@ export default function ControlPanel() {
   const SymbolDropdown = () => (
     <>
       <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
-      <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[220px] overflow-hidden" style={{ zIndex: 9999, left: 8, bottom: 52 }}>
-        <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">Choose Symbol</div>
+      <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[240px] overflow-hidden" style={{ zIndex: 9999, left: 8, bottom: 52 }}>
+        <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide flex justify-between items-center">
+          <span>Choose Symbol</span>
+          <span className="text-[8px] text-gray-600 normal-case">green = data loaded</span>
+        </div>
         {SYMBOLS.map(s => {
           const isSelected = symbol === s.code;
           const isAvailable = s.available;
@@ -127,9 +135,22 @@ export default function ControlPanel() {
                 <span className="w-3 flex items-center justify-center">
                   {isSelected && isAvailable && <Check size={10} className="text-blue-400" />}
                 </span>
-                <span className={isSelected && isAvailable ? 'font-bold' : ''}>{s.code}</span>
+                {/* Green dot indicates the CSV file is present in /public/data/ */}
+                <span
+                  className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                    isAvailable
+                      ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.9)]'
+                      : 'bg-gray-700'
+                  }`}
+                  title={isAvailable ? 'Data downloaded' : 'Data not available'}
+                />
+                <span className={`${isSelected && isAvailable ? 'font-bold' : ''} ${isAvailable ? '' : 'italic'}`}>
+                  {s.code}
+                </span>
               </div>
-              <span className={`text-[9px] ${isAvailable ? 'text-gray-400' : 'text-gray-700'}`}>{s.source}</span>
+              <span className={`text-[9px] ${isAvailable ? 'text-emerald-400' : 'text-gray-700'}`}>
+                {isAvailable ? 'Ready' : 'Unavailable'}
+              </span>
             </button>
           );
         })}
@@ -253,7 +274,8 @@ export default function ControlPanel() {
       <div className="flex items-center justify-between gap-1 px-1.5 py-1.5 overflow-x-auto">
 
         <button onClick={toggleSymbol}
-          className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
+          className="flex items-center gap-1.5 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.9)]" />
           <span>{symbol}</span>
           <ChevronDown size={10} className={`transition-transform ${symbolOpen ? 'rotate-180' : ''}`} />
         </button>
