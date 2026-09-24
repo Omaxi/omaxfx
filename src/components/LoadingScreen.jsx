@@ -33,11 +33,6 @@ export default function LoadingScreen() {
             style={{ width: `${progress}%` }}
           />
         </div>
-        
-        <div className="flex justify-between text-[10px] text-gray-500 mt-2 font-mono">
-          <span>{loaded.toLocaleString()} files</span>
-          <span>{total.toLocaleString()} total</span>
-        </div>
       </div>
 
       {/* Error State */}

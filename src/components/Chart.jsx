@@ -552,12 +552,7 @@ export default function Chart() {
         ctx.fillStyle = resultBgColor;
         ctx.fillRect(minX, minY_Result, w, h_Result);
 
-        // Draw entry marker
-        ctx.fillStyle = resultColor;
-        ctx.fillRect(x1 - 3, yEntry - 3, 6, 6);
-        
-        // Draw exit marker
-        ctx.fillRect(x2 - 3, yExit - 3, 6, 6);
+        // REMOVED: Entry marker and Exit marker small squares
 
         // Draw PnL label
         if (w > 40) {
@@ -1232,8 +1227,6 @@ export default function Chart() {
       </div>
 
       <div className="absolute bottom-3 right-3 z-30 flex items-end gap-2 pointer-events-auto">
-        {/* REMOVED: Fireworks Toggle Button */}
-
         <button onClick={togglePlay}
           className="w-12 h-12 rounded-full bg-[#1e222d] hover:bg-[#2a2e39] border-2 border-[#2a2e39] text-white flex items-center justify-center shadow-2xl shadow-black/60 active:scale-95 transition-transform">
           {isPlaying ? <Pause size={20} /> : <Play size={20} />}
