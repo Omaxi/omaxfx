@@ -4,7 +4,6 @@ import { useStore } from '../store';
 import { X, Play, Pause, SkipForward, Trash2, Lock } from 'lucide-react';
 import DrawingToolbar from './DrawingToolbar';
 import StylePanel from './StylePanel';
-import confetti from 'canvas-confetti';
 
 const calcRRR = (entry, sl, tp) => {
   if (entry == null || sl == null || tp == null) return null;
@@ -250,7 +249,6 @@ export default function Chart() {
   const chartLockedRef = useRef(false);
   const selectedItemRef = useRef(null);
   const currentPencilRef = useRef(null);
-  const lastCelebratedTradeRef = useRef(null);
 
   const [pendingBtnPos, setPendingBtnPos] = useState([]);
   const [positionBtnPos, setPositionBtnPos] = useState([]);
@@ -263,23 +261,8 @@ export default function Chart() {
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
     theme, snapshotDrawings, recenterToken,
     isPencilMode, pencilColor, pencilStrokes, addPencilStroke, setPencilColor,
-    chartType, enableFireworks, tradeHistory
+    chartType, tradeHistory
   } = useStore();
-
-  // Fireworks trigger - only once per unique trade ID, centered on screen
-  useEffect(() => {
-    if (!enableFireworks) return;
-    const lastTrade = tradeHistory[tradeHistory.length - 1];
-    if (lastTrade && lastTrade.pnl > 0 && lastTrade.id !== lastCelebratedTradeRef.current) {
-      lastCelebratedTradeRef.current = lastTrade.id;
-      confetti({
-        particleCount: 120,
-        spread: 100,
-        origin: { x: 0.5, y: 0.5 },
-        colors: ['#26a69a', '#4ade80', '#facc15', '#ffffff']
-      });
-    }
-  }, [tradeHistory, enableFireworks]);
 
   useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
 
@@ -575,7 +558,7 @@ export default function Chart() {
         }
       });
 
-      // 2. Draw user drawings (using raw time so they can go outside candles)
+      // 2. Draw user drawings
       const sel = selectedItemRef.current;
       const selectedId = sel?.type === 'drawing' ? sel.id : null;
       state.drawings.forEach(d => {
@@ -655,7 +638,7 @@ export default function Chart() {
           const right = pts[0].x + width;
           const top = pts[0].y - height;
           const bottom = pts[0].y + 4;
-          const padding = 12; // Increased padding for easier clicking
+          const padding = 12;
           if (x >= left - padding && x <= right + padding && y >= top - padding && y <= bottom + padding) {
             return { drawingId: d.id, mode: 'drag-body' };
           }
