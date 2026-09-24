@@ -513,12 +513,6 @@ export default function Chart() {
       const alive = new Set(state.drawings);
       for (const key of cache.keys()) if (!alive.has(key)) cache.delete(key);
 
-      // Helper to snap drawing points to the current visible candles
-      const snappedPointToXY = (point) => {
-        const snappedTime = findClosestCandleTime(point.time);
-        return pointToXY({ time: snappedTime, price: point.price });
-      };
-
       // 1. Draw trade history (Entry/Exit boxes + SL area + TP area)
       const tradeHistory = state.tradeHistory || [];
       tradeHistory.forEach(trade => {
@@ -581,16 +575,16 @@ export default function Chart() {
         }
       });
 
-      // 2. Draw user drawings (snapped to current timeframe)
+      // 2. Draw user drawings (using raw time so they can go outside candles)
       const sel = selectedItemRef.current;
       const selectedId = sel?.type === 'drawing' ? sel.id : null;
       state.drawings.forEach(d => {
         if (d.type === 'volumeProfile' && !cache.has(d)) cache.set(d, computeVolumeProfile(d));
-        drawShape(ctx, d, snappedPointToXY, false, cache, d.id === selectedId);
+        drawShape(ctx, d, pointToXY, false, cache, d.id === selectedId);
       });
-      if (draftRef.current) drawShape(ctx, draftRef.current, snappedPointToXY, true, cache, false);
+      if (draftRef.current) drawShape(ctx, draftRef.current, pointToXY, true, cache, false);
 
-      // 3. Draw pencil strokes (freehand, not snapped as they are exact pixel paths)
+      // 3. Draw pencil strokes
       state.pencilStrokes.forEach(s => drawPencilStroke(ctx, s));
       if (currentPencilRef.current) drawPencilStroke(ctx, currentPencilRef.current);
 
@@ -661,7 +655,8 @@ export default function Chart() {
           const right = pts[0].x + width;
           const top = pts[0].y - height;
           const bottom = pts[0].y + 4;
-          if (x >= left - 4 && x <= right + 4 && y >= top - 4 && y <= bottom + 4) {
+          const padding = 12; // Increased padding for easier clicking
+          if (x >= left - padding && x <= right + padding && y >= top - padding && y <= bottom + padding) {
             return { drawingId: d.id, mode: 'drag-body' };
           }
         }
