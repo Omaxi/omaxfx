@@ -1,6 +1,6 @@
 // ============================================================
 // SOUND EFFECTS — synthesized via Web Audio API
-// CUSTOM SOUNDS — played via a hidden <audio> element in the DOM
+// CUSTOM SOUNDS — hidden <audio id="sfx-tphit"> in App.jsx
 // SOUNDTRACK — HTMLAudio routed through Web Audio for volume control
 // ============================================================
 
@@ -17,11 +17,10 @@ const SFX_VOLUME_MULTIPLIER = 1.5;
 const MUSIC_VOLUME = 0.1;
 
 // ============================================================
-// TP HIT SOUND — reads from hidden <audio id="sfx-tphit"> in App.jsx
+// TP HIT SOUND — reads from <audio id="sfx-tphit"> in App.jsx
 // ============================================================
 const TP_HIT_VOLUME = 0.9;
 
-// Diagnostic — logs once when the module first loads
 if (typeof window !== 'undefined') {
   console.log('[SFX] audio module loaded; expecting #sfx-tphit in DOM');
 }
@@ -46,7 +45,6 @@ export const playTPHit = () => {
       playTPHitSynthFallback();
       return;
     }
-    // Clone so overlapping TPs don't cut each other off
     const clone = el.cloneNode(true);
     clone.volume = TP_HIT_VOLUME;
     const p = clone.play();

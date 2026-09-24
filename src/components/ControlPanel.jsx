@@ -20,20 +20,25 @@ const CHART_TYPES = [
 
 // =========================================================================
 // SYMBOLS LIST
-// Set `available: true` when the CSV file is present in /public/data/.
-// The code expects the file to be named exactly: <code>.csv  (lowercase)
+// Set `available: true` when the CSV file(s) are present in /public/data/.
 // =========================================================================
 const SYMBOLS = [
   { code: 'XAUUSD', source: 'Dukascopy', available: true },
-  { code: 'EURUSD', source: 'Dukascopy', available: true },
+  { code: 'EURUSD', source: 'Dukascopy', available: false },
   { code: 'CHFJPY', source: 'Dukascopy', available: false },
   { code: 'GBPAUD', source: 'Dukascopy', available: false },
 ];
 
 const TIMEZONES = [
-  { code: 'UTC-3', label: 'UTC-3' }, { code: 'UTC-2', label: 'UTC-2' }, { code: 'UTC-1', label: 'UTC-1' },
-  { code: 'UTC', label: 'UTC' },
-  { code: 'UTC+1', label: 'UTC+1' }, { code: 'UTC+2', label: 'UTC+2' }, { code: 'UTC+3', label: 'UTC+3' },
+  { code: 'UTC-5', label: 'UTC-5' },
+  { code: 'UTC-4', label: 'UTC-4' },
+  { code: 'UTC-3', label: 'UTC-3' },
+  { code: 'UTC-2', label: 'UTC-2' },
+  { code: 'UTC-1', label: 'UTC-1' },
+  { code: 'UTC',   label: 'UTC' },
+  { code: 'UTC+1', label: 'UTC+1' },
+  { code: 'UTC+2', label: 'UTC+2' },
+  { code: 'UTC+3', label: 'UTC+3' },
 ];
 
 const SESSIONS = [
@@ -135,7 +140,6 @@ export default function ControlPanel() {
                 <span className="w-3 flex items-center justify-center">
                   {isSelected && isAvailable && <Check size={10} className="text-blue-400" />}
                 </span>
-                {/* Green dot indicates the CSV file is present in /public/data/ */}
                 <span
                   className={`w-2 h-2 rounded-full flex-shrink-0 ${
                     isAvailable
@@ -288,7 +292,6 @@ export default function ControlPanel() {
             <ChevronDown size={10} className={`transition-transform ${tfOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          {/* Chart type button */}
           <button ref={ctButtonRef} onClick={toggleCt}
             className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
             title="Chart type">

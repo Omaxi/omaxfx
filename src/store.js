@@ -9,7 +9,7 @@ const EPSILON = 0.001;
 const SESSION_KEY = 'omaxfx-session-v1';
 
 const TZ_OFFSETS = {
-  'UTC-3': -180, 'UTC-2': -120, 'UTC-1': -60,
+  'UTC-5': -300, 'UTC-4': -240, 'UTC-3': -180, 'UTC-2': -120, 'UTC-1': -60,
   'UTC': 0,
   'UTC+1': 60, 'UTC+2': 120, 'UTC+3': 180,
 };
@@ -80,7 +80,7 @@ export const useStore = create((set, get) => ({
   recenterToken: 0,
 
   symbol: 'XAUUSD',
-  timezone: 'UTC+3',
+  timezone: 'UTC-5',
 
   symbolWarning: null,
   clearSymbolWarning: () => set({ symbolWarning: null }),
@@ -154,8 +154,8 @@ export const useStore = create((set, get) => ({
 
   setTimezone: (newTz) => set((state) => {
     if (newTz === state.timezone) return state;
-    const oldOffset = TZ_OFFSETS[state.timezone] ?? 180;
-    const newOffset = TZ_OFFSETS[newTz] ?? 180;
+    const oldOffset = TZ_OFFSETS[state.timezone] ?? -300;
+    const newOffset = TZ_OFFSETS[newTz] ?? -300;
     const shiftSec = (newOffset - oldOffset) * 60;
     if (shiftSec === 0) return { timezone: newTz };
     const shift = (t) => t == null ? t : t + shiftSec;
@@ -259,7 +259,7 @@ export const useStore = create((set, get) => ({
       rules: saved.rules || DEFAULT_RULES,
       currentIndex: Math.min(saved.currentIndex || 0, filtered.length - 1),
       timeframe: tf,
-      timezone: saved.timezone || 'UTC+3',
+      timezone: saved.timezone || 'UTC-5',
       chartType: saved.chartType || 'candle',
       balance: saved.balance ?? INITIAL_BALANCE,
       peakBalance: saved.peakBalance ?? INITIAL_BALANCE,
@@ -312,7 +312,9 @@ export const useStore = create((set, get) => ({
   drawingStep: null,
   draftPosition: null,
 
+  // ============================================================
   // DRAWINGS
+  // ============================================================
   drawings: [],
   drawingsPast: [],
   drawingsFuture: [],
@@ -360,9 +362,6 @@ export const useStore = create((set, get) => ({
       lineWidth: drawing.lineWidth ?? 1,
       showBorder: drawing.showBorder !== false,
       symbol: state.symbol,
-      // Tag with the timeframe the drawing was created on.
-      // It will be visible on this TF and all LOWER TFs (more granular),
-      // but hidden when the user switches to a HIGHER (less granular) TF.
       timeframe: state.timeframe,
     };
     return {
@@ -393,7 +392,9 @@ export const useStore = create((set, get) => ({
     drawings: state.drawings.filter(d => d.id !== id),
   })),
 
+  // ============================================================
   // PENCIL MODE
+  // ============================================================
   isPencilMode: false,
   pencilColor: '#3b82f6',
   pencilStrokes: [],
@@ -412,7 +413,9 @@ export const useStore = create((set, get) => ({
 
   clearPencil: () => set({ pencilStrokes: [] }),
 
+  // ============================================================
   // CHART TYPE & SETTINGS
+  // ============================================================
   chartType: 'candle',
   setChartType: (t) => set({ chartType: t }),
 

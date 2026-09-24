@@ -26,15 +26,39 @@ const formatTime = (sec) => {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
-const CANONICAL_OFFSET = 180; // UTC+3 in minutes
+// Canonical timezone for the whole app (in minutes). All CSVs are shifted
+// to this offset at load time. Chosen to match the source data (UTC-5).
+const CANONICAL_OFFSET = -300;
 
+// =========================================================================
+// SYMBOL CONFIGURATION
+// -------------------------------------------------------------------------
+// Each symbol lists one or more CSV files. Multiple files are concatenated
+// and sorted by time so a symbol can span multiple years.
+// =========================================================================
 const SYMBOL_CONFIG = [
-  { code: 'XAUUSD', file: 'xauusd.csv', sourceOffset: 180,  available: true  },
-  { code: 'EURUSD', file: 'eurusd.csv', sourceOffset: -300, available: true  },
-  { code: 'CHFJPY', file: 'chfjpy.csv', sourceOffset: 0,    available: false },
-  { code: 'GBPAUD', file: 'gbpaud.csv', sourceOffset: 0,    available: false },
+  {
+    code: 'XAUUSD',
+    files: [
+      'xauusd_2020.csv',
+      'xauusd_2021.csv',
+      'xauusd_2022.csv',
+      'xauusd_2023.csv',
+      'xauusd_2024.csv',
+      'xauusd_2025.csv',
+    ],
+    sourceOffset: -300,   // UTC-5
+    available: true,
+  },
+  { code: 'EURUSD', files: ['eurusd.csv'], sourceOffset: -300, available: false },
+  { code: 'CHFJPY', files: ['chfjpy.csv'], sourceOffset: 0,    available: false },
+  { code: 'GBPAUD', files: ['gbpaud.csv'], sourceOffset: 0,    available: false },
 ];
 
+// =========================================================================
+// FORMAT-AGNOSTIC DATE/TIME PARSER
+// Handles:  20210104 + "2:00:00"     |   2026.08.02 + "17:00"    |   etc.
+// =========================================================================
 const parseDateTimeToUnix = (dateStr, timeStr) => {
   if (!dateStr || timeStr == null) return null;
 
@@ -51,17 +75,14 @@ const parseDateTimeToUnix = (dateStr, timeStr) => {
   const minute = String(parts[1]).padStart(2, '0');
   const second = parts[2] ? String(parts[2].split('.')[0]).padStart(2, '0') : '00';
 
-  const h = parseInt(hour, 10);
-  const m = parseInt(minute, 10);
-  const s = parseInt(second, 10);
+  const h  = parseInt(hour, 10);
+  const m  = parseInt(minute, 10);
+  const s  = parseInt(second, 10);
   const mo = parseInt(month, 10);
-  const d = parseInt(day, 10);
+  const d  = parseInt(day, 10);
   if (
-    h < 0 || h > 23 ||
-    m < 0 || m > 59 ||
-    s < 0 || s > 59 ||
-    mo < 1 || mo > 12 ||
-    d < 1 || d > 31
+    h < 0 || h > 23 || m < 0 || m > 59 || s < 0 || s > 59 ||
+    mo < 1 || mo > 12 || d < 1 || d > 31
   ) return null;
 
   const isoString = `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
@@ -73,7 +94,7 @@ const parseDateTimeToUnix = (dateStr, timeStr) => {
 function App() {
   const { 
     isPlaying, stepForward, currentIndex, rawData, balance, positions, 
-    musicEnabled, setAllDataForSymbol, gameStarted, gamePeriod,
+    musicEnabled, gameStarted,
     gameState, rules, updateTimeRemaining, endGame, restartGame,
     loadingState, openInfo, theme,
     sessionName, setSessionName, saveSession,
@@ -97,20 +118,21 @@ function App() {
     }
   }, [loadingState.isActive]);
 
+  // ============================================================
+  // CSV LOADING — supports one or MANY files per symbol
+  // ============================================================
   useEffect(() => {
     let cancelled = false;
     const setLoadingState = useStore.getState().setLoadingState;
 
-    const parseCSV = (csvText, sourceOffset) => {
+    const parseCSVText = (csvText, sourceOffset) => {
       return new Promise((resolve) => {
         Papa.parse(csvText, {
           header: true,
           dynamicTyping: false,
           skipEmptyLines: true,
           complete: (results) => {
-            const targetOffset = CANONICAL_OFFSET;
-            const shiftSec = (targetOffset - sourceOffset) * 60;
-
+            const shiftSec = (CANONICAL_OFFSET - sourceOffset) * 60;
             const formattedData = results.data
               .map(row => {
                 const rawTime = parseDateTimeToUnix(row.date, row.time);
@@ -127,8 +149,7 @@ function App() {
                   volume: Number(row.volume) || 0,
                 };
               })
-              .filter(Boolean)
-              .sort((a, b) => a.time - b.time);
+              .filter(Boolean);
             resolve(formattedData);
           },
           error: () => resolve([]),
@@ -143,29 +164,47 @@ function App() {
         const available = SYMBOL_CONFIG.filter(s => s.available);
         let totalBytes = 0;
         let loadedBytes = 0;
+        // buffers[symCode] = { texts: [...], sourceOffset }
         const buffers = {};
 
         for (const sym of available) {
           if (cancelled) return;
-          const url = `${import.meta.env.BASE_URL}data/${sym.file}`;
-          const res = await fetch(url);
-          if (!res.ok) {
-            console.warn(`Skipping ${sym.code}: ${res.status}`);
-            continue;
+          const texts = [];
+
+          for (const file of sym.files) {
+            if (cancelled) return;
+            const url = `${import.meta.env.BASE_URL}data/${file}`;
+            try {
+              const res = await fetch(url);
+              if (!res.ok) {
+                console.warn(`Skipping ${sym.code}/${file}: HTTP ${res.status}`);
+                continue;
+              }
+              const contentLength = res.headers.get('Content-Length');
+              const buf = await res.arrayBuffer();
+              loadedBytes += buf.byteLength;
+              totalBytes += contentLength ? parseInt(contentLength, 10) : buf.byteLength;
+              setLoadingState({ loaded: loadedBytes, total: Math.max(totalBytes, loadedBytes) });
+              texts.push(new TextDecoder('utf-8').decode(buf));
+            } catch (e) {
+              console.warn(`Failed to load ${sym.code}/${file}:`, e);
+            }
           }
-          const contentLength = res.headers.get('Content-Length');
-          const buf = await res.arrayBuffer();
-          buffers[sym.code] = { buf, sourceOffset: sym.sourceOffset };
-          loadedBytes += buf.byteLength;
-          totalBytes += contentLength ? parseInt(contentLength, 10) : buf.byteLength;
-          setLoadingState({ loaded: loadedBytes, total: Math.max(totalBytes, loadedBytes) });
+
+          buffers[sym.code] = { texts, sourceOffset: sym.sourceOffset };
         }
 
-        for (const [code, { buf, sourceOffset }] of Object.entries(buffers)) {
+        // Parse each symbol's files, merge, sort, store
+        for (const [code, { texts, sourceOffset }] of Object.entries(buffers)) {
           if (cancelled) return;
-          const csvText = new TextDecoder('utf-8').decode(buf);
-          const data = await parseCSV(csvText, sourceOffset);
-          useStore.getState().setAllDataForSymbol(code, data);
+          let all = [];
+          for (const text of texts) {
+            const parsed = await parseCSVText(text, sourceOffset);
+            all = all.concat(parsed);
+          }
+          all.sort((a, b) => a.time - b.time);
+          console.log(`[Data] ${code}: ${all.length} candles loaded`);
+          useStore.getState().setAllDataForSymbol(code, all);
         }
 
         setLoadingState({ isActive: false });
@@ -317,10 +356,11 @@ function App() {
 
   return (
     <div className="flex flex-col h-dvh overflow-hidden" style={{ backgroundColor: theme.background }}>
-      {/* Hidden audio elements — preloaded by the browser at app startup */}
+      {/* Hidden audio element — preloaded by the browser at page load.
+          Path matches the actual file location: public/sounds/tphit.mp3 */}
       <audio
         id="sfx-tphit"
-        src={`${import.meta.env.BASE_URL}tphit.mp3`}
+        src={`${import.meta.env.BASE_URL}sounds/tphit.mp3`}
         preload="auto"
         style={{ display: 'none' }}
       />
