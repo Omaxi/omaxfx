@@ -3,11 +3,18 @@ import { fmtMoney } from '../utils/format';
 import { X } from 'lucide-react';
 
 export default function HistoryModal() {
-  const { isHistoryOpen, closeHistory, tradeHistory } = useStore();
+  const { isHistoryOpen, closeHistory, tradeHistory, symbol: activeSymbol } = useStore();
 
   if (!isHistoryOpen) return null;
 
   const formatTime = (t) => t ? new Date(t * 1000).toLocaleString() : '-';
+
+  // Symbol-aware price formatter: EURUSD gets 4 decimals, others get 2.
+  const fmtPrice = (value, symbol) => {
+    if (value == null || Number.isNaN(value)) return '-';
+    const precision = symbol === 'EURUSD' ? 4 : 2;
+    return value.toFixed(precision);
+  };
 
   const totalTrades = tradeHistory.length;
   const wins = tradeHistory.filter(t => t.pnl > 0).length;
@@ -51,6 +58,7 @@ export default function HistoryModal() {
               <thead className="bg-[#1e222d] text-gray-400 sticky top-0">
                 <tr>
                   <th className="p-2 text-left">#</th>
+                  <th className="p-2 text-left">Symbol</th>
                   <th className="p-2 text-left">Type</th>
                   <th className="p-2 text-right">Entry</th>
                   <th className="p-2 text-right">Exit</th>
@@ -65,39 +73,45 @@ export default function HistoryModal() {
                 </tr>
               </thead>
               <tbody>
-                {tradeHistory.map((t, i) => (
-                  <tr key={i} className="border-b border-[#2a2e39] hover:bg-[#1e222d]">
-                    <td className="p-2">{i + 1}</td>
-                    <td className={`p-2 font-bold ${t.type === 'buy' ? 'text-green-400' : 'text-red-400'}`}>
-                      {t.type.toUpperCase()}
-                    </td>
-                    <td className="p-2 text-right font-mono">{t.entryPrice.toFixed(2)}</td>
-                    <td className="p-2 text-right font-mono">{t.exitPrice.toFixed(2)}</td>
-                    <td className="p-2 text-right font-mono text-red-400">{t.sl?.toFixed(2) || '-'}</td>
-                    <td className="p-2 text-right font-mono text-green-400">{t.tp?.toFixed(2) || '-'}</td>
-                    <td className="p-2 text-right">{t.size}</td>
-                    <td className="p-2 text-right font-mono text-yellow-400">
-                      {t.riskAmount ? `$${fmtMoney(t.riskAmount, 0)}` : '-'}
-                      {t.riskPercent != null && (
-                        <span className="text-gray-500 text-[10px] ml-1">({t.riskPercent}%)</span>
-                      )}
-                    </td>
-                    <td className={`p-2 text-right font-bold ${t.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      ${fmtMoney(t.pnl)}
-                    </td>
-                    <td className="p-2">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                        t.reason === 'TP' ? 'bg-green-900/50 text-green-400' :
-                        t.reason === 'SL' ? 'bg-red-900/50 text-red-400' :
-                        'bg-gray-700 text-gray-300'
-                      }`}>
-                        {t.reason}
-                      </span>
-                    </td>
-                    <td className="p-2 text-[10px] text-gray-400 font-mono">{formatTime(t.openTime)}</td>
-                    <td className="p-2 text-[10px] text-gray-400 font-mono">{formatTime(t.closeTime)}</td>
-                  </tr>
-                ))}
+                {tradeHistory.map((t, i) => {
+                  // Fallback to the currently active symbol for legacy trades
+                  // that don't have a `symbol` field (saved before this update).
+                  const sym = t.symbol || activeSymbol || 'XAUUSD';
+                  return (
+                    <tr key={i} className="border-b border-[#2a2e39] hover:bg-[#1e222d]">
+                      <td className="p-2">{i + 1}</td>
+                      <td className="p-2 font-bold text-white">{sym}</td>
+                      <td className={`p-2 font-bold ${t.type === 'buy' ? 'text-green-400' : 'text-red-400'}`}>
+                        {t.type.toUpperCase()}
+                      </td>
+                      <td className="p-2 text-right font-mono">{fmtPrice(t.entryPrice, sym)}</td>
+                      <td className="p-2 text-right font-mono">{fmtPrice(t.exitPrice, sym)}</td>
+                      <td className="p-2 text-right font-mono text-red-400">{fmtPrice(t.sl, sym)}</td>
+                      <td className="p-2 text-right font-mono text-green-400">{fmtPrice(t.tp, sym)}</td>
+                      <td className="p-2 text-right">{t.size}</td>
+                      <td className="p-2 text-right font-mono text-yellow-400">
+                        {t.riskAmount ? `$${fmtMoney(t.riskAmount, 0)}` : '-'}
+                        {t.riskPercent != null && (
+                          <span className="text-gray-500 text-[10px] ml-1">({t.riskPercent}%)</span>
+                        )}
+                      </td>
+                      <td className={`p-2 text-right font-bold ${t.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        ${fmtMoney(t.pnl)}
+                      </td>
+                      <td className="p-2">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                          t.reason === 'TP' ? 'bg-green-900/50 text-green-400' :
+                          t.reason === 'SL' ? 'bg-red-900/50 text-red-400' :
+                          'bg-gray-700 text-gray-300'
+                        }`}>
+                          {t.reason}
+                        </span>
+                      </td>
+                      <td className="p-2 text-[10px] text-gray-400 font-mono">{formatTime(t.openTime)}</td>
+                      <td className="p-2 text-[10px] text-gray-400 font-mono">{formatTime(t.closeTime)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
