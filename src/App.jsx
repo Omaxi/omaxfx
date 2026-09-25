@@ -27,14 +27,11 @@ const formatTime = (sec) => {
 };
 
 // Canonical timezone for the whole app (in minutes). All CSVs are shifted
-// to this offset at load time. Chosen to match the source data (UTC-5).
-const CANONICAL_OFFSET = -300;
+// to this offset at load time.
+const CANONICAL_OFFSET = -300; // UTC-5
 
 // =========================================================================
 // SYMBOL CONFIGURATION
-// -------------------------------------------------------------------------
-// Each symbol lists one or more CSV files. Multiple files are concatenated
-// and sorted by time so a symbol can span multiple years.
 // =========================================================================
 const SYMBOL_CONFIG = [
   {
@@ -47,7 +44,7 @@ const SYMBOL_CONFIG = [
       'xauusd_2024.csv',
       'xauusd_2025.csv',
     ],
-    sourceOffset: -300,   // UTC-5
+    sourceOffset: -300, // UTC-5
     available: true,
   },
   {
@@ -60,7 +57,7 @@ const SYMBOL_CONFIG = [
       'eurusd_2024.csv',
       'eurusd_2025.csv',
     ],
-    sourceOffset: -300,   // UTC-5
+    sourceOffset: -300, // UTC-5
     available: true,
   },
   { code: 'CHFJPY', files: ['chfjpy.csv'], sourceOffset: 0, available: false },
@@ -69,7 +66,6 @@ const SYMBOL_CONFIG = [
 
 // =========================================================================
 // FORMAT-AGNOSTIC DATE/TIME PARSER
-// Handles:  20210104 + "2:00:00"     |   2026.08.02 + "17:00"    |   etc.
 // =========================================================================
 const parseDateTimeToUnix = (dateStr, timeStr) => {
   if (!dateStr || timeStr == null) return null;
@@ -176,7 +172,6 @@ function App() {
         const available = SYMBOL_CONFIG.filter(s => s.available);
         let totalBytes = 0;
         let loadedBytes = 0;
-        // buffers[symCode] = { texts: [...], sourceOffset }
         const buffers = {};
 
         for (const sym of available) {
@@ -230,6 +225,11 @@ function App() {
     return () => { cancelled = true; };
   }, []);
 
+  // ============================================================
+  // SESSION RESTORE
+  // - If no saved session → show PeriodModal
+  // - If saved session is invalid → clear it and show PeriodModal
+  // ============================================================
   useEffect(() => {
     const state = useStore.getState();
     if (!state.allRawDataBySymbol.XAUUSD) return;
@@ -243,9 +243,36 @@ function App() {
     }
 
     const ok = useStore.getState().loadSavedSession();
-    if (!ok) useStore.getState().openPeriodModal();
+    if (!ok) {
+      try { useStore.getState().clearSession(); } catch (e) {}
+      useStore.getState().openPeriodModal();
+    }
   }, [loadingState.isActive]);
 
+  // ============================================================
+  // SAFETY NET — if gameStarted is true but rawData is empty,
+  // wipe the corrupt state and force the PeriodModal open.
+  // ============================================================
+  useEffect(() => {
+    if (loadingState.isActive) return;
+    const s = useStore.getState();
+    if (s.gameStarted && (!s.rawData || s.rawData.length === 0)) {
+      try { s.clearSession(); } catch (e) {}
+      useStore.setState({
+        gameStarted: false,
+        rawData: [],
+        displayData: [],
+        currentIndex: 0,
+        isPlaying: false,
+        gameState: { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
+      });
+      useStore.getState().openPeriodModal();
+    }
+  }, [loadingState.isActive]);
+
+  // ============================================================
+  // AUTO-SAVE
+  // ============================================================
   useEffect(() => {
     let t = null;
     const unsub = useStore.subscribe((state) => {
