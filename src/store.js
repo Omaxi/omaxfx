@@ -261,6 +261,12 @@ export const useStore = create((set, get) => ({
 
     const filtered = symbolData.filter(c => c.time >= saved.gamePeriod.from && c.time <= saved.gamePeriod.to);
     if (filtered.length === 0) return false;
+
+    // Guard against a saved session that was already at the last candle:
+    // rewind one step so stepForward has room to advance.
+    const savedIndex = Math.min(saved.currentIndex || 0, filtered.length - 1);
+    const safeIndex = filtered.length > 1 ? Math.min(savedIndex, filtered.length - 2) : 0;
+
     const tf = saved.timeframe || 1;
     set({
       symbol: savedSymbol,
@@ -271,7 +277,7 @@ export const useStore = create((set, get) => ({
       isPeriodModalOpen: false,
       gamePeriod: saved.gamePeriod,
       rules: saved.rules || DEFAULT_RULES,
-      currentIndex: Math.min(saved.currentIndex || 0, filtered.length - 1),
+      currentIndex: safeIndex,
       timeframe: tf,
       timezone: saved.timezone || 'UTC-5',
       chartType: saved.chartType || 'candle',
@@ -445,9 +451,27 @@ export const useStore = create((set, get) => ({
   toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
   toggleMusic: () => set((state) => ({ musicEnabled: !state.musicEnabled })),
 
+  // =========================================================================
+  // START GAME
+  // - Refuses to start if data isn't loaded or the period contains no candles
+  // - Prevents the "instant period_end" bug that showed the GameOver modal
+  //   immediately after starting a session.
+  // =========================================================================
   startGame: (from, to, rules) => set((state) => {
     const symbolData = state.allRawDataBySymbol[state.symbol] || state.allRawData;
+
+    if (!symbolData || symbolData.length === 0) {
+      console.warn('[startGame] no data loaded for symbol:', state.symbol);
+      return state;
+    }
+
     const filtered = symbolData.filter(c => c.time >= from && c.time <= to);
+
+    if (filtered.length < 2) {
+      console.warn(`[startGame] period contains ${filtered.length} candle(s); need >= 2. From=${from} To=${to}`);
+      return state;
+    }
+
     const startBal = rules.startingBalance;
     const startDay = filtered[0] ? getDayKey(filtered[0].time) : null;
     return {
@@ -676,11 +700,27 @@ export const useStore = create((set, get) => ({
     };
   }),
 
+  // =========================================================================
+  // STEP FORWARD
+  // -------------------------------------------------------------------------
+  // Guards added to prevent the "instant period_end" bug:
+  //   1. Bail if the game hasn't started yet
+  //   2. Bail if rawData is empty
+  //   3. Bail if already at the last candle (do nothing)
+  //   4. Only fire 'period_end' if we actually consumed new candles
+  // =========================================================================
   stepForward: () => set((state) => {
     if (state.gameState.isOver) return state;
+    if (!state.gameStarted) return state;
+    if (state.rawData.length === 0) return state;
+
+    // Already at the last candle — nothing to advance to.
+    if (state.currentIndex >= state.rawData.length - 1) return state;
+
     const jumpSize = state.timeframe;
     const nextIndex = Math.min(state.currentIndex + jumpSize, state.rawData.length - 1);
-    
+    const advanced = nextIndex > state.currentIndex;
+
     let newBalance = state.balance;
     let newPositions = [...state.positions];
     let newHistory = [...state.tradeHistory];
@@ -756,7 +796,7 @@ export const useStore = create((set, get) => ({
     }
 
     const atEnd = nextIndex >= state.rawData.length - 1;
-    if (!gameOverReason && atEnd) {
+    if (!gameOverReason && atEnd && advanced) {
       gameOverReason = 'period_end';
       gameOverMessage = 'You reached the end of the session period.';
     }
