@@ -13,12 +13,7 @@ const aliases = {
 
 const cleanHeader = (value) => String(value ?? '').replace(/^\uFEFF/, '').trim().toLowerCase().replace(/[._-]+/g, ' ').replace(/\s+/g, ' ');
 
-function makeRowPicker(fields = []) {
-  const fieldByName = new Map(fields.map((field) => [cleanHeader(field), field]));
-  const keys = Object.fromEntries(Object.entries(aliases).map(([name, candidates]) => [
-    name,
-    candidates.map((candidate) => fieldByName.get(candidate)).filter(Boolean),
-  ]));
+function makeRowPicker() {
   return (row, candidates) => {
     for (const key of candidates) {
       const value = row?.[key];
@@ -28,8 +23,8 @@ function makeRowPicker(fields = []) {
   };
 }
 
-function parseTimestamp(row, pick) {
-  const raw = pick(row, aliases.time.map((name) => name));
+function parseTimestamp(row, pick, keys) {
+  const raw = pick(row, keys.time);
   if (raw !== undefined) {
     const numeric = Number(raw);
     if (Number.isFinite(numeric) && String(raw).trim() !== '') {
@@ -44,8 +39,8 @@ function parseTimestamp(row, pick) {
       if (Number.isFinite(parsed)) return { time: Math.floor(parsed / 1000), isUtc: hasExplicitZone };
     }
   }
-  const date = pick(row, aliases.date);
-  const clock = pick(row, aliases.clock);
+  const date = pick(row, keys.date);
+  const clock = pick(row, keys.clock);
   if (date === undefined || clock === undefined) return null;
   const d = String(date).trim();
   const t = String(clock).trim();
@@ -64,7 +59,7 @@ function parseTimestamp(row, pick) {
 
 function createRowNormalizer(fields = []) {
   if (!fields.length) throw new Error('The CSV has no readable header row.');
-  const pick = makeRowPicker(fields);
+  const pick = makeRowPicker();
   const keys = Object.fromEntries(Object.entries(aliases).map(([name, candidates]) => [
     name,
     candidates.map((candidate) => fields.find((field) => cleanHeader(field) === candidate)).filter(Boolean),
@@ -77,7 +72,7 @@ function createRowNormalizer(fields = []) {
 
   const addRows = (rows) => {
     for (const row of rows) {
-      const parsedTimestamp = parseTimestamp(row, pick);
+      const parsedTimestamp = parseTimestamp(row, pick, keys);
       const time = parsedTimestamp?.time;
       if (parsedTimestamp && !parsedTimestamp.isUtc) timestampsAreUtc = false;
       const open = Number(pick(row, keys.open));
