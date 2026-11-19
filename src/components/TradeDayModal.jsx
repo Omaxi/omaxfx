@@ -1,25 +1,32 @@
 import { useEffect, useState } from 'react';
 import { X, Camera, ImageOff, Download } from 'lucide-react';
-import { captureChartScreenshot, getTradeScreenshot, saveTradeScreenshot } from '../utils/tradeScreenshots';
+import { getTradeScreenshot, renderTradeScreenshot, saveTradeScreenshot } from '../utils/tradeScreenshots';
 import { fmtMoney } from '../utils/format';
 
 const stamp = (unix) => unix ? new Date(unix * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
 
-export default function TradeDayModal({ date, trades, onClose }) {
+export default function TradeDayModal({ date, trades, onClose, sessionId, candles, timeframe = 1 }) {
   const [images, setImages] = useState({});
   const [savingId, setSavingId] = useState(null);
   useEffect(() => {
     let active = true;
-    Promise.all(trades.map(async trade => [String(trade.id), await getTradeScreenshot(trade.id)]))
-      .then(entries => { if (active) setImages(Object.fromEntries(entries)); });
+    Promise.all(trades.map(async trade => {
+      let image = await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
+      // Rebuild missing or legacy screenshots from this trade's own market window.
+      if (!image) {
+        image = renderTradeScreenshot(trade, candles, timeframe);
+        if (image) await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
+      }
+      return [String(trade.id), image];
+    })).then(entries => { if (active) setImages(Object.fromEntries(entries)); });
     return () => { active = false; };
-  }, [date, trades]);
+  }, [date, trades, sessionId, candles, timeframe]);
 
   const captureForTrade = async (trade) => {
     setSavingId(String(trade.id));
-    const image = captureChartScreenshot();
+    const image = renderTradeScreenshot(trade, candles, timeframe);
     if (image) {
-      const saved = await saveTradeScreenshot(trade.id, image).catch(() => false);
+      const saved = await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
       if (saved) setImages(current => ({ ...current, [String(trade.id)]: image }));
     }
     setSavingId(null);
@@ -75,8 +82,8 @@ export default function TradeDayModal({ date, trades, onClose }) {
                   ) : (
                     <div className="flex flex-1 flex-col items-center justify-center gap-2 p-4 text-center">
                       <ImageOff size={22} className="text-gray-500"/>
-                      <p className="text-xs text-gray-400">Automatic screenshot is not available for this trade.</p>
-                      <button disabled={savingId === String(trade.id)} onClick={() => captureForTrade(trade)} className="inline-flex items-center gap-1 rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold hover:bg-blue-500 disabled:opacity-50"><Camera size={13}/>{savingId === String(trade.id) ? 'Saving…' : 'Capture current chart for this trade'}</button>
+                      <p className="text-xs text-gray-400">A historical screenshot could not be generated for this trade.</p>
+                      <button disabled={savingId === String(trade.id)} onClick={() => captureForTrade(trade)} className="inline-flex items-center gap-1 rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold hover:bg-blue-500 disabled:opacity-50"><Camera size={13}/>{savingId === String(trade.id) ? 'Saving…' : 'Retry trade screenshot'}</button>
                     </div>
                   )}
                 </div>
