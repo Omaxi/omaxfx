@@ -252,6 +252,7 @@ export default function Chart() {
   const chartLockedRef = useRef(false);
   const selectedItemRef = useRef(null);
   const currentPencilRef = useRef(null);
+  const scheduleDrawRef = useRef(() => {});
 
   const [pendingBtnPos, setPendingBtnPos] = useState([]);
   const [positionBtnPos, setPositionBtnPos] = useState([]);
@@ -498,8 +499,7 @@ export default function Chart() {
       canvas.style.height = `${rect.height}px`;
     };
     resizeCanvas();
-    const ro = new ResizeObserver(resizeCanvas);
-    ro.observe(container);
+    let ro;
 
     const findClosestCandleTime = (targetTime) => {
       const data = visibleDataRef.current;
@@ -514,8 +514,11 @@ export default function Chart() {
       return (targetTime - data[lo].time) < (data[hi].time - targetTime) ? data[lo].time : data[hi].time;
     };
 
-    let rafId;
+    let rafId = null;
+    let disposed = false;
     const draw = () => {
+      rafId = null;
+      if (disposed) return;
       const ctx = canvas.getContext('2d');
       const dpr = Math.max(1, window.devicePixelRatio || 1);
       const rect = canvas.getBoundingClientRect();
@@ -526,8 +529,8 @@ export default function Chart() {
         try {
           const priceAxisW = chartRef.current.priceScale('right').width();
           const timeAxisH = chartRef.current.timeScale().height();
-          if (priceAxisW > 0) paneW = canvas.width - priceAxisW;
-          if (timeAxisH > 0) paneH = canvas.height - timeAxisH;
+          if (priceAxisW > 0) paneW = rect.width - priceAxisW;
+          if (timeAxisH > 0) paneH = rect.height - timeAxisH;
         } catch (e) {}
       }
       ctx.save();
@@ -644,14 +647,35 @@ export default function Chart() {
       }
 
       ctx.restore();
+    };
+    const scheduleDraw = () => {
+      if (disposed || rafId !== null) return;
       rafId = requestAnimationFrame(draw);
     };
+    scheduleDrawRef.current = scheduleDraw;
+    ro = new ResizeObserver(() => { resizeCanvas(); scheduleDraw(); });
+    ro.observe(container);
+    const unsubscribeStore = useStore.subscribe((state, previous) => {
+      if (state.drawings !== previous.drawings ||
+          state.pencilStrokes !== previous.pencilStrokes ||
+          state.tradeHistory !== previous.tradeHistory ||
+          state.positions !== previous.positions ||
+          state.pendingOrders !== previous.pendingOrders ||
+          state.timeframe !== previous.timeframe ||
+          state.symbol !== previous.symbol) scheduleDraw();
+    });
+    const timeScale = chartRef.current?.timeScale();
+    timeScale?.subscribeVisibleLogicalRangeChange(scheduleDraw);
     draw();
     return () => {
-      cancelAnimationFrame(rafId);
-      ro.disconnect();
+      disposed = true;
+      scheduleDrawRef.current = () => {};
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      unsubscribeStore();
+      timeScale?.unsubscribeVisibleLogicalRangeChange(scheduleDraw);
+      ro?.disconnect();
     };
-  }, [pointToXY, timeToX]);
+  }, [pointToXY, timeToX, selectedItem]);
 
   useEffect(() => {
     const container = chartContainerRef.current;
@@ -925,6 +949,7 @@ export default function Chart() {
         e.preventDefault();
         const marketPoint = xyToPoint(x, y);
         if (marketPoint) currentPencilRef.current.points.push(marketPoint);
+        scheduleDrawRef.current();
         return;
       }
 
@@ -975,6 +1000,7 @@ export default function Chart() {
             ...draftRef.current,
             points: [dragDrawRef.current.startPoint, point],
           };
+          scheduleDrawRef.current();
         }
         container.style.cursor = 'crosshair';
         return;
