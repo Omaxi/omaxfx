@@ -1,40 +1,42 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { Calendar, Play, Shield, Clock, Target, TrendingDown, User, Sparkles, X, History as HistoryIcon } from 'lucide-react';
+import { Calendar, Play, Shield, Target, TrendingDown, User, Sparkles, X, History as HistoryIcon, Trash2 } from 'lucide-react';
+import { fetchDataCatalog, loadBundledCsvFiles } from '../utils/dataCatalog';
 
 const toInputDate = (unixSeconds) => {
-  const d = new Date(unixSeconds * 1000);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
+  const d = new Date((unixSeconds + 3 * 3600) * 1000);
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
 };
 
 const fromInputDate = (str, endOfDay = false) => {
-  const time = endOfDay ? '23:59:59' : '00:00:00';
-  return Math.floor(new Date(`${str}T${time}`).getTime() / 1000);
+  const [year, month, day] = str.split('-').map(Number);
+  const localMidnight = Date.UTC(year, month - 1, day, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0);
+  return Math.floor(localMidnight / 1000) - 3 * 3600;
 };
 
 const PRESETS = {
   classic: {
-    name: 'Classic', icon: '🎯', desc: 'Balanced — for traders who like control',
-    rules: { startingBalance: 100000, maxRiskPerTrade: 1, maxDailyLoss: 5, maxDrawdown: 10, countdownMinutes: 60 },
+    name: 'Classic', icon: '🎯', desc: 'Balanced — configurable risk limits',
+    rules: { startingBalance: 100000, maxRiskPerTrade: 1, maxDailyLoss: 5, maxDrawdown: 10 },
   },
   sprint: {
-    name: 'Sprint', icon: '⚡', desc: 'Quick 15-minute race',
-    rules: { startingBalance: 100000, maxRiskPerTrade: 1, maxDailyLoss: 3, maxDrawdown: 5, countdownMinutes: 15 },
+    name: 'Sprint', icon: '⚡', desc: 'Short, strict risk limits',
+    rules: { startingBalance: 100000, maxRiskPerTrade: 1, maxDailyLoss: 3, maxDrawdown: 5 },
   },
   marathon: {
-    name: 'Marathon', icon: '🏃', desc: 'Long, patient session — 4 hours',
-    rules: { startingBalance: 100000, maxRiskPerTrade: 0.5, maxDailyLoss: 10, maxDrawdown: 20, countdownMinutes: 240 },
+    name: 'Marathon', icon: '🏃', desc: 'Long-term risk discipline',
+    rules: { startingBalance: 100000, maxRiskPerTrade: 0.5, maxDailyLoss: 10, maxDrawdown: 20 },
   },
   yolo: {
-    name: 'YOLO', icon: '🎲', desc: 'High risk, high reward — 5 minutes',
-    rules: { startingBalance: 10000, maxRiskPerTrade: 10, maxDailyLoss: 50, maxDrawdown: 100, countdownMinutes: 5 },
+    name: 'YOLO', icon: '🎲', desc: 'Customizable high-risk limits',
+    rules: { startingBalance: 10000, maxRiskPerTrade: 10, maxDailyLoss: 50, maxDrawdown: 100 },
   },
   sniper: {
-    name: 'Sniper', icon: '🎯', desc: 'Tiny risk, tight stops — for perfectionists',
-    rules: { startingBalance: 100000, maxRiskPerTrade: 0.5, maxDailyLoss: 3, maxDrawdown: 8, countdownMinutes: 30 },
+    name: 'Sniper', icon: '🎯', desc: 'Conservative risk limits',
+    rules: { startingBalance: 100000, maxRiskPerTrade: 0.5, maxDailyLoss: 3, maxDrawdown: 8 },
   },
   custom: { name: 'Custom', icon: '⚙️', desc: 'Set your own rules', rules: null },
 };
@@ -43,7 +45,7 @@ export default function PeriodModal() {
   const { 
     allRawData, isPeriodModalOpen, closePeriodModal, gameStarted, startGame, 
     playerName, setPlayerName, sessionName, setSessionName,
-    readSession, loadSavedSession, symbol, contractSpecs
+    readSessions, loadSavedSession, deleteSavedSession, symbol, contractSpecs
   } = useStore();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -52,9 +54,9 @@ export default function PeriodModal() {
   const [maxRiskPerTrade, setMaxRiskPerTrade] = useState(1);
   const [maxDailyLoss, setMaxDailyLoss] = useState(5);
   const [maxDrawdown, setMaxDrawdown] = useState(10);
-  const [countdownMinutes, setCountdownMinutes] = useState(60);
+  const [propFirmEnabled, setPropFirmEnabled] = useState(true);
   const [error, setError] = useState('');
-  const [savedSession, setSavedSession] = useState(null);
+  const [savedSessions, setSavedSessions] = useState([]);
 
   useEffect(() => {
     if (allRawData.length > 0) {
@@ -66,10 +68,9 @@ export default function PeriodModal() {
   // Check for saved session each time modal opens
   useEffect(() => {
     if (isPeriodModalOpen) {
-      const s = readSession();
-      setSavedSession(s);
+      setSavedSessions(readSessions());
     }
-  }, [isPeriodModalOpen, readSession]);
+  }, [isPeriodModalOpen, readSessions]);
 
   useEffect(() => {
     const preset = PRESETS[presetKey];
@@ -78,7 +79,7 @@ export default function PeriodModal() {
       setMaxRiskPerTrade(preset.rules.maxRiskPerTrade);
       setMaxDailyLoss(preset.rules.maxDailyLoss);
       setMaxDrawdown(preset.rules.maxDrawdown);
-      setCountdownMinutes(preset.rules.countdownMinutes);
+      setPropFirmEnabled(true);
     }
   }, [presetKey]);
 
@@ -103,10 +104,9 @@ export default function PeriodModal() {
     if (!from || !to) { setError('Please select both dates'); return; }
     if (fromTs >= toTs) { setError('Start date must be before End date'); return; }
     if (startingBalance <= 0) { setError('Starting balance must be positive'); return; }
-    if (maxRiskPerTrade <= 0 || maxRiskPerTrade > 100) { setError('Max risk per trade must be 0-100%'); return; }
-    if (maxDailyLoss <= 0 || maxDailyLoss > 100) { setError('Max daily loss must be 0-100%'); return; }
-    if (maxDrawdown <= 0 || maxDrawdown > 100) { setError('Max drawdown must be 0-100%'); return; }
-    if (countdownMinutes !== null && countdownMinutes <= 0) { setError('Countdown must be positive'); return; }
+    if (propFirmEnabled && (maxRiskPerTrade <= 0 || maxRiskPerTrade > 100)) { setError('Max risk per trade must be 0-100%'); return; }
+    if (propFirmEnabled && (maxDailyLoss <= 0 || maxDailyLoss > 100)) { setError('Max daily loss must be 0-100%'); return; }
+    if (propFirmEnabled && (maxDrawdown <= 0 || maxDrawdown > 100)) { setError('Max drawdown must be 0-100%'); return; }
     if (!playerName || playerName.trim().length === 0) { setError('Please enter your name'); return; }
     const count = allRawData.filter(c => c.time >= fromTs && c.time <= toTs).length;
     if (count === 0) { setError('No data in this period'); return; }
@@ -116,17 +116,38 @@ export default function PeriodModal() {
       maxRiskPerTrade: Number(maxRiskPerTrade),
       maxDailyLoss: Number(maxDailyLoss),
       maxDrawdown: Number(maxDrawdown),
-      countdownMinutes: countdownMinutes === null ? null : Number(countdownMinutes),
+      propFirmEnabled,
+      countdownMinutes: null,
       presetName: activePreset?.name || 'Custom',
     });
   };
 
-  const handleLoadSaved = () => {
-    const ok = loadSavedSession();
-    if (!ok) setError('Saved session not found or data missing');
+  const handleLoadSaved = async (saved) => {
+    setError('');
+    try {
+      if (!useStore.getState().allRawDataBySymbol[saved.symbol]) {
+        const files = (await fetchDataCatalog()).filter(file => file.symbol === saved.symbol);
+        if (!files.length) throw new Error(`Data for ${saved.symbol} is not available in public/data. Add its CSV files and restart the app.`);
+        const loaded = await loadBundledCsvFiles(files);
+        const code = saved.symbol;
+        const defaults = code === 'XAUUSD'
+          ? { contractSize: 100, tickSize: 0.01, precision: 2 }
+          : code === 'EURUSD'
+            ? { contractSize: 100000, tickSize: 0.0001, precision: 5 }
+            : { contractSize: 1, tickSize: 0.01, precision: 2 };
+        useStore.getState().setCustomSymbolData(code, loaded.candles, {
+          ...defaults, quoteCurrency: 'USD', quoteToAccountRate: 1,
+          ...(saved.contractSpecs?.[code] || {}),
+        });
+      }
+      const ok = loadSavedSession(saved.sessionId);
+      if (!ok) throw new Error('The saved session could not be restored. Its market data may have changed.');
+    } catch (err) {
+      setError(err?.message || 'Unable to resume this session.');
+    }
   };
 
-  const savedDate = savedSession?.savedAt ? new Date(savedSession.savedAt).toLocaleString() : '';
+  const handleDeleteSaved = (sessionId) => setSavedSessions(deleteSavedSession(sessionId));
 
   return (
     <div className="fixed inset-0 bg-[#0b0e11]/95 backdrop-blur flex items-center justify-center z-50 p-2 overflow-y-auto">
@@ -158,24 +179,24 @@ export default function PeriodModal() {
 
         <div className="p-3 space-y-3 max-h-[70vh] overflow-y-auto">
 
-          {/* Load Saved Session */}
-          {savedSession && !contractSpecs?.[symbol] && (
-            <button
-              onClick={handleLoadSaved}
-              className="w-full flex items-center justify-between gap-2 p-2 bg-gradient-to-r from-emerald-900/40 to-blue-900/40 hover:from-emerald-900/60 hover:to-blue-900/60 border border-emerald-600/50 rounded-lg transition-colors"
-            >
-              <div className="flex items-center gap-2 text-left">
-                <HistoryIcon size={16} className="text-emerald-400 flex-shrink-0" />
-                <div>
-                  <div className="text-xs font-bold text-white">Resume Last Session</div>
-                  <div className="text-[9px] text-gray-400">
-                    "{savedSession.sessionName || 'Session'}" — {savedSession.tradeHistory?.length || 0} trades — {savedDate}
-                  </div>
+          <section className="border border-[#2a2e39] rounded-lg p-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <h3 className="text-[10px] font-bold uppercase text-gray-300 flex items-center gap-1.5"><HistoryIcon size={11}/> Saved sessions</h3>
+              <span className="text-[9px] text-gray-500">{savedSessions.length} saved</span>
+            </div>
+            {savedSessions.length ? <div className="space-y-1.5">
+              {savedSessions.map(saved => (
+                <div key={saved.sessionId} className="flex items-center gap-2 rounded bg-[#1e222d] p-2">
+                  <button onClick={() => handleLoadSaved(saved)} className="flex-1 min-w-0 text-left">
+                    <span className="block text-[11px] font-bold text-white truncate">{saved.sessionName || 'Untitled session'} · {saved.symbol || 'Unknown'}</span>
+                    <span className="block text-[9px] text-gray-400">{saved.tradeHistory?.length || 0} trades · {new Date(saved.savedAt).toLocaleString()} · {saved.balance?.toLocaleString?.() ?? '—'} balance</span>
+                  </button>
+                  <button onClick={() => handleDeleteSaved(saved.sessionId)} className="p-1.5 rounded hover:bg-red-900/40 text-gray-500 hover:text-red-400" title="Delete saved session"><Trash2 size={13}/></button>
+                  <button onClick={() => handleLoadSaved(saved)} className="px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-600 text-white text-[9px] font-bold">RESUME</button>
                 </div>
-              </div>
-              <span className="text-[10px] text-emerald-400 font-bold">LOAD →</span>
-            </button>
-          )}
+              ))}
+            </div> : <p className="text-[9px] text-gray-500">Your sessions will appear here automatically as you trade.</p>}
+          </section>
           
           <div className="grid grid-cols-1 gap-2">
             <div>
@@ -259,13 +280,21 @@ export default function PeriodModal() {
             </h3>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
-                <label className="text-[10px] text-gray-400 flex items-center gap-1"><Target size={9} /> Balance</label>
+                <label className="text-[10px] text-gray-400 flex items-center gap-1"><Target size={9} /> Starting balance</label>
                 <input 
                   type="number" value={startingBalance} step="1000" min="1000" disabled={!isCustom}
                   onChange={(e) => setStartingBalance(e.target.value)}
                   className={`w-24 p-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[11px] text-right font-mono focus:border-blue-500 outline-none ${!isCustom ? 'opacity-60' : ''}`}
                 />
               </div>
+              <div className="flex items-center justify-between gap-2 border-t border-[#2a2e39] pt-2">
+                <label className="text-[10px] text-gray-300 font-semibold">Enforce prop firm rules</label>
+                <button type="button" role="switch" aria-checked={propFirmEnabled} onClick={() => setPropFirmEnabled(value => !value)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${propFirmEnabled ? 'bg-emerald-600' : 'bg-gray-600'}`}>
+                  <span className={`block w-4 h-4 rounded-full bg-white transition-transform ${propFirmEnabled ? 'translate-x-4' : ''}`}/>
+                </button>
+              </div>
+              {propFirmEnabled ? <div className="space-y-1.5">
+
               <div className="flex items-center justify-between gap-2">
                 <label className="text-[10px] text-gray-400">Max Risk / Trade</label>
                 <div className="flex items-center gap-0.5">
@@ -298,18 +327,7 @@ export default function PeriodModal() {
                   />
                   <span className="text-[10px] text-gray-500 w-3">%</span>
                 </div>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <label className="text-[10px] text-gray-400 flex items-center gap-1"><Clock size={9} /> Countdown</label>
-                <div className="flex items-center gap-0.5">
-                  <input 
-                    type="number" value={countdownMinutes} step="5" min="1" disabled={!isCustom}
-                    onChange={(e) => setCountdownMinutes(e.target.value)}
-                    className={`w-14 p-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[11px] text-right font-mono focus:border-blue-500 outline-none ${!isCustom ? 'opacity-60' : ''}`}
-                  />
-                  <span className="text-[10px] text-gray-500">min</span>
-                </div>
-              </div>
+              </div> : <p className="text-[9px] text-gray-500">Prop-firm restrictions are disabled for this session.</p>}
             </div>
           </div>
 
