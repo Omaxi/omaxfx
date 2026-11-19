@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { fmtMoney } from '../utils/format';
+import { getPricePrecision } from '../utils/instrument';
 import { X } from 'lucide-react';
 
 export default function HistoryModal() {
-  const { isHistoryOpen, closeHistory, tradeHistory, symbol: activeSymbol } = useStore();
+  const { isHistoryOpen, closeHistory, tradeHistory, symbol: activeSymbol, contractSpecs } = useStore();
   const [page, setPage] = useState(0);
   const pageSize = 10;
   const sortedTrades = [...tradeHistory].sort((a, b) =>
@@ -30,10 +31,10 @@ export default function HistoryModal() {
     return `${remainder}s`;
   };
 
-  // Symbol-aware price formatter: EURUSD gets 4 decimals, others get 2.
+  // Symbol-aware price formatter: EURUSD gets 5 decimals, Gold gets 2.
   const fmtPrice = (value, symbol) => {
     if (value == null || Number.isNaN(value)) return '-';
-    const precision = symbol === 'EURUSD' ? 4 : 2;
+    const precision = getPricePrecision(symbol, contractSpecs);
     return value.toFixed(precision);
   };
 
