@@ -39,7 +39,7 @@ export default defineConfig(({ command }) => ({
         navigateFallback: 'index.html',
         runtimeCaching: [
           {
-            urlPattern: /\/data\/.*\.csv$/i,
+            urlPattern: /\/data\/.*\.csv(?:\\?.*)?$/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'csv-cache',
