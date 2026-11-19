@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { aggregateData, getExecutionCandle } from './utils/timeframe.js';
-import { getPnlMultiplier } from './utils/instrument.js';
+import { getPnlMultiplier, calculateIntrabarUnrealizedPnl, calculateUnrealizedPnlAtPrice, calculateFavorableIntrabarPnl } from './utils/instrument.js';
 import { getPendingOrderFillPrice, getStopLossFillPrice, getTakeProfitFillPrice } from './utils/orderExecution.js';
 export { getContractSize, getPnlMultiplier } from './utils/instrument.js';
 import { 
@@ -23,6 +23,7 @@ const getDayKey = (unixSeconds) => {
   const d = new Date((unixSeconds + 3 * 3600) * 1000);
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 };
+
 
 const formatRangeDate = (unixSeconds) => {
   const d = new Date((unixSeconds + 3 * 3600) * 1000);
@@ -235,7 +236,7 @@ export const useStore = create((set, get) => ({
         sessionName: s.sessionName, playerName: s.playerName,
         gamePeriod: s.gamePeriod, rules: { ...s.rules },
         currentIndex: s.currentIndex, timeframe: s.timeframe,
-        symbol: s.symbol, contractSpecs: s.contractSpecs, timezone: 'UTC+3', chartType: s.chartType,
+        symbol: s.symbol, contractSpecs: s.contractSpecs, timezone: s.timezone || 'UTC+3', chartType: s.chartType,
         balance: s.balance, peakBalance: s.peakBalance,
         positions: s.positions, tradeHistory: s.tradeHistory,
         pendingOrders: s.pendingOrders, drawings: s.drawings,
@@ -295,7 +296,16 @@ export const useStore = create((set, get) => ({
     const symbolData = state.allRawDataBySymbol[savedSymbol];
     if (!symbolData || symbolData.length === 0) return false;
 
-    const filtered = symbolData.filter(c => c.time >= saved.gamePeriod.from && c.time <= saved.gamePeriod.to);
+    // Stored CSV timestamps are normalized to UTC. Sessions saved in a
+    // different display offset have their timeline shifted by offset−UTC+3.
+    const savedTimezone = saved.timezone || 'UTC+3';
+    const savedOffset = TZ_OFFSETS[savedTimezone] ?? 180;
+    const currentOffset = TZ_OFFSETS[state.timezone || 'UTC+3'] ?? 180;
+    const restoreShift = (savedOffset - currentOffset) * 60;
+    const restoredData = restoreShift === 0
+      ? symbolData
+      : symbolData.map(c => ({ ...c, time: c.time + restoreShift }));
+    const filtered = restoredData.filter(c => c.time >= saved.gamePeriod.from && c.time <= saved.gamePeriod.to);
     if (filtered.length === 0) return false;
 
     // Guard against a saved session that was already at the last candle:
@@ -306,7 +316,8 @@ export const useStore = create((set, get) => ({
     const tf = saved.timeframe || 1;
     set({
       symbol: savedSymbol,
-      allRawData: symbolData,
+      allRawDataBySymbol: { ...state.allRawDataBySymbol, [savedSymbol]: restoredData },
+      allRawData: restoredData,
       rawData: filtered,
       displayData: aggregateData(filtered, tf),
       gameStarted: true,
@@ -315,7 +326,7 @@ export const useStore = create((set, get) => ({
       rules: { ...DEFAULT_RULES, ...(saved.rules || {}), propFirmEnabled: saved.rules?.propFirmEnabled !== false },
       currentIndex: safeIndex,
       timeframe: tf,
-      timezone: 'UTC+3',
+      timezone: savedTimezone,
       contractSpecs: saved.contractSpecs || state.contractSpecs,
       chartType: saved.chartType || 'candle',
       balance: saved.balance ?? INITIAL_BALANCE,
@@ -599,7 +610,7 @@ export const useStore = create((set, get) => ({
     let targetIndex = -1;
     
     for (let i = state.currentIndex + 1; i < maxScan; i++) {
-      const d = new Date(state.rawData[i].time * 1000);
+      const d = new Date((state.rawData[i].time + 3 * 3600) * 1000);
       if (new Date((d.getTime() + 3 * 3600 * 1000)).getUTCHours() === targetHour && d.getUTCMinutes() === 0) {
         targetIndex = i;
         break;
@@ -694,7 +705,7 @@ export const useStore = create((set, get) => ({
   closePosition: (id) => set((state) => {
     const pos = state.positions.find(p => p.id === id);
     if (!pos || !state.rawData[state.currentIndex]) return state;
-    const currentCandle = state.rawData[state.currentIndex];
+    const currentCandle = getExecutionCandle(state.rawData, state.displayData, state.currentIndex, state.timeframe) || state.rawData[state.currentIndex];
     const exitPrice = currentCandle.close;
     const isBuy = pos.type === 'buy';
     const priceDiff = isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice;
@@ -719,7 +730,7 @@ export const useStore = create((set, get) => ({
 
   closeAllPositions: () => set((state) => {
     if (state.positions.length === 0 || !state.rawData[state.currentIndex]) return state;
-    const currentCandle = state.rawData[state.currentIndex];
+    const currentCandle = getExecutionCandle(state.rawData, state.displayData, state.currentIndex, state.timeframe) || state.rawData[state.currentIndex];
     const exitPrice = currentCandle.close;
     let newBalance = state.balance;
     const newHistory = [...state.tradeHistory];
@@ -783,13 +794,17 @@ export const useStore = create((set, get) => ({
     let newDailyLoss = { ...state.dailyLoss };
     let tpHit = false, slHit = false, pendingTriggered = false;
     let gameOverReason = null, gameOverMessage = '';
+    let lastEquity = state.balance;
 
     for (let i = firstProcessedIndex; i <= lastProcessedIndex; i++) {
       const candle = state.rawData[i];
       if (!candle) break;
       const dayKey = getDayKey(candle.time);
       if (newDailyLoss.day !== dayKey) {
-        newDailyLoss = { day: dayKey, dayStartBalance: newBalance };
+        newDailyLoss = {
+          day: dayKey,
+          dayStartBalance: newBalance + calculateUnrealizedPnlAtPrice(newPositions, candle.open, state.symbol, state.contractSpecs),
+        };
       }
       const stillOpen = [];
       for (const pos of newPositions) {
@@ -831,14 +846,19 @@ export const useStore = create((set, get) => ({
         if (!closed) stillOpen.push(updatedPosition);
       }
       newPositions = stillOpen;
+      const equity = newBalance + calculateIntrabarUnrealizedPnl(newPositions, candle, state.symbol, state.contractSpecs);
+      const favorableEquity = newBalance + calculateFavorableIntrabarPnl(newPositions, candle, state.symbol, state.contractSpecs);
+      newPeak = Math.max(newPeak, favorableEquity);
+      lastEquity = equity;
       if (!gameOverReason) {
-        const violation = checkRuleViolations(state, newBalance, newPeak, newDailyLoss);
+        const violation = checkRuleViolations(state, equity, newPeak, newDailyLoss);
         if (violation) { gameOverReason = violation.reason; gameOverMessage = violation.message; }
       }
       const stillPending = [];
       let pendingSlotTaken = newPositions.length > 0;
       for (const order of newPendingOrders) {
         if (pendingSlotTaken) continue;
+        if (gameOverReason) { stillPending.push(order); continue; }
         const fillPrice = getPendingOrderFillPrice(order, candle);
         if (fillPrice != null) {
           const riskDistance = Math.abs(fillPrice - Number(order.sl));
@@ -848,9 +868,10 @@ export const useStore = create((set, get) => ({
             stillPending.push(order);
             continue;
           }
-          const recalculatedLots = Number(order.riskAmount) > 0
-            ? Number((Number(order.riskAmount) / (riskDistance * contractSize)).toFixed(4))
+          const rawLots = Number(order.riskAmount) > 0
+            ? Number(order.riskAmount) / (riskDistance * contractSize)
             : Number(order.size);
+          const recalculatedLots = Math.floor(rawLots * 10000) / 10000;
           // Never create a zero-sized position after a large gap through a stop.
           if (!Number.isFinite(recalculatedLots) || recalculatedLots <= 0) {
             stillPending.push(order);
@@ -862,6 +883,8 @@ export const useStore = create((set, get) => ({
             ...order,
             entryPrice: fillPrice,
             size: recalculatedLots,
+            riskAmount: riskDistance * contractSize * recalculatedLots,
+            riskPercent: state.balance > 0 ? (riskDistance * contractSize * recalculatedLots / state.balance) * 100 : 0,
             initialRiskDistance: riskDistance,
             isPending: false,
             openTime: candle.time,
@@ -898,7 +921,12 @@ export const useStore = create((set, get) => ({
         } else stillPending.push(order);
       }
       newPendingOrders = stillPending;
-      if (newBalance > newPeak) newPeak = newBalance;
+      // A just-filled pending position is not marked against the entire entry
+      // candle's extremes (those may have occurred before the entry).
+      lastEquity = pendingTriggered && newPositions.length
+        ? newBalance
+        : newBalance + getIntrabarUnrealizedPnl(newPositions, candle, state.symbol, state.contractSpecs);
+      newPeak = Math.max(newPeak, lastEquity, newBalance);
       if (gameOverReason) break;
     }
 
@@ -909,7 +937,7 @@ export const useStore = create((set, get) => ({
     }
 
     if (!gameOverReason) {
-      const violation = checkRuleViolations(state, newBalance, newPeak, newDailyLoss);
+      const violation = checkRuleViolations(state, lastEquity, newPeak, newDailyLoss);
       if (violation) { gameOverReason = violation.reason; gameOverMessage = violation.message; }
     }
 
@@ -967,8 +995,11 @@ export const useStore = create((set, get) => ({
     const riskDistance = Math.abs(actualEntry - stop);
     if (!Number.isFinite(contractSize) || contractSize <= 0 || riskDistance <= 0) return state;
     const lots = risk / (riskDistance * contractSize);
-    const roundedLots = Number(lots.toFixed(4));
+    // Round down to the volume step so execution never exceeds requested risk.
+    const roundedLots = Math.floor(lots * 10000) / 10000;
     if (!Number.isFinite(lots) || lots <= 0 || !Number.isFinite(roundedLots) || roundedLots <= 0) return state;
+    const actualRisk = riskDistance * contractSize * roundedLots;
+    const actualRiskPercent = state.balance > 0 ? actualRisk / state.balance * 100 : 0;
 
     const newOrder = {
       id: Date.now() + Math.random(),
@@ -979,7 +1010,7 @@ export const useStore = create((set, get) => ({
       breakevenDone: false,
       initialRiskDistance: riskDistance,
       size: roundedLots,
-      riskPercent: riskPct, riskAmount: risk,
+      riskPercent: actualRiskPercent, riskAmount: actualRisk,
       isPending: type !== 'market',
       openTime: executionCandle.time,
       symbol: state.symbol,
