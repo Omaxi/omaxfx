@@ -1,9 +1,14 @@
+import { useState } from 'react';
 import { useStore } from '../store';
 import { fmtMoney } from '../utils/format';
 import { X } from 'lucide-react';
 
 export default function HistoryModal() {
   const { isHistoryOpen, closeHistory, tradeHistory, symbol: activeSymbol } = useStore();
+  const [page, setPage] = useState(0);
+  const pageSize = 10;
+  const pageCount = Math.max(1, Math.ceil(tradeHistory.length / pageSize));
+  const visibleTrades = tradeHistory.slice(page * pageSize, (page + 1) * pageSize);
 
   if (!isHistoryOpen) return null;
 
@@ -23,7 +28,7 @@ export default function HistoryModal() {
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
-      <div className="bg-[#131722] rounded-2xl w-full max-w-5xl border border-[#2a2e39] overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-[#131722] rounded-2xl w-full max-w-7xl border border-[#2a2e39] overflow-hidden flex flex-col h-[min(92dvh,850px)]">
         <div className="flex justify-between items-center p-3 border-b border-[#2a2e39]">
           <h2 className="text-lg font-bold">Trade History</h2>
           <button onClick={closeHistory} className="p-1 hover:bg-[#2a2e39] rounded"><X size={18}/></button>
@@ -50,46 +55,46 @@ export default function HistoryModal() {
           </div>
         </div>
 
-        <div className="overflow-y-auto flex-1">
+        <div className="overflow-hidden flex-1 min-h-0">
           {tradeHistory.length === 0 ? (
             <div className="p-10 text-center text-gray-500">No trades yet. Start trading to see your history!</div>
           ) : (
-            <table className="w-full text-xs">
+            <table className="w-full table-fixed text-[10px]">
               <thead className="bg-[#1e222d] text-gray-400 sticky top-0">
                 <tr>
                   <th className="p-2 text-left">#</th>
-                  <th className="p-2 text-left">Symbol</th>
-                  <th className="p-2 text-left">Type</th>
-                  <th className="p-2 text-right">Entry</th>
-                  <th className="p-2 text-right">Exit</th>
-                  <th className="p-2 text-right">SL</th>
-                  <th className="p-2 text-right">TP</th>
-                  <th className="p-2 text-right">Lots</th>
-                  <th className="p-2 text-right text-yellow-400">Risk</th>
-                  <th className="p-2 text-right">PnL</th>
-                  <th className="p-2 text-left">Reason</th>
-                  <th className="p-2 text-left">Opened</th>
-                  <th className="p-2 text-left">Closed</th>
+                  <th className="p-1 text-left hidden sm:table-cell">Symbol</th>
+                  <th className="p-1 text-left">Side</th>
+                  <th className="p-1 text-right">Entry</th>
+                  <th className="p-1 text-right">Exit</th>
+                  <th className="p-1 text-right hidden xl:table-cell">SL</th>
+                  <th className="p-1 text-right hidden xl:table-cell">TP</th>
+                  <th className="p-1 text-right">Lots</th>
+                  <th className="p-1 text-right hidden lg:table-cell">Risk</th>
+                  <th className="p-1 text-right">PnL</th>
+                  <th className="p-1 text-left hidden lg:table-cell">Exit</th>
+                  <th className="p-1 text-left hidden xl:table-cell">Opened</th>
+                  <th className="p-1 text-left hidden xl:table-cell">Closed</th>
                 </tr>
               </thead>
               <tbody>
-                {tradeHistory.map((t, i) => {
+                {visibleTrades.map((t, i) => {
                   // Fallback to the currently active symbol for legacy trades
                   // that don't have a `symbol` field (saved before this update).
                   const sym = t.symbol || activeSymbol || 'XAUUSD';
                   return (
                     <tr key={i} className="border-b border-[#2a2e39] hover:bg-[#1e222d]">
-                      <td className="p-2">{i + 1}</td>
-                      <td className="p-2 font-bold text-white">{sym}</td>
+                      <td className="p-1">{page * pageSize + i + 1}</td>
+                      <td className="p-1 font-bold text-white hidden sm:table-cell">{sym}</td>
                       <td className={`p-2 font-bold ${t.type === 'buy' ? 'text-green-400' : 'text-red-400'}`}>
                         {t.type.toUpperCase()}
                       </td>
-                      <td className="p-2 text-right font-mono">{fmtPrice(t.entryPrice, sym)}</td>
-                      <td className="p-2 text-right font-mono">{fmtPrice(t.exitPrice, sym)}</td>
-                      <td className="p-2 text-right font-mono text-red-400">{fmtPrice(t.sl, sym)}</td>
-                      <td className="p-2 text-right font-mono text-green-400">{fmtPrice(t.tp, sym)}</td>
-                      <td className="p-2 text-right">{t.size}</td>
-                      <td className="p-2 text-right font-mono text-yellow-400">
+                      <td className="p-1 text-right font-mono">{fmtPrice(t.entryPrice, sym)}</td>
+                      <td className="p-1 text-right font-mono">{fmtPrice(t.exitPrice, sym)}</td>
+                      <td className="p-1 text-right font-mono text-red-400">{fmtPrice(t.sl, sym)}</td>
+                      <td className="p-1 text-right font-mono text-green-400">{fmtPrice(t.tp, sym)}</td>
+                      <td className="p-1 text-right">{t.size}</td>
+                      <td className="p-1 text-right font-mono text-yellow-400 hidden lg:table-cell">
                         {t.riskAmount ? `$${fmtMoney(t.riskAmount, 0)}` : '-'}
                         {t.riskPercent != null && (
                           <span className="text-gray-500 text-[10px] ml-1">({t.riskPercent}%)</span>
@@ -107,14 +112,21 @@ export default function HistoryModal() {
                           {t.reason}
                         </span>
                       </td>
-                      <td className="p-2 text-[10px] text-gray-400 font-mono">{formatTime(t.openTime)}</td>
-                      <td className="p-2 text-[10px] text-gray-400 font-mono">{formatTime(t.closeTime)}</td>
+                      <td className="p-1 text-[9px] text-gray-400 font-mono hidden xl:table-cell">{formatTime(t.openTime)}</td>
+                      <td className="p-1 text-[10px] text-gray-400 font-mono">{formatTime(t.closeTime)}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           )}
+        </div>
+        <div className="flex items-center justify-between px-3 py-2 border-t border-[#2a2e39] shrink-0">
+          <span className="text-[10px] text-gray-500">Page {Math.min(page + 1, pageCount)} of {pageCount} · {totalTrades} trades</span>
+          <div className="flex gap-2">
+            <button disabled={page === 0} onClick={() => setPage(value => Math.max(0, value - 1))} className="px-3 py-1 rounded bg-[#2a2e39] text-xs disabled:opacity-40">Previous</button>
+            <button disabled={page + 1 >= pageCount} onClick={() => setPage(value => Math.min(pageCount - 1, value + 1))} className="px-3 py-1 rounded bg-[#2a2e39] text-xs disabled:opacity-40">Next</button>
+          </div>
         </div>
       </div>
     </div>
