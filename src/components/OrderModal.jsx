@@ -39,6 +39,7 @@ export default function OrderModal() {
   const [riskPercent, setRiskPercent] = useState(1);
   const [slPrice, setSlPrice] = useState(0);
   const [tpPrice, setTpPrice] = useState(0);
+  const [riskReward, setRiskReward] = useState('2');
   const [entryPrice, setEntryPrice] = useState(0);
   const [breakevenEnabled, setBreakevenEnabled] = useState(false);
 
@@ -54,6 +55,7 @@ export default function OrderModal() {
   // while it's open), recompute the default entry / SL / TP.
   useEffect(() => {
     if (!isOrderModalOpen) return;
+    setRiskReward('2');
 
     if (draftPosition) {
       // User dragged a position on the chart → use those prices
@@ -61,9 +63,7 @@ export default function OrderModal() {
       setSlPrice(roundTo(draftPosition.sl || (orderSide === 'buy'
         ? currentPrice - DEFAULT_SL_POINTS * pointSize
         : currentPrice + DEFAULT_SL_POINTS * pointSize), precision));
-      setTpPrice(roundTo(draftPosition.tp || (orderSide === 'buy'
-        ? currentPrice + DEFAULT_TP_POINTS * pointSize
-        : currentPrice - DEFAULT_TP_POINTS * pointSize), precision));
+      setTpPrice(0);
       setOrderType('limit');
     } else {
       // Market order default: SL = 100 points away, TP = 200 points away
@@ -71,9 +71,7 @@ export default function OrderModal() {
       setSlPrice(roundTo(orderSide === 'buy'
         ? currentPrice - DEFAULT_SL_POINTS * pointSize
         : currentPrice + DEFAULT_SL_POINTS * pointSize, precision));
-      setTpPrice(roundTo(orderSide === 'buy'
-        ? currentPrice + DEFAULT_TP_POINTS * pointSize
-        : currentPrice - DEFAULT_TP_POINTS * pointSize, precision));
+      setTpPrice(0);
       setOrderType('market');
     }
   }, [isOrderModalOpen, draftPosition, orderSide, currentPrice, precision, pointSize]);
@@ -89,10 +87,19 @@ export default function OrderModal() {
     setSlPrice(roundTo(orderSide === 'buy'
       ? currentPrice - DEFAULT_SL_POINTS * pointSize
       : currentPrice + DEFAULT_SL_POINTS * pointSize, precision));
-    setTpPrice(roundTo(orderSide === 'buy'
-      ? currentPrice + DEFAULT_TP_POINTS * pointSize
-      : currentPrice - DEFAULT_TP_POINTS * pointSize, precision));
+    setTpPrice(0);
   }, [orderType, isOrderModalOpen, currentPrice, orderSide, precision, pointSize, draftPosition]);
+
+  useEffect(() => {
+    if (!isOrderModalOpen) return;
+    if (riskReward === 'none') { setTpPrice(0); return; }
+    const distance = Math.abs(Number(entryPrice) - Number(slPrice));
+    if (!Number.isFinite(distance) || distance <= 0 || !entryPrice || !slPrice) return;
+    const target = orderSide === 'buy'
+      ? Number(entryPrice) + distance * Number(riskReward)
+      : Number(entryPrice) - distance * Number(riskReward);
+    setTpPrice(roundTo(target, precision));
+  }, [isOrderModalOpen, riskReward, entryPrice, slPrice, orderSide, precision]);
 
   const validation = useMemo(() => {
     const errors = [];
@@ -104,10 +111,10 @@ export default function OrderModal() {
 
     if (orderSide === 'buy') {
       if (slPrice >= effectiveEntry) errors.push('BUY: Stop Loss must be BELOW entry');
-      if (tpPrice <= effectiveEntry) errors.push('BUY: Take Profit must be ABOVE entry');
+      if (riskReward !== 'none' && tpPrice <= effectiveEntry) errors.push('BUY: Take Profit must be ABOVE entry');
     } else {
       if (slPrice <= effectiveEntry) errors.push('SELL: Stop Loss must be ABOVE entry');
-      if (tpPrice >= effectiveEntry) errors.push('SELL: Take Profit must be BELOW entry');
+      if (riskReward !== 'none' && tpPrice >= effectiveEntry) errors.push('SELL: Take Profit must be BELOW entry');
     }
 
     if (riskPercent > maxRisk) {
@@ -115,17 +122,17 @@ export default function OrderModal() {
     }
 
     return { errors, isValid: errors.length === 0, effectiveEntry };
-  }, [orderSide, entryPrice, slPrice, tpPrice, orderType, currentPrice, riskPercent, maxRisk]);
+  }, [orderSide, entryPrice, slPrice, tpPrice, orderType, currentPrice, riskPercent, maxRisk, riskReward]);
 
   const { estimatedLoss, estimatedProfit } = useMemo(() => {
     const entry = validation.effectiveEntry;
-    if (!entry || !slPrice || !tpPrice) return { estimatedLoss: 0, estimatedProfit: 0 };
+    if (!entry || !slPrice || riskReward === 'none' || !tpPrice) return { estimatedLoss: riskAmount, estimatedProfit: 0 };
     const slDistance = Math.abs(entry - slPrice);
     const tpDistance = Math.abs(tpPrice - entry);
     const loss = riskAmount;
     const profit = slDistance > 0 ? riskAmount * (tpDistance / slDistance) : 0;
     return { estimatedLoss: loss, estimatedProfit: profit };
-  }, [validation.effectiveEntry, slPrice, tpPrice, riskAmount]);
+  }, [validation.effectiveEntry, slPrice, tpPrice, riskAmount, riskReward]);
 
   if (!isOrderModalOpen) return null;
 
@@ -137,7 +144,7 @@ export default function OrderModal() {
       riskPercent,
       entryPrice: validation.effectiveEntry,
       slPrice,
-      tpPrice,
+      tpPrice: riskReward === 'none' ? null : tpPrice,
       riskAmount,
       breakevenEnabled,
     });
@@ -238,16 +245,18 @@ export default function OrderModal() {
                 />
               </div>
               <div>
-                <label className="text-xs text-green-400">Take Profit</label>
-                <input 
-                  type="number" 
-                  value={tpPrice} 
-                  step={inputStep}
-                  onChange={(e) => setTpPrice(Number(e.target.value))} 
-                  className={`w-full mt-1 p-2 bg-[#1e222d] rounded border ${
-                    validation.errors.some(e => e.includes('Take Profit')) ? 'border-red-500' : 'border-[#2a2e39]'
-                  }`}
-                />
+                <label className="text-xs text-green-400">Risk / Reward</label>
+                <select value={riskReward} onChange={(e) => setRiskReward(e.target.value)} className="w-full mt-1 p-2 bg-[#1e222d] rounded border border-[#2a2e39] text-sm">
+                  <option value="1">1:1</option>
+                  <option value="2">1:2</option>
+                  <option value="3">1:3</option>
+                  <option value="4">1:4</option>
+                  <option value="5">1:5</option>
+                  <option value="none">NONE</option>
+                </select>
+                <div className="mt-1 rounded bg-[#1e222d] px-2 py-1.5 text-xs text-gray-300">
+                  TP: <span className="font-mono text-green-400">{riskReward === 'none' ? 'Disabled' : Number(tpPrice || 0).toFixed(precision)}</span>
+                </div>
               </div>
             </div>
 
