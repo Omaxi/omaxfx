@@ -33,8 +33,10 @@ const getDayKey = (unixSeconds) => {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 };
 
-const getUnrealizedPnl = (positions, markPrice, fallbackSymbol) => positions.reduce((sum, pos) => {
+const getUnrealizedPnl = (positions, candle, fallbackSymbol) => positions.reduce((sum, pos) => {
   const isBuy = pos.type === 'buy';
+  // Use the adverse intrabar extreme for conservative equity/rule monitoring.
+  const markPrice = isBuy ? candle.low : candle.high;
   const diff = isBuy ? markPrice - pos.entryPrice : pos.entryPrice - markPrice;
   return sum + diff * getContractSize(pos.symbol || fallbackSymbol) * pos.size;
 }, 0);
@@ -749,7 +751,7 @@ export const useStore = create((set, get) => ({
       if (!candle) break;
       const dayKey = getDayKey(candle.time);
       if (newDailyLoss.day !== dayKey) {
-        newDailyLoss = { day: dayKey, dayStartBalance: newBalance };
+        newDailyLoss = { day: dayKey, dayStartBalance: newBalance + getUnrealizedPnl(newPositions, candle, state.symbol) };
       }
       const stillOpen = [];
       for (const pos of newPositions) {
@@ -759,9 +761,10 @@ export const useStore = create((set, get) => ({
           const hitSl = isBuy ? candle.low <= pos.sl : candle.high >= pos.sl;
           if (hitSl) {
             const contractSize = getContractSize(pos.symbol || state.symbol);
-            const pnl = (isBuy ? pos.sl - pos.entryPrice : pos.entryPrice - pos.sl) * contractSize * pos.size;
+            const stopFill = isBuy ? Math.min(pos.sl, candle.open) : Math.max(pos.sl, candle.open);
+            const pnl = (isBuy ? stopFill - pos.entryPrice : pos.entryPrice - stopFill) * contractSize * pos.size;
             newBalance += pnl;
-            newHistory.push({ ...pos, exitPrice: pos.sl, pnl, reason: 'SL', closeTime: candle.time });
+            newHistory.push({ ...pos, exitPrice: stopFill, pnl, reason: 'SL', closeTime: candle.time });
             closed = true; slHit = true;
           }
         }
@@ -769,9 +772,10 @@ export const useStore = create((set, get) => ({
           const hitTp = isBuy ? candle.high >= pos.tp : candle.low <= pos.tp;
           if (hitTp) {
             const contractSize = getContractSize(pos.symbol || state.symbol);
-            const pnl = (isBuy ? pos.tp - pos.entryPrice : pos.entryPrice - pos.tp) * contractSize * pos.size;
+            const targetFill = isBuy ? Math.max(pos.tp, candle.open) : Math.min(pos.tp, candle.open);
+            const pnl = (isBuy ? targetFill - pos.entryPrice : pos.entryPrice - targetFill) * contractSize * pos.size;
             newBalance += pnl;
-            newHistory.push({ ...pos, exitPrice: pos.tp, pnl, reason: 'TP', closeTime: candle.time });
+            newHistory.push({ ...pos, exitPrice: targetFill, pnl, reason: 'TP', closeTime: candle.time });
             closed = true; tpHit = true;
           }
         }
@@ -779,7 +783,7 @@ export const useStore = create((set, get) => ({
       }
       newPositions = stillOpen;
       if (!gameOverReason) {
-        const equity = newBalance + getUnrealizedPnl(newPositions, candle.close, state.symbol);
+        const equity = newBalance + getUnrealizedPnl(newPositions, candle, state.symbol);
         const equityPeak = Math.max(newPeak, equity);
         newPeak = equityPeak;
         const violation = checkRuleViolations(state, equity, equityPeak, newDailyLoss);
@@ -806,7 +810,9 @@ export const useStore = create((set, get) => ({
           const hitTp = opened.tp != null && (isBuy ? candle.high >= opened.tp : candle.low <= opened.tp);
           // Conservative same-candle rule: if both levels are touched, assume SL first.
           if (hitSl || hitTp) {
-            const exitPrice = hitSl ? opened.sl : opened.tp;
+            const exitPrice = hitSl
+              ? (isBuy ? Math.min(opened.sl, candle.open) : Math.max(opened.sl, candle.open))
+              : (isBuy ? Math.max(opened.tp, candle.open) : Math.min(opened.tp, candle.open));
             const pnl = (isBuy ? exitPrice - fillPrice : fillPrice - exitPrice) *
               getContractSize(opened.symbol || state.symbol) * opened.size;
             newBalance += pnl;
