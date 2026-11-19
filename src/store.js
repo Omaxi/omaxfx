@@ -552,7 +552,7 @@ export const useStore = create((set, get) => ({
     set({
       gameStarted: false,
       isPeriodModalOpen: true,
-      gameState: { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
+      gameState: { isOver: false, reason: null, message: '', startTime: null },
       currentIndex: 0,
       isPlaying: false,
       positions: [],
