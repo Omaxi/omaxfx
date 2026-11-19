@@ -43,7 +43,7 @@ export async function loadBundledCsvFiles(files, onProgress = () => {}) {
 
   for (let index = 0; index < files.length; index++) {
     const file = files[index];
-    const url = `${import.meta.env.BASE_URL}${String(file.url).replace(/^\\/+/, '')}`;
+    const url = `${import.meta.env.BASE_URL}${String(file.url).replace(/^[/]+/, '')}`;
     onProgress({ completed: index, total: files.length, file: file.name, percent: 0, stage: 'downloading' });
 
     const response = await fetchCachedCsv(url);
