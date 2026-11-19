@@ -22,26 +22,23 @@ const DEFAULT_CONFIG = {
 
 const average = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
 
-function calculateIndicators(candles, config) {
+function calculateIndicators(candles, config, active) {
   const completed = candles.slice(0, -1);
   const result = {};
   const closes = completed.map(c => c.close);
   const period = (key) => Math.max(2, Math.min(500, Number(config[key]?.period) || DEFAULT_CONFIG[key]?.period || 14));
 
-  if (config.ma) {
+  if (active.ma) {
     const p = period('ma');
     result.ma = completed.map((c, i) => i + 1 < p ? { time: c.time } : ({ time: c.time, value: average(closes.slice(i - p + 1, i + 1)) }));
   }
 
-  if (config.bb) {
+  if (active.bb) {
     const p = period('bb');
     const multiplier = Math.max(0.1, Math.min(10, Number(config.bb.multiplier) || 2));
     const upper = [], middle = [], lower = [];
     completed.forEach((c, i) => {
-      if (i + 1 < p) {
-        upper.push({ time: c.time }); middle.push({ time: c.time }); lower.push({ time: c.time });
-        return;
-      }
+      if (i + 1 < p) { upper.push({ time: c.time }); middle.push({ time: c.time }); lower.push({ time: c.time }); return; }
       const window = closes.slice(i - p + 1, i + 1);
       const mean = average(window);
       const deviation = Math.sqrt(average(window.map(value => (value - mean) ** 2)));
@@ -52,7 +49,7 @@ function calculateIndicators(candles, config) {
     result.bbUpper = upper; result.bbMiddle = middle; result.bbLower = lower;
   }
 
-  if (config.vwap) {
+  if (active.vwap) {
     let day = null, cumulativePV = 0, cumulativeVolume = 0;
     result.vwap = completed.map(c => {
       const key = new Date((c.time + 3 * 3600) * 1000).toISOString().slice(0, 10);
@@ -64,93 +61,88 @@ function calculateIndicators(candles, config) {
     });
   }
 
-  if (config.rsi || config.atr || config.adx) {
-    const p = period(config.rsi ? 'rsi' : config.atr ? 'atr' : 'adx');
+  if (active.rsi || active.atr || active.adx) {
+    const pRSI = period('rsi'), pATR = period('atr'), pADX = period('adx');
     const tr = [], gains = [], losses = [], plusDM = [], minusDM = [];
     completed.forEach((c, i) => {
       const prev = completed[i - 1];
       const change = prev ? c.close - prev.close : 0;
-      gains.push(Math.max(change, 0));
-      losses.push(Math.max(-change, 0));
+      gains.push(Math.max(change, 0)); losses.push(Math.max(-change, 0));
       tr.push(prev ? Math.max(c.high - c.low, Math.abs(c.high - prev.close), Math.abs(c.low - prev.close)) : c.high - c.low);
-      const up = prev ? c.high - prev.high : 0;
-      const down = prev ? prev.low - c.low : 0;
+      const up = prev ? c.high - prev.high : 0, down = prev ? prev.low - c.low : 0;
       plusDM.push(up > down && up > 0 ? up : 0);
       minusDM.push(down > up && down > 0 ? down : 0);
     });
 
-    if (config.atr) {
+    if (active.atr) {
       let smoothed = 0;
       result.atr = completed.map((c, i) => {
-        if (i < p - 1) return { time: c.time };
-        if (i === p - 1) smoothed = average(tr.slice(0, p));
-        else smoothed = ((smoothed * (p - 1)) + tr[i]) / p;
+        if (i < pATR - 1) return { time: c.time };
+        if (i === pATR - 1) smoothed = average(tr.slice(0, pATR));
+        else smoothed = ((smoothed * (pATR - 1)) + tr[i]) / pATR;
         return { time: c.time, value: smoothed };
       });
     }
 
-    if (config.rsi) {
+    if (active.rsi) {
       let avgGain = 0, avgLoss = 0;
       result.rsi = completed.map((c, i) => {
-        if (i < p) return { time: c.time };
-        if (i === p) { avgGain = average(gains.slice(1, p + 1)); avgLoss = average(losses.slice(1, p + 1)); }
-        else { avgGain = ((avgGain * (p - 1)) + gains[i]) / p; avgLoss = ((avgLoss * (p - 1)) + losses[i]) / p; }
+        if (i < pRSI) return { time: c.time };
+        if (i === pRSI) { avgGain = average(gains.slice(1, pRSI + 1)); avgLoss = average(losses.slice(1, pRSI + 1)); }
+        else { avgGain = ((avgGain * (pRSI - 1)) + gains[i]) / pRSI; avgLoss = ((avgLoss * (pRSI - 1)) + losses[i]) / pRSI; }
         const rs = avgLoss === 0 ? Infinity : avgGain / avgLoss;
         return { time: c.time, value: 100 - (100 / (1 + rs)) };
       });
     }
 
-    if (config.adx) {
+    if (active.adx) {
       let smoothTR = 0, smoothPlus = 0, smoothMinus = 0, adx = null;
       const dxValues = [];
       result.adx = completed.map((c, i) => {
-        if (i < p) return { time: c.time };
-        if (i === p) {
-          smoothTR = tr.slice(1, p + 1).reduce((a, b) => a + b, 0);
-          smoothPlus = plusDM.slice(1, p + 1).reduce((a, b) => a + b, 0);
-          smoothMinus = minusDM.slice(1, p + 1).reduce((a, b) => a + b, 0);
+        if (i < pADX) return { time: c.time };
+        if (i === pADX) {
+          smoothTR = tr.slice(1, pADX + 1).reduce((a, b) => a + b, 0);
+          smoothPlus = plusDM.slice(1, pADX + 1).reduce((a, b) => a + b, 0);
+          smoothMinus = minusDM.slice(1, pADX + 1).reduce((a, b) => a + b, 0);
         } else {
-          smoothTR = smoothTR - smoothTR / p + tr[i];
-          smoothPlus = smoothPlus - smoothPlus / p + plusDM[i];
-          smoothMinus = smoothMinus - smoothMinus / p + minusDM[i];
+          smoothTR = smoothTR - smoothTR / pADX + tr[i];
+          smoothPlus = smoothPlus - smoothPlus / pADX + plusDM[i];
+          smoothMinus = smoothMinus - smoothMinus / pADX + minusDM[i];
         }
         const plusDI = smoothTR ? 100 * smoothPlus / smoothTR : 0;
         const minusDI = smoothTR ? 100 * smoothMinus / smoothTR : 0;
         const dx = (plusDI + minusDI) ? 100 * Math.abs(plusDI - minusDI) / (plusDI + minusDI) : 0;
         dxValues.push(dx);
-        if (dxValues.length < p) return { time: c.time };
-        if (adx == null) adx = average(dxValues.slice(-p));
-        else adx = ((adx * (p - 1)) + dx) / p;
+        if (dxValues.length < pADX) return { time: c.time };
+        if (adx == null) adx = average(dxValues.slice(-pADX));
+        else adx = ((adx * (pADX - 1)) + dx) / pADX;
         return { time: c.time, value: adx };
       });
     }
   }
 
-  if (config.sessions) {
+  if (active.sessions) {
     const sessionDefs = [
-      { key: 'asia', start: 1, end: 10, color: '#f59e0b' },
-      { key: 'london', start: 10, end: 15, color: '#38bdf8' },
-      { key: 'newyork', start: 15, end: 23, color: '#a78bfa' },
+      { key: 'asia', start: 1, end: 10 },
+      { key: 'london', start: 10, end: 15 },
+      { key: 'newyork', start: 15, end: 23 },
     ];
     sessionDefs.forEach(session => {
       let day = null, open = null;
       result['session_' + session.key] = completed.map(c => {
         const d = new Date((c.time + 3 * 3600) * 1000);
-        const dateKey = d.toISOString().slice(0, 10);
-        const hour = d.getUTCHours();
+        const dateKey = d.toISOString().slice(0, 10), hour = d.getUTCHours();
         if (dateKey !== day) { day = dateKey; open = null; }
         if (hour >= session.start && hour < session.end) {
-          if (open == null || hour === session.start && d.getUTCMinutes() === 0) open = c.open;
+          if (open == null || (hour === session.start && d.getUTCMinutes() === 0)) open = c.open;
           return { time: c.time, value: open };
         }
         return { time: c.time };
       });
     });
   }
-
   return result;
 }
-
 export default function IndicatorsPanel({ chartRef, chartReady, visibleData }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState({});
@@ -212,7 +204,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData }) {
       Object.values(seriesRef.current).forEach(series => { try { series.setData([]); } catch (e) {} });
       return;
     }
-    const calculated = calculateIndicators(visibleData, config);
+    const calculated = calculateIndicators(visibleData, config, active);
     Object.entries(seriesRef.current).forEach(([key, series]) => {
       try { series.setData(calculated[key] || []); } catch (e) {}
     });
