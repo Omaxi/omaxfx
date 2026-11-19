@@ -5,6 +5,7 @@ import {
   getPricePrecision,
   getPriceTickSize,
   calculateIntrabarUnrealizedPnl,
+  calculateFavorableIntrabarPnl,
 } from '../src/utils/instrument.js';
 
 test('EURUSD uses five decimal places and a 0.00001 tick', () => {
@@ -30,4 +31,10 @@ test('floating Gold PnL uses contract specs', () => {
   const positions = [{ type: 'sell', symbol: 'XAUUSD', entryPrice: 4325.8, size: 0.1 }];
   const candle = { low: 4324.8, high: 4326.3 };
   assert.equal(calculateIntrabarUnrealizedPnl(positions, candle, 'XAUUSD'), -5);
+});
+
+test('floating equity peak uses the favorable intrabar extreme', () => {
+  const positions = [{ type: 'buy', symbol: 'EURUSD', entryPrice: 1.1, size: 1 }];
+  const candle = { low: 1.099, high: 1.102 };
+  assert.equal(calculateFavorableIntrabarPnl(positions, candle, 'EURUSD'), 200);
 });
