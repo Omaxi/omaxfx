@@ -136,6 +136,7 @@ export function parseMarketCsv(file, onProgress = () => {}) {
     let normalizer = null;
     let parserWarnings = 0;
     let settled = false;
+    let processedBytes = 0;
     const fileSize = Number(file?.size) || 0;
 
     const fail = (error) => {
@@ -145,20 +146,29 @@ export function parseMarketCsv(file, onProgress = () => {}) {
     };
 
     try {
+      // Do not use Papa Parse's worker option here. In the deployed Vite/PWA
+      // build the generated worker can fail to start, leaving the Promise
+      // pending forever and the UI stuck at 0%. Papa's local FileStreamer
+      // already reads Blob/File input asynchronously in bounded chunks.
+      onProgress({ loaded: 0, total: fileSize, percent: 0, stage: 'parsing' });
       Papa.parse(file, {
         ...parseOptions,
-        worker: true,
+        worker: false,
         chunkSize: 1024 * 1024,
         chunk: (results) => {
           try {
             if (!normalizer) normalizer = createRowNormalizer(results.meta?.fields || []);
             normalizer.addRows(results.data || []);
             parserWarnings += results.errors?.length || 0;
-            const loaded = Math.min(fileSize || (results.meta?.cursor || 0), results.meta?.cursor || fileSize);
+            const cursor = Number(results.meta?.cursor);
+            processedBytes = cursor > processedBytes
+              ? Math.min(fileSize || cursor, cursor)
+              : Math.min(fileSize, processedBytes + 1024 * 1024);
             onProgress({
-              loaded,
+              loaded: processedBytes,
               total: fileSize,
-              percent: fileSize ? Math.min(99, Math.round((loaded / fileSize) * 100)) : 0,
+              percent: fileSize ? Math.min(99, Math.round((processedBytes / fileSize) * 100)) : 0,
+              stage: 'parsing',
             });
           } catch (error) {
             fail(error);
