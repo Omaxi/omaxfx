@@ -855,7 +855,7 @@ export const useStore = create((set, get) => ({
     if (state.gameState.isOver) return state;
     if (riskPercent > state.rules.maxRiskPerTrade + EPSILON) return state;
     const currentPrice = state.rawData[state.currentIndex].close;
-    const contractSize = getContractSize(state.symbol, state.contractSpecs);
+    const contractSize = getPnlMultiplier(state.symbol, state.contractSpecs);
     const lots = riskAmount / (Math.abs(entryPrice - slPrice) * contractSize);
     const openTime = state.rawData[state.currentIndex].time;
     const newOrder = {
