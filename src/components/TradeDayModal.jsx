@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, Camera, ImageOff, Download } from 'lucide-react';
+import { X, Camera, Download } from 'lucide-react';
 import { getTradeScreenshot, renderTradeScreenshot, saveTradeScreenshot } from '../utils/tradeScreenshots';
 import { fmtMoney } from '../utils/format';
 import TradeScreenshotChart from './TradeScreenshotChart';

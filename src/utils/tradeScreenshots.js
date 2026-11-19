@@ -98,7 +98,8 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1) {
   const left = 76, right = 108, top = 76, bottom = 58;
   const plotW = width - left - right, plotH = height - top - bottom;
   const entry = Number(trade.entryPrice), exit = Number(trade.exitPrice);
-  const sl = Number(trade.sl), tp = Number(trade.tp);
+  const sl = trade.sl == null ? NaN : Number(trade.sl);
+  const tp = trade.tp == null ? NaN : Number(trade.tp);
   const prices = data.flatMap(c => [Number(c.high), Number(c.low)]);
   [entry, exit, sl, tp].forEach(v => { if (Number.isFinite(v)) prices.push(v); });
   if (!prices.length) return null;

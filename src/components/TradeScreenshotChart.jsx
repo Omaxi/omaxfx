@@ -64,8 +64,8 @@ export default function TradeScreenshotChart({ trade, candles, timeframe = 1 }) 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, height);
       const entry = Number(trade.entryPrice);
-      const sl = Number(trade.sl);
-      const tp = Number(trade.tp);
+      const sl = trade.sl == null ? NaN : Number(trade.sl);
+      const tp = trade.tp == null ? NaN : Number(trade.tp);
       const openBar = windowData.data[windowData.entryIndex];
       const closeBar = windowData.data[windowData.exitIndex];
       if (!openBar || !closeBar || !Number.isFinite(entry)) return;
