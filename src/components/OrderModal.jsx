@@ -51,11 +51,12 @@ export default function OrderModal() {
     if (riskPercent > maxRisk) setRiskPercent(maxRisk);
   }, [maxRisk, riskPercent]);
 
+  useEffect(() => { if (isOrderModalOpen) setRiskReward('2'); }, [isOrderModalOpen]);
+
   // Whenever the modal opens (or the side / symbol / current price changes
   // while it's open), recompute the default entry / SL / TP.
   useEffect(() => {
     if (!isOrderModalOpen) return;
-    setRiskReward('2');
 
     if (draftPosition) {
       // User dragged a position on the chart → use those prices
