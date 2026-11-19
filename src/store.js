@@ -1,10 +1,10 @@
 import { create } from 'zustand';
-import { aggregateData } from './utils/timeframe';
-import { getPnlMultiplier } from './utils/instrument';
+import { aggregateData } from './utils/timeframe.js';
+import { getPnlMultiplier } from './utils/instrument.js';
 export { getContractSize, getPnlMultiplier } from './utils/instrument';
 import { 
   playOrderPlaced, playPositionClosed, playTPHit, playSLHit, playPendingTriggered, playRestart
-} from './utils/audio';
+} from './utils/audio.js';
 
 export const INITIAL_BALANCE = 100000;
 const EPSILON = 0.001;
