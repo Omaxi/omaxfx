@@ -308,6 +308,12 @@ export const useStore = create((set, get) => ({
     const restoredData = restoreShift === 0
       ? symbolData
       : symbolData.map(c => ({ ...c, time: c.time + restoreShift }));
+    const restoredCache = restoreShift === 0
+      ? state.allRawDataBySymbol
+      : Object.fromEntries(Object.entries(state.allRawDataBySymbol).map(([code, candles]) => [
+          code,
+          code === savedSymbol ? restoredData : candles.map(candle => ({ ...candle, time: candle.time + restoreShift })),
+        ]));
     const filtered = restoredData.filter(c => c.time >= saved.gamePeriod.from && c.time <= saved.gamePeriod.to);
     if (filtered.length === 0) return false;
 
@@ -319,7 +325,7 @@ export const useStore = create((set, get) => ({
     const tf = saved.timeframe || 1;
     set({
       symbol: savedSymbol,
-      allRawDataBySymbol: { ...state.allRawDataBySymbol, [savedSymbol]: restoredData },
+      allRawDataBySymbol: restoredCache,
       allRawData: restoredData,
       rawData: filtered,
       displayData: aggregateData(filtered, tf),
