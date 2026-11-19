@@ -9,7 +9,7 @@ async function fetchCachedCsv(url) {
       const cache = await caches.open(DATA_CACHE);
       const cached = await cache.match(url);
       if (cached) return cached;
-      const response = await fetchCachedCsv(url);
+      const response = await fetch(url);
       if (response.ok) await cache.put(url, response.clone());
       return response;
     } catch (error) {
@@ -34,7 +34,7 @@ export async function loadBundledCsvFiles(files, onProgress = () => {}) {
   for (let index = 0; index < files.length; index++) {
     const file = files[index];
     const url = `${import.meta.env.BASE_URL}${String(file.url).replace(/^\/+/, '')}`;
-    const response = await fetch(url);
+    const response = await fetchCachedCsv(url);
     if (!response.ok) throw new Error(`Unable to read ${file.name}. Check that it exists in public/data.`);
     const blob = await response.blob();
     const parsed = await parseMarketCsv(blob);
