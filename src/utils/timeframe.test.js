@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { aggregateData } from './timeframe.js';
 import { parseMarketCsvText } from './marketData.js';
-import { getPnlMultiplier } from '../store.js';
+import { getPnlMultiplier } from './instrument.js';
 
 const candle = (time, open, high, low, close, volume = 1) => ({ time, open, high, low, close, volume });
 
