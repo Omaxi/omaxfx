@@ -45,3 +45,12 @@ export const calculateIntrabarUnrealizedPnl = (positions, candle, fallbackSymbol
     const diff = isBuy ? markPrice - Number(pos.entryPrice) : Number(pos.entryPrice) - markPrice;
     return sum + diff * getPnlMultiplier(pos.symbol || fallbackSymbol, specs) * Number(pos.size || 0);
   }, 0);
+
+export const calculateFavorableIntrabarPnl = (positions, candle, fallbackSymbol, specs = {}) =>
+  (positions || []).reduce((sum, pos) => {
+    if (!candle) return sum;
+    const isBuy = pos.type === 'buy';
+    const markPrice = isBuy ? Number(candle.high) : Number(candle.low);
+    const diff = isBuy ? markPrice - Number(pos.entryPrice) : Number(pos.entryPrice) - markPrice;
+    return sum + diff * getPnlMultiplier(pos.symbol || fallbackSymbol, specs) * Number(pos.size || 0);
+  }, 0);
