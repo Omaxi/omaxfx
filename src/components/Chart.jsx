@@ -1,6 +1,7 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { createChart, CandlestickSeries, LineSeries } from 'lightweight-charts';
 import { useStore } from '../store';
+import { getExecutionCandle } from '../utils/timeframe';
 import { X, Play, Pause, SkipForward, Trash2, Lock, Maximize2 } from 'lucide-react';
 import IndicatorsPanel from './IndicatorsPanel';
 import DrawingToolbar from './DrawingToolbar';
@@ -803,12 +804,16 @@ export default function Chart() {
           state.setDraftPrice(price);
           if (placingStop) {
             const updated = useStore.getState();
+            const side = updated.drawingSide || updated.draftPosition?.type || 'buy';
+            const entry = Number(updated.draftPosition?.entry);
+            const market = Number(getExecutionCandle(updated.rawData, updated.displayData, updated.currentIndex, updated.timeframe)?.close);
+            const isStop = Number.isFinite(entry) && Number.isFinite(market) && (side === 'buy' ? entry > market : entry < market);
             useStore.setState({
               isDrawingMode: false,
               drawingStep: null,
-              draftPosition: updated.draftPosition ? { ...updated.draftPosition, tp: null } : null,
+              draftPosition: updated.draftPosition ? { ...updated.draftPosition, tp: null, orderType: isStop ? 'stop' : 'limit' } : null,
               isOrderModalOpen: true,
-              orderSide: updated.drawingSide || updated.draftPosition?.type || 'buy',
+              orderSide: side,
             });
           }
           e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
