@@ -85,7 +85,7 @@ test('recognizes explicit UTC+3 ISO timestamps as absolute instants', () => {
   const csv = [
     'Timestamp,Open,High,Low,Close',
     '2024-01-01T00:00:00+03:00,10,12,9,11',
-  ].join('\\n');
+  ].join('\n');
   const result = parseMarketCsvText(csv);
   assert.equal(result.timestampsAreUtc, true);
   assert.equal(result.candles[0].time, 1704056400);
