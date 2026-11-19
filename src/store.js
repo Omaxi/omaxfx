@@ -829,14 +829,39 @@ export const useStore = create((set, get) => ({
             stillPending.push(order);
             continue;
           }
-          newPositions.push({
+          const filledPosition = {
             ...order,
             entryPrice: fillPrice,
             size: recalculatedLots,
             initialRiskDistance: riskDistance,
             isPending: false,
             openTime: candle.time,
-          });
+          };
+          const isBuy = order.type === 'buy';
+          const stopPrice = Number(order.sl);
+          const targetPrice = order.tp == null ? null : Number(order.tp);
+          const hitStopOnEntryBar = Number.isFinite(stopPrice) &&
+            (isBuy ? candle.low <= stopPrice : candle.high >= stopPrice);
+          const hitTargetOnEntryBar = Number.isFinite(targetPrice) &&
+            (isBuy ? candle.high >= targetPrice : candle.low <= targetPrice);
+
+          // If OHLC cannot reveal whether SL or TP came first, resolve
+          // conservatively: stop loss wins when both are touched in this bar.
+          if (hitStopOnEntryBar) {
+            const pnl = (isBuy ? stopPrice - fillPrice : fillPrice - stopPrice) *
+              contractSize * recalculatedLots;
+            newBalance += pnl;
+            newHistory.push({ ...filledPosition, exitPrice: stopPrice, pnl, reason: 'SL', closeTime: candle.time });
+            slHit = true;
+          } else if (hitTargetOnEntryBar) {
+            const pnl = (isBuy ? targetPrice - fillPrice : fillPrice - targetPrice) *
+              contractSize * recalculatedLots;
+            newBalance += pnl;
+            newHistory.push({ ...filledPosition, exitPrice: targetPrice, pnl, reason: 'TP', closeTime: candle.time });
+            tpHit = true;
+          } else {
+            newPositions.push(filledPosition);
+          }
           pendingTriggered = true;
         } else stillPending.push(order);
       }
