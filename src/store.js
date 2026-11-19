@@ -110,7 +110,10 @@ export const useStore = create((set, get) => ({
   setCustomSymbolData: (symbol, data, spec = {}) => set((state) => {
     const code = String(symbol || '').trim().toUpperCase().replace(/[^A-Z0-9._-]/g, '').slice(0, 20);
     if (!code || !Array.isArray(data) || data.length === 0) return state;
-    const nextCache = { ...state.allRawDataBySymbol, [code]: data };
+    const currentOffset = TZ_OFFSETS[state.timezone || 'UTC+3'] ?? 180;
+    const displayShift = (currentOffset - 180) * 60;
+    const displayData = displayShift === 0 ? data : data.map(candle => ({ ...candle, time: candle.time + displayShift }));
+    const nextCache = { ...state.allRawDataBySymbol, [code]: displayData };
     const contractSpecs = {
       ...state.contractSpecs,
       [code]: {
@@ -122,8 +125,8 @@ export const useStore = create((set, get) => ({
       },
     };
     return {
-      symbol: code, contractSpecs, allRawDataBySymbol: nextCache, allRawData: data,
-      rawData: data, displayData: aggregateData(data, state.timeframe), currentIndex: 0,
+      symbol: code, contractSpecs, allRawDataBySymbol: nextCache, allRawData: displayData,
+      rawData: displayData, displayData: aggregateData(displayData, state.timeframe), currentIndex: 0,
       isPlaying: false, gameStarted: false, isPeriodModalOpen: true,
       gamePeriod: null, positions: [], pendingOrders: [], tradeHistory: [],
       drawings: [], drawingsPast: [], drawingsFuture: [], pencilStrokes: [],
