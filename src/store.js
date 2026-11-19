@@ -126,7 +126,7 @@ export const useStore = create((set, get) => ({
       gamePeriod: null, positions: [], pendingOrders: [], tradeHistory: [],
       drawings: [], drawingsPast: [], drawingsFuture: [], pencilStrokes: [],
       balance: INITIAL_BALANCE, peakBalance: INITIAL_BALANCE,
-      gameState: { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
+      gameState: { isOver: false, reason: null, message: '', startTime: null },
       symbolWarning: null, sessionId: null, recenterToken: state.recenterToken + 1,
     };
   }),
@@ -232,7 +232,7 @@ export const useStore = create((set, get) => ({
       const payload = {
         version: 2, sessionId, savedAt: Date.now(),
         sessionName: s.sessionName, playerName: s.playerName,
-        gamePeriod: s.gamePeriod, rules: { ...s.rules, countdownMinutes: null },
+        gamePeriod: s.gamePeriod, rules: { ...s.rules },
         currentIndex: s.currentIndex, timeframe: s.timeframe,
         symbol: s.symbol, contractSpecs: s.contractSpecs, timezone: 'UTC+3', chartType: s.chartType,
         balance: s.balance, peakBalance: s.peakBalance,
@@ -240,7 +240,7 @@ export const useStore = create((set, get) => ({
         pendingOrders: s.pendingOrders, drawings: s.drawings,
         drawingsPast: s.drawingsPast, drawingsFuture: s.drawingsFuture,
         pencilStrokes: s.pencilStrokes, dailyLoss: s.dailyLoss,
-        gameState: { ...s.gameState, timeRemaining: null },
+        gameState: { isOver: s.gameState.isOver, reason: s.gameState.reason, message: s.gameState.message, startTime: s.gameState.startTime },
         theme: s.theme, sessionTimes: s.sessionTimes,
         enableFireworks: s.enableFireworks,
       };
@@ -311,7 +311,7 @@ export const useStore = create((set, get) => ({
       gameStarted: true,
       isPeriodModalOpen: false,
       gamePeriod: saved.gamePeriod,
-      rules: { ...DEFAULT_RULES, ...(saved.rules || {}), countdownMinutes: null },
+      rules: { ...DEFAULT_RULES, ...(saved.rules || {}), propFirmEnabled: saved.rules?.propFirmEnabled !== false },
       currentIndex: safeIndex,
       timeframe: tf,
       timezone: 'UTC+3',
@@ -326,7 +326,7 @@ export const useStore = create((set, get) => ({
       drawingsPast: saved.drawingsPast || [],
       drawingsFuture: saved.drawingsFuture || [],
       dailyLoss: saved.dailyLoss || { day: null, dayStartBalance: INITIAL_BALANCE },
-      gameState: { ...(saved.gameState || { isOver: false, reason: null, message: '', startTime: null }), timeRemaining: null },
+      gameState: { isOver: saved.gameState?.isOver ?? false, reason: saved.gameState?.reason ?? null, message: saved.gameState?.message ?? '', startTime: saved.gameState?.startTime ?? null },
       pencilStrokes: saved.pencilStrokes || [],
       playerName: saved.playerName || 'Trader',
       sessionId: saved.sessionId || 'legacy-session',
@@ -347,7 +347,7 @@ export const useStore = create((set, get) => ({
 
   rules: { ...DEFAULT_RULES },
 
-  gameState: { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
+  gameState: { isOver: false, reason: null, message: '', startTime: null },
 
   peakBalance: INITIAL_BALANCE,
   dailyLoss: { day: null, dayStartBalance: INITIAL_BALANCE },
@@ -518,7 +518,7 @@ export const useStore = create((set, get) => ({
       gamePeriod: { from, to },
       gameStarted: true,
       isPeriodModalOpen: false,
-      rules: { ...rules, propFirmEnabled: rules.propFirmEnabled !== false, countdownMinutes: null },
+      rules: { ...rules, propFirmEnabled: rules.propFirmEnabled !== false },
       sessionId: null,
       currentIndex: 0,
       isPlaying: false,
@@ -536,7 +536,7 @@ export const useStore = create((set, get) => ({
       pencilStrokes: [],
       peakBalance: startBal,
       dailyLoss: { day: startDay, dayStartBalance: startBal },
-      gameState: { isOver: false, reason: null, message: '', startTime: Date.now(), timeRemaining: null },
+      gameState: { isOver: false, reason: null, message: '', startTime: Date.now() },
       recenterToken: state.recenterToken + 1,
     };
   }),
@@ -544,10 +544,6 @@ export const useStore = create((set, get) => ({
   endGame: (reason, message) => set((state) => ({
     isPlaying: false,
     gameState: { ...state.gameState, isOver: true, reason, message },
-  })),
-
-  updateTimeRemaining: (seconds) => set((state) => ({
-    gameState: { ...state.gameState, timeRemaining: seconds },
   })),
 
   restartGame: () => {
