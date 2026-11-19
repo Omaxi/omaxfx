@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useStore, INITIAL_BALANCE } from '../store';
 import { fmtMoney } from '../utils/format';
 import { X, TrendingUp, TrendingDown, CalendarDays, ChevronLeft, ChevronRight, BarChart3, Target, Activity, Award } from 'lucide-react';
@@ -7,7 +7,11 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 
 const money = (value) => `$${fmtMoney(Math.abs(value), 0)}`;
 const MARKET_TZ_OFFSET_SECONDS = 3 * 60 * 60;
-const marketDate = (unix) => new Date((Number(unix) + MARKET_TZ_OFFSET_SECONDS) * 1000);
+const marketDate = (unix) => {
+  const value = Number(unix);
+  const seconds = Math.abs(value) > 1e12 ? value / 1000 : value;
+  return new Date((seconds + MARKET_TZ_OFFSET_SECONDS) * 1000);
+};
 const marketMonth = (unix) => {
   const date = marketDate(unix);
   return new Date(date.getUTCFullYear(), date.getUTCMonth(), 1);
@@ -24,20 +28,27 @@ export default function AnalyticsModal() {
   const { isAnalyticsOpen, closeAnalytics, tradeHistory, balance, rules, rawData, currentIndex, sessionId, timeframe } = useStore();
   const [selectedDate, setSelectedDate] = useState(null);
   const [monthCursor, setMonthCursor] = useState(() => {
-    const latest = tradeHistory.length ? Math.max(...tradeHistory.map(t => t.closeTime || t.openTime || 0)) : Date.now() / 1000;
-    const d = new Date(latest * 1000);
-    return new Date(d.getFullYear(), d.getMonth(), 1);
-  });
-  useEffect(() => {
-    if (!isAnalyticsOpen) return;
     const marketTime = rawData?.[currentIndex]?.time;
-    const latestTradeTime = tradeHistory.reduce((latest, trade) => Math.max(latest, trade.closeTime || trade.openTime || 0), 0);
-    const timestamp = marketTime || latestTradeTime;
-    if (timestamp) {
-      setMonthCursor(marketMonth(timestamp));
+    const latest = tradeHistory.reduce((value, trade) => Math.max(value, Number(trade.closeTime || trade.openTime || 0)), 0);
+    return marketMonth(marketTime || latest || Date.now() / 1000);
+  });
+  const initializedMonthForOpen = useRef(false);
+  useEffect(() => {
+    if (!isAnalyticsOpen) {
+      initializedMonthForOpen.current = false;
+      return;
     }
+    // Wait for the selected market dataset to finish loading. Initialize once
+    // per open so later manual calendar navigation is not overwritten.
+    if (initializedMonthForOpen.current) return;
+    const marketTime = rawData?.[currentIndex]?.time;
+    const latestTradeTime = tradeHistory.reduce((latest, trade) => Math.max(latest, Number(trade.closeTime || trade.openTime || 0)), 0);
+    const timestamp = marketTime || latestTradeTime;
+    if (!timestamp) return;
+    setMonthCursor(marketMonth(timestamp));
     setSelectedDate(null);
-  }, [isAnalyticsOpen]);
+    initializedMonthForOpen.current = true;
+  }, [isAnalyticsOpen, rawData, currentIndex, tradeHistory]);
 
   if (!isAnalyticsOpen) return null;
 
