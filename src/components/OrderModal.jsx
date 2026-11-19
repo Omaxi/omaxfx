@@ -11,12 +11,6 @@ import { X, AlertTriangle } from 'lucide-react';
 //   pointSize  → the value of 1 "point" in price terms
 //   precision  → number of decimals shown / rounded to
 // =========================================================================
-const SYMBOL_META = {
-  XAUUSD: { pointSize: 0.01,   precision: 2 },
-  EURUSD: { pointSize: 0.00001, precision: 5 },
-};
-const DEFAULT_META = { pointSize: 0.01, precision: 2 };
-
 // Default distance for a market order (in points):
 const DEFAULT_SL_POINTS = 100;
 const DEFAULT_TP_POINTS = 200;
