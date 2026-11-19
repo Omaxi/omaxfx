@@ -243,6 +243,7 @@ export default function Chart() {
   const dragDrawRef = useRef(null);
   const profileCacheRef = useRef(new Map());
   const visibleDataRef = useRef([]);
+  const lastRenderedDataRef = useRef([]);
   const lastTimeframeRef = useRef(1);
   const lastRecenterRef = useRef(0);
   const activePointersRef = useRef(new Set());
@@ -1111,6 +1112,7 @@ export default function Chart() {
         lineSeriesRef.current.setData([]);
       } catch (e) {}
       visibleDataRef.current = [];
+      lastRenderedDataRef.current = [];
       return;
     }
     
@@ -1119,8 +1121,24 @@ export default function Chart() {
     const jumpChanged = lastRecenterRef.current !== recenterToken;
     
     visibleDataRef.current = visibleData;
-    seriesRef.current.setData(visibleData);
-    lineSeriesRef.current.setData(visibleData.map(d => ({ time: d.time, value: d.close })));
+    const previous = lastRenderedDataRef.current;
+    const canAppend = !tfChanged && !jumpChanged && previous.length > 0 &&
+      visibleData.length >= previous.length &&
+      visibleData[0]?.time === previous[0]?.time &&
+      visibleData[previous.length - 1]?.time === previous[previous.length - 1]?.time;
+
+    if (canAppend) {
+      const start = Math.max(0, previous.length - 1);
+      for (let i = start; i < visibleData.length; i++) {
+        const candle = visibleData[i];
+        seriesRef.current.update(candle);
+        lineSeriesRef.current.update({ time: candle.time, value: candle.close });
+      }
+    } else {
+      seriesRef.current.setData(visibleData);
+      lineSeriesRef.current.setData(visibleData.map(d => ({ time: d.time, value: d.close })));
+    }
+    lastRenderedDataRef.current = visibleData;
 
     if (tfChanged || jumpChanged) {
       try {
