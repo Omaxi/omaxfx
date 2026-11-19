@@ -904,7 +904,8 @@ export const useStore = create((set, get) => ({
     const riskDistance = Math.abs(actualEntry - stop);
     if (!Number.isFinite(contractSize) || contractSize <= 0 || riskDistance <= 0) return state;
     const lots = risk / (riskDistance * contractSize);
-    if (!Number.isFinite(lots) || lots <= 0) return state;
+    const roundedLots = Number(lots.toFixed(4));
+    if (!Number.isFinite(lots) || lots <= 0 || !Number.isFinite(roundedLots) || roundedLots <= 0) return state;
 
     const newOrder = {
       id: Date.now() + Math.random(),
@@ -914,7 +915,7 @@ export const useStore = create((set, get) => ({
       breakevenEnabled: !!breakevenEnabled,
       breakevenDone: false,
       initialRiskDistance: riskDistance,
-      size: Number(lots.toFixed(4)),
+      size: roundedLots,
       riskPercent: riskPct, riskAmount: risk,
       isPending: type !== 'market',
       openTime: candle.time,
