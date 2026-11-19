@@ -298,7 +298,6 @@ export default function Chart() {
 
     // Per-symbol price format: EURUSD 5 decimals, Gold 2 decimals.
     const initialState = useStore.getState();
-    const initialSpec = initialState.contractSpecs?.[initialState.symbol];
     const initialPrecision = getPricePrecision(initialState.symbol, initialState.contractSpecs);
     const initialMinMove = getPriceTickSize(initialState.symbol, initialState.contractSpecs);
 
@@ -340,7 +339,6 @@ export default function Chart() {
   // EURUSD shows five decimals (e.g. 1.11987), XAUUSD shows two (e.g. 4325.80).
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
-    const spec = useStore.getState().contractSpecs?.[symbol];
     const precision = getPricePrecision(symbol, useStore.getState().contractSpecs);
     const minMove = getPriceTickSize(symbol, useStore.getState().contractSpecs);
     try {
