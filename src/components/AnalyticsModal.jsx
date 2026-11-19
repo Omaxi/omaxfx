@@ -91,6 +91,12 @@ export default function AnalyticsModal() {
   const avgHoldMin = validDurations.length > 0
     ? validDurations.reduce((s, d) => s + d, 0) / validDurations.length
     : 0;
+  const rMultiples = tradeHistory
+    .filter(t => Number.isFinite(t.riskAmount) && t.riskAmount > 0)
+    .map(t => t.pnl / t.riskAmount);
+  const averageR = rMultiples.length
+    ? rMultiples.reduce((sum, value) => sum + value, 0) / rMultiples.length
+    : 0;
 
   const fmtDuration = (min) => {
     if (min < 60) return `${min.toFixed(0)}m`;
@@ -156,12 +162,13 @@ export default function AnalyticsModal() {
               {/* RISK METRICS */}
               <Section title="Risk & Reward" icon={<Target size={12}/>}>
                 <Row label="Profit Factor" value={profitFactor === Infinity ? '∞' : profitFactor.toFixed(2)} color={profitFactor >= 1.5 ? '#22c55e' : profitFactor >= 1 ? '#eab308' : '#ef4444'} />
-                <Row label="Sharpe Ratio" value={sharpe.toFixed(2)} color={sharpe >= 1 ? '#22c55e' : sharpe >= 0.5 ? '#eab308' : '#ef4444'} />
+                <Row label="Trade Sharpe (non-annualized)" value={sharpe.toFixed(2)} color={sharpe >= 1 ? '#22c55e' : sharpe >= 0.5 ? '#eab308' : '#ef4444'} />
                 <Row label="Avg Win" value={`$${fmtMoney(avgWin)}`} color="#22c55e" />
                 <Row label="Avg Loss" value={`-$${fmtMoney(avgLoss)}`} color="#ef4444" />
                 <Row label="Achieved RR" value={`${achievedRR.toFixed(2)} : 1`} color={achievedRR >= 1.5 ? '#22c55e' : '#eab308'} />
-                <Row label="Expectancy" value={`$${fmtMoney(expectancy)}`} color={expectancy >= 0 ? '#22c55e' : '#ef4444'} />
-                <Row label="Max Drawdown" value={`-${maxDD.toFixed(2)}%`} color="#ef4444" />
+                <Row label="Expectancy" value={`${fmtMoney(expectancy)}`} color={expectancy >= 0 ? '#22c55e' : '#ef4444'} />
+                <Row label="Average R" value={`${averageR >= 0 ? '+' : ''}${averageR.toFixed(2)}R`} color={averageR >= 0 ? '#22c55e' : '#ef4444'} />
+                <Row label="Closed-trade Drawdown" value={`-${maxDD.toFixed(2)}%`} color="#ef4444" />
               </Section>
 
               {/* BEST / WORST */}
