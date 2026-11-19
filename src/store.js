@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { aggregateData } from './utils/timeframe';
+import { getContractSize, getPnlMultiplier } from './utils/instrument';
+export { getContractSize, getPnlMultiplier } from './utils/instrument';
 import { 
   playOrderPlaced, playPositionClosed, playTPHit, playSLHit, playPendingTriggered, playRestart
 } from './utils/audio';
@@ -14,24 +16,6 @@ const TZ_OFFSETS = {
   'UTC+1': 60, 'UTC+2': 120, 'UTC+3': 180,
 };
 
-// =========================================================================
-// Per-symbol contract multiplier (units per 1 lot).
-// -------------------------------------------------------------------------
-// XAUUSD: 100 oz / lot        → $1 price move × 100      = $100 / lot
-// EURUSD: 100,000 units / lot → 0.0001 price move × 100k = $10  / lot
-// =========================================================================
-const SYMBOL_CONTRACT = {
-  XAUUSD: 100,
-  EURUSD: 100000,
-};
-const DEFAULT_CONTRACT = 100;
-
-export const getContractSize = (symbol, specs = {}) => specs?.[symbol]?.contractSize ?? SYMBOL_CONTRACT[symbol] ?? DEFAULT_CONTRACT;
-export const getPnlMultiplier = (symbol, specs = {}) => {
-  const spec = specs?.[symbol];
-  const conversion = Number(spec?.quoteToAccountRate);
-  return getContractSize(symbol, specs) * (Number.isFinite(conversion) && conversion > 0 ? conversion : 1);
-};
 
 const getDayKey = (unixSeconds) => {
   const d = new Date(unixSeconds * 1000);
