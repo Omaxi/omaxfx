@@ -109,7 +109,7 @@ export default function AnalyticsModal() {
   return (
     <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[60] p-2" onClick={closeAnalytics}>
       <div 
-        className="bg-[#131722] rounded-lg w-full max-w-3xl border border-[#2a2e39] overflow-hidden flex flex-col max-h-[96vh]" 
+        className="bg-[#131722] rounded-lg w-full max-w-3xl border border-[#2a2e39] overflow-hidden flex flex-col h-[min(92dvh,850px)]" 
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -124,13 +124,13 @@ export default function AnalyticsModal() {
         </div>
 
         {/* Body */}
-        <div className="overflow-y-auto flex-1 p-3">
+        <div className="overflow-hidden flex-1 min-h-0 p-2">
           {tradeHistory.length === 0 ? (
             <div className="text-center py-16 text-gray-500 text-sm">
               No trades yet. Close a trade to see analytics.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 h-full content-start">
 
               {/* PERFORMANCE OVERVIEW */}
               <Section title="Performance" icon={<TrendingUp size={12}/>}>
@@ -203,8 +203,8 @@ export default function AnalyticsModal() {
               </Section>
 
               {/* SUMMARY VERDICT */}
-              <div className="md:col-span-2 bg-[#1e222d] rounded-lg p-3">
-                <div className="text-[10px] text-gray-400 uppercase font-bold mb-2 flex items-center gap-1.5">
+              <div className="lg:col-span-2 bg-[#1e222d] rounded-lg p-2">
+                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1 flex items-center gap-1.5">
                   <TrendingUp size={11} /> Verdict
                 </div>
                 <VerdictLine
@@ -261,11 +261,11 @@ export default function AnalyticsModal() {
 
 function Section({ title, icon, children }) {
   return (
-    <div className="bg-[#1e222d] rounded-lg p-3">
+    <div className="bg-[#1e222d] rounded-lg p-2">
       <div className="text-[10px] text-gray-400 uppercase font-bold mb-2 flex items-center gap-1.5">
         {icon} {title}
       </div>
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {children}
       </div>
     </div>
