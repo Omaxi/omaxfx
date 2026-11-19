@@ -58,6 +58,11 @@ function App() {
     const periodicSave = setInterval(() => {
       if (useStore.getState().gameStarted) useStore.getState().saveSession();
     }, 5000);
+    const flushSave = () => {
+      if (useStore.getState().gameStarted) useStore.getState().saveSession();
+    };
+    window.addEventListener('pagehide', flushSave);
+    window.addEventListener('beforeunload', flushSave);
     const unsub = useStore.subscribe((state) => {
       if (!state.gameStarted) return;
       const key = [
@@ -81,7 +86,11 @@ function App() {
         try { useStore.getState().saveSession(); } catch (e) {}
       }, 800);
     });
-    return () => { unsub(); if (t) clearTimeout(t); clearInterval(periodicSave); };
+    return () => {
+      unsub(); if (t) clearTimeout(t); clearInterval(periodicSave);
+      window.removeEventListener('pagehide', flushSave);
+      window.removeEventListener('beforeunload', flushSave);
+    };
   }, []);
 
   useEffect(() => {
