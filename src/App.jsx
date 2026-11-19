@@ -10,6 +10,7 @@ import PeriodModal from './components/PeriodModal';
 import GameOverModal from './components/GameOverModal';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import LoadingScreen from './components/LoadingScreen';
+import TradeScreenshotCapture from './components/TradeScreenshotCapture';
 import DataImportModal from './components/DataImportModal';
 import { useStore } from './store';
 import { useEffect, useRef } from 'react';
@@ -246,6 +247,7 @@ function App() {
       <main className="flex-1 relative min-h-0">
         <Chart />
       </main>
+      <TradeScreenshotCapture />
       
       <ControlPanel />
       <DataImportModal />
