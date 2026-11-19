@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { fmtMoney } from '../utils/format';
 import { X } from 'lucide-react';
@@ -8,7 +8,8 @@ export default function HistoryModal() {
   const [page, setPage] = useState(0);
   const pageSize = 10;
   const pageCount = Math.max(1, Math.ceil(tradeHistory.length / pageSize));
-  const visibleTrades = tradeHistory.slice(page * pageSize, (page + 1) * pageSize);
+  const visibleTrades = tradeHistory.slice(Math.min(page, pageCount - 1) * pageSize, (Math.min(page, pageCount - 1) + 1) * pageSize);
+  useEffect(() => setPage(current => Math.min(current, pageCount - 1)), [pageCount]);
 
   if (!isHistoryOpen) return null;
 
