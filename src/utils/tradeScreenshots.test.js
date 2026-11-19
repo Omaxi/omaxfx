@@ -44,3 +44,41 @@ test('scopes screenshot storage keys by session and trade ID', () => {
   assert.notEqual(getTradeScreenshotKey('trade-1', 'session-a'), getTradeScreenshotKey('trade-1', 'session-b'));
   assert.equal(getTradeScreenshotKey(null, 'session-a'), null);
 });
+
+test('renders distinct screenshot payloads containing each trade ID', () => {
+  const originalDocument = globalThis.document;
+  globalThis.document = {
+    createElement: () => {
+      const labels = [];
+      const context = new Proxy({
+        fillText: (value) => labels.push(String(value)),
+        beginPath() {}, moveTo() {}, lineTo() {}, stroke() {}, fillRect() {},
+        save() {}, restore() {}, setLineDash() {},
+      }, { set(target, key, value) { target[key] = value; return true; } });
+      return {
+        width: 0,
+        height: 0,
+        getContext: () => context,
+        toDataURL: () => 'data:image/jpeg;base64,' + Buffer.from(labels.join('|')).toString('base64'),
+      };
+    },
+  };
+  try {
+    const { renderTradeScreenshot } = await import('./tradeScreenshots.js');
+    const first = renderTradeScreenshot({
+      id: 'trade-A', symbol: 'EURUSD', type: 'buy', openTime: 600, closeTime: 720,
+      entryPrice: 1.1, exitPrice: 1.102, sl: 1.099, tp: 1.102, pnl: 20,
+    }, candles, 1);
+    const second = renderTradeScreenshot({
+      id: 'trade-B', symbol: 'EURUSD', type: 'sell', openTime: 3600, closeTime: 3720,
+      entryPrice: 1.2, exitPrice: 1.198, sl: 1.201, tp: 1.198, pnl: 20,
+    }, candles, 1);
+    assert.ok(first && second);
+    assert.notEqual(first, second);
+    assert.match(Buffer.from(first.split(',')[1], 'base64').toString(), /trade-A/);
+    assert.match(Buffer.from(second.split(',')[1], 'base64').toString(), /trade-B/);
+  } finally {
+    if (originalDocument === undefined) delete globalThis.document;
+    else globalThis.document = originalDocument;
+  }
+});
