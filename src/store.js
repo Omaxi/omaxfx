@@ -33,6 +33,12 @@ const getDayKey = (unixSeconds) => {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 };
 
+const getUnrealizedPnlAtPrice = (positions, markPrice, fallbackSymbol) => positions.reduce((sum, pos) => {
+  const isBuy = pos.type === 'buy';
+  const diff = isBuy ? markPrice - pos.entryPrice : pos.entryPrice - markPrice;
+  return sum + diff * getContractSize(pos.symbol || fallbackSymbol) * pos.size;
+}, 0);
+
 const getUnrealizedPnl = (positions, candle, fallbackSymbol) => positions.reduce((sum, pos) => {
   const isBuy = pos.type === 'buy';
   // Use the adverse intrabar extreme for conservative equity/rule monitoring.
@@ -194,6 +200,8 @@ export const useStore = create((set, get) => ({
       rawData: state.rawData.map(c => ({ ...c, time: shift(c.time) })),
       displayData: state.displayData.map(c => ({ ...c, time: shift(c.time) })),
       drawings: state.drawings.map(d => ({ ...d, points: d.points.map(p => ({ ...p, time: shift(p.time) })) })),
+      drawingsPast: state.drawingsPast.map(snapshot => snapshot.map(d => ({ ...d, points: d.points.map(p => ({ ...p, time: shift(p.time) })) }))),
+      drawingsFuture: state.drawingsFuture.map(snapshot => snapshot.map(d => ({ ...d, points: d.points.map(p => ({ ...p, time: shift(p.time) })) }))),
       tradeHistory: state.tradeHistory.map(t => ({ ...t, openTime: shift(t.openTime), closeTime: shift(t.closeTime) })),
       positions: state.positions.map(p => ({ ...p, openTime: shift(p.openTime) })),
       pendingOrders: state.pendingOrders.map(o => ({ ...o, openTime: shift(o.openTime) })),
@@ -751,7 +759,7 @@ export const useStore = create((set, get) => ({
       if (!candle) break;
       const dayKey = getDayKey(candle.time);
       if (newDailyLoss.day !== dayKey) {
-        newDailyLoss = { day: dayKey, dayStartBalance: newBalance + getUnrealizedPnl(newPositions, candle, state.symbol) };
+        newDailyLoss = { day: dayKey, dayStartBalance: newBalance + getUnrealizedPnlAtPrice(newPositions, candle.open, state.symbol) };
       }
       const stillOpen = [];
       for (const pos of newPositions) {
