@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { aggregateData } from './utils/timeframe.js';
 import { getPnlMultiplier } from './utils/instrument.js';
-import { getPendingOrderFillPrice } from './utils/orderExecution.js';
+import { getPendingOrderFillPrice, getStopLossFillPrice, getTakeProfitFillPrice } from './utils/orderExecution.js';
 export { getContractSize, getPnlMultiplier } from './utils/instrument.js';
 import { 
   playOrderPlaced, playPositionClosed, playTPHit, playSLHit, playPendingTriggered, playRestart
@@ -781,9 +781,10 @@ export const useStore = create((set, get) => ({
           const hitSl = isBuy ? candle.low <= pos.sl : candle.high >= pos.sl;
           if (hitSl) {
             const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
-            const pnl = (isBuy ? pos.sl - pos.entryPrice : pos.entryPrice - pos.sl) * contractSize * pos.size;
+            const exitPrice = getStopLossFillPrice(pos.type, pos.sl, candle);
+            const pnl = (isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice) * contractSize * pos.size;
             newBalance += pnl;
-            newHistory.push({ ...pos, exitPrice: pos.sl, pnl, reason: 'SL', closeTime: candle.time });
+            newHistory.push({ ...pos, exitPrice, pnl, reason: 'SL', closeTime: candle.time });
             closed = true; slHit = true;
           }
         }
@@ -791,9 +792,10 @@ export const useStore = create((set, get) => ({
           const hitTp = isBuy ? candle.high >= pos.tp : candle.low <= pos.tp;
           if (hitTp) {
             const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
-            const pnl = (isBuy ? pos.tp - pos.entryPrice : pos.entryPrice - pos.tp) * contractSize * pos.size;
+            const exitPrice = getTakeProfitFillPrice(pos.type, pos.tp, candle);
+            const pnl = (isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice) * contractSize * pos.size;
             newBalance += pnl;
-            newHistory.push({ ...pos, exitPrice: pos.tp, pnl, reason: 'TP', closeTime: candle.time });
+            newHistory.push({ ...pos, exitPrice, pnl, reason: 'TP', closeTime: candle.time });
             closed = true; tpHit = true;
           }
         }
@@ -853,16 +855,18 @@ export const useStore = create((set, get) => ({
           // If OHLC cannot reveal whether SL or TP came first, resolve
           // conservatively: stop loss wins when both are touched in this bar.
           if (hitStopOnEntryBar) {
-            const pnl = (isBuy ? stopPrice - fillPrice : fillPrice - stopPrice) *
+            const exitPrice = getStopLossFillPrice(order.type, stopPrice, candle);
+            const pnl = (isBuy ? exitPrice - fillPrice : fillPrice - exitPrice) *
               contractSize * recalculatedLots;
             newBalance += pnl;
-            newHistory.push({ ...filledPosition, exitPrice: stopPrice, pnl, reason: 'SL', closeTime: candle.time });
+            newHistory.push({ ...filledPosition, exitPrice, pnl, reason: 'SL', closeTime: candle.time });
             slHit = true;
           } else if (hitTargetOnEntryBar) {
-            const pnl = (isBuy ? targetPrice - fillPrice : fillPrice - targetPrice) *
+            const exitPrice = getTakeProfitFillPrice(order.type, targetPrice, candle);
+            const pnl = (isBuy ? exitPrice - fillPrice : fillPrice - exitPrice) *
               contractSize * recalculatedLots;
             newBalance += pnl;
-            newHistory.push({ ...filledPosition, exitPrice: targetPrice, pnl, reason: 'TP', closeTime: candle.time });
+            newHistory.push({ ...filledPosition, exitPrice, pnl, reason: 'TP', closeTime: candle.time });
             tpHit = true;
           } else {
             newPositions.push(filledPosition);
