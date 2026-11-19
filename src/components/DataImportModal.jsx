@@ -95,7 +95,7 @@ export default function DataImportModal() {
     }
   };
 
-  if (!open) return <button onClick={() => setOpen(true)} className="fixed top-2 left-1/2 z-40 -translate-x-1/2 rounded-lg border border-blue-500/50 bg-[#131722] px-3 py-1.5 text-xs font-semibold text-blue-300 shadow-lg">Import / Load market data</button>;
+  if (!open) return null;
 
   const inputClass = 'mt-1 w-full rounded-lg border border-[#303846] bg-[#0b0e11] px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500';
   const buttonClass = 'w-full rounded-lg bg-blue-600 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 px-4 py-3 text-sm font-bold text-white';
