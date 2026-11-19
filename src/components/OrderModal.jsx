@@ -30,7 +30,7 @@ export default function OrderModal() {
     contractSpecs,
     isOrderModalOpen, closeOrderModal, orderSide, placeOrder, 
     balance, rawData, currentIndex, draftPosition, clearDraft, rules,
-    symbol,
+    symbol, positions, pendingOrders,
   } = useStore();
 
   const meta = contractSpecs?.[symbol] ? { pointSize: contractSpecs[symbol].tickSize, precision: contractSpecs[symbol].precision } : (SYMBOL_META[symbol] ?? DEFAULT_META);
@@ -107,6 +107,9 @@ export default function OrderModal() {
   const validation = useMemo(() => {
     const errors = [];
     const effectiveEntry = orderType === 'market' ? currentPrice : entryPrice;
+    if (positions.length > 0 || pendingOrders.length > 0) {
+      errors.push('Only one active trade or pending order is allowed at a time');
+    }
 
     if (!Number.isFinite(effectiveEntry) || effectiveEntry <= 0) {
       errors.push('Entry price must be a valid positive price');
@@ -146,7 +149,7 @@ export default function OrderModal() {
     }
 
     return { errors, isValid: errors.length === 0, effectiveEntry };
-  }, [orderSide, entryPrice, slPrice, tpPrice, orderType, currentPrice, riskPercent, maxRisk, riskReward, propFirmEnabled]);
+  }, [orderSide, entryPrice, slPrice, tpPrice, orderType, currentPrice, riskPercent, maxRisk, riskReward, propFirmEnabled, positions, pendingOrders]);
 
   const { estimatedLoss, estimatedProfit } = useMemo(() => {
     const entry = validation.effectiveEntry;
