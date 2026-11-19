@@ -25,7 +25,7 @@ Place files in **`public/data/`**. The catalog is regenerated automatically befo
 - Use CSV files with a header row and Date/Time or Timestamp plus Open, High, Low, Close columns. Volume is optional.
 - Name yearly files `SYMBOL_YYYY.csv`, for example `NAS100_2026.csv`. Files with the same symbol are grouped in the data selector.
 - Select only the years you need to reduce memory use and load time.
-- All timestamps in the project data folder and manually imported CSV files are interpreted as **UTC+3**. The app converts them to UTC internally; do not pre-convert them to UTC.
+- Naive date/time values in project and manually imported CSV files are treated as **UTC+3 wall-clock time** and converted to UTC internally. Explicit timezone offsets (such as `+03:00`) and Unix epoch timestamps are treated as absolute instants and are not shifted again.
 - After adding or replacing a file, restart the dev server or rebuild the production app so the generated catalog includes it.
 - Newly added data is not automatically available to an already installed offline copy until that copy is rebuilt/updated and the new file is loaded once.
 
