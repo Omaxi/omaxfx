@@ -865,6 +865,7 @@ export const useStore = create((set, get) => ({
       }
       const stillPending = [];
       let pendingSlotTaken = newPositions.length > 0;
+      let pendingFilledThisCandle = false;
       for (const order of newPendingOrders) {
         if (pendingSlotTaken) continue;
         if (gameOverReason) { stillPending.push(order); continue; }
@@ -926,13 +927,14 @@ export const useStore = create((set, get) => ({
             newPositions.push(filledPosition);
           }
           pendingTriggered = true;
+          pendingFilledThisCandle = true;
           pendingSlotTaken = true;
         } else stillPending.push(order);
       }
       newPendingOrders = stillPending;
       // A just-filled pending position is not marked against the entire entry
       // candle's extremes (those may have occurred before the entry).
-      lastEquity = pendingTriggered && newPositions.length
+      lastEquity = pendingFilledThisCandle && newPositions.length
         ? newBalance
         : newBalance + getIntrabarUnrealizedPnl(newPositions, candle, state.symbol, state.contractSpecs);
       newPeak = Math.max(newPeak, lastEquity, newBalance);
