@@ -344,9 +344,10 @@ export default function Chart() {
     });
 
     // Per-symbol price format at init: EURUSD gets 4 decimals, others get 2.
-    const initialSymbol = useStore.getState().symbol;
-    const initialPrecision = initialSymbol === 'EURUSD' ? 4 : 2;
-    const initialMinMove   = initialSymbol === 'EURUSD' ? 0.0001 : 0.01;
+    const initialState = useStore.getState();
+    const initialSpec = initialState.contractSpecs?.[initialState.symbol];
+    const initialPrecision = initialSpec?.precision ?? (initialState.symbol === 'EURUSD' ? 4 : 2);
+    const initialMinMove = initialSpec?.tickSize ?? (initialState.symbol === 'EURUSD' ? 0.0001 : 0.01);
 
     seriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
       upColor: t.upBody, downColor: t.downBody, borderVisible: false,
@@ -386,8 +387,9 @@ export default function Chart() {
   // EURUSD shows 4 decimals (e.g. 1.1212), XAUUSD shows 2 (e.g. 1916.62).
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
-    const precision = symbol === 'EURUSD' ? 4 : 2;
-    const minMove   = symbol === 'EURUSD' ? 0.0001 : 0.01;
+    const spec = useStore.getState().contractSpecs?.[symbol];
+    const precision = spec?.precision ?? (symbol === 'EURUSD' ? 4 : 2);
+    const minMove = spec?.tickSize ?? (symbol === 'EURUSD' ? 0.0001 : 0.01);
     try {
       seriesRef.current.applyOptions({
         priceFormat: { type: 'price', precision, minMove },
@@ -396,7 +398,7 @@ export default function Chart() {
         priceFormat: { type: 'price', precision, minMove },
       });
     } catch (e) {}
-  }, [symbol]);
+  }, [symbol, useStore(s => s.contractSpecs[symbol])]);
 
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
@@ -535,7 +537,6 @@ export default function Chart() {
       ctx.rect(0, 0, paneW, paneH);
       ctx.clip();
       const state = useStore.getState();
-      const currentTf = state.timeframe;
       const cache = profileCacheRef.current;
       const alive = new Set(state.drawings);
       for (const key of cache.keys()) if (!alive.has(key)) cache.delete(key);
@@ -661,7 +662,6 @@ export default function Chart() {
 
     const hitTestDrawings = (x, y) => {
       const state = useStore.getState();
-      const currentTf = state.timeframe;
       const HANDLE_TOL = 22;
       const BODY_TOL = 14;
       const canvas = canvasRef.current;
