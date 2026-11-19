@@ -899,7 +899,11 @@ export default function Chart() {
       const state = useStore.getState();
       const { x, y } = getLocalXY(e);
 
-      scheduleDrawRef.current();
+      const chartRect = container.getBoundingClientRect();
+      const priceAxisWidth = chartRef.current?.priceScale('right').width() || 0;
+      if (priceAxisWidth > 0 && e.clientX >= chartRect.right - priceAxisWidth - 8) {
+        scheduleDrawRef.current();
+      }
       if (state.isPencilMode && currentPencilRef.current) {
         e.preventDefault();
         const stroke = currentPencilRef.current;
