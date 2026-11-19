@@ -80,9 +80,11 @@ export default function DataImportModal() {
     if (!(Number(contractSize) > 0) || !(Number(tickSize) > 0) || !(Number(quoteToAccountRate) > 0)) {
       setStatus({ loading: false, error: 'Instrument settings must be greater than zero.' }); return;
     }
-    setStatus({ loading: true, error: '' });
+    setStatus({ loading: true, error: '', progress: 0, fileName: file.name });
     try {
-      const parsed = await parseMarketCsv(file);
+      const parsed = await parseMarketCsv(file, (progress) => {
+        setStatus((current) => ({ ...current, progress: progress.percent ?? current.progress }));
+      });
       const candles = parsed.candles.map(candle => ({ ...candle, time: candle.time - (parsed.timestampsAreUtc ? 0 : UTC_PLUS_3_SECONDS) }));
       openBacktestSetup(code, candles, {
         contractSize: Number(contractSize), tickSize: Number(tickSize), precision: Number(precision),
@@ -175,8 +177,16 @@ export default function DataImportModal() {
                 <label className="col-span-2 text-xs text-gray-400">Quote → account FX<input type="number" min="0.000001" step="any" value={quoteToAccountRate} onChange={event => setQuoteToAccountRate(event.target.value)} className={inputClass}/></label>
               </div>}
               <button className={buttonClass} disabled={status.loading || !file} onClick={submitCustom}>
-                {status.loading ? <span className="inline-flex items-center gap-2"><RefreshCw size={15} className="animate-spin"/> Importing CSV…</span> : 'Import CSV and continue'}
+                {status.loading ? <span className="inline-flex items-center gap-2"><RefreshCw size={15} className="animate-spin"/> Importing CSV… {status.progress || 0}%</span> : 'Import CSV and continue'}
               </button>
+              {status.loading && (
+                <div className="space-y-1" aria-live="polite">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#202938]">
+                    <div className="h-full rounded-full bg-blue-500 transition-[width] duration-200" style={{ width: `${status.progress || 0}%` }} />
+                  </div>
+                  <p className="text-[10px] text-gray-500">Processing {status.fileName || 'CSV data'} · {status.progress || 0}%</p>
+                </div>
+              )}
             </section>
           )}
 
