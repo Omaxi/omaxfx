@@ -115,7 +115,8 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1) {
   ctx.fillStyle = '#131722'; ctx.fillRect(0, 0, width, height);
   ctx.fillStyle = '#e5e7eb'; ctx.font = 'bold 22px Arial'; ctx.textAlign = 'left';
   ctx.fillText(String(trade.symbol || 'MARKET') + ' · ' + String(trade.type || '').toUpperCase() + ' · TRADE ID ' + String(trade.id), left, 34);
-  const durationSeconds = Math.max(0, Number(trade.closeTime) - Number(trade.openTime));
+  const rawDurationSeconds = Number(trade.closeTime) - Number(trade.openTime);
+  const durationSeconds = Number.isFinite(rawDurationSeconds) ? Math.max(0, rawDurationSeconds) : 0;
   const durationHours = Math.floor(durationSeconds / 3600);
   const durationMinutes = Math.floor((durationSeconds % 3600) / 60);
   const durationRemainder = Math.floor(durationSeconds % 60);
