@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore, INITIAL_BALANCE } from '../store';
 import { fmtMoney } from '../utils/format';
 import { X, TrendingUp, TrendingDown, CalendarDays, ChevronLeft, ChevronRight, BarChart3, Target, Activity, Award } from 'lucide-react';
+import TradeDayModal from './TradeDayModal';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const money = (value) => `$${fmtMoney(Math.abs(value), 0)}`;
@@ -14,12 +15,25 @@ const dayLabel = (key) => Number(key.slice(-2));
 const fmtPct = (value) => `${value.toFixed(1)}%`;
 
 export default function AnalyticsModal() {
-  const { isAnalyticsOpen, closeAnalytics, tradeHistory, balance, rules } = useStore();
+  const { isAnalyticsOpen, closeAnalytics, tradeHistory, balance, rules, rawData, currentIndex } = useStore();
+  const [selectedDate, setSelectedDate] = useState(null);
   const [monthCursor, setMonthCursor] = useState(() => {
     const latest = tradeHistory.length ? Math.max(...tradeHistory.map(t => t.closeTime || t.openTime || 0)) : Date.now() / 1000;
     const d = new Date(latest * 1000);
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
+  useEffect(() => {
+    if (!isAnalyticsOpen) return;
+    const marketTime = rawData?.[currentIndex]?.time;
+    const latestTradeTime = tradeHistory.reduce((latest, trade) => Math.max(latest, trade.closeTime || trade.openTime || 0), 0);
+    const timestamp = marketTime || latestTradeTime;
+    if (timestamp) {
+      const date = new Date(timestamp * 1000);
+      setMonthCursor(new Date(date.getFullYear(), date.getMonth(), 1));
+    }
+    setSelectedDate(null);
+  }, [isAnalyticsOpen]);
+
   if (!isAnalyticsOpen) return null;
 
   const startBalance = rules?.startingBalance ?? INITIAL_BALANCE;
@@ -95,6 +109,13 @@ export default function AnalyticsModal() {
   trades.forEach(t => { runningBalance += t.pnl; maxBalance = Math.max(maxBalance, runningBalance); });
   const returnPct = startBalance ? netPnl / startBalance * 100 : 0;
   const monthChange = (offset) => setMonthCursor(new Date(year, month + offset, 1));
+  const selectedDayTrades = selectedDate ? trades.filter(t => dateKey(t.closeTime || t.openTime) === selectedDate) : [];
+  const goToMarketMonth = () => {
+    const marketTime = rawData?.[currentIndex]?.time;
+    const latestTradeTime = trades.reduce((latest, trade) => Math.max(latest, trade.closeTime || trade.openTime || 0), 0);
+    const timestamp = marketTime || latestTradeTime;
+    if (timestamp) { const date = new Date(timestamp * 1000); setMonthCursor(new Date(date.getFullYear(), date.getMonth(), 1)); }
+  };
   const streakText = latestTrade ? (latestTrade.pnl > 0 ? 'Winning' : latestTrade.pnl < 0 ? 'Losing' : 'Flat') : 'No streak';
 
   return (
@@ -165,7 +186,7 @@ export default function AnalyticsModal() {
                 <button onClick={() => monthChange(-1)} className="p-1 rounded hover:bg-[#292d31]" aria-label="Previous month"><ChevronLeft size={13}/></button>
                 <span className="w-28 text-center text-[10px] font-bold">{monthName}</span>
                 <button onClick={() => monthChange(1)} className="p-1 rounded hover:bg-[#292d31]" aria-label="Next month"><ChevronRight size={13}/></button>
-                <button onClick={() => setMonthCursor(new Date())} className="ml-1 px-2 py-0.5 rounded border border-[#343a40] text-[9px] text-gray-300 hover:bg-[#292d31]">This month</button>
+                <button onClick={goToMarketMonth} className="ml-1 px-2 py-0.5 rounded border border-[#343a40] text-[9px] text-gray-300 hover:bg-[#292d31]">Market month</button>
               </div>
               <div className="flex items-center gap-2 text-[9px]"><span className="text-gray-400">Monthly stats:</span><b className={monthlyPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>{monthlyPnl >= 0 ? '+' : '-'}{money(monthlyPnl)}</b><span className="rounded-full bg-[#28243b] px-2 py-0.5 text-violet-300">{activeDays} days</span></div>
             </div>
@@ -176,7 +197,7 @@ export default function AnalyticsModal() {
                     {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="rounded bg-[#1c1f22] text-center text-[9px] leading-5 font-semibold text-gray-400">{d}</div>)}
                   </div>
                   <div className="grid grid-cols-7 grid-rows-6 gap-1 flex-1 min-h-0">
-                    {cells.map((d, i) => <CalendarDay key={d?.key || `empty-${i}`} day={d}/>)}
+                    {cells.map((d, i) => <CalendarDay key={d?.key || `empty-${i}`} day={d} selected={selectedDate === d?.key} onClick={() => d && setSelectedDate(d.key)}/>)}
                   </div>
                 </div>
                 <div className="min-h-0 flex flex-col pt-6 gap-1">
@@ -195,6 +216,7 @@ export default function AnalyticsModal() {
           </section>
         </div>
       </div>
+      {selectedDate && <TradeDayModal date={selectedDate} trades={selectedDayTrades} onClose={() => setSelectedDate(null)} />}
     </div>
   );
 }
@@ -214,20 +236,20 @@ function Metric({ title, value, color, detail, gauge, ring, streak }) {
 function Stat({ label, value, color = 'text-gray-200' }) {
   return <div className="flex items-center justify-between gap-1 text-[9px] border-b border-[#25282c]/70 py-0.5"><span className="text-gray-500 truncate">{label}</span><b className={`font-mono ${color}`}>{value}</b></div>;
 }
-function CalendarDay({ day }) {
+function CalendarDay({ day, selected, onClick }) {
   if (!day) return <div className="rounded bg-[#111315] border border-[#1e2225]"/>;
   const positive = day.pnl > 0, negative = day.pnl < 0;
   const active = day.trades > 0;
   const background = !active ? '#1b1d1f' : positive ? '#003a2b' : negative ? '#551b1b' : '#1d2d4b';
-  const border = !active ? '#292d31' : positive ? '#087b5a' : negative ? '#a33b3b' : '#4268ad';
-  return <div className="rounded border min-w-0 p-1 flex flex-col items-end overflow-hidden" style={{ background, borderColor: border }}>
+  const border = selected ? '#60a5fa' : !active ? '#292d31' : positive ? '#087b5a' : negative ? '#a33b3b' : '#4268ad';
+  return <button type="button" onClick={onClick} title={day.trades + ' trades · click to open day journal'} className="rounded border min-w-0 p-1 flex flex-col items-end overflow-hidden text-left hover:brightness-125 focus:outline-none focus:ring-1 focus:ring-blue-400" style={{ background, borderColor: border }}>
     <span className="text-[8px] text-gray-400">{day.day}</span>
     {active && <div className="mt-auto mb-auto w-full text-center min-w-0">
       <b className={`block text-[10px] leading-3 truncate ${positive ? 'text-emerald-300' : negative ? 'text-red-300' : 'text-blue-200'}`}>{day.pnl >= 0 ? '' : '-'}{money(day.pnl)}</b>
       <span className="block text-[8px] text-gray-300">{day.trades} {day.trades === 1 ? 'trade' : 'trades'}</span>
       <span className="block text-[7px] text-gray-500">{Math.round(day.wins / day.trades * 100)}% win</span>
     </div>}
-  </div>;
+  </button>;
 }
 function Empty({ text }) {
   return <div className="h-full grid place-items-center text-[10px] text-gray-500">{text}</div>;
