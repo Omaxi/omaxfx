@@ -87,7 +87,6 @@ const parseOptions = {
   header: true,
   skipEmptyLines: 'greedy',
   dynamicTyping: false,
-  transformHeader: cleanHeader,
 };
 
 export function parseMarketCsvText(text) {
