@@ -33,6 +33,40 @@ export async function fetchDataCatalog() {
   return Array.isArray(manifest.files) ? manifest.files : [];
 }
 
+async function readCsvResponse(response, file, onProgress) {
+  const total = Number(response.headers?.get('content-length')) || 0;
+  if (!response.body?.getReader) {
+    const blob = await response.blob();
+    onProgress({ file: file.name, percent: 35, stage: 'parsing', loaded: blob.size, total: blob.size });
+    return blob;
+  }
+
+  const reader = response.body.getReader();
+  const chunks = [];
+  let loaded = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      loaded += value.byteLength;
+      onProgress({
+        file: file.name,
+        loaded,
+        total,
+        percent: total ? Math.min(35, Math.round((loaded / total) * 35)) : 1,
+        stage: 'downloading',
+      });
+    }
+  } catch (error) {
+    try { await reader.cancel(); } catch { /* stream already closed */ }
+    throw new Error(`Download failed for ${file.name}: ${error?.message || 'network interrupted'}`);
+  }
+  if (!loaded) throw new Error(`${file.name} downloaded no data. Check the CSV file and try again.`);
+  onProgress({ file: file.name, loaded, total: total || loaded, percent: 35, stage: 'parsing' });
+  return new Blob(chunks, { type: response.headers?.get('content-type') || 'text/csv' });
+}
+
 export async function loadBundledCsvFiles(files, onProgress = () => {}) {
   if (!Array.isArray(files) || files.length === 0) throw new Error('Select at least one CSV file from the data folder.');
   const candles = [];
@@ -48,13 +82,21 @@ export async function loadBundledCsvFiles(files, onProgress = () => {}) {
 
     const response = await fetchCachedCsv(url);
     if (!response.ok) throw new Error(`Unable to read ${file.name}. Check that it exists in public/data.`);
-    const blob = await response.blob();
-    const parsed = await parseMarketCsv(blob, (progress) => {
+    const blob = await readCsvResponse(response, file, (progress) => {
       onProgress({
         completed: index,
         total: files.length,
         file: file.name,
         percent: Math.round(((index + progress.percent / 100) / files.length) * 100),
+        stage: progress.stage || 'downloading',
+      });
+    });
+    const parsed = await parseMarketCsv(blob, (progress) => {
+      onProgress({
+        completed: index,
+        total: files.length,
+        file: file.name,
+        percent: Math.round(((index + (0.35 + (progress.percent / 100) * 0.64)) / files.length) * 100),
         stage: 'parsing',
       });
     });
