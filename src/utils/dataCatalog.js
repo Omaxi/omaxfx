@@ -1,7 +1,7 @@
 import { parseMarketCsv } from './marketData';
 
 const UTC_PLUS_3_SECONDS = 3 * 60 * 60;
-const DATA_CACHE = 'omaxfx-market-data-v2';
+const DATA_CACHE = 'omaxfx-market-data-v1';
 
 async function fetchCachedCsv(url) {
   const absoluteUrl = new URL(url, document.baseURI).href;
