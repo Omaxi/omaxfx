@@ -57,6 +57,7 @@ export default function PeriodModal() {
   const [propFirmEnabled, setPropFirmEnabled] = useState(true);
   const [error, setError] = useState('');
   const [savedSessions, setSavedSessions] = useState([]);
+  const [selectedSessionId, setSelectedSessionId] = useState('');
 
   useEffect(() => {
     if (allRawData.length > 0) {
@@ -68,7 +69,9 @@ export default function PeriodModal() {
   // Check for saved session each time modal opens
   useEffect(() => {
     if (isPeriodModalOpen) {
-      setSavedSessions(readSessions());
+      const sessions = readSessions();
+      setSavedSessions(sessions);
+      setSelectedSessionId(current => sessions.some(item => item.sessionId === current) ? current : (sessions[0]?.sessionId || ''));
     }
   }, [isPeriodModalOpen, readSessions]);
 
@@ -151,7 +154,11 @@ export default function PeriodModal() {
     }
   };
 
-  const handleDeleteSaved = (sessionId) => setSavedSessions(deleteSavedSession(sessionId));
+  const handleDeleteSaved = (sessionId) => {
+    const remaining = deleteSavedSession(sessionId);
+    setSavedSessions(remaining);
+    setSelectedSessionId(remaining[0]?.sessionId || '');
+  };
 
   return (
     <div className="fixed inset-0 bg-[#0b0e11]/95 backdrop-blur flex items-center justify-center z-50 p-2 overflow-y-auto">
@@ -188,17 +195,15 @@ export default function PeriodModal() {
               <h3 className="text-[10px] font-bold uppercase text-gray-300 flex items-center gap-1.5"><HistoryIcon size={11}/> Saved sessions</h3>
               <span className="text-[9px] text-gray-500">{savedSessions.length} saved</span>
             </div>
-            {savedSessions.length ? <div className="space-y-1.5">
-              {savedSessions.map(saved => (
-                <div key={saved.sessionId} className="flex items-center gap-2 rounded bg-[#1e222d] p-2">
-                  <button onClick={() => handleLoadSaved(saved)} className="flex-1 min-w-0 text-left">
-                    <span className="block text-[11px] font-bold text-white truncate">{saved.sessionName || 'Untitled session'} · {saved.symbol || 'Unknown'}</span>
-                    <span className="block text-[9px] text-gray-400">{saved.tradeHistory?.length || 0} trades · {new Date(saved.savedAt).toLocaleString()} · {saved.balance?.toLocaleString?.() ?? '—'} balance</span>
-                  </button>
-                  <button onClick={() => handleDeleteSaved(saved.sessionId)} className="p-1.5 rounded hover:bg-red-900/40 text-gray-500 hover:text-red-400" title="Delete saved session"><Trash2 size={13}/></button>
-                  <button onClick={() => handleLoadSaved(saved)} className="px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-600 text-white text-[9px] font-bold">RESUME</button>
-                </div>
-              ))}
+            {savedSessions.length ? <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <select value={selectedSessionId} onChange={event => setSelectedSessionId(event.target.value)} className="min-w-0 flex-1 rounded border border-[#343b49] bg-[#1e222d] px-2 py-2 text-[11px] text-white">
+                  {savedSessions.map(saved => <option key={saved.sessionId} value={saved.sessionId}>{saved.sessionName || 'Untitled session'} · {saved.symbol || 'Unknown'}</option>)}
+                </select>
+                <button disabled={!selectedSessionId} onClick={() => { const saved = savedSessions.find(item => item.sessionId === selectedSessionId); if (saved) handleLoadSaved(saved); }} className="rounded bg-emerald-700 px-3 py-2 text-[10px] font-bold text-white hover:bg-emerald-600 disabled:opacity-40">RESUME</button>
+                <button disabled={!selectedSessionId} onClick={() => handleDeleteSaved(selectedSessionId)} className="rounded p-2 text-gray-500 hover:bg-red-900/40 hover:text-red-400 disabled:opacity-40" title="Delete selected session"><Trash2 size={13}/></button>
+              </div>
+              {(() => { const saved = savedSessions.find(item => item.sessionId === selectedSessionId); return saved ? <p className="text-[9px] text-gray-400">{saved.tradeHistory?.length || 0} trades · {new Date(saved.savedAt).toLocaleString()} · {saved.balance?.toLocaleString?.() ?? '—'} balance</p> : null; })()}
             </div> : <p className="text-[9px] text-gray-500">Your sessions will appear here automatically as you trade.</p>}
           </section>
           
