@@ -42,6 +42,7 @@ function parseTimestamp(row) {
   const t = String(clock).trim();
   let normalizedDate = d;
   if (/^\d{8}$/.test(d)) normalizedDate = `${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}`;
+  else if (/^\d{4}[./-]\d{1,2}[./-]\d{1,2}$/.test(d)) normalizedDate = d.replace(/[./]/g, '-');
   else {
     const european = d.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
     if (european) normalizedDate = `${european[3]}-${european[2].padStart(2,'0')}-${european[1].padStart(2,'0')}`;
