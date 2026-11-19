@@ -119,6 +119,18 @@ export default function OrderModal() {
     if (!Number.isFinite(riskPercent) || riskPercent <= 0) {
       errors.push('Risk percentage must be greater than 0');
     }
+    if (orderType === 'limit' && orderSide === 'buy' && entryPrice >= currentPrice) {
+      errors.push('BUY LIMIT entry must be below the current market price');
+    }
+    if (orderType === 'limit' && orderSide === 'sell' && entryPrice <= currentPrice) {
+      errors.push('SELL LIMIT entry must be above the current market price');
+    }
+    if (orderType === 'stop' && orderSide === 'buy' && entryPrice <= currentPrice) {
+      errors.push('BUY STOP entry must be above the current market price');
+    }
+    if (orderType === 'stop' && orderSide === 'sell' && entryPrice >= currentPrice) {
+      errors.push('SELL STOP entry must be below the current market price');
+    }
 
     if (orderSide === 'buy') {
       if (slPrice >= effectiveEntry) errors.push('BUY: Stop Loss must be BELOW entry');
