@@ -820,8 +820,13 @@ export const useStore = create((set, get) => ({
         const fillPrice = getPendingOrderFillPrice(order, candle);
         if (fillPrice != null) {
           const riskDistance = Math.abs(fillPrice - Number(order.sl));
-          const contractSize = getPnlMultiplier(order.symbol || state.symbol, state.contractSpecs);
-          const recalculatedLots = Number(order.riskAmount) > 0 && riskDistance > 0
+          const contractSize = Number(getPnlMultiplier(order.symbol || state.symbol, state.contractSpecs));
+          if (!Number.isFinite(riskDistance) || riskDistance <= 0 ||
+              !Number.isFinite(contractSize) || contractSize <= 0) {
+            stillPending.push(order);
+            continue;
+          }
+          const recalculatedLots = Number(order.riskAmount) > 0
             ? Number((Number(order.riskAmount) / (riskDistance * contractSize)).toFixed(4))
             : Number(order.size);
           // Never create a zero-sized position after a large gap through a stop.
