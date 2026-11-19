@@ -11,6 +11,7 @@ export default function DataImportModal() {
   const [tickSize, setTickSize] = useState('0.01');
   const [precision, setPrecision] = useState('2');
   const [quoteCurrency, setQuoteCurrency] = useState('USD');
+  const [quoteToAccountRate, setQuoteToAccountRate] = useState('1');
   const [status, setStatus] = useState({ loading: false, error: '', result: null });
 
   const submit = async () => {
@@ -25,7 +26,7 @@ export default function DataImportModal() {
       const code = symbol.trim().toUpperCase().replace(/[^A-Z0-9._-]/g, '').slice(0, 20);
       useStore.getState().setCustomSymbolData(code, parsed.candles, {
         contractSize: Number(contractSize), tickSize: Number(tickSize),
-        precision: Number(precision), quoteCurrency,
+        precision: Number(precision), quoteCurrency, quoteToAccountRate: Number(quoteToAccountRate),
       });
       setStatus({ loading: false, error: '', result: { ...parsed, symbol: code } });
       setOpen(false);
@@ -59,9 +60,10 @@ export default function DataImportModal() {
             <label className="text-xs text-gray-400">Quote currency<input value={quoteCurrency} onChange={e=>setQuoteCurrency(e.target.value.toUpperCase())} placeholder="USD" className="mt-1 w-full p-2 rounded bg-[#0b0e11] border border-[#2a2e39] text-white text-sm"/></label>
             <label className="text-xs text-gray-400">Contract size (units / lot)<input type="number" min="0.000001" step="any" value={contractSize} onChange={e=>setContractSize(e.target.value)} className="mt-1 w-full p-2 rounded bg-[#0b0e11] border border-[#2a2e39] text-white text-sm"/></label>
             <label className="text-xs text-gray-400">Tick size<input type="number" min="0.00000001" step="any" value={tickSize} onChange={e=>setTickSize(e.target.value)} className="mt-1 w-full p-2 rounded bg-[#0b0e11] border border-[#2a2e39] text-white text-sm"/></label>
-            <label className="text-xs text-gray-400 col-span-2">Price decimal places<input type="number" min="0" max="10" value={precision} onChange={e=>setPrecision(e.target.value)} className="mt-1 w-full p-2 rounded bg-[#0b0e11] border border-[#2a2e39] text-white text-sm"/></label>
+            <label className="text-xs text-gray-400">Price decimal places<input type="number" min="0" max="10" value={precision} onChange={e=>setPrecision(e.target.value)} className="mt-1 w-full p-2 rounded bg-[#0b0e11] border border-[#2a2e39] text-white text-sm"/></label>
+            <label className="text-xs text-gray-400">Quote → account FX rate<input type="number" min="0.000001" step="any" value={quoteToAccountRate} onChange={e=>setQuoteToAccountRate(e.target.value)} className="mt-1 w-full p-2 rounded bg-[#0b0e11] border border-[#2a2e39] text-white text-sm"/></label>
           </div>
-          <p className="text-[10px] leading-relaxed text-gray-500">Contract size, tick size and quote currency are broker/instrument-specific. Confirm these values against your data provider; the app cannot safely infer them from OHLC prices alone.</p>
+          <p className="text-[10px] leading-relaxed text-gray-500">Contract size, tick size and quote-to-account FX rate are broker/instrument-specific. Confirm these values against your data provider; OHLC prices alone cannot safely infer them.</p>
           {status.error && <div className="flex gap-2 p-3 rounded-lg bg-red-950/50 border border-red-800 text-red-300 text-xs"><AlertTriangle size={15}/>{status.error}</div>}
           {status.result && <div className="flex gap-2 p-3 rounded-lg bg-green-950/40 border border-green-800 text-green-300 text-xs"><CheckCircle2 size={15}/>{status.result.symbol}: {status.result.candles.length.toLocaleString()} candles imported. {status.result.invalidRows} invalid and {status.result.duplicateRows} duplicate rows skipped.</div>}
         </div>
