@@ -12,7 +12,7 @@ import GameOverModal from './components/GameOverModal';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import LoadingScreen from './components/LoadingScreen';
 import DataImportModal from './components/DataImportModal';
-import { useStore, INITIAL_BALANCE } from './store';
+import { useStore } from './store';
 import { aggregateData } from './utils/timeframe';
 import { useEffect, useRef } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
