@@ -34,3 +34,22 @@ export const aggregateData = (data, timeframeMinutes) => {
   if (current) aggregated.push(current);
   return aggregated;
 };
+
+
+// Return the most recent fully completed candle at the selected timeframe.
+// For aggregated bars, currentIndex is the next raw candle at the replay boundary.
+export const getExecutionCandle = (rawData, displayData, currentIndex, timeframeMinutes) => {
+  const cursor = rawData?.[currentIndex];
+  if (!cursor) return null;
+  const minutes = Number(timeframeMinutes) || 1;
+  if (minutes <= 1) return cursor;
+  const cutoff = Number(cursor.time) + 60;
+  const bars = Array.isArray(displayData) ? displayData : aggregateData(rawData, minutes);
+  for (let i = bars.length - 1; i >= 0; i--) {
+    const bar = bars[i];
+    if (Number(bar.time) + minutes * 60 <= cutoff) {
+      return { ...bar, time: Number(bar.time) + minutes * 60 - 60 };
+    }
+  }
+  return null;
+};

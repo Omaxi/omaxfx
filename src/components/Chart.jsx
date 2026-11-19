@@ -1121,7 +1121,7 @@ export default function Chart() {
 
   const visibleData = useMemo(() => {
     if (!rawData[currentIndex] || displayData.length === 0) return [];
-    const currentRawTime = rawData[currentIndex].time;
+    const currentRawTime = rawData[currentIndex].time + (timeframe > 1 ? 60 : 0);
     let filtered = displayData.filter(c => c.time <= currentRawTime);
 
     if (timeframe > 1 && filtered.length > 0) {

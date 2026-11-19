@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { aggregateData } from './utils/timeframe.js';
+import { aggregateData, getExecutionCandle } from './utils/timeframe.js';
 import { getPnlMultiplier } from './utils/instrument.js';
 import { getPendingOrderFillPrice, getStopLossFillPrice, getTakeProfitFillPrice } from './utils/orderExecution.js';
 export { getContractSize, getPnlMultiplier } from './utils/instrument.js';
@@ -571,10 +571,21 @@ export const useStore = create((set, get) => ({
   },
 
   setTimeframe: (newTimeframe) => set((state) => {
-    if (newTimeframe === state.timeframe) return state;
+    const nextTimeframe = Number(newTimeframe);
+    if (!Number.isFinite(nextTimeframe) || nextTimeframe <= 0 || nextTimeframe === state.timeframe) return state;
+    // At 1m, currentIndex is the last completed raw candle. At higher timeframes,
+    // it is the next raw candle at the replay boundary. Preserve that boundary
+    // when switching views instead of exposing an unfinished lower-timeframe bar.
+    let currentIndex = state.currentIndex;
+    if (state.timeframe === 1 && nextTimeframe > 1) {
+      currentIndex = Math.min(Math.max(0, state.rawData.length - 1), currentIndex + 1);
+    } else if (state.timeframe > 1 && nextTimeframe === 1) {
+      currentIndex = Math.max(0, currentIndex - 1);
+    }
     return {
-      timeframe: newTimeframe,
-      displayData: aggregateData(state.rawData, newTimeframe),
+      timeframe: nextTimeframe,
+      currentIndex,
+      displayData: aggregateData(state.rawData, nextTimeframe),
       drawings: state.drawings,
     };
   }),
@@ -754,8 +765,15 @@ export const useStore = create((set, get) => ({
     if (state.currentIndex >= state.rawData.length - 1) return state;
 
     const jumpSize = state.timeframe;
-    const nextIndex = Math.min(state.currentIndex + jumpSize, state.rawData.length - 1);
+    const nextBoundary = jumpSize > 1
+      ? (Math.floor(state.currentIndex / jumpSize) + 1) * jumpSize
+      : state.currentIndex + 1;
+    const nextIndex = Math.min(nextBoundary, state.rawData.length - 1);
     const advanced = nextIndex > state.currentIndex;
+    const firstProcessedIndex = jumpSize > 1 ? state.currentIndex : nextIndex;
+    const lastProcessedIndex = jumpSize > 1 && nextBoundary <= state.rawData.length - 1
+      ? nextBoundary - 1
+      : nextIndex;
 
     let newBalance = state.balance;
     let newPositions = [...state.positions];
@@ -766,7 +784,7 @@ export const useStore = create((set, get) => ({
     let tpHit = false, slHit = false, pendingTriggered = false;
     let gameOverReason = null, gameOverMessage = '';
 
-    for (let i = state.currentIndex + 1; i <= nextIndex; i++) {
+    for (let i = firstProcessedIndex; i <= lastProcessedIndex; i++) {
       const candle = state.rawData[i];
       if (!candle) break;
       const dayKey = getDayKey(candle.time);
@@ -818,7 +836,9 @@ export const useStore = create((set, get) => ({
         if (violation) { gameOverReason = violation.reason; gameOverMessage = violation.message; }
       }
       const stillPending = [];
+      let pendingSlotTaken = newPositions.length > 0;
       for (const order of newPendingOrders) {
+        if (pendingSlotTaken) continue;
         const fillPrice = getPendingOrderFillPrice(order, candle);
         if (fillPrice != null) {
           const riskDistance = Math.abs(fillPrice - Number(order.sl));
@@ -836,6 +856,8 @@ export const useStore = create((set, get) => ({
             stillPending.push(order);
             continue;
           }
+          // A single active trade is enforced even for legacy sessions that
+          // may contain more than one pending order.
           const filledPosition = {
             ...order,
             entryPrice: fillPrice,
@@ -872,6 +894,7 @@ export const useStore = create((set, get) => ({
             newPositions.push(filledPosition);
           }
           pendingTriggered = true;
+          pendingSlotTaken = true;
         } else stillPending.push(order);
       }
       newPendingOrders = stillPending;
@@ -919,8 +942,14 @@ export const useStore = create((set, get) => ({
     const candle = state.rawData?.[state.currentIndex];
     if (state.gameState.isOver || !candle || !['buy', 'sell'].includes(side) ||
         !['market', 'limit', 'stop'].includes(type)) return state;
+    // Only one live position OR one pending order is allowed at a time.
+    if (state.positions.length > 0 || state.pendingOrders.length > 0) return state;
+    const executionCandle = getExecutionCandle(
+      state.rawData, state.displayData, state.currentIndex, state.timeframe
+    );
+    if (!executionCandle) return state;
 
-    const marketPrice = Number(candle.close);
+    const marketPrice = Number(executionCandle.close);
     const actualEntry = type === 'market' ? marketPrice : Number(entryPrice);
     const stop = Number(slPrice);
     const riskPct = Number(riskPercent);
@@ -952,7 +981,7 @@ export const useStore = create((set, get) => ({
       size: roundedLots,
       riskPercent: riskPct, riskAmount: risk,
       isPending: type !== 'market',
-      openTime: candle.time,
+      openTime: executionCandle.time,
       symbol: state.symbol,
     };
     if (state.soundEnabled) playOrderPlaced();

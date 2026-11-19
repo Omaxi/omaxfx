@@ -144,27 +144,6 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1) {
     ctx.fillRect(cx - candleW / 2, Math.min(yo, yc), candleW, Math.max(1, Math.abs(yc - yo)));
   });
 
-  const drawLevel = (price, color, label, dash = []) => {
-    if (!Number.isFinite(price)) return;
-    const yy = y(price);
-    ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.setLineDash(dash);
-    ctx.beginPath(); ctx.moveTo(left, yy); ctx.lineTo(width - right, yy); ctx.stroke();
-    ctx.setLineDash([]); ctx.font = 'bold 12px Arial'; ctx.textAlign = 'left';
-    ctx.fillText(label + '  ' + price, width - right + 8, yy - 5);
-    ctx.restore();
-  };
-  drawLevel(entry, '#fbbf24', 'ENTRY', [5, 4]);
-  drawLevel(exit, '#60a5fa', 'EXIT', [3, 3]);
-  drawLevel(sl, '#ef5350', 'SL');
-  drawLevel(tp, '#26a69a', 'TP');
-
-  const markX = x(entryIndex);
-  ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(markX, top); ctx.lineTo(markX, top + plotH); ctx.stroke();
-  const exitX = x(exitIndex);
-  ctx.strokeStyle = '#60a5fa';
-  ctx.beginPath(); ctx.moveTo(exitX, top); ctx.lineTo(exitX, top + plotH); ctx.stroke();
-
   ctx.fillStyle = '#9aa4b2'; ctx.font = '11px Arial'; ctx.textAlign = 'center';
   const labelCount = Math.min(7, data.length);
   for (let i = 0; i < labelCount; i++) {

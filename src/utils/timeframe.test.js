@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { aggregateData } from './timeframe.js';
+import { aggregateData, getExecutionCandle } from './timeframe.js';
 import { parseMarketCsvText } from './marketData.js';
 import { getPnlMultiplier } from './instrument.js';
 
@@ -90,3 +90,15 @@ test('recognizes explicit UTC+3 ISO timestamps as absolute instants', () => {
   assert.equal(result.timestampsAreUtc, true);
   assert.equal(result.candles[0].time, 1704056400);
 });
+
+
+test('market execution uses the close of the last completed selected-timeframe candle', () => {
+  const raw = Array.from({ length: 31 }, (_, i) => candle(i * 60, i, i + 2, i - 1, i + 1));
+  const aggregated = aggregateData(raw, 15);
+  const execution = getExecutionCandle(raw, aggregated, 15, 15);
+  assert.equal(execution.time, 14 * 60);
+  assert.equal(execution.close, 15);
+  // A lower-timeframe cursor still resolves to its latest closed one-minute bar.
+  assert.equal(getExecutionCandle(raw, raw, 14, 1).close, 15);
+});
+

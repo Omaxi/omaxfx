@@ -174,3 +174,64 @@ test('open buy positions receive the opening price when market gaps above take p
     assert.equal(state.tradeHistory[0].pnl, 600);
   } finally { restore(); }
 });
+
+
+test('rejects a second order while a position or pending order already exists', () => {
+  const restore = configureStore({
+    positions: [{ id: 'already-open', type: 'buy', entryPrice: 100, sl: 99, tp: 102, size: 0.01 }],
+  });
+  try {
+    useStore.getState().placeOrder({
+      side: 'sell', type: 'market', riskPercent: 1,
+      entryPrice: 100, slPrice: 101, tpPrice: 98, riskAmount: 100,
+    });
+    assert.equal(useStore.getState().positions.length, 1);
+    assert.equal(useStore.getState().positions[0].id, 'already-open');
+    assert.equal(useStore.getState().pendingOrders.length, 0);
+  } finally { restore(); }
+});
+
+test('rejects a new position while a pending order already exists', () => {
+  const restore = configureStore({
+    pendingOrders: [{ id: 'pending-one', type: 'buy', orderType: 'limit', entryPrice: 99, sl: 98, tp: 101 }],
+  });
+  try {
+    useStore.getState().placeOrder({
+      side: 'sell', type: 'market', riskPercent: 1,
+      entryPrice: 100, slPrice: 101, tpPrice: 98, riskAmount: 100,
+    });
+    assert.equal(useStore.getState().pendingOrders.length, 1);
+    assert.equal(useStore.getState().positions.length, 0);
+  } finally { restore(); }
+});
+
+test('market execution on 15m uses the completed 15m close, not the next 1m candle', () => {
+  const rawData = Array.from({ length: 31 }, (_, i) => ({
+    time: i * 60, open: 1 + i / 10000, high: 1.01 + i / 10000,
+    low: 0.99 + i / 10000, close: 1 + i / 10000,
+  }));
+  const restore = configureStore({
+    rawData,
+    displayData: [],
+    currentIndex: 15,
+    timeframe: 15,
+    contractSpecs: { EURUSD: { contractSize: 100000, quoteToAccountRate: 1 } },
+  });
+  try {
+    useStore.setState({ displayData: rawData.reduce((acc, candle, i) => {
+      const bucket = Math.floor(candle.time / 900) * 900;
+      const last = acc[acc.length - 1];
+      if (!last || last.time !== bucket) acc.push({ time: bucket, open: candle.open, high: candle.high, low: candle.low, close: candle.close, volume: 0 });
+      else { last.high = Math.max(last.high, candle.high); last.low = Math.min(last.low, candle.low); last.close = candle.close; }
+      return acc;
+    }, []) });
+    useStore.getState().placeOrder({
+      side: 'buy', type: 'market', riskPercent: 1,
+      entryPrice: 999, slPrice: 0.99, tpPrice: 1.1, riskAmount: 100,
+    });
+    const position = useStore.getState().positions[0];
+    assert.ok(position);
+    assert.equal(position.entryPrice, rawData[14].close);
+    assert.equal(position.openTime, rawData[14].time);
+  } finally { restore(); }
+});

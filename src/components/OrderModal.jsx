@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useStore } from '../store';
 import { fmtMoney } from '../utils/format';
+import { getExecutionCandle } from '../utils/timeframe.js';
 import { X, AlertTriangle } from 'lucide-react';
 
 // =========================================================================
@@ -43,7 +44,7 @@ export default function OrderModal() {
   const [entryPrice, setEntryPrice] = useState(0);
   const [breakevenEnabled, setBreakevenEnabled] = useState(false);
 
-  const currentPrice = rawData[currentIndex]?.close || 0;
+  const currentPrice = getExecutionCandle(rawData, useStore.getState().displayData, currentIndex, useStore.getState().timeframe)?.close || 0;
   const riskAmount = balance * (riskPercent / 100);
   const maxRisk = rules?.maxRiskPerTrade ?? 3;
   const propFirmEnabled = rules?.propFirmEnabled !== false;
