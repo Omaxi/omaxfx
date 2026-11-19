@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { aggregateData, getExecutionCandle } from './utils/timeframe.js';
-import { getPnlMultiplier, calculateIntrabarUnrealizedPnl, calculateUnrealizedPnlAtPrice } from './utils/instrument.js';
+import { getPnlMultiplier, calculateIntrabarUnrealizedPnl, calculateUnrealizedPnlAtPrice, calculateFavorableIntrabarPnl } from './utils/instrument.js';
 import { getPendingOrderFillPrice, getStopLossFillPrice, getTakeProfitFillPrice } from './utils/orderExecution.js';
 export { getContractSize, getPnlMultiplier } from './utils/instrument.js';
 import { 
@@ -847,7 +847,8 @@ export const useStore = create((set, get) => ({
       }
       newPositions = stillOpen;
       const equity = newBalance + calculateIntrabarUnrealizedPnl(newPositions, candle, state.symbol, state.contractSpecs);
-      newPeak = Math.max(newPeak, equity);
+      const favorableEquity = newBalance + calculateFavorableIntrabarPnl(newPositions, candle, state.symbol, state.contractSpecs);
+      newPeak = Math.max(newPeak, favorableEquity);
       lastEquity = equity;
       if (!gameOverReason) {
         const violation = checkRuleViolations(state, equity, newPeak, newDailyLoss);
