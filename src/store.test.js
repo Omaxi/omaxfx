@@ -66,7 +66,7 @@ test('stepForward fills a buy limit at the requested price and removes it from p
     gameStarted: true,
     rawData: [
       { time: 60, open: 100, high: 101, low: 99, close: 100 },
-      { time: 120, open: 100, high: 101, low: 98, close: 100 },
+      { time: 120, open: 100, high: 101, low: 98.5, close: 100 },
       { time: 180, open: 100, high: 101, low: 99, close: 100 },
     ],
     pendingOrders: [{
@@ -89,7 +89,7 @@ test('stepForward fills a buy stop only on an upward trigger', () => {
     gameStarted: true,
     rawData: [
       { time: 60, open: 100, high: 100.5, low: 99.5, close: 100 },
-      { time: 120, open: 100, high: 102, low: 99, close: 101 },
+      { time: 120, open: 100, high: 102, low: 100.5, close: 101 },
       { time: 180, open: 101, high: 102, low: 100, close: 101 },
     ],
     pendingOrders: [{
@@ -103,5 +103,30 @@ test('stepForward fills a buy stop only on an upward trigger', () => {
     assert.equal(state.pendingOrders.length, 0);
     assert.equal(state.positions.length, 1);
     assert.equal(state.positions[0].entryPrice, 101);
+  } finally { restore(); }
+});
+
+test('resolves same-bar pending entry exits with stop-loss priority', () => {
+  const restore = configureStore({
+    gameStarted: true,
+    rawData: [
+      { time: 60, open: 100, high: 101, low: 99, close: 100 },
+      { time: 120, open: 100, high: 101, low: 97, close: 99 },
+      { time: 180, open: 99, high: 100, low: 98.5, close: 99 },
+    ],
+    pendingOrders: [{
+      id: 'limit-same-bar', type: 'buy', orderType: 'limit', entryPrice: 99,
+      sl: 98, tp: 100, size: 0.001, riskAmount: 100, symbol: 'EURUSD',
+    }],
+  });
+  try {
+    useStore.getState().stepForward();
+    const state = useStore.getState();
+    assert.equal(state.pendingOrders.length, 0);
+    assert.equal(state.positions.length, 0);
+    assert.equal(state.tradeHistory.length, 1);
+    assert.equal(state.tradeHistory[0].reason, 'SL');
+    assert.equal(state.tradeHistory[0].exitPrice, 98);
+    assert.equal(state.tradeHistory[0].pnl, -100);
   } finally { restore(); }
 });
