@@ -800,7 +800,7 @@ export const useStore = create((set, get) => ({
         // was hit, arm breakeven for the next candle after price reaches +1R.
         let updatedPosition = pos;
         if (!closed && pos.breakevenEnabled && !pos.breakevenDone && pos.sl != null) {
-          const initialRisk = Math.abs(pos.entryPrice - pos.sl);
+          const initialRisk = pos.initialRiskDistance ?? Math.abs(pos.entryPrice - pos.sl);
           const oneRPrice = isBuy ? pos.entryPrice + initialRisk : pos.entryPrice - initialRisk;
           const reachedOneR = isBuy ? candle.high >= oneRPrice : candle.low <= oneRPrice;
           if (initialRisk > 0 && reachedOneR) {
@@ -880,6 +880,7 @@ export const useStore = create((set, get) => ({
       sl: slPrice, tp: tpPrice,
       breakevenEnabled: !!breakevenEnabled,
       breakevenDone: false,
+      initialRiskDistance: Math.abs((type === 'market' ? currentPrice : entryPrice) - slPrice),
       size: Number(lots.toFixed(4)),
       riskPercent, riskAmount,
       isPending: type !== 'market',
