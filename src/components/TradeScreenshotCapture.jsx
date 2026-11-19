@@ -1,38 +1,55 @@
 import { useEffect } from 'react';
 import { useStore } from '../store';
-import { renderTradeScreenshot, saveTradeScreenshot } from '../utils/tradeScreenshots';
+import {
+  getTradeScreenshot,
+  getTradeScreenshotKey,
+  renderTradeScreenshot,
+  saveTradeScreenshot,
+} from '../utils/tradeScreenshots';
 
-// Each closed trade gets its own deterministic image rendered from the
-// historical candles spanning that trade. Never reuse the live chart canvas:
-// multiple trades can close in one store update while the chart is already
-// showing a later candle, which previously assigned one identical image to all.
+// Every journal image is rendered from the trade's own historical candle window.
+// The v2 database is session-scoped, so legacy shared screenshots cannot leak
+// into a different trade or a different saved session.
 export default function TradeScreenshotCapture() {
   useEffect(() => {
-    const captureClosedTrades = (state, previous) => {
-      if (state.tradeHistory === previous.tradeHistory) return;
-      const previousIds = new Set((previous.tradeHistory || []).map(trade => String(trade.id)));
-      const closed = (state.tradeHistory || []).filter(trade => !previousIds.has(String(trade.id)));
-      if (!closed.length) return;
+    const inFlight = new Set();
 
+    const captureMissingScreenshots = async (state) => {
+      const trades = state.tradeHistory || [];
       const candles = state.rawData || [];
       const timeframe = state.timeframe || 1;
-      closed.forEach(trade => {
-        const image = renderTradeScreenshot(trade, candles, timeframe);
-        if (!image) {
-          console.warn('[TradeScreenshotCapture] Could not render screenshot for trade', trade.id);
-          return;
-        }
-        saveTradeScreenshot(trade.id, image).catch(error => {
+      const sessionId = state.sessionId || 'unsaved-session';
+
+      for (const trade of trades) {
+        if (trade?.id == null) continue;
+        const key = getTradeScreenshotKey(trade.id, sessionId);
+        if (!key || inFlight.has(key)) continue;
+        inFlight.add(key);
+        try {
+          const existing = await getTradeScreenshot(trade.id, sessionId);
+          if (existing) continue;
+          const image = renderTradeScreenshot(trade, candles, timeframe);
+          if (image) await saveTradeScreenshot(trade.id, image, sessionId);
+          else console.warn('[TradeScreenshotCapture] Historical chart unavailable for trade', trade.id);
+        } catch (error) {
           console.warn('[TradeScreenshotCapture] Could not save screenshot for trade', trade.id, error);
-        });
-      });
+        } finally {
+          inFlight.delete(key);
+        }
+      }
     };
 
-    // Zustand subscribe receives both snapshots synchronously. This also
-    // regenerates old screenshots when a saved session is restored, replacing
-    // legacy duplicate images with trade-specific captures.
-    const unsubscribe = useStore.subscribe(captureClosedTrades);
+    // Capture already-closed trades on restore as well as newly closed trades.
+    captureMissingScreenshots(useStore.getState());
+    const unsubscribe = useStore.subscribe((state, previous) => {
+      if (
+        state.tradeHistory !== previous.tradeHistory ||
+        state.sessionId !== previous.sessionId ||
+        state.rawData !== previous.rawData
+      ) captureMissingScreenshots(state);
+    });
     return unsubscribe;
   }, []);
+
   return null;
 }
