@@ -11,11 +11,12 @@ import PeriodModal from './components/PeriodModal';
 import GameOverModal from './components/GameOverModal';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import LoadingScreen from './components/LoadingScreen';
+import DataImportModal from './components/DataImportModal';
 import { useStore, INITIAL_BALANCE } from './store';
 import { aggregateData } from './utils/timeframe';
 import { useEffect, useRef } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
-import { fmtMoney, fmtMB } from './utils/format';
+import { fmtMoney } from './utils/format';
 import { getContractSize } from './store';
 import { Clock, RotateCcw, Info, Sparkles, AlertTriangle } from 'lucide-react';
 
@@ -24,79 +25,6 @@ const formatTime = (sec) => {
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-};
-
-// Canonical timezone for the whole app (in minutes). All CSVs are shifted
-// to this offset at load time.
-const CANONICAL_OFFSET = -300; // UTC-5
-
-// =========================================================================
-// SYMBOL CONFIGURATION
-// =========================================================================
-const SYMBOL_CONFIG = [
-  {
-    code: 'XAUUSD',
-    files: [
-      'xauusd_2020.csv',
-      'xauusd_2021.csv',
-      'xauusd_2022.csv',
-      'xauusd_2023.csv',
-      'xauusd_2024.csv',
-      'xauusd_2025.csv',
-    ],
-    sourceOffset: -300, // UTC-5
-    available: true,
-  },
-  {
-    code: 'EURUSD',
-    files: [
-      'eurusd_2020.csv',
-      'eurusd_2021.csv',
-      'eurusd_2022.csv',
-      'eurusd_2023.csv',
-      'eurusd_2024.csv',
-      'eurusd_2025.csv',
-    ],
-    sourceOffset: -300, // UTC-5
-    available: true,
-  },
-  { code: 'CHFJPY', files: ['chfjpy.csv'], sourceOffset: 0, available: false },
-  { code: 'GBPAUD', files: ['gbpaud.csv'], sourceOffset: 0, available: false },
-];
-
-// =========================================================================
-// FORMAT-AGNOSTIC DATE/TIME PARSER
-// =========================================================================
-const parseDateTimeToUnix = (dateStr, timeStr) => {
-  if (!dateStr || timeStr == null) return null;
-
-  const dateClean = String(dateStr).replace(/\D/g, '');
-  if (dateClean.length !== 8) return null;
-  const year  = dateClean.substring(0, 4);
-  const month = dateClean.substring(4, 6);
-  const day   = dateClean.substring(6, 8);
-
-  const timeClean = String(timeStr).trim();
-  const parts = timeClean.split(':');
-  if (parts.length < 2) return null;
-  const hour   = String(parts[0]).padStart(2, '0');
-  const minute = String(parts[1]).padStart(2, '0');
-  const second = parts[2] ? String(parts[2].split('.')[0]).padStart(2, '0') : '00';
-
-  const h  = parseInt(hour, 10);
-  const m  = parseInt(minute, 10);
-  const s  = parseInt(second, 10);
-  const mo = parseInt(month, 10);
-  const d  = parseInt(day, 10);
-  if (
-    h < 0 || h > 23 || m < 0 || m > 59 || s < 0 || s > 59 ||
-    mo < 1 || mo > 12 || d < 1 || d > 31
-  ) return null;
-
-  const isoString = `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
-  const ms = new Date(isoString).getTime();
-  if (isNaN(ms)) return null;
-  return ms / 1000;
 };
 
 function App() {
@@ -344,6 +272,7 @@ function App() {
       </main>
       
       <ControlPanel />
+      <DataImportModal />
 
       <OrderModal />
       <HistoryModal />
