@@ -26,7 +26,7 @@ const SYMBOL_CONTRACT = {
 };
 const DEFAULT_CONTRACT = 100;
 
-const getContractSize = (symbol) => SYMBOL_CONTRACT[symbol] ?? DEFAULT_CONTRACT;
+export const getContractSize = (symbol, specs = {}) => specs?.[symbol]?.contractSize ?? SYMBOL_CONTRACT[symbol] ?? DEFAULT_CONTRACT;
 
 const getDayKey = (unixSeconds) => {
   const d = new Date(unixSeconds * 1000);
@@ -85,6 +85,7 @@ export const useStore = create((set, get) => ({
   // MULTI-SYMBOL DATA CACHE
   // ============================================================
   allRawDataBySymbol: {},
+  contractSpecs: {},
   allRawData: [],
   rawData: [],        
   displayData: [],    
@@ -110,6 +111,31 @@ export const useStore = create((set, get) => ({
     return {
       allRawDataBySymbol: { ...state.allRawDataBySymbol, [symbol]: data },
       allRawData: data,
+    };
+  }),
+
+  setCustomSymbolData: (symbol, data, spec = {}) => set((state) => {
+    const code = String(symbol || '').trim().toUpperCase().replace(/[^A-Z0-9._-]/g, '').slice(0, 20);
+    if (!code || !Array.isArray(data) || data.length === 0) return state;
+    const nextCache = { ...state.allRawDataBySymbol, [code]: data };
+    const contractSpecs = {
+      ...state.contractSpecs,
+      [code]: {
+        contractSize: Number(spec.contractSize) > 0 ? Number(spec.contractSize) : 1,
+        tickSize: Number(spec.tickSize) > 0 ? Number(spec.tickSize) : 0.01,
+        precision: Number.isInteger(Number(spec.precision)) ? Math.max(0, Math.min(10, Number(spec.precision))) : 2,
+        quoteCurrency: String(spec.quoteCurrency || 'USD').toUpperCase(),
+      },
+    };
+    return {
+      symbol: code, contractSpecs, allRawDataBySymbol: nextCache, allRawData: data,
+      rawData: data, displayData: aggregateData(data, state.timeframe), currentIndex: 0,
+      isPlaying: false, gameStarted: false, isPeriodModalOpen: true,
+      gamePeriod: null, positions: [], pendingOrders: [], tradeHistory: [],
+      drawings: [], drawingsPast: [], drawingsFuture: [], pencilStrokes: [],
+      balance: INITIAL_BALANCE, peakBalance: INITIAL_BALANCE,
+      gameState: { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
+      symbolWarning: null, recenterToken: state.recenterToken + 1,
     };
   }),
 
@@ -651,7 +677,7 @@ export const useStore = create((set, get) => ({
     const exitPrice = currentCandle.close;
     const isBuy = pos.type === 'buy';
     const priceDiff = isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice;
-    const contractSize = getContractSize(pos.symbol || state.symbol);
+    const contractSize = getContractSize(pos.symbol || state.symbol, state.contractSpecs);
     const pnl = priceDiff * contractSize * pos.size;
     if (state.soundEnabled) playPositionClosed();
     const newBalance = state.balance + pnl;
@@ -824,7 +850,7 @@ export const useStore = create((set, get) => ({
     if (state.gameState.isOver) return state;
     if (riskPercent > state.rules.maxRiskPerTrade + EPSILON) return state;
     const currentPrice = state.rawData[state.currentIndex].close;
-    const contractSize = getContractSize(state.symbol);
+    const contractSize = getContractSize(state.symbol, state.contractSpecs);
     const lots = riskAmount / (Math.abs(entryPrice - slPrice) * contractSize);
     const openTime = state.rawData[state.currentIndex].time;
     const newOrder = {
