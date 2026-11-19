@@ -272,11 +272,6 @@ export default function Chart() {
     if (selectedItem.type === 'drawing') {
       const d = useStore.getState().drawings.find(x => x.id === selectedItem.id);
       if (!d) { setSelectedItem(null); lockChart(false); return; }
-      const currentTf = useStore.getState().timeframe;
-      if (d.timeframe != null && currentTf > d.timeframe) {
-        setSelectedItem(null);
-        lockChart(false);
-      }
     } else if (selectedItem.type === 'trade') {
       const state = useStore.getState();
       let exists = false;
@@ -287,7 +282,7 @@ export default function Chart() {
       }
       if (!exists) { setSelectedItem(null); lockChart(false); }
     }
-  }, [positions, pendingOrders, selectedItem, timeframe]);
+  }, [positions, pendingOrders, selectedItem]);
 
   const lockChart = useCallback((locked) => {
     if (!chartRef.current) return;
