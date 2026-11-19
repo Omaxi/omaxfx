@@ -43,7 +43,7 @@ export async function loadBundledCsvFiles(files, onProgress = () => {}) {
     invalidRows += parsed.invalidRows;
     duplicateRows += parsed.duplicateRows;
     // Every file in the project data folder is broker wall-clock time UTC+3.
-    for (const candle of parsed.candles) candles.push({ ...candle, time: candle.time - UTC_PLUS_3_SECONDS });
+    for (const candle of parsed.candles) candles.push({ ...candle, time: candle.time - (parsed.timestampsAreUtc ? 0 : UTC_PLUS_3_SECONDS) });
     onProgress({ completed: index + 1, total: files.length, file: file.name });
   }
   candles.sort((a, b) => a.time - b.time);
