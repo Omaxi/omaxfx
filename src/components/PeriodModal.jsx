@@ -43,7 +43,7 @@ export default function PeriodModal() {
   const { 
     allRawData, isPeriodModalOpen, closePeriodModal, gameStarted, startGame, 
     playerName, setPlayerName, sessionName, setSessionName,
-    readSession, loadSavedSession
+    readSession, loadSavedSession, symbol, contractSpecs
   } = useStore();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -159,7 +159,7 @@ export default function PeriodModal() {
         <div className="p-3 space-y-3 max-h-[70vh] overflow-y-auto">
 
           {/* Load Saved Session */}
-          {savedSession && (
+          {savedSession && !contractSpecs?.[symbol] && (
             <button
               onClick={handleLoadSaved}
               className="w-full flex items-center justify-between gap-2 p-2 bg-gradient-to-r from-emerald-900/40 to-blue-900/40 hover:from-emerald-900/60 hover:to-blue-900/60 border border-emerald-600/50 rounded-lg transition-colors"
