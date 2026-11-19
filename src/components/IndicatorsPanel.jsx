@@ -160,7 +160,6 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState({});
   const [config, setConfig] = useState(DEFAULT_CONFIG);
-  const [editing, setEditing] = useState(null);
   const seriesRef = useRef({});
   const readyRef = useRef(false);
 
