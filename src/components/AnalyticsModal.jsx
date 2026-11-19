@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useStore, INITIAL_BALANCE } from '../store';
 import { fmtMoney } from '../utils/format';
 import { X, TrendingUp, TrendingDown, CalendarDays, ChevronLeft, ChevronRight, BarChart3, Target, Activity, Award } from 'lucide-react';
