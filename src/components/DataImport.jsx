@@ -18,12 +18,12 @@ const parseTimestamp = (row, sourceOffsetMinutes) => {
   const timestamp = findValue(row, ['timestamp', 'datetime', 'dateandtime', 'opentime']);
   if (timestamp != null && String(timestamp).trim() !== '') {
     const raw = String(timestamp).trim();
-    if (/^\\d{10,13}$/.test(raw)) {
+    if (/^\d{10,13}$/.test(raw)) {
       const n = Number(raw);
       const seconds = n > 1e12 ? n / 1000 : n;
       return seconds + (-300 - sourceOffsetMinutes) * 60;
     }
-    const hasZone = /(?:z|[+-]\\d{2}:?\\d{2})$/i.test(raw);
+    const hasZone = /(?:z|[+-]\d{2}:?\d{2})$/i.test(raw);
     const parsed = Date.parse(hasZone ? raw : (raw.replace(' ', 'T') + 'Z'));
     if (Number.isFinite(parsed)) return parsed / 1000 + (hasZone ? 0 : (-300 - sourceOffsetMinutes) * 60);
   }
