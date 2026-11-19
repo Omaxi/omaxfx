@@ -1428,7 +1428,7 @@ export default function Chart() {
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 20 }}>
         <div className="pointer-events-auto">
           <DrawingToolbar />
-          <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={visibleData} />
+          <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={visibleData} timeframe={timeframe} />
         </div>
 
         {pendingBtnPos.map(p => (
