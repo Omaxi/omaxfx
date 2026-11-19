@@ -22,8 +22,10 @@ const DEFAULT_CONFIG = {
 
 const average = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
 
-function calculateIndicators(candles, config, active) {
-  const completed = candles.slice(0, -1);
+function calculateIndicators(candles, config, active, timeframe) {
+  // At 1-minute resolution the final replay candle is still forming. Higher
+  // timeframes already omit their forming aggregate candle in Chart.jsx.
+  const completed = timeframe === 1 ? candles.slice(0, -1) : candles;
   const result = {};
   const closes = completed.map(c => c.close);
   const period = (key) => Math.max(2, Math.min(500, Number(config[key]?.period) || DEFAULT_CONFIG[key]?.period || 14));
@@ -143,7 +145,7 @@ function calculateIndicators(candles, config, active) {
   }
   return result;
 }
-export default function IndicatorsPanel({ chartRef, chartReady, visibleData }) {
+export default function IndicatorsPanel({ chartRef, chartReady, visibleData, timeframe }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState({});
   const [config, setConfig] = useState(DEFAULT_CONFIG);
@@ -204,11 +206,11 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData }) {
       Object.values(seriesRef.current).forEach(series => { try { series.setData([]); } catch (e) {} });
       return;
     }
-    const calculated = calculateIndicators(visibleData, config, active);
+    const calculated = calculateIndicators(visibleData, config, active, timeframe);
     Object.entries(seriesRef.current).forEach(([key, series]) => {
       try { series.setData(calculated[key] || []); } catch (e) {}
     });
-  }, [chartRef, visibleData, config, active, chartReady]);
+  }, [chartRef, visibleData, config, active, chartReady, timeframe]);
 
   const toggle = (key) => setActive(current => ({ ...current, [key]: !current[key] }));
   const updateConfig = (key, field, value) => setConfig(current => ({
