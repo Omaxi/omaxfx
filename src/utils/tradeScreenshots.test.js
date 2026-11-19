@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getTradeCandleWindow, getTradeScreenshotKey } from './tradeScreenshots.js';
+import { getTradeCandleWindow, getTradeScreenshotKey, renderTradeScreenshot } from './tradeScreenshots.js';
 
 const candles = Array.from({ length: 100 }, (_, i) => ({
   time: i * 60,
@@ -64,7 +64,6 @@ test('renders distinct screenshot payloads containing each trade ID', () => {
     },
   };
   try {
-    const { renderTradeScreenshot } = await import('./tradeScreenshots.js');
     const first = renderTradeScreenshot({
       id: 'trade-A', symbol: 'EURUSD', type: 'buy', openTime: 600, closeTime: 720,
       entryPrice: 1.1, exitPrice: 1.102, sl: 1.099, tp: 1.102, pnl: 20,
