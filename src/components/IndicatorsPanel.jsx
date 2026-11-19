@@ -299,6 +299,14 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
                   <button onClick={() => removeInstance('bb', instance.id)} className="px-1 text-red-400">×</button>
                 </div>)}
               </div>}
+              {selected.filter(item => ['rsi', 'atr', 'adx'].includes(item.key)).map(item => (
+                <label key={item.key} className="mt-2 flex items-center justify-between rounded bg-[#1e222d] px-2 py-1.5 text-[10px] text-gray-300">
+                  {item.label} period
+                  <input type="number" min="2" max="500" value={config[item.key]?.period || DEFAULT_CONFIG[item.key].period}
+                    onChange={event => updateConfig(item.key, 'period', Math.max(2, Math.min(500, Number(event.target.value) || 2)))}
+                    className="w-16 rounded border border-[#343b49] bg-[#0b0e11] px-2 py-1 text-right text-white"/>
+                </label>
+              ))}
             </div>
           )}
         </div>
