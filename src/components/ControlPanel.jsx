@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
 import { X, ChevronDown, Check, BarChart3, Palette, Sunrise, Sun, Sunset, ArrowUpDown, CandlestickChart } from 'lucide-react';
 
@@ -54,7 +55,7 @@ export default function ControlPanel() {
     openHistory, openEquity, openAnalytics, openTheme,
     symbol, setSymbol, timezone, setTimezone,
     sessionTimes, setSessionTime, jumpToSession,
-    chartType, setChartType
+    chartType, setChartType, allRawDataBySymbol
   } = useStore();
 
   const [symbolOpen, setSymbolOpen] = useState(false);
@@ -117,6 +118,7 @@ export default function ControlPanel() {
   };
 
   const tfLabel = TIMEFRAMES.find(t => t.value === timeframe)?.label || '1 min';
+  const symbolChoices = [...SYMBOLS.filter(s => allRawDataBySymbol[s.code]?.length), ...Object.keys(allRawDataBySymbol).filter(code => !SYMBOLS.some(s => s.code === code)).map(code => ({ code, source: 'Imported', available: true }))];
 
   const SymbolDropdown = () => (
     <>
@@ -126,9 +128,9 @@ export default function ControlPanel() {
           <span>Choose Symbol</span>
           <span className="text-[8px] text-gray-600 normal-case">green = data loaded</span>
         </div>
-        {SYMBOLS.map(s => {
+        {symbolChoices.map(s => {
           const isSelected = symbol === s.code;
-          const isAvailable = s.available;
+          const isAvailable = !!allRawDataBySymbol[s.code]?.length;
           return (
             <button key={s.code}
               onClick={() => { if (isAvailable) { setSymbol(s.code); closeAll(); } }}
@@ -146,14 +148,14 @@ export default function ControlPanel() {
                       ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.9)]'
                       : 'bg-gray-700'
                   }`}
-                  title={isAvailable ? 'Data downloaded' : 'Data not available'}
+                  title={s.source === 'Imported' ? 'User imported data' : 'Data loaded'}
                 />
                 <span className={`${isSelected && isAvailable ? 'font-bold' : ''} ${isAvailable ? '' : 'italic'}`}>
                   {s.code}
                 </span>
               </div>
               <span className={`text-[9px] ${isAvailable ? 'text-emerald-400' : 'text-gray-700'}`}>
-                {isAvailable ? 'Ready' : 'Unavailable'}
+                {s.source === 'Imported' ? 'Imported' : 'Ready'}
               </span>
             </button>
           );
