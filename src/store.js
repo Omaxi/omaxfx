@@ -867,31 +867,48 @@ export const useStore = create((set, get) => ({
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
 
   placeOrder: ({ side, type, riskPercent, entryPrice, slPrice, tpPrice, riskAmount, breakevenEnabled = false }) => set((state) => {
-    if (state.gameState.isOver) return state;
-    if (state.rules?.propFirmEnabled !== false && riskPercent > state.rules.maxRiskPerTrade + EPSILON) return state;
-    const currentPrice = state.rawData[state.currentIndex].close;
-    const contractSize = getPnlMultiplier(state.symbol, state.contractSpecs);
-    const lots = riskAmount / (Math.abs(entryPrice - slPrice) * contractSize);
-    const openTime = state.rawData[state.currentIndex].time;
+    const candle = state.rawData?.[state.currentIndex];
+    if (state.gameState.isOver || !candle || !['buy', 'sell'].includes(side) ||
+        !['market', 'limit', 'stop'].includes(type)) return state;
+
+    const marketPrice = Number(candle.close);
+    const actualEntry = type === 'market' ? marketPrice : Number(entryPrice);
+    const stop = Number(slPrice);
+    const riskPct = Number(riskPercent);
+    const risk = Number(riskAmount);
+    const target = tpPrice == null ? null : Number(tpPrice);
+    if (![marketPrice, actualEntry, stop, riskPct, risk].every(Number.isFinite) ||
+        actualEntry <= 0 || stop <= 0 || actualEntry === stop || riskPct <= 0 || risk <= 0) return state;
+    if (side === 'buy' ? stop >= actualEntry : stop <= actualEntry) return state;
+    if (target != null && (!Number.isFinite(target) || target <= 0 ||
+        (side === 'buy' ? target <= actualEntry : target >= actualEntry))) return state;
+    if (state.rules?.propFirmEnabled !== false &&
+        riskPct > Number(state.rules?.maxRiskPerTrade ?? 0) + EPSILON) return state;
+
+    const contractSize = Number(getPnlMultiplier(state.symbol, state.contractSpecs));
+    const riskDistance = Math.abs(actualEntry - stop);
+    if (!Number.isFinite(contractSize) || contractSize <= 0 || riskDistance <= 0) return state;
+    const lots = risk / (riskDistance * contractSize);
+    if (!Number.isFinite(lots) || lots <= 0) return state;
+
     const newOrder = {
       id: Date.now() + Math.random(),
       type: side, orderType: type,
-      entryPrice: type === 'market' ? currentPrice : entryPrice,
-      sl: slPrice, tp: tpPrice,
+      entryPrice: actualEntry,
+      sl: stop, tp: target,
       breakevenEnabled: !!breakevenEnabled,
       breakevenDone: false,
-      initialRiskDistance: Math.abs((type === 'market' ? currentPrice : entryPrice) - slPrice),
+      initialRiskDistance: riskDistance,
       size: Number(lots.toFixed(4)),
-      riskPercent, riskAmount,
+      riskPercent: riskPct, riskAmount: risk,
       isPending: type !== 'market',
-      openTime,
+      openTime: candle.time,
       symbol: state.symbol,
     };
     if (state.soundEnabled) playOrderPlaced();
     if (type === 'market') {
       return { positions: [...state.positions, newOrder], isOrderModalOpen: false, draftPosition: null };
-    } else {
-      return { pendingOrders: [...state.pendingOrders, newOrder], isOrderModalOpen: false, draftPosition: null };
     }
+    return { pendingOrders: [...state.pendingOrders, newOrder], isOrderModalOpen: false, draftPosition: null };
   }),
 }));
