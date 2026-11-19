@@ -7,13 +7,28 @@ export default function HistoryModal() {
   const { isHistoryOpen, closeHistory, tradeHistory, symbol: activeSymbol } = useStore();
   const [page, setPage] = useState(0);
   const pageSize = 10;
-  const pageCount = Math.max(1, Math.ceil(tradeHistory.length / pageSize));
-  const visibleTrades = tradeHistory.slice(Math.min(page, pageCount - 1) * pageSize, (Math.min(page, pageCount - 1) + 1) * pageSize);
+  const sortedTrades = [...tradeHistory].sort((a, b) =>
+    (Number(b.closeTime || b.openTime) || 0) - (Number(a.closeTime || a.openTime) || 0)
+  );
+  const pageCount = Math.max(1, Math.ceil(sortedTrades.length / pageSize));
+  const visibleTrades = sortedTrades.slice(Math.min(page, pageCount - 1) * pageSize, (Math.min(page, pageCount - 1) + 1) * pageSize);
   useEffect(() => setPage(current => Math.min(current, pageCount - 1)), [pageCount]);
 
   if (!isHistoryOpen) return null;
 
   const formatTime = (t) => t ? new Date(t * 1000).toLocaleString() : '-';
+  const formatDuration = (trade) => {
+    const seconds = Number(trade.closeTime) - Number(trade.openTime);
+    if (!Number.isFinite(seconds) || seconds < 0) return '—';
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainder = Math.floor(seconds % 60);
+    if (days) return `${days}d ${hours}h ${minutes}m`;
+    if (hours) return `${hours}h ${minutes}m ${remainder}s`;
+    if (minutes) return `${minutes}m ${remainder}s`;
+    return `${remainder}s`;
+  };
 
   // Symbol-aware price formatter: EURUSD gets 4 decimals, others get 2.
   const fmtPrice = (value, symbol) => {
@@ -76,6 +91,7 @@ export default function HistoryModal() {
                   <th className="p-1 text-left hidden lg:table-cell">Exit</th>
                   <th className="p-1 text-left hidden xl:table-cell">Opened</th>
                   <th className="p-1 text-left hidden xl:table-cell">Closed</th>
+                  <th className="p-1 text-right">Duration</th>
                 </tr>
               </thead>
               <tbody>
@@ -84,7 +100,7 @@ export default function HistoryModal() {
                   // that don't have a `symbol` field (saved before this update).
                   const sym = t.symbol || activeSymbol || 'XAUUSD';
                   return (
-                    <tr key={i} className="border-b border-[#2a2e39] hover:bg-[#1e222d]">
+                    <tr key={t.id ?? `${t.openTime}-${i}`} className="border-b border-[#2a2e39] hover:bg-[#1e222d]">
                       <td className="p-1">{page * pageSize + i + 1}</td>
                       <td className="p-1 font-bold text-white hidden sm:table-cell">{sym}</td>
                       <td className={`p-1 font-bold ${t.type === 'buy' ? 'text-green-400' : 'text-red-400'}`}>
@@ -115,6 +131,7 @@ export default function HistoryModal() {
                       </td>
                       <td className="p-1 text-[9px] text-gray-400 font-mono hidden xl:table-cell">{formatTime(t.openTime)}</td>
                       <td className="p-1 text-[9px] text-gray-400 font-mono hidden xl:table-cell">{formatTime(t.closeTime)}</td>
+                      <td className="p-1 text-right text-[9px] text-gray-300 font-mono">{formatDuration(t)}</td>
                     </tr>
                   );
                 })}
