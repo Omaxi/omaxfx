@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useStore } from '../store';
 import {
+  getTradeScreenshot,
   getTradeScreenshotKey,
   renderTradeScreenshot,
   saveTradeScreenshot,
@@ -15,8 +16,18 @@ export default function TradeScreenshotCapture() {
 
     const unsubscribe = useStore.subscribe((state, previous) => {
       if (state.tradeHistory === previous.tradeHistory) return;
-      // A session switch/restore is not a new batch of closed trades.
-      if (state.sessionId !== previous.sessionId) return;
+      // A session restore/switch is not a new batch of closures. If the
+      // first trade closed before the autosave created a session ID, migrate
+      // only that unsaved session's captures to its newly assigned ID.
+      if (state.sessionId !== previous.sessionId) {
+        if (!previous.sessionId && state.sessionId) {
+          (state.tradeHistory || []).forEach(async trade => {
+            const image = await getTradeScreenshot(trade.id, 'unsaved-session');
+            if (image) await saveTradeScreenshot(trade.id, image, state.sessionId).catch(() => false);
+          });
+        }
+        return;
+      }
 
       const previousIds = new Set((previous.tradeHistory || []).map(trade => String(trade.id)));
       const newlyClosed = (state.tradeHistory || []).filter(trade =>
