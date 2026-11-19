@@ -11,7 +11,8 @@ export const aggregateData = (data, timeframeMinutes) => {
 
   for (const candle of data) {
     if (!candle || !Number.isFinite(candle.time)) continue;
-    const bucketTime = Math.floor(candle.time / interval) * interval;
+    const weekOffset = minutes === 10080 ? 4 * 86400 : 0;
+    const bucketTime = Math.floor((candle.time - weekOffset) / interval) * interval + weekOffset;
     if (!current || current.time !== bucketTime) {
       if (current) aggregated.push(current);
       current = {
