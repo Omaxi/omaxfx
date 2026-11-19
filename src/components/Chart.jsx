@@ -254,6 +254,7 @@ export default function Chart() {
   const [positionBtnPos, setPositionBtnPos] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [textInput, setTextInput] = useState(null);
+  const cancelTextEditRef = useRef(false);
 
   const { 
     rawData, displayData, currentIndex, positions, pendingOrders, 
@@ -490,8 +491,11 @@ export default function Chart() {
     if (!canvas || !container) return;
     const resizeCanvas = () => {
       const rect = container.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
     };
     resizeCanvas();
     const ro = new ResizeObserver(resizeCanvas);
@@ -513,8 +517,11 @@ export default function Chart() {
     let rafId;
     const draw = () => {
       const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      let paneW = canvas.width, paneH = canvas.height;
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const rect = canvas.getBoundingClientRect();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      let paneW = rect.width, paneH = rect.height;
       if (chartRef.current) {
         try {
           const priceAxisW = chartRef.current.priceScale('right').width();
@@ -595,7 +602,7 @@ export default function Chart() {
       const sel = selectedItemRef.current;
       const selectedId = sel?.type === 'drawing' ? sel.id : null;
       state.drawings.forEach(d => {
-        if (d.timeframe != null && currentTf > d.timeframe) return;
+        if (d.symbol && d.symbol !== state.symbol) return;
         if (d.type === 'volumeProfile' && !cache.has(d)) cache.set(d, computeVolumeProfile(d));
         drawShape(ctx, d, pointToXY, false, cache, d.id === selectedId);
       });
@@ -661,7 +668,7 @@ export default function Chart() {
       const ctx = canvas.getContext('2d');
       for (let i = state.drawings.length - 1; i >= 0; i--) {
         const d = state.drawings[i];
-        if (d.timeframe != null && currentTf > d.timeframe) continue;
+        if (d.symbol && d.symbol !== state.symbol) continue;
         const pts = d.points.map(p => pointToXY(p)).filter(Boolean);
         if (pts.length === 0) continue;
         
@@ -856,6 +863,17 @@ export default function Chart() {
           }
         }
         return;
+      }
+
+      if (drawingHit && !sel) {
+        const hitDrawing = state.drawings.find(d => d.id === drawingHit.drawingId);
+        if (hitDrawing) {
+          e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+          lockChart(true);
+          setSelectedItem({ type: 'drawing', id: hitDrawing.id });
+          lastTapRef.current = { time: now, x, y };
+          return;
+        }
       }
 
       if (isDoubleTap) {
@@ -1202,7 +1220,7 @@ export default function Chart() {
   }, [positions, pendingOrders, draftPosition]);
 
   const commitText = () => {
-    if (!textInput) return;
+    if (!textInput || cancelTextEditRef.current) { cancelTextEditRef.current = false; return; }
     const { time, price, value, id } = textInput;
     const state = useStore.getState();
     if (value.trim()) {
@@ -1260,6 +1278,18 @@ export default function Chart() {
       {selectedItem && selectedItem.type === 'drawing' && !isPencilMode && (
         <div className="absolute top-2 right-2 z-30 flex items-center gap-1 bg-[#1e222d]/95 backdrop-blur border border-white/20 rounded-lg shadow-2xl p-1 pointer-events-auto">
           <span className="text-[10px] text-white/80 font-bold px-2">✦ Selected</span>
+          {useStore.getState().drawings.find(d => d.id === selectedItem.id)?.type === 'text' && (
+            <button onClick={() => {
+              const drawing = useStore.getState().drawings.find(d => d.id === selectedItem.id);
+              const point = drawing?.points?.[0];
+              if (!drawing || !point) return;
+              const x = timeToX(point.time);
+              const y = seriesRef.current?.priceToCoordinate(point.price);
+              if (x == null || y == null) return;
+              setTextInput({ x, y, time: point.time, price: point.price, value: drawing.text || '', id: drawing.id });
+              setSelectedItem(null); lockChart(true);
+            }} className="w-7 h-7 rounded bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold" title="Edit text">T</button>
+          )}
           <button
             onClick={() => { removeDrawing(selectedItem.id); setSelectedItem(null); lockChart(false); }}
             className="w-7 h-7 rounded bg-red-600 hover:bg-red-500 text-white flex items-center justify-center"
@@ -1316,8 +1346,8 @@ export default function Chart() {
             value={textInput.value}
             onChange={(e) => setTextInput({ ...textInput, value: e.target.value })}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') commitText();
-              if (e.key === 'Escape') setTextInput(null);
+              if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
+              if (e.key === 'Escape') { cancelTextEditRef.current = true; setTextInput(null); }
             }}
             onBlur={commitText}
             className="bg-[#1e222d] border-2 border-blue-500 text-white px-2 py-1 text-sm outline-none rounded shadow-xl min-w-[150px]"
