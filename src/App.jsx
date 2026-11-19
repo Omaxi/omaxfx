@@ -39,6 +39,7 @@ function App() {
 
   useEffect(() => {
     document.documentElement.dataset.uiTheme = uiTheme;
+    window.dispatchEvent(new CustomEvent('omaxfx-ui-theme-change', { detail: uiTheme }));
     try { localStorage.setItem('omaxfx-ui-theme', uiTheme); } catch {}
   }, [uiTheme]);
 
