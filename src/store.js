@@ -300,7 +300,8 @@ export const useStore = create((set, get) => ({
     // different display offset have their timeline shifted by offset−UTC+3.
     const savedTimezone = saved.timezone || 'UTC+3';
     const savedOffset = TZ_OFFSETS[savedTimezone] ?? 180;
-    const restoreShift = (savedOffset - 180) * 60;
+    const currentOffset = TZ_OFFSETS[state.timezone || 'UTC+3'] ?? 180;
+    const restoreShift = (savedOffset - currentOffset) * 60;
     const restoredData = restoreShift === 0
       ? symbolData
       : symbolData.map(c => ({ ...c, time: c.time + restoreShift }));
