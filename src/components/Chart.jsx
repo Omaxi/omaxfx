@@ -28,40 +28,7 @@ const distToSegment = (px, py, x1, y1, x2, y2) => {
   return Math.hypot(px - xx, py - yy);
 };
 
-const computeVolumeProfile = (drawing) => {
-  const [p1, p2] = drawing.points;
-  const timeMin = Math.min(p1.time, p2.time);
-  const timeMax = Math.max(p1.time, p2.time);
-  const priceMin = Math.min(p1.price, p2.price);
-  const priceMax = Math.max(p1.price, p2.price);
-  if (priceMax <= priceMin) return null;
-  const BUCKETS = 40;
-  const bucketSize = (priceMax - priceMin) / BUCKETS;
-  const buckets = new Array(BUCKETS).fill(0);
-  const data = useStore.getState().displayData;
-  for (const c of data) {
-    if (c.time < timeMin || c.time > timeMax) continue;
-    const candleRange = c.high - c.low;
-    const vol = c.volume || 0;
-    if (vol <= 0) continue;
-    if (candleRange <= 0) {
-      const idx = Math.max(0, Math.min(BUCKETS - 1, Math.floor((c.close - priceMin) / bucketSize)));
-      buckets[idx] += vol;
-      continue;
-    }
-    for (let i = 0; i < BUCKETS; i++) {
-      const bLow = priceMin + i * bucketSize;
-      const bHigh = bLow + bucketSize;
-      const overlap = Math.max(0, Math.min(c.high, bHigh) - Math.max(c.low, bLow));
-      if (overlap > 0) buckets[i] += vol * (overlap / candleRange);
-    }
-  }
-  const maxVol = Math.max(...buckets, 1);
-  const pocIdx = buckets.indexOf(maxVol);
-  return { buckets, maxVol, priceMin, priceMax, bucketSize, BUCKETS, pocIdx };
-};
-
-const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) => {
+const drawShape = (ctx, drawing, pointToXY, isDraft, isSelected) => {
   const borderColor = drawing.borderColor || drawing.color || '#f59e0b';
   const fillColor = drawing.fillColor || (borderColor + '33');
   const lineWidth = drawing.lineWidth ?? 1;
@@ -136,48 +103,7 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
       const price = drawing.points[0].price + (drawing.points[1].price - drawing.points[0].price) * level;
       ctx.fillText(`${pct}%  ${price.toFixed(2)}`, xMax + 4, y + 3);
     });
-  } else if (drawing.type === 'volumeProfile' && pts.length === 2) {
-    const x1 = Math.min(pts[0].x, pts[1].x);
-    const x2 = Math.max(pts[0].x, pts[1].x);
-    const profile = profileCache.get(drawing);
-    if (profile) {
-      const { buckets, maxVol, priceMin, bucketSize, BUCKETS, pocIdx } = profile;
-      const width = x2 - x1;
-      for (let i = 0; i < BUCKETS; i++) {
-        const vol = buckets[i];
-        if (vol === 0) continue;
-        const ratio = vol / maxVol;
-        const barWidth = ratio * width;
-        const bucketLowPrice = priceMin + i * bucketSize;
-        const bucketHighPrice = bucketLowPrice + bucketSize;
-        const yLow = pointToXY({ time: drawing.points[0].time, price: bucketLowPrice })?.y;
-        const yHigh = pointToXY({ time: drawing.points[0].time, price: bucketHighPrice })?.y;
-        if (yLow == null || yHigh == null) continue;
-        const barTop = Math.min(yLow, yHigh);
-        const barBottom = Math.max(yLow, yHigh);
-        if (i === pocIdx) ctx.fillStyle = 'rgba(239, 68, 68, 0.75)';
-        else {
-          const intensity = 0.25 + ratio * 0.65;
-          ctx.fillStyle = `rgba(245, 158, 11, ${intensity})`;
-        }
-        ctx.fillRect(x1, barTop, barWidth, barBottom - barTop);
-      }
-      if (showBorder) {
-        const pocPrice = priceMin + (pocIdx + 0.5) * bucketSize;
-        const pocY = pointToXY({ time: drawing.points[0].time, price: pocPrice })?.y;
-        if (pocY != null) {
-          ctx.strokeStyle = '#ef4444';
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.moveTo(x1, pocY);
-          ctx.lineTo(x2, pocY);
-          ctx.stroke();
-          ctx.fillStyle = '#ef4444';
-          ctx.font = 'bold 9px monospace';
-          ctx.fillText('POC', x1 + 4, pocY - 3);
-        }
-      }
-    }
+
   }
 
   if (isSelected) {
@@ -265,7 +191,6 @@ export default function Chart() {
   const dragRef = useRef(null);
   const draftRef = useRef(null);
   const dragDrawRef = useRef(null);
-  const profileCacheRef = useRef(new Map());
   const visibleDataRef = useRef([]);
   const lastRenderedDataRef = useRef([]);
   const lastTimeframeRef = useRef(1);
@@ -565,9 +490,6 @@ export default function Chart() {
       ctx.rect(0, 0, paneW, paneH);
       ctx.clip();
       const state = useStore.getState();
-      const cache = profileCacheRef.current;
-      const alive = new Set(state.drawings);
-      for (const key of cache.keys()) if (!alive.has(key)) cache.delete(key);
 
       // 1. Draw trade history (Entry/Exit boxes + SL area + TP area)
       const tradeHistory = state.tradeHistory || [];
@@ -632,10 +554,9 @@ export default function Chart() {
       const selectedId = sel?.type === 'drawing' ? sel.id : null;
       state.drawings.forEach(d => {
         if (d.symbol && d.symbol !== state.symbol) return;
-        if (d.type === 'volumeProfile' && !cache.has(d)) cache.set(d, computeVolumeProfile(d));
-        drawShape(ctx, d, pointToXY, false, cache, d.id === selectedId);
+        drawShape(ctx, d, pointToXY, false, d.id === selectedId);
       });
-      if (draftRef.current) drawShape(ctx, draftRef.current, pointToXY, true, cache, false);
+      if (draftRef.current) drawShape(ctx, draftRef.current, pointToXY, true, false);
 
       // 3. Draw pencil strokes
       state.pencilStrokes.forEach(s => drawPencilStroke(ctx, s, pointToXY));
