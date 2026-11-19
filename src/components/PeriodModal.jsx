@@ -125,12 +125,11 @@ export default function PeriodModal() {
   const handleLoadSaved = async (saved) => {
     setError('');
     try {
-      if (!useStore.getState().allRawDataBySymbol[saved.symbol]) {
-        const catalog = await fetchDataCatalog();
-        const fromYear = new Date((saved.gamePeriod.from + 3 * 3600) * 1000).getUTCFullYear();
-        const toYear = new Date((saved.gamePeriod.to + 3 * 3600) * 1000).getUTCFullYear();
-        const files = catalog.filter(file => file.symbol === saved.symbol && (file.year == null || (file.year >= fromYear && file.year <= toYear)));
-        if (!files.length) throw new Error(`Data for ${saved.symbol} is not available in public/data. Add its CSV files and restart the app.`);
+      const catalog = await fetchDataCatalog();
+      const fromYear = new Date((saved.gamePeriod.from + 3 * 3600) * 1000).getUTCFullYear();
+      const toYear = new Date((saved.gamePeriod.to + 3 * 3600) * 1000).getUTCFullYear();
+      const files = catalog.filter(file => file.symbol === saved.symbol && (file.year == null || (file.year >= fromYear && file.year <= toYear)));
+      if (files.length) {
         const loaded = await loadBundledCsvFiles(files);
         const code = saved.symbol;
         const defaults = code === 'XAUUSD'
@@ -142,6 +141,8 @@ export default function PeriodModal() {
           ...defaults, quoteCurrency: 'USD', quoteToAccountRate: 1,
           ...(saved.contractSpecs?.[code] || {}),
         });
+      } else if (!useStore.getState().allRawDataBySymbol[saved.symbol]) {
+        throw new Error(`Data for ${saved.symbol} is not available in public/data or the current import. Add its CSV files and restart the app.`);
       }
       const ok = loadSavedSession(saved.sessionId);
       if (!ok) throw new Error('The saved session could not be restored. Its market data may have changed.');
