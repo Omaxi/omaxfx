@@ -11,7 +11,7 @@ import { X, AlertTriangle } from 'lucide-react';
 // =========================================================================
 const SYMBOL_META = {
   XAUUSD: { pointSize: 0.01,   precision: 2 },
-  EURUSD: { pointSize: 0.0001, precision: 4 },
+  EURUSD: { pointSize: 0.00001, precision: 5 },
 };
 const DEFAULT_META = { pointSize: 0.01, precision: 2 };
 
@@ -147,7 +147,7 @@ export default function OrderModal() {
 
   // Input step depends on the symbol's precision so the spinner arrows
   // move by 1 point per click.
-  const inputStep = precision === 4 ? '0.0001' : '0.01';
+  const inputStep = precision === 5 ? '0.00001' : '0.01';
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
