@@ -6,10 +6,16 @@ import TradeDayModal from './TradeDayModal';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const money = (value) => `$${fmtMoney(Math.abs(value), 0)}`;
+const MARKET_TZ_OFFSET_SECONDS = 3 * 60 * 60;
+const marketDate = (unix) => new Date((Number(unix) + MARKET_TZ_OFFSET_SECONDS) * 1000);
+const marketMonth = (unix) => {
+  const date = marketDate(unix);
+  return new Date(date.getUTCFullYear(), date.getUTCMonth(), 1);
+};
 const dateKey = (unix) => {
   if (!unix) return '';
-  const d = new Date(unix * 1000);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const d = marketDate(unix);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 };
 const dayLabel = (key) => Number(key.slice(-2));
 const fmtPct = (value) => `${value.toFixed(1)}%`;
@@ -28,8 +34,7 @@ export default function AnalyticsModal() {
     const latestTradeTime = tradeHistory.reduce((latest, trade) => Math.max(latest, trade.closeTime || trade.openTime || 0), 0);
     const timestamp = marketTime || latestTradeTime;
     if (timestamp) {
-      const date = new Date(timestamp * 1000);
-      setMonthCursor(new Date(date.getFullYear(), date.getMonth(), 1));
+      setMonthCursor(marketMonth(timestamp));
     }
     setSelectedDate(null);
   }, [isAnalyticsOpen]);
@@ -114,7 +119,7 @@ export default function AnalyticsModal() {
     const marketTime = rawData?.[currentIndex]?.time;
     const latestTradeTime = trades.reduce((latest, trade) => Math.max(latest, trade.closeTime || trade.openTime || 0), 0);
     const timestamp = marketTime || latestTradeTime;
-    if (timestamp) { const date = new Date(timestamp * 1000); setMonthCursor(new Date(date.getFullYear(), date.getMonth(), 1)); }
+    if (timestamp) setMonthCursor(marketMonth(timestamp));
   };
   const streakText = latestTrade ? (latestTrade.pnl > 0 ? 'Winning' : latestTrade.pnl < 0 ? 'Losing' : 'Flat') : 'No streak';
 
