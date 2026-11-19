@@ -11,7 +11,7 @@ OmaxFX is a local-first market replay and manual backtesting application. No acc
 
 For a production/offline-ready build:
 
-1. Run `npm run build`.
+1. Run `npm run build:offline`.
 2. Run `npm run preview`.
 3. Open the localhost URL and use the browser's **Install OmaxFX** action to install the PWA.
 4. Load the market data you need at least once. Selected CSV files are cached on this computer and can be used offline on later launches.
