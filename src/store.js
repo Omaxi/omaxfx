@@ -679,15 +679,17 @@ export const useStore = create((set, get) => ({
     const pnl = priceDiff * contractSize * pos.size;
     if (state.soundEnabled) playPositionClosed();
     const newBalance = state.balance + pnl;
-    const newPeak = Math.max(state.peakBalance, newBalance);
-    const violation = checkRuleViolations(state, newBalance, newPeak, state.dailyLoss);
+    const remainingPositions = state.positions.filter(p => p.id !== id);
+    const equity = newBalance + getUnrealizedPnl(remainingPositions, currentCandle, state.symbol);
+    const newPeak = Math.max(state.peakBalance, equity);
+    const violation = checkRuleViolations(state, equity, newPeak, state.dailyLoss);
     const newGameState = violation
       ? { ...state.gameState, isOver: true, reason: violation.reason, message: violation.message }
       : state.gameState;
     return {
       balance: newBalance,
       peakBalance: newPeak,
-      positions: state.positions.filter(p => p.id !== id),
+      positions: remainingPositions,
       tradeHistory: [...state.tradeHistory, { ...pos, exitPrice, pnl, reason: 'MANUAL', closeTime: currentCandle.time }],
       gameState: newGameState,
       isPlaying: newGameState.isOver ? false : state.isPlaying,
