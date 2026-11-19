@@ -215,9 +215,13 @@ const drawPencilStroke = (ctx, stroke, pointToXY) => {
   ctx.setLineDash([]);
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 1; i < points.length; i++) {
-    ctx.lineTo(points[i].x, points[i].y);
+  for (let i = 1; i < points.length - 1; i++) {
+    const midX = (points[i].x + points[i + 1].x) / 2;
+    const midY = (points[i].y + points[i + 1].y) / 2;
+    ctx.quadraticCurveTo(points[i].x, points[i].y, midX, midY);
   }
+  const last = points[points.length - 1];
+  ctx.lineTo(last.x, last.y);
   ctx.stroke();
 };
 
@@ -662,7 +666,8 @@ export default function Chart() {
           state.positions !== previous.positions ||
           state.pendingOrders !== previous.pendingOrders ||
           state.timeframe !== previous.timeframe ||
-          state.symbol !== previous.symbol) scheduleDraw();
+          state.symbol !== previous.symbol ||
+          state.currentIndex !== previous.currentIndex) scheduleDraw();
     });
     const timeScale = chartRef.current?.timeScale();
     timeScale?.subscribeVisibleLogicalRangeChange(scheduleDraw);
@@ -1009,6 +1014,7 @@ export default function Chart() {
       if (state.activeDrawingTool || state.isDrawingMode || state.isPencilMode) {
         container.style.cursor = 'crosshair';
       }
+      scheduleDrawRef.current();
     };
 
     const handlePointerUp = (e) => {
