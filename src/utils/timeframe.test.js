@@ -52,7 +52,7 @@ test('parses separate date/time columns, alternate headers and drops duplicate t
     '2024.01.01,00:01:00,1.2,1.4,1.1,1.3,11',
     '2024.01.01,00:01:00,1.2,1.4,1.1,1.3,11',
     '2024.01.01,00:02:00,1.3,1.2,1.1,1.2,9',
-  ].join('\\n');
+  ].join('\n');
   const result = parseMarketCsvText(csv);
   assert.equal(result.candles.length, 2);
   assert.equal(result.duplicateRows, 1);
@@ -65,7 +65,7 @@ test('parses a combined timestamp and millisecond epoch headers', () => {
     'Timestamp,O,H,L,C,Volume',
     '2024-01-01T00:00:00Z,10,12,9,11,4',
     '1704067260000,11,13,10,12,5',
-  ].join('\\n');
+  ].join('\n');
   const result = parseMarketCsvText(csv);
   assert.equal(result.candles.length, 2);
   assert.equal(result.candles[0].time, 1704067200);
