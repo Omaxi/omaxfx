@@ -13,7 +13,6 @@ import CelebrationOverlay from './components/CelebrationOverlay';
 import LoadingScreen from './components/LoadingScreen';
 import DataImportModal from './components/DataImportModal';
 import { useStore } from './store';
-import { aggregateData } from './utils/timeframe';
 import { useEffect, useRef } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
