@@ -19,12 +19,12 @@ const TZ_OFFSETS = {
 
 
 const getDayKey = (unixSeconds) => {
-  const d = new Date(unixSeconds * 1000);
+  const d = new Date((unixSeconds + 3 * 3600) * 1000);
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 };
 
 const formatRangeDate = (unixSeconds) => {
-  const d = new Date(unixSeconds * 1000);
+  const d = new Date((unixSeconds + 3 * 3600) * 1000);
   const dd = String(d.getUTCDate()).padStart(2, '0');
   const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
   const yyyy = d.getUTCFullYear();
@@ -86,7 +86,7 @@ export const useStore = create((set, get) => ({
   recenterToken: 0,
 
   symbol: 'XAUUSD',
-  timezone: 'UTC-5',
+  timezone: 'UTC+3',
 
   symbolWarning: null,
   clearSymbolWarning: () => set({ symbolWarning: null }),
@@ -592,7 +592,7 @@ export const useStore = create((set, get) => ({
     
     for (let i = state.currentIndex + 1; i < maxScan; i++) {
       const d = new Date(state.rawData[i].time * 1000);
-      if (d.getUTCHours() === targetHour && d.getUTCMinutes() === 0) {
+      if (new Date((d.getTime() + 3 * 3600 * 1000)).getUTCHours() === targetHour && d.getUTCMinutes() === 0) {
         targetIndex = i;
         break;
       }
