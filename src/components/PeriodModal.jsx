@@ -330,7 +330,7 @@ export default function PeriodModal() {
                   />
                   <span className="text-[10px] text-gray-500 w-3">%</span>
                 </div>
-              </div> : <p className="text-[9px] text-gray-500">Prop-firm restrictions are disabled for this session.</p>}
+              </div></div> : <p className="text-[9px] text-gray-500">Prop-firm restrictions are disabled for this session.</p>}
             </div>
           </div>
 
