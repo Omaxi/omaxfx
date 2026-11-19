@@ -130,3 +130,47 @@ test('resolves same-bar pending entry exits with stop-loss priority', () => {
     assert.equal(state.tradeHistory[0].pnl, -100);
   } finally { restore(); }
 });
+
+test('open buy positions exit at the candle open when price gaps below stop loss', () => {
+  const restore = configureStore({
+    gameStarted: true,
+    rawData: [
+      { time: 60, open: 100, high: 101, low: 99, close: 100 },
+      { time: 120, open: 96, high: 99, low: 95, close: 97 },
+      { time: 180, open: 97, high: 98, low: 96, close: 97 },
+    ],
+    positions: [{
+      id: 'gap-sl', type: 'buy', entryPrice: 100, sl: 98, tp: 105,
+      size: 0.001, symbol: 'EURUSD',
+    }],
+  });
+  try {
+    useStore.getState().stepForward();
+    const state = useStore.getState();
+    assert.equal(state.positions.length, 0);
+    assert.equal(state.tradeHistory[0].exitPrice, 96);
+    assert.equal(state.tradeHistory[0].pnl, -400);
+  } finally { restore(); }
+});
+
+test('open buy positions receive the opening price when market gaps above take profit', () => {
+  const restore = configureStore({
+    gameStarted: true,
+    rawData: [
+      { time: 60, open: 100, high: 101, low: 99, close: 100 },
+      { time: 120, open: 106, high: 107, low: 104, close: 106 },
+      { time: 180, open: 106, high: 107, low: 105, close: 106 },
+    ],
+    positions: [{
+      id: 'gap-tp', type: 'buy', entryPrice: 100, sl: 98, tp: 105,
+      size: 0.001, symbol: 'EURUSD',
+    }],
+  });
+  try {
+    useStore.getState().stepForward();
+    const state = useStore.getState();
+    assert.equal(state.positions.length, 0);
+    assert.equal(state.tradeHistory[0].exitPrice, 106);
+    assert.equal(state.tradeHistory[0].pnl, 600);
+  } finally { restore(); }
+});
