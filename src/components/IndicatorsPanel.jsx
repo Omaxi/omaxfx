@@ -13,7 +13,7 @@ const INDICATORS = [
 ];
 
 const DEFAULT_CONFIG = {
-  ma: { period: 20 },
+  ma: { period: 20, method: 'SMA' },
   bb: { period: 20, multiplier: 2 },
   rsi: { period: 14 },
   atr: { period: 14 },
@@ -32,7 +32,18 @@ function calculateIndicators(candles, config, active, timeframe) {
 
   if (active.ma) {
     const p = period('ma');
-    result.ma = completed.map((c, i) => i + 1 < p ? { time: c.time } : ({ time: c.time, value: average(closes.slice(i - p + 1, i + 1)) }));
+    if (config.ma.method === 'EMA') {
+      const alpha = 2 / (p + 1);
+      let ema = null;
+      result.ma = completed.map((c, i) => {
+        if (i + 1 < p) return { time: c.time };
+        if (ema == null) ema = average(closes.slice(0, p));
+        else ema = (closes[i] * alpha) + (ema * (1 - alpha));
+        return { time: c.time, value: ema };
+      });
+    } else {
+      result.ma = completed.map((c, i) => i + 1 < p ? { time: c.time } : ({ time: c.time, value: average(closes.slice(i - p + 1, i + 1)) }));
+    }
   }
 
   if (active.bb) {
@@ -201,7 +212,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
   useEffect(() => {
     if (!readyRef.current) return;
     const chart = chartRef.current;
-    const completed = visibleData.slice(0, -1);
+    const completed = timeframe === 1 ? visibleData.slice(0, -1) : visibleData;
     if (!chart || completed.length < 2) {
       Object.values(seriesRef.current).forEach(series => { try { series.setData([]); } catch (e) {} });
       return;
@@ -243,6 +254,10 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
               {selected.filter(item => DEFAULT_CONFIG[item.key]).map(item => (
                 <div key={item.key} className="mb-2 rounded bg-[#1e222d] p-2">
                   <div className="mb-1 text-[10px] font-semibold text-white">{item.label}</div>
+                  {item.key === 'ma' && <label className="mb-1 flex items-center justify-between gap-2 text-[10px] text-gray-400">
+                    Method
+                    <select value={config.ma.method} onChange={event => updateConfig('ma', 'method', event.target.value)} className="w-20 rounded border border-[#343b49] bg-[#0b0e11] px-2 py-1 text-white"><option value="SMA">SMA</option><option value="EMA">EMA</option></select>
+                  </label>}
                   <label className="flex items-center justify-between gap-2 text-[10px] text-gray-400">
                     Period
                     <input type="number" min="2" max="500" value={config[item.key]?.period || DEFAULT_CONFIG[item.key].period} onChange={event => updateConfig(item.key, 'period', Math.max(2, Math.min(500, Number(event.target.value) || 2)))} className="w-16 rounded border border-[#343b49] bg-[#0b0e11] px-2 py-1 text-right text-white"/>
