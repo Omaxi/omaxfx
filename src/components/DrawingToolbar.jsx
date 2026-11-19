@@ -1,5 +1,5 @@
 import { useStore } from '../store';
-import { Minus, Square, Layers, BarChart2, Trash2, Undo2, Redo2, Pencil, Type } from 'lucide-react';
+import { Minus, Square, Layers, MoveVertical, Trash2, Undo2, Redo2, Pencil, Type } from 'lucide-react';
 
 const TrendlineIcon = ({ size = 14 }) => (
   <svg
@@ -20,10 +20,10 @@ const TrendlineIcon = ({ size = 14 }) => (
 
 const TOOLS = [
   { key: 'horizontal',    label: 'Horizontal',     icon: Minus },
+  { key: 'vertical',      label: 'Vertical',       icon: MoveVertical },
   { key: 'trendline',     label: 'Trendline',      icon: TrendlineIcon },
   { key: 'rectangle',     label: 'Rectangle',      icon: Square },
   { key: 'fibonacci',     label: 'Fibonacci',      icon: Layers },
-  { key: 'volumeProfile', label: 'Volume Profile', icon: BarChart2 },
   { key: 'text',          label: 'Text Note',      icon: Type },
 ];
 
