@@ -30,7 +30,7 @@ function parseTimestamp(row) {
       if (numeric > 1e9) return Math.floor(numeric);
     }
     const rawText = String(raw).trim();
-    if (!/^\\d{1,2}:\\d{2}(:\\d{2}(\\.\\d+)?)?$/.test(rawText)) {
+    if (!/^\d{1,2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(rawText)) {
       const parsed = Date.parse(rawText);
       if (Number.isFinite(parsed)) return Math.floor(parsed / 1000);
     }
