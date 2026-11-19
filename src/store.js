@@ -105,7 +105,7 @@ export const useStore = create((set, get) => ({
   symbolWarning: null,
   clearSymbolWarning: () => set({ symbolWarning: null }),
 
-  sessionTimes: { asian: 3, london: 10, newyork: 15 },
+  sessionTimes: { asian: 1, london: 10, newyork: 15 },
 
   setSessionTime: (key, hour) => set((state) => ({
     sessionTimes: { ...state.sessionTimes, [key]: Math.max(0, Math.min(23, Number(hour) || 0)) }
@@ -308,7 +308,7 @@ export const useStore = create((set, get) => ({
       playerName: saved.playerName || 'Trader',
       sessionName: saved.sessionName || 'Session 1',
       theme: saved.theme || DEFAULT_THEME,
-      sessionTimes: saved.sessionTimes || { asian: 3, london: 10, newyork: 15 },
+      sessionTimes: saved.sessionTimes || { asian: 1, london: 10, newyork: 15 },
       enableFireworks: saved.enableFireworks ?? true,
       recenterToken: state.recenterToken + 1,
     });
@@ -781,6 +781,7 @@ export const useStore = create((set, get) => ({
       if (!gameOverReason) {
         const equity = newBalance + getUnrealizedPnl(newPositions, candle.close, state.symbol);
         const equityPeak = Math.max(newPeak, equity);
+        newPeak = equityPeak;
         const violation = checkRuleViolations(state, equity, equityPeak, newDailyLoss);
         if (violation) { gameOverReason = violation.reason; gameOverMessage = violation.message; }
       }
