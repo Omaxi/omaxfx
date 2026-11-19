@@ -61,9 +61,11 @@ export default function DataImportModal() {
       setStatus({ loading: false, error: 'Choose a CSV dataset first.' });
       return;
     }
-    setStatus({ loading: true, error: '' });
+    setStatus({ loading: true, error: '', progress: 0, fileName: selectedFiles[0]?.name || '' });
     try {
-      const result = await loadBundledCsvFiles(selectedFiles);
+      const result = await loadBundledCsvFiles(selectedFiles, (progress) => {
+        setStatus((current) => ({ ...current, progress: progress.percent ?? current.progress, fileName: progress.file || current.fileName }));
+      });
       const specs = defaultSpecs(result.symbol);
       openBacktestSetup(result.symbol, result.candles, { ...specs, quoteCurrency: 'USD', quoteToAccountRate: 1 });
     } catch (error) {
@@ -132,7 +134,7 @@ export default function DataImportModal() {
                 </label>
                 <p className="text-[11px] text-gray-500">All available years are combined automatically. Choose one year if you only want that file.</p>
                 <button className={buttonClass} disabled={status.loading || !selectedFiles.length} onClick={loadFolderData}>
-                  {status.loading ? <span className="inline-flex items-center gap-2"><RefreshCw size={15} className="animate-spin"/> Loading data…</span> : 'Load data and continue'}
+                  {status.loading ? <span className="inline-flex items-center gap-2"><RefreshCw size={15} className="animate-spin"/> Loading data… {status.progress || 0}%</span> : 'Load data and continue'}
                 </button>
               </> : <div className="rounded-lg border border-dashed border-[#3b4554] p-4 text-center text-sm text-gray-400">
                 {catalogError || 'No CSV files found in public/data/.'}
