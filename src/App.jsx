@@ -2,7 +2,6 @@ import Chart from './components/Chart';
 import ControlPanel from './components/ControlPanel';
 import OrderModal from './components/OrderModal';
 import HistoryModal from './components/HistoryModal';
-import EquityModal from './components/EquityModal';
 import AnalyticsModal from './components/AnalyticsModal';
 import ChartThemeModal from './components/ChartThemeModal';
 import InfoModal from './components/InfoModal';
@@ -253,7 +252,6 @@ function App() {
 
       <OrderModal />
       <HistoryModal />
-      <EquityModal />
       <AnalyticsModal />
       <ChartThemeModal />
       <InfoModal />
