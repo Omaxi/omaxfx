@@ -7,10 +7,11 @@ async function fetchCachedCsv(url) {
   if (typeof caches !== 'undefined') {
     try {
       const cache = await caches.open(DATA_CACHE);
-      const cached = await cache.match(url);
+      const absoluteUrl = new URL(url, document.baseURI).href;
+      const cached = await cache.match(absoluteUrl);
       if (cached) return cached;
       const response = await fetch(url);
-      if (response.ok) await cache.put(url, response.clone());
+      if (response.ok) await cache.put(absoluteUrl, response.clone());
       return response;
     } catch (error) {
       // Cache storage can be unavailable in private browsing; normal fetch still works.
@@ -37,7 +38,8 @@ export async function loadBundledCsvFiles(files, onProgress = () => {}) {
     const response = await fetchCachedCsv(url);
     if (!response.ok) throw new Error(`Unable to read ${file.name}. Check that it exists in public/data.`);
     const blob = await response.blob();
-    const parsed = await parseMarketCsv(blob);
+    const csvFile = new File([blob], file.name, { type: 'text/csv' });
+    const parsed = await parseMarketCsv(csvFile);
     invalidRows += parsed.invalidRows;
     duplicateRows += parsed.duplicateRows;
     // Every file in the project data folder is broker wall-clock time UTC+3.
