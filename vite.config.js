@@ -44,7 +44,7 @@ export default defineConfig(({ command }) => ({
             options: {
               cacheName: 'csv-cache',
               expiration: {
-                maxEntries: 5,
+                maxEntries: 20,
                 maxAgeSeconds: 60 * 60 * 24 * 365,
               },
               cacheableResponse: { statuses: [0, 200] },
