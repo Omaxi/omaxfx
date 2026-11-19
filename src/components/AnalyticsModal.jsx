@@ -15,7 +15,7 @@ const dayLabel = (key) => Number(key.slice(-2));
 const fmtPct = (value) => `${value.toFixed(1)}%`;
 
 export default function AnalyticsModal() {
-  const { isAnalyticsOpen, closeAnalytics, tradeHistory, balance, rules, rawData, currentIndex } = useStore();
+  const { isAnalyticsOpen, closeAnalytics, tradeHistory, balance, rules, rawData, currentIndex, sessionId, timeframe } = useStore();
   const [selectedDate, setSelectedDate] = useState(null);
   const [monthCursor, setMonthCursor] = useState(() => {
     const latest = tradeHistory.length ? Math.max(...tradeHistory.map(t => t.closeTime || t.openTime || 0)) : Date.now() / 1000;
@@ -216,7 +216,7 @@ export default function AnalyticsModal() {
           </section>
         </div>
       </div>
-      {selectedDate && <TradeDayModal date={selectedDate} trades={selectedDayTrades} onClose={() => setSelectedDate(null)} />}
+      {selectedDate && <TradeDayModal date={selectedDate} trades={selectedDayTrades} sessionId={sessionId} candles={rawData} timeframe={timeframe} onClose={() => setSelectedDate(null)} />}
     </div>
   );
 }
