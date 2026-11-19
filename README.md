@@ -29,6 +29,13 @@ Place files in **`public/data/`**. The catalog is regenerated automatically befo
 - After adding or replacing a file, restart the dev server or rebuild the production app so the generated catalog includes it.
 - Newly added data is not automatically available to an already installed offline copy until that copy is rebuilt/updated and the new file is loaded once.
 
+## Price precision and risk controls
+
+- EURUSD is displayed and edited to **five decimal places**, with a minimum tick of **0.00001** (for example, 1.11987).
+- XAUUSD / Gold is displayed and edited to **two decimal places**, with a minimum tick of **0.01** (for example, 4325.80).
+- Prop-firm daily-loss and maximum-drawdown checks use conservative intrabar account equity, including floating P&L on open positions. Peak equity also tracks favorable intrabar extremes.
+- Position volume is rounded down to the supported 0.0001 lot step so rounding does not increase the requested risk.
+
 ## Offline behavior
 
 - Replay, charting, drawing, manual orders, reporting, and saved sessions run locally.
