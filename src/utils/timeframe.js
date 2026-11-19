@@ -1,15 +1,13 @@
 export const aggregateData = (data, timeframeMinutes) => {
   if (timeframeMinutes === 1 || data.length === 0) return data;
 
-  const firstTime = data[0].time;
   const aggregated = [];
   let currentCandle = null;
   const timeframeSeconds = timeframeMinutes * 60;
 
   data.forEach((candle) => {
-    const offset = candle.time - firstTime;
-    const blockOffset = Math.floor(offset / timeframeSeconds) * timeframeSeconds;
-    const blockTime = firstTime + blockOffset;
+    // Align bars to actual epoch clock boundaries, not the first CSV row.
+    const blockTime = Math.floor(candle.time / timeframeSeconds) * timeframeSeconds;
 
     if (!currentCandle || currentCandle.time !== blockTime) {
       if (currentCandle) aggregated.push(currentCandle);
