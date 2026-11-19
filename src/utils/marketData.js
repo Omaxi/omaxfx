@@ -1,14 +1,14 @@
 import Papa from 'papaparse';
 
 const aliases = {
-  time: ['time', 'timestamp', 'datetime', 'date time', 'date_time', 'gmt time', 'utc time'],
+  time: ['time', 'timestamp', 'datetime', 'date time', 'date time', 'gmt time', 'utc time'],
   date: ['date', 'day'],
   clock: ['clock', 'hour', 'time of day', 'time'],
   open: ['open', 'o', 'open price'],
   high: ['high', 'h', 'high price'],
   low: ['low', 'l', 'low price'],
   close: ['close', 'c', 'last', 'close price'],
-  volume: ['volume', 'vol', 'tick volume', 'tick_volume'],
+  volume: ['volume', 'vol', 'tick volume', 'tick volume'],
 };
 
 const cleanHeader = (value) => String(value ?? '').replace(/^\uFEFF/, '').trim().toLowerCase().replace(/[._-]+/g, ' ').replace(/\s+/g, ' ');
