@@ -17,20 +17,13 @@ import { useEffect, useRef } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
 import { getPnlMultiplier } from './utils/instrument';
-import { Clock, RotateCcw, Info, Sparkles, AlertTriangle } from 'lucide-react';
-
-const formatTime = (sec) => {
-  if (sec == null) return '∞';
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-};
+import { RotateCcw, Info, Sparkles, AlertTriangle } from 'lucide-react';
 
 function App() {
   const { 
     isPlaying, stepForward, currentIndex, rawData, balance, positions, 
     musicEnabled, gameStarted,
-    gameState, rules, updateTimeRemaining, endGame, restartGame,
+    gameState, restartGame,
     loadingState, openInfo, theme,
     sessionName, setSessionName, saveSession,
     enableFireworks, toggleFireworks,
@@ -123,21 +116,7 @@ function App() {
     return () => clearInterval(interval);
   }, [isPlaying, currentIndex, rawData, stepForward, gameState.isOver]);
 
-  useEffect(() => {
-    if (!gameStarted || gameState.isOver || !rules.countdownMinutes) return;
-    const interval = setInterval(() => {
-      const elapsed = (Date.now() - gameState.startTime) / 1000;
-      const total = rules.countdownMinutes * 60;
-      const remaining = Math.max(0, total - elapsed);
-      if (remaining <= 0) {
-        endGame('countdown', `Time's up! Your ${rules.countdownMinutes}-minute session ended.`);
-        clearInterval(interval);
-      } else {
-        updateTimeRemaining(remaining);
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [gameStarted, gameState.isOver, gameState.startTime, rules.countdownMinutes, endGame, updateTimeRemaining]);
+
 
   useEffect(() => {
     const startAudio = () => {
@@ -166,15 +145,6 @@ function App() {
     return sum + priceDiff * getPnlMultiplier(pos.symbol || useStore.getState().symbol, useStore.getState().contractSpecs) * pos.size;
   }, 0);
 
-  const timeRemaining = gameState.timeRemaining;
-  const timeBoxClass = timeRemaining == null 
-    ? 'text-gray-500 border-gray-700 bg-gray-900/20'
-    : timeRemaining < 60 
-      ? 'text-red-400 border-red-600 bg-red-900/40 animate-pulse' 
-      : timeRemaining < 300 
-        ? 'text-yellow-400 border-yellow-600 bg-yellow-900/30' 
-        : 'text-blue-400 border-blue-600 bg-blue-900/30';
-
   const handleNewSession = () => {
     try { saveSession(); } catch (e) {}
     restartGame();
@@ -199,10 +169,6 @@ function App() {
           </h1>
           {gameStarted && (
             <>
-              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded font-mono font-bold text-[11px] border ${timeBoxClass}`}>
-                <Clock size={10} />
-                <span>{formatTime(timeRemaining)}</span>
-              </div>
               <input
                 type="text"
                 value={sessionName}
