@@ -169,7 +169,7 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1) {
   const labelCount = Math.min(7, data.length);
   for (let i = 0; i < labelCount; i++) {
     const idx = Math.round(i * (data.length - 1) / Math.max(1, labelCount - 1));
-    ctx.fillText(new Date(Number(data[idx].time) * 1000).toLocaleString(), x(idx), height - 24);
+    ctx.fillText(new Date((Number(data[idx].time) + 3 * 3600) * 1000).toLocaleString(undefined, { timeZone: 'UTC' }), x(idx), height - 24);
   }
   try { return canvas.toDataURL('image/jpeg', 0.9); } catch { return null; }
 }
