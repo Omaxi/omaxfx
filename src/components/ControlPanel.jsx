@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
 import { X, ChevronDown, Check, BarChart3, Palette, Sunrise, Sun, Sunset, ArrowUpDown, CandlestickChart } from 'lucide-react';
 
