@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { aggregateData } from './utils/timeframe';
-import { getContractSize, getPnlMultiplier } from './utils/instrument';
+import { getPnlMultiplier } from './utils/instrument';
 export { getContractSize, getPnlMultiplier } from './utils/instrument';
 import { 
   playOrderPlaced, playPositionClosed, playTPHit, playSLHit, playPendingTriggered, playRestart
