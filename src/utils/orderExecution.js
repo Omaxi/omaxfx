@@ -16,3 +16,17 @@ export function getPendingOrderFillPrice(order, candle) {
   if (kind === 'stop' && side === 'sell' && low <= entry) return open < entry ? open : entry;
   return null;
 }
+
+export function getStopLossFillPrice(side, stopPrice, candle) {
+  const stop = Number(stopPrice);
+  const open = Number(candle?.open);
+  if (!Number.isFinite(stop) || !Number.isFinite(open)) return null;
+  return side === 'buy' ? (open <= stop ? open : stop) : (open >= stop ? open : stop);
+}
+
+export function getTakeProfitFillPrice(side, targetPrice, candle) {
+  const target = Number(targetPrice);
+  const open = Number(candle?.open);
+  if (!Number.isFinite(target) || !Number.isFinite(open)) return null;
+  return side === 'buy' ? (open >= target ? open : target) : (open <= target ? open : target);
+}
