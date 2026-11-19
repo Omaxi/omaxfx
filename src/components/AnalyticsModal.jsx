@@ -90,7 +90,9 @@ export default function AnalyticsModal() {
   const shortTrades = trades.filter(t => t.type === 'sell');
   const longWins = longTrades.filter(t => t.pnl > 0).length;
   const shortWins = shortTrades.filter(t => t.pnl > 0).length;
-  const maxBalance = startBalance + trades.reduce((s, t) => s + t.pnl, 0);
+  let maxBalance = startBalance;
+  let runningBalance = startBalance;
+  trades.forEach(t => { runningBalance += t.pnl; maxBalance = Math.max(maxBalance, runningBalance); });
   const returnPct = startBalance ? netPnl / startBalance * 100 : 0;
   const monthChange = (offset) => setMonthCursor(new Date(year, month + offset, 1));
   const streakText = latestTrade ? (latestTrade.pnl > 0 ? 'Winning' : latestTrade.pnl < 0 ? 'Losing' : 'Flat') : 'No streak';
