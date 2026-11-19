@@ -235,3 +235,45 @@ test('market execution on 15m uses the completed 15m close, not the next 1m cand
     assert.equal(position.openTime, rawData[14].time);
   } finally { restore(); }
 });
+
+
+test('15m replay evaluates the first minute after the prior completed 15m candle', () => {
+  const rawData = Array.from({ length: 31 }, (_, i) => ({
+    time: i * 60,
+    open: 100,
+    high: 101,
+    low: i === 15 ? 98 : 99.5,
+    close: 100,
+  }));
+  const restore = configureStore({
+    gameStarted: true,
+    timeframe: 15,
+    currentIndex: 15,
+    rawData,
+    positions: [{
+      id: '15m-position', type: 'buy', entryPrice: 100, sl: 99, tp: 105,
+      size: 0.001, symbol: 'EURUSD',
+    }],
+  });
+  try {
+    useStore.getState().stepForward();
+    const state = useStore.getState();
+    assert.equal(state.tradeHistory.length, 1);
+    assert.equal(state.tradeHistory[0].reason, 'SL');
+    assert.equal(state.tradeHistory[0].closeTime, rawData[15].time);
+    assert.equal(state.currentIndex, 30);
+  } finally { restore(); }
+});
+
+test('switching between 1m and 15m preserves the last closed-bar boundary', () => {
+  const rawData = Array.from({ length: 46 }, (_, i) => ({
+    time: i * 60, open: 1, high: 2, low: 0.5, close: 1.5,
+  }));
+  const restore = configureStore({ rawData, currentIndex: 14, timeframe: 1 });
+  try {
+    useStore.getState().setTimeframe(15);
+    assert.equal(useStore.getState().currentIndex, 15);
+    useStore.getState().setTimeframe(1);
+    assert.equal(useStore.getState().currentIndex, 14);
+  } finally { restore(); }
+});
