@@ -55,6 +55,9 @@ function App() {
   // ============================================================
   useEffect(() => {
     let t = null;
+    const periodicSave = setInterval(() => {
+      if (useStore.getState().gameStarted) useStore.getState().saveSession();
+    }, 5000);
     const unsub = useStore.subscribe((state) => {
       if (!state.gameStarted) return;
       const key = [
@@ -65,6 +68,7 @@ function App() {
         state.pendingOrders.length,
         state.drawings.length,
         state.drawingsPast.length,
+        state.pencilStrokes.length,
         state.timeframe,
         state.symbol,
         state.timezone,
@@ -77,7 +81,7 @@ function App() {
         try { useStore.getState().saveSession(); } catch (e) {}
       }, 800);
     });
-    return () => { unsub(); if (t) clearTimeout(t); };
+    return () => { unsub(); if (t) clearTimeout(t); clearInterval(periodicSave); };
   }, []);
 
   useEffect(() => {
