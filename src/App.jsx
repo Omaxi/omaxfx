@@ -17,7 +17,7 @@ import { aggregateData } from './utils/timeframe';
 import { useEffect, useRef } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
-import { getContractSize } from './store';
+import { getPnlMultiplier } from './store';
 import { Clock, RotateCcw, Info, Sparkles, AlertTriangle } from 'lucide-react';
 
 const formatTime = (sec) => {
@@ -165,7 +165,7 @@ function App() {
   const unrealisedPnl = positions.reduce((sum, pos) => {
     const isBuy = pos.type === 'buy';
     const priceDiff = isBuy ? currentPrice - pos.entryPrice : pos.entryPrice - currentPrice;
-    return sum + priceDiff * getContractSize(pos.symbol || useStore.getState().symbol, useStore.getState().contractSpecs) * pos.size;
+    return sum + priceDiff * getPnlMultiplier(pos.symbol || useStore.getState().symbol, useStore.getState().contractSpecs) * pos.size;
   }, 0);
 
   const timeRemaining = gameState.timeRemaining;
