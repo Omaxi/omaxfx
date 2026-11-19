@@ -366,6 +366,24 @@ export default function Chart() {
   }, [theme]);
 
   useEffect(() => {
+    const applyUiTheme = (event) => {
+      const light = (event?.detail || document.documentElement.dataset.uiTheme) === 'light';
+      try {
+        chartRef.current?.applyOptions({
+          layout: { textColor: light ? '#475467' : '#d1d4dc' },
+          grid: {
+            vertLines: { visible: false },
+            horzLines: { visible: false },
+          },
+        });
+      } catch (e) {}
+    };
+    applyUiTheme();
+    window.addEventListener('omaxfx-ui-theme-change', applyUiTheme);
+    return () => window.removeEventListener('omaxfx-ui-theme-change', applyUiTheme);
+  }, []);
+
+  useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
     try {
       seriesRef.current.applyOptions({ visible: chartType === 'candle' });
