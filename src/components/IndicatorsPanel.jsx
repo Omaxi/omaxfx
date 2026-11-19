@@ -103,8 +103,8 @@ function calculateIndicators(candles, config, active, timeframe) {
         if (i < pRSI) return { time: c.time };
         if (i === pRSI) { avgGain = average(gains.slice(1, pRSI + 1)); avgLoss = average(losses.slice(1, pRSI + 1)); }
         else { avgGain = ((avgGain * (pRSI - 1)) + gains[i]) / pRSI; avgLoss = ((avgLoss * (pRSI - 1)) + losses[i]) / pRSI; }
-        const rs = avgLoss === 0 ? Infinity : avgGain / avgLoss;
-        return { time: c.time, value: 100 - (100 / (1 + rs)) };
+        const value = avgLoss === 0 ? (avgGain === 0 ? 50 : 100) : 100 - (100 / (1 + avgGain / avgLoss));
+        return { time: c.time, value };
       });
     }
 
