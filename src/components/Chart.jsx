@@ -243,6 +243,7 @@ export default function Chart() {
   const visibleDataRef = useRef([]);
   const lastTimeframeRef = useRef(1);
   const lastRecenterRef = useRef(0);
+  const lastVisibleDataRef = useRef([]);
   const activePointersRef = useRef(new Set());
   const lastTapRef = useRef({ time: 0, x: 0, y: 0 });
   const touchDownPosRef = useRef({ x: 0, y: 0 });
@@ -342,10 +343,10 @@ export default function Chart() {
       },
     });
 
-    // Per-symbol price format at init: EURUSD gets 4 decimals, others get 2.
+    // Per-symbol precision: FX majors use five decimals; metals use two.
     const initialSymbol = useStore.getState().symbol;
-    const initialPrecision = initialSymbol === 'EURUSD' ? 4 : 2;
-    const initialMinMove   = initialSymbol === 'EURUSD' ? 0.0001 : 0.01;
+    const initialPrecision = initialSymbol === 'EURUSD' ? 5 : 2;
+    const initialMinMove   = initialSymbol === 'EURUSD' ? 0.00001 : 0.01;
 
     seriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
       upColor: t.upBody, downColor: t.downBody, borderVisible: false,
@@ -382,11 +383,11 @@ export default function Chart() {
   }, []);
 
   // Update price format when the active symbol changes.
-  // EURUSD shows 4 decimals (e.g. 1.1212), XAUUSD shows 2 (e.g. 1916.62).
+  // EURUSD shows five decimals (e.g. 1.11987), XAUUSD shows two (e.g. 4325.80).
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
-    const precision = symbol === 'EURUSD' ? 4 : 2;
-    const minMove   = symbol === 'EURUSD' ? 0.0001 : 0.01;
+    const precision = symbol === 'EURUSD' ? 5 : 2;
+    const minMove   = symbol === 'EURUSD' ? 0.00001 : 0.01;
     try {
       seriesRef.current.applyOptions({
         priceFormat: { type: 'price', precision, minMove },
@@ -1095,6 +1096,7 @@ export default function Chart() {
         lineSeriesRef.current.setData([]);
       } catch (e) {}
       visibleDataRef.current = [];
+      lastVisibleDataRef.current = [];
       return;
     }
     
@@ -1103,8 +1105,21 @@ export default function Chart() {
     const jumpChanged = lastRecenterRef.current !== recenterToken;
     
     visibleDataRef.current = visibleData;
-    seriesRef.current.setData(visibleData);
-    lineSeriesRef.current.setData(visibleData.map(d => ({ time: d.time, value: d.close })));
+    const previous = lastVisibleDataRef.current;
+    const canAppend = previous.length > 0 &&
+      visibleData.length === previous.length + 1 &&
+      previous.every((candle, index) => candle.time === visibleData[index].time) &&
+      lastTimeframeRef.current === timeframe &&
+      lastRecenterRef.current === recenterToken;
+    if (canAppend) {
+      const latest = visibleData[visibleData.length - 1];
+      seriesRef.current.update(latest);
+      lineSeriesRef.current.update({ time: latest.time, value: latest.close });
+    } else {
+      seriesRef.current.setData(visibleData);
+      lineSeriesRef.current.setData(visibleData.map(d => ({ time: d.time, value: d.close })));
+    }
+    lastVisibleDataRef.current = visibleData;
 
     if (tfChanged || jumpChanged) {
       try {
