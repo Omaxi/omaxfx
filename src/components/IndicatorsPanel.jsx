@@ -278,7 +278,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
               </button>
             ))}
           </div>
-          {selected.some(item => item.key === 'ma' || item.key === 'bb') && (
+          {selected.some(item => ['ma', 'bb', 'rsi', 'atr', 'adx'].includes(item.key)) && (
             <div className="mt-2 border-t border-[#2a2e39] pt-2">
               <div className="mb-1 flex items-center gap-1 text-[10px] font-bold text-gray-400"><Settings2 size={11}/> Indicator instances</div>
               {selected.some(item => item.key === 'ma') && <div className="mb-2 rounded bg-[#1e222d] p-2">
