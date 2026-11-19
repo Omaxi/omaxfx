@@ -820,8 +820,24 @@ export default function Chart() {
 
         if (isDoubleTap) {
           resetTapTimer();
-          setSelectedItem(null);
-          lockChart(false);
+          if (drawingHit && drawingHit.drawingId !== sel.id) {
+            setSelectedItem({ type: 'drawing', id: drawingHit.drawingId });
+            lockChart(true);
+          } else if (tradeHit && sel.type !== 'trade') {
+            setSelectedItem({
+              type: 'trade',
+              key: tradeKey(tradeHit),
+              price: tradeHit.price,
+              target: tradeHit.target,
+              positionId: tradeHit.positionId,
+              orderId: tradeHit.orderId,
+              lineType: tradeHit.type,
+            });
+            lockChart(true);
+          } else {
+            setSelectedItem(null);
+            lockChart(false);
+          }
           return;
         }
 
