@@ -35,7 +35,7 @@ export const getPnlMultiplier = (symbol, specs = {}) => {
 
 const getDayKey = (unixSeconds) => {
   const d = new Date(unixSeconds * 1000);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 };
 
 const formatRangeDate = (unixSeconds) => {
@@ -130,6 +130,7 @@ export const useStore = create((set, get) => ({
         tickSize: Number(spec.tickSize) > 0 ? Number(spec.tickSize) : 0.01,
         precision: Number.isInteger(Number(spec.precision)) ? Math.max(0, Math.min(10, Number(spec.precision))) : 2,
         quoteCurrency: String(spec.quoteCurrency || 'USD').toUpperCase(),
+        quoteToAccountRate: Number(spec.quoteToAccountRate) > 0 ? Number(spec.quoteToAccountRate) : 1,
       },
     };
     return {
@@ -217,6 +218,9 @@ export const useStore = create((set, get) => ({
       rawData: state.rawData.map(c => ({ ...c, time: shift(c.time) })),
       displayData: state.displayData.map(c => ({ ...c, time: shift(c.time) })),
       drawings: state.drawings.map(d => ({ ...d, points: d.points.map(p => ({ ...p, time: shift(p.time) })) })),
+      drawingsPast: state.drawingsPast.map(group => group.map(d => ({ ...d, points: d.points.map(p => ({ ...p, time: shift(p.time) })) }))),
+      drawingsFuture: state.drawingsFuture.map(group => group.map(d => ({ ...d, points: d.points.map(p => ({ ...p, time: shift(p.time) })) }))),
+      pencilStrokes: state.pencilStrokes.map(stroke => ({ ...stroke, points: stroke.points.map(p => Number.isFinite(p.time) ? { ...p, time: shift(p.time) } : p) })),
       tradeHistory: state.tradeHistory.map(t => ({ ...t, openTime: shift(t.openTime), closeTime: shift(t.closeTime) })),
       positions: state.positions.map(p => ({ ...p, openTime: shift(p.openTime) })),
       pendingOrders: state.pendingOrders.map(o => ({ ...o, openTime: shift(o.openTime) })),
@@ -772,7 +776,7 @@ export const useStore = create((set, get) => ({
       for (const pos of newPositions) {
         const isBuy = pos.type === 'buy';
         let closed = false;
-        if (pos.sl) {
+        if (pos.sl != null) {
           const hitSl = isBuy ? candle.low <= pos.sl : candle.high >= pos.sl;
           if (hitSl) {
             const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
@@ -782,7 +786,7 @@ export const useStore = create((set, get) => ({
             closed = true; slHit = true;
           }
         }
-        if (!closed && pos.tp) {
+        if (!closed && pos.tp != null) {
           const hitTp = isBuy ? candle.high >= pos.tp : candle.low <= pos.tp;
           if (hitTp) {
             const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
