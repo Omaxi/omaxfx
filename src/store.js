@@ -30,8 +30,14 @@ const getContractSize = (symbol) => SYMBOL_CONTRACT[symbol] ?? DEFAULT_CONTRACT;
 
 const getDayKey = (unixSeconds) => {
   const d = new Date(unixSeconds * 1000);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 };
+
+const getUnrealizedPnl = (positions, markPrice, fallbackSymbol) => positions.reduce((sum, pos) => {
+  const isBuy = pos.type === 'buy';
+  const diff = isBuy ? markPrice - pos.entryPrice : pos.entryPrice - markPrice;
+  return sum + diff * getContractSize(pos.symbol || fallbackSymbol) * pos.size;
+}, 0);
 
 const formatRangeDate = (unixSeconds) => {
   const d = new Date(unixSeconds * 1000);
@@ -259,7 +265,14 @@ export const useStore = create((set, get) => ({
     const symbolData = state.allRawDataBySymbol[savedSymbol];
     if (!symbolData || symbolData.length === 0) return false;
 
-    const filtered = symbolData.filter(c => c.time >= saved.gamePeriod.from && c.time <= saved.gamePeriod.to);
+    // Data files are loaded in the canonical UTC-5 timeline. Reapply the
+    // saved display offset before filtering a session saved in another zone.
+    const savedOffset = TZ_OFFSETS[saved.timezone || 'UTC-5'] ?? -300;
+    const restoreShift = (savedOffset - (-300)) * 60;
+    const restoredData = restoreShift === 0
+      ? symbolData
+      : symbolData.map(c => ({ ...c, time: c.time + restoreShift }));
+    const filtered = restoredData.filter(c => c.time >= saved.gamePeriod.from && c.time <= saved.gamePeriod.to);
     if (filtered.length === 0) return false;
 
     // Guard against a saved session that was already at the last candle:
@@ -270,7 +283,8 @@ export const useStore = create((set, get) => ({
     const tf = saved.timeframe || 1;
     set({
       symbol: savedSymbol,
-      allRawData: symbolData,
+      allRawDataBySymbol: { ...state.allRawDataBySymbol, [savedSymbol]: restoredData },
+      allRawData: restoredData,
       rawData: filtered,
       displayData: aggregateData(filtered, tf),
       gameStarted: true,
@@ -765,17 +779,39 @@ export const useStore = create((set, get) => ({
       }
       newPositions = stillOpen;
       if (!gameOverReason) {
-        const violation = checkRuleViolations(state, newBalance, newPeak, newDailyLoss);
+        const equity = newBalance + getUnrealizedPnl(newPositions, candle.close, state.symbol);
+        const equityPeak = Math.max(newPeak, equity);
+        const violation = checkRuleViolations(state, equity, equityPeak, newDailyLoss);
         if (violation) { gameOverReason = violation.reason; gameOverMessage = violation.message; }
       }
       const stillPending = [];
       for (const order of newPendingOrders) {
         const isBuy = order.type === 'buy';
-        const hitEntry = isBuy 
-          ? candle.low <= order.entryPrice && candle.high >= order.entryPrice
-          : candle.high >= order.entryPrice && candle.low <= order.entryPrice;
-        if (hitEntry) {
-          newPositions.push({ ...order, isPending: false, openTime: candle.time });
+        const orderType = String(order.orderType || (isBuy ? 'buy-limit' : 'sell-limit')).toLowerCase();
+        let triggered = false;
+        let fillPrice = order.entryPrice;
+        if (orderType.includes('limit')) {
+          triggered = isBuy ? candle.low <= order.entryPrice : candle.high >= order.entryPrice;
+          if (triggered && (isBuy ? candle.open < order.entryPrice : candle.open > order.entryPrice)) fillPrice = candle.open;
+        } else if (orderType.includes('stop')) {
+          triggered = isBuy ? candle.high >= order.entryPrice : candle.low <= order.entryPrice;
+          if (triggered && (isBuy ? candle.open > order.entryPrice : candle.open < order.entryPrice)) fillPrice = candle.open;
+        } else {
+          triggered = candle.low <= order.entryPrice && candle.high >= order.entryPrice;
+        }
+        if (triggered && !gameOverReason) {
+          const opened = { ...order, entryPrice: fillPrice, isPending: false, openTime: candle.time };
+          const hitSl = opened.sl != null && (isBuy ? candle.low <= opened.sl : candle.high >= opened.sl);
+          const hitTp = opened.tp != null && (isBuy ? candle.high >= opened.tp : candle.low <= opened.tp);
+          // Conservative same-candle rule: if both levels are touched, assume SL first.
+          if (hitSl || hitTp) {
+            const exitPrice = hitSl ? opened.sl : opened.tp;
+            const pnl = (isBuy ? exitPrice - fillPrice : fillPrice - exitPrice) *
+              getContractSize(opened.symbol || state.symbol) * opened.size;
+            newBalance += pnl;
+            newHistory.push({ ...opened, exitPrice, pnl, reason: hitSl ? 'SL' : 'TP', closeTime: candle.time });
+            if (hitSl) slHit = true; else tpHit = true;
+          } else newPositions.push(opened);
           pendingTriggered = true;
         } else stillPending.push(order);
       }
@@ -823,17 +859,28 @@ export const useStore = create((set, get) => ({
   placeOrder: ({ side, type, riskPercent, entryPrice, slPrice, tpPrice, riskAmount }) => set((state) => {
     if (state.gameState.isOver) return state;
     if (riskPercent > state.rules.maxRiskPerTrade + EPSILON) return state;
-    const currentPrice = state.rawData[state.currentIndex].close;
+    const currentCandle = state.rawData[state.currentIndex];
+    if (!currentCandle || !Number.isFinite(entryPrice) || !Number.isFinite(slPrice) ||
+        !Number.isFinite(riskAmount) || riskAmount <= 0 || entryPrice === slPrice) return state;
+    const currentPrice = currentCandle.close;
     const contractSize = getContractSize(state.symbol);
-    const lots = riskAmount / (Math.abs(entryPrice - slPrice) * contractSize);
-    const openTime = state.rawData[state.currentIndex].time;
+    const stopDistance = Math.abs(entryPrice - slPrice);
+    const rawLots = riskAmount / (stopDistance * contractSize);
+    // Round volume down so the final position never exceeds the requested risk.
+    const lots = Math.floor((rawLots + 1e-10) * 100) / 100;
+    if (!Number.isFinite(lots) || lots < 0.01) return state;
+    const actualRisk = stopDistance * contractSize * lots;
+    const actualRiskPercent = state.balance > 0 ? actualRisk / state.balance * 100 : 0;
+    if (actualRiskPercent > state.rules.maxRiskPerTrade + EPSILON) return state;
+    const openTime = currentCandle.time;
     const newOrder = {
       id: Date.now() + Math.random(),
       type: side, orderType: type,
       entryPrice: type === 'market' ? currentPrice : entryPrice,
       sl: slPrice, tp: tpPrice,
-      size: Number(lots.toFixed(2)),
-      riskPercent, riskAmount,
+      size: lots,
+      riskPercent: actualRiskPercent,
+      riskAmount: actualRisk,
       isPending: type !== 'market',
       openTime,
       symbol: state.symbol,
