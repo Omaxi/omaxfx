@@ -530,6 +530,36 @@ export default function Chart() {
       ctx.clip();
       const state = useStore.getState();
       const currentTf = state.timeframe;
+
+      // Session overlay inspired by professional session indicators:
+      // subtle session blocks, clear labels, and the user's UTC-5 chart clock.
+      const visible = visibleDataRef.current;
+      if (visible.length) {
+        const firstDay = Math.floor(visible[0].time / 86400) * 86400;
+        const lastDay = Math.floor(visible[visible.length - 1].time / 86400) * 86400;
+        const sessions = [
+          { label: 'ASIA', start: state.sessionTimes?.asian ?? 1, end: 10, fill: 'rgba(245, 158, 11, 0.055)', text: '#d6a34a' },
+          { label: 'LONDON', start: state.sessionTimes?.london ?? 10, end: 15, fill: 'rgba(59, 130, 246, 0.055)', text: '#6ea8ef' },
+          { label: 'NEW YORK', start: state.sessionTimes?.newyork ?? 15, end: 23, fill: 'rgba(168, 85, 247, 0.055)', text: '#b68be8' },
+        ];
+        for (let day = firstDay; day <= lastDay; day += 86400) {
+          for (const session of sessions) {
+            const x1 = timeToX(day + session.start * 3600);
+            const x2 = timeToX(day + session.end * 3600);
+            if (x1 == null || x2 == null || x2 <= 0 || x1 >= paneW) continue;
+            const left = Math.max(0, Math.min(paneW, x1));
+            const right = Math.max(0, Math.min(paneW, x2));
+            if (right <= left) continue;
+            ctx.fillStyle = session.fill;
+            ctx.fillRect(left, 0, right - left, paneH);
+            if (right - left > 46) {
+              ctx.fillStyle = session.text;
+              ctx.font = '600 9px Arial';
+              ctx.fillText(session.label, left + 6, 14);
+            }
+          }
+        }
+      }
       const cache = profileCacheRef.current;
       const alive = new Set(state.drawings);
       for (const key of cache.keys()) if (!alive.has(key)) cache.delete(key);
