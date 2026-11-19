@@ -13,8 +13,8 @@ const INDICATORS = [
 ];
 
 const DEFAULT_CONFIG = {
-  ma: { period: 20, method: 'SMA' },
-  bb: { period: 20, multiplier: 2 },
+  ma: { instances: [{ id: 'ema9', period: 9, method: 'EMA', color: '#f59e0b' }, { id: 'ema21', period: 21, method: 'EMA', color: '#38bdf8' }] },
+  bb: { instances: [{ id: 'bb20', period: 20, multiplier: 2, color: '#a78bfa' }] },
   rsi: { period: 14 },
   atr: { period: 14 },
   adx: { period: 14 },
@@ -31,35 +31,44 @@ function calculateIndicators(candles, config, active, timeframe) {
   const period = (key) => Math.max(2, Math.min(500, Number(config[key]?.period) || DEFAULT_CONFIG[key]?.period || 14));
 
   if (active.ma) {
-    const p = period('ma');
-    if (config.ma.method === 'EMA') {
-      const alpha = 2 / (p + 1);
-      let ema = null;
-      result.ma = completed.map((c, i) => {
-        if (i + 1 < p) return { time: c.time };
-        if (ema == null) ema = average(closes.slice(0, p));
-        else ema = (closes[i] * alpha) + (ema * (1 - alpha));
-        return { time: c.time, value: ema };
-      });
-    } else {
-      result.ma = completed.map((c, i) => i + 1 < p ? { time: c.time } : ({ time: c.time, value: average(closes.slice(i - p + 1, i + 1)) }));
-    }
+    const instances = config.ma?.instances?.length ? config.ma.instances : [{ id: 'ma', period: config.ma?.period || 20, method: config.ma?.method || 'SMA' }];
+    instances.forEach((instance, index) => {
+      const p = Math.max(2, Math.min(500, Number(instance.period) || 20));
+      const key = 'ma_' + instance.id;
+      if (instance.method === 'EMA') {
+        const alpha = 2 / (p + 1);
+        let ema = null;
+        result[key] = completed.map((c, i) => {
+          if (i + 1 < p) return { time: c.time };
+          if (ema == null) ema = average(closes.slice(0, p));
+          else ema = (closes[i] * alpha) + (ema * (1 - alpha));
+          return { time: c.time, value: ema };
+        });
+      } else {
+        result[key] = completed.map((c, i) => i + 1 < p ? { time: c.time } : ({ time: c.time, value: average(closes.slice(i - p + 1, i + 1)) }));
+      }
+    });
   }
 
   if (active.bb) {
-    const p = period('bb');
-    const multiplier = Math.max(0.1, Math.min(10, Number(config.bb.multiplier) || 2));
-    const upper = [], middle = [], lower = [];
-    completed.forEach((c, i) => {
-      if (i + 1 < p) { upper.push({ time: c.time }); middle.push({ time: c.time }); lower.push({ time: c.time }); return; }
-      const window = closes.slice(i - p + 1, i + 1);
-      const mean = average(window);
-      const deviation = Math.sqrt(average(window.map(value => (value - mean) ** 2)));
-      middle.push({ time: c.time, value: mean });
-      upper.push({ time: c.time, value: mean + multiplier * deviation });
-      lower.push({ time: c.time, value: mean - multiplier * deviation });
+    const instances = config.bb?.instances?.length ? config.bb.instances : [{ id: 'bb', period: config.bb?.period || 20, multiplier: config.bb?.multiplier || 2 }];
+    instances.forEach(instance => {
+      const p = Math.max(2, Math.min(500, Number(instance.period) || 20));
+      const multiplier = Math.max(0.1, Math.min(10, Number(instance.multiplier) || 2));
+      const upper = [], middle = [], lower = [];
+      completed.forEach((c, i) => {
+        if (i + 1 < p) { upper.push({ time: c.time }); middle.push({ time: c.time }); lower.push({ time: c.time }); return; }
+        const window = closes.slice(i - p + 1, i + 1);
+        const mean = average(window);
+        const deviation = Math.sqrt(average(window.map(value => (value - mean) ** 2)));
+        middle.push({ time: c.time, value: mean });
+        upper.push({ time: c.time, value: mean + multiplier * deviation });
+        lower.push({ time: c.time, value: mean - multiplier * deviation });
+      });
+      result['bb_' + instance.id + '_upper'] = upper;
+      result['bb_' + instance.id + '_middle'] = middle;
+      result['bb_' + instance.id + '_lower'] = lower;
     });
-    result.bbUpper = upper; result.bbMiddle = middle; result.bbLower = lower;
   }
 
   if (active.vwap) {
@@ -141,17 +150,21 @@ function calculateIndicators(candles, config, active, timeframe) {
       { key: 'newyork', start: 15, end: 23 },
     ];
     sessionDefs.forEach(session => {
-      let day = null, open = null;
-      result['session_' + session.key] = completed.map(c => {
+      let day = null, sessionHigh = null, sessionLow = null;
+      const highs = [], lows = [];
+      completed.forEach(c => {
         const d = new Date((c.time + 3 * 3600) * 1000);
         const dateKey = d.toISOString().slice(0, 10), hour = d.getUTCHours();
-        if (dateKey !== day) { day = dateKey; open = null; }
+        if (dateKey !== day) { day = dateKey; sessionHigh = null; sessionLow = null; }
         if (hour >= session.start && hour < session.end) {
-          if (open == null || (hour === session.start && d.getUTCMinutes() === 0)) open = c.open;
-          return { time: c.time, value: open };
-        }
-        return { time: c.time };
+          sessionHigh = sessionHigh == null ? c.high : Math.max(sessionHigh, c.high);
+          sessionLow = sessionLow == null ? c.low : Math.min(sessionLow, c.low);
+          highs.push({ time: c.time, value: sessionHigh });
+          lows.push({ time: c.time, value: sessionLow });
+        } else { highs.push({ time: c.time }); lows.push({ time: c.time }); }
       });
+      result['session_' + session.key + '_high'] = highs;
+      result['session_' + session.key + '_low'] = lows;
     });
   }
   return result;
@@ -181,17 +194,21 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
     };
 
     selected.forEach(item => {
-      if (item.key === 'ma') add('ma', item.color);
+      if (item.key === 'ma') {
+        (config.ma.instances || []).forEach(instance => add('ma_' + instance.id, instance.color || item.color, 0, 1.7));
+      }
       if (item.key === 'bb') {
-        add('bbUpper', '#a78bfa', 0, 1);
-        add('bbMiddle', '#8b5cf6', 0, 1);
-        add('bbLower', '#a78bfa', 0, 1);
+        (config.bb.instances || []).forEach(instance => {
+          add('bb_' + instance.id + '_upper', instance.color || '#a78bfa', 0, 1);
+          add('bb_' + instance.id + '_middle', instance.color || '#8b5cf6', 0, 1);
+          add('bb_' + instance.id + '_lower', instance.color || '#a78bfa', 0, 1);
+        });
       }
       if (item.key === 'vwap') add('vwap', item.color, 0, 1.5);
       if (item.key === 'sessions') {
-        add('session_asia', '#f59e0b', 0, 1);
-        add('session_london', '#38bdf8', 0, 1);
-        add('session_newyork', '#a78bfa', 0, 1);
+        add('session_asia_high', '#f59e0b', 0, 1.2); add('session_asia_low', '#f59e0b', 0, 1.2);
+        add('session_london_high', '#38bdf8', 0, 1.2); add('session_london_low', '#38bdf8', 0, 1.2);
+        add('session_newyork_high', '#a78bfa', 0, 1.2); add('session_newyork_low', '#a78bfa', 0, 1.2);
       }
       if (item.key === 'rsi') add('rsi', item.color, lowerPane++);
       if (item.key === 'atr') add('atr', item.color, lowerPane++);
@@ -227,6 +244,20 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
     ...current,
     [key]: { ...current[key], [field]: value },
   }));
+  const addInstance = (key) => setConfig(current => {
+    const instances = current[key].instances || [];
+    const id = key + '_' + Date.now().toString(36);
+    return { ...current, [key]: { ...current[key], instances: [...instances, key === 'ma'
+      ? { id, period: 50, method: 'EMA', color: '#22c55e' }
+      : { id, period: 20, multiplier: 2.5, color: '#c084fc' }] } };
+  });
+  const updateInstance = (key, id, field, value) => setConfig(current => ({
+    ...current, [key]: { ...current[key], instances: current[key].instances.map(instance =>
+      instance.id === id ? { ...instance, [field]: value } : instance) },
+  }));
+  const removeInstance = (key, id) => setConfig(current => ({
+    ...current, [key]: { ...current[key], instances: current[key].instances.filter(instance => instance.id !== id) },
+  }));
 
   return (
     <div className="absolute top-2 left-12 z-40 pointer-events-auto" onPointerDown={event => event.stopPropagation()}>
@@ -247,26 +278,27 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
               </button>
             ))}
           </div>
-          {selected.filter(item => DEFAULT_CONFIG[item.key]).length > 0 && (
+          {selected.some(item => item.key === 'ma' || item.key === 'bb') && (
             <div className="mt-2 border-t border-[#2a2e39] pt-2">
-              <div className="mb-1 flex items-center gap-1 text-[10px] font-bold text-gray-400"><Settings2 size={11}/> Parameters</div>
-              {selected.filter(item => DEFAULT_CONFIG[item.key]).map(item => (
-                <div key={item.key} className="mb-2 rounded bg-[#1e222d] p-2">
-                  <div className="mb-1 text-[10px] font-semibold text-white">{item.label}</div>
-                  {item.key === 'ma' && <label className="mb-1 flex items-center justify-between gap-2 text-[10px] text-gray-400">
-                    Method
-                    <select value={config.ma.method} onChange={event => updateConfig('ma', 'method', event.target.value)} className="w-20 rounded border border-[#343b49] bg-[#0b0e11] px-2 py-1 text-white"><option value="SMA">SMA</option><option value="EMA">EMA</option></select>
-                  </label>}
-                  <label className="flex items-center justify-between gap-2 text-[10px] text-gray-400">
-                    Period
-                    <input type="number" min="2" max="500" value={config[item.key]?.period || DEFAULT_CONFIG[item.key].period} onChange={event => updateConfig(item.key, 'period', Math.max(2, Math.min(500, Number(event.target.value) || 2)))} className="w-16 rounded border border-[#343b49] bg-[#0b0e11] px-2 py-1 text-right text-white"/>
-                  </label>
-                  {item.key === 'bb' && <label className="mt-1 flex items-center justify-between gap-2 text-[10px] text-gray-400">
-                    Deviation
-                    <input type="number" min="0.1" max="10" step="0.1" value={config.bb.multiplier} onChange={event => updateConfig('bb', 'multiplier', Math.max(0.1, Math.min(10, Number(event.target.value) || 2)))} className="w-16 rounded border border-[#343b49] bg-[#0b0e11] px-2 py-1 text-right text-white"/>
-                  </label>}
-                </div>
-              ))}
+              <div className="mb-1 flex items-center gap-1 text-[10px] font-bold text-gray-400"><Settings2 size={11}/> Indicator instances</div>
+              {selected.some(item => item.key === 'ma') && <div className="mb-2 rounded bg-[#1e222d] p-2">
+                <div className="mb-1 flex items-center justify-between text-[10px] font-semibold text-white">Moving averages <button onClick={() => addInstance('ma')} className="text-blue-400">+ Add</button></div>
+                {(config.ma.instances || []).map(instance => <div key={instance.id} className="mb-1 flex items-center gap-1">
+                  <input aria-label="MA period" type="number" min="2" max="500" value={instance.period} onChange={e => updateInstance('ma', instance.id, 'period', Math.max(2, Math.min(500, Number(e.target.value) || 2)))} className="w-14 rounded bg-[#0b0e11] px-1.5 py-1 text-[10px] text-white"/>
+                  <select value={instance.method} onChange={e => updateInstance('ma', instance.id, 'method', e.target.value)} className="flex-1 rounded bg-[#0b0e11] px-1.5 py-1 text-[10px] text-white"><option>EMA</option><option>SMA</option></select>
+                  <input aria-label="MA color" type="color" value={instance.color} onChange={e => updateInstance('ma', instance.id, 'color', e.target.value)} className="h-6 w-7 bg-transparent"/>
+                  <button onClick={() => removeInstance('ma', instance.id)} className="px-1 text-red-400">×</button>
+                </div>)}
+              </div>}
+              {selected.some(item => item.key === 'bb') && <div className="rounded bg-[#1e222d] p-2">
+                <div className="mb-1 flex items-center justify-between text-[10px] font-semibold text-white">Bollinger bands <button onClick={() => addInstance('bb')} className="text-blue-400">+ Add</button></div>
+                {(config.bb.instances || []).map(instance => <div key={instance.id} className="mb-1 flex items-center gap-1">
+                  <input aria-label="BB period" type="number" min="2" max="500" value={instance.period} onChange={e => updateInstance('bb', instance.id, 'period', Math.max(2, Math.min(500, Number(e.target.value) || 2)))} className="w-14 rounded bg-[#0b0e11] px-1.5 py-1 text-[10px] text-white"/>
+                  <input aria-label="BB deviation" type="number" min="0.1" max="10" step="0.1" value={instance.multiplier} onChange={e => updateInstance('bb', instance.id, 'multiplier', Math.max(0.1, Math.min(10, Number(e.target.value) || 2)))} className="w-14 rounded bg-[#0b0e11] px-1.5 py-1 text-[10px] text-white"/>
+                  <input aria-label="BB color" type="color" value={instance.color} onChange={e => updateInstance('bb', instance.id, 'color', e.target.value)} className="h-6 w-7 bg-transparent"/>
+                  <button onClick={() => removeInstance('bb', instance.id)} className="px-1 text-red-400">×</button>
+                </div>)}
+              </div>}
             </div>
           )}
         </div>
