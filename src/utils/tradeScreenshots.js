@@ -115,8 +115,15 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1) {
   ctx.fillStyle = '#131722'; ctx.fillRect(0, 0, width, height);
   ctx.fillStyle = '#e5e7eb'; ctx.font = 'bold 22px Arial'; ctx.textAlign = 'left';
   ctx.fillText(String(trade.symbol || 'MARKET') + ' · ' + String(trade.type || '').toUpperCase() + ' · TRADE ID ' + String(trade.id), left, 34);
+  const durationSeconds = Math.max(0, Number(trade.closeTime) - Number(trade.openTime));
+  const durationHours = Math.floor(durationSeconds / 3600);
+  const durationMinutes = Math.floor((durationSeconds % 3600) / 60);
+  const durationRemainder = Math.floor(durationSeconds % 60);
+  const durationLabel = durationHours > 0
+    ? `${durationHours}h ${durationMinutes}m ${durationRemainder}s`
+    : durationMinutes > 0 ? `${durationMinutes}m ${durationRemainder}s` : `${durationRemainder}s`;
   ctx.fillStyle = '#8b98a9'; ctx.font = '13px Arial';
-  ctx.fillText('Entry ' + (Number.isFinite(entry) ? entry : '—') + '   Exit ' + (Number.isFinite(exit) ? exit : '—') + '   P&L ' + Number(trade.pnl || 0).toFixed(2), left, 56);
+  ctx.fillText('Entry ' + (Number.isFinite(entry) ? entry : '—') + '   Exit ' + (Number.isFinite(exit) ? exit : '—') + '   P&L ' + Number(trade.pnl || 0).toFixed(2) + '   Duration ' + durationLabel, left, 56);
 
   ctx.strokeStyle = '#293241'; ctx.lineWidth = 1; ctx.font = '11px Arial'; ctx.fillStyle = '#9aa4b2';
   for (let i = 0; i <= 6; i++) {
