@@ -3,7 +3,7 @@ import Papa from 'papaparse';
 const aliases = {
   time: ['time', 'timestamp', 'datetime', 'date time', 'date_time', 'gmt time', 'utc time'],
   date: ['date', 'day'],
-  clock: ['clock', 'hour', 'time of day'],
+  clock: ['clock', 'hour', 'time of day', 'time'],
   open: ['open', 'o', 'open price'],
   high: ['high', 'h', 'high price'],
   low: ['low', 'l', 'low price'],
@@ -29,8 +29,11 @@ function parseTimestamp(row) {
       if (numeric > 1e12) return Math.floor(numeric / 1000);
       if (numeric > 1e9) return Math.floor(numeric);
     }
-    const parsed = Date.parse(String(raw).trim());
-    if (Number.isFinite(parsed)) return Math.floor(parsed / 1000);
+    const rawText = String(raw).trim();
+    if (!/^\\d{1,2}:\\d{2}(:\\d{2}(\\.\\d+)?)?$/.test(rawText)) {
+      const parsed = Date.parse(rawText);
+      if (Number.isFinite(parsed)) return Math.floor(parsed / 1000);
+    }
   }
   const date = pick(row, aliases.date);
   const clock = pick(row, aliases.clock);
