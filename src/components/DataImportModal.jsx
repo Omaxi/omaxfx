@@ -136,6 +136,14 @@ export default function DataImportModal() {
                 <button className={buttonClass} disabled={status.loading || !selectedFiles.length} onClick={loadFolderData}>
                   {status.loading ? <span className="inline-flex items-center gap-2"><RefreshCw size={15} className="animate-spin"/> Loading data… {status.progress || 0}%</span> : 'Load data and continue'}
                 </button>
+                {status.loading && (
+                  <div className="space-y-1" aria-live="polite">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#202938]">
+                      <div className="h-full rounded-full bg-blue-500 transition-[width] duration-200" style={{ width: `${status.progress || 0}%` }} />
+                    </div>
+                    <p className="text-[10px] text-gray-500">Processing {status.fileName || 'CSV data'} · {status.progress || 0}%</p>
+                  </div>
+                )}
               </> : <div className="rounded-lg border border-dashed border-[#3b4554] p-4 text-center text-sm text-gray-400">
                 {catalogError || 'No CSV files found in public/data/.'}
                 <p className="mt-2 text-xs">Add CSV files to public/data/ and restart the app.</p>
