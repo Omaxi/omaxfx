@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { aggregateData } from './timeframe.js';
+import { parseMarketCsvText } from './marketData.js';
+import { getPnlMultiplier } from '../store.js';
 
 const candle = (time, open, high, low, close, volume = 1) => ({ time, open, high, low, close, volume });
 
@@ -41,4 +43,38 @@ test('ignores invalid timestamps and tolerates missing volume', () => {
   ], 5);
   assert.equal(result.length, 1);
   assert.equal(result[0].volume, 0);
+});
+
+test('parses separate date/time columns, alternate headers and drops duplicate timestamps', () => {
+  const csv = [
+    'Date,Time,Open,High,Low,Close,Tick_Volume',
+    '2024.01.01,00:00:00,1.1,1.3,1.0,1.2,10',
+    '2024.01.01,00:01:00,1.2,1.4,1.1,1.3,11',
+    '2024.01.01,00:01:00,1.2,1.4,1.1,1.3,11',
+    '2024.01.01,00:02:00,1.3,1.2,1.1,1.2,9',
+  ].join('\\n');
+  const result = parseMarketCsvText(csv);
+  assert.equal(result.candles.length, 2);
+  assert.equal(result.duplicateRows, 1);
+  assert.equal(result.invalidRows, 1);
+  assert.equal(result.candles[0].volume, 10);
+});
+
+test('parses a combined timestamp and millisecond epoch headers', () => {
+  const csv = [
+    'Timestamp,O,H,L,C,Volume',
+    '2024-01-01T00:00:00Z,10,12,9,11,4',
+    '1704067260000,11,13,10,12,5',
+  ].join('\\n');
+  const result = parseMarketCsvText(csv);
+  assert.equal(result.candles.length, 2);
+  assert.equal(result.candles[0].time, 1704067200);
+  assert.equal(result.candles[1].time, 1704067260);
+});
+
+test('applies custom quote-to-account conversion to contract PnL multiplier', () => {
+  assert.equal(getPnlMultiplier('EURUSD', {}), 100000);
+  assert.equal(getPnlMultiplier('USDJPY', {
+    USDJPY: { contractSize: 100000, quoteToAccountRate: 0.0067 },
+  }), 670);
 });
