@@ -39,14 +39,15 @@ export default function DataImportModal() {
       const firstSymbol = [...new Set(sorted.map(item => item.symbol))].sort()[0] || '';
       setSelectedSymbol(firstSymbol);
       const group = sorted.filter(item => item.symbol === firstSymbol);
-      setSelectedFileName(group[group.length - 1]?.name || '');
+      setSelectedFileName(group.length > 1 ? '__ALL__' : group[0]?.name || '');
     }).catch(error => { if (alive) setCatalogError(error?.message || 'Could not read the project data folder.'); });
     return () => { alive = false; };
   }, []);
 
   const symbols = useMemo(() => [...new Set(catalog.map(item => item.symbol))].sort(), [catalog]);
   const symbolFiles = useMemo(() => catalog.filter(item => item.symbol === selectedSymbol), [catalog, selectedSymbol]);
-  const selectedFile = symbolFiles.find(item => item.name === selectedFileName) || symbolFiles[symbolFiles.length - 1] || null;
+  const selectedFiles = selectedFileName === '__ALL__' ? symbolFiles : symbolFiles.filter(item => item.name === selectedFileName);
+  const selectedLabel = selectedFileName === '__ALL__' ? 'All available years (combined)' : selectedFiles[0]?.name || '';
 
   const openBacktestSetup = (code, candles, spec) => {
     if (!candles?.length) throw new Error('This CSV contains no valid market candles.');
@@ -55,13 +56,13 @@ export default function DataImportModal() {
   };
 
   const loadFolderData = async () => {
-    if (!selectedFile) {
+    if (!selectedFiles.length) {
       setStatus({ loading: false, error: 'Choose a CSV dataset first.' });
       return;
     }
     setStatus({ loading: true, error: '' });
     try {
-      const result = await loadBundledCsvFiles([selectedFile]);
+      const result = await loadBundledCsvFiles(selectedFiles);
       const specs = defaultSpecs(result.symbol);
       openBacktestSetup(result.symbol, result.candles, { ...specs, quoteCurrency: 'USD', quoteToAccountRate: 1 });
     } catch (error) {
@@ -121,12 +122,13 @@ export default function DataImportModal() {
                   </select>
                 </label>
                 <label className="block text-xs text-gray-400">CSV dataset
-                  <select className={inputClass} value={selectedFile?.name || ''} onChange={event => setSelectedFileName(event.target.value)}>
+                  <select className={inputClass} value={selectedFileName} onChange={event => setSelectedFileName(event.target.value)}>
+                    {symbolFiles.length > 1 && <option value="__ALL__">All available years (combined)</option>}
                     {symbolFiles.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}
                   </select>
                 </label>
-                <p className="text-[11px] text-gray-500">Choose one CSV file. To add more history, combine the years into one CSV or load another file.</p>
-                <button className={buttonClass} disabled={status.loading || !selectedFile} onClick={loadFolderData}>
+                <p className="text-[11px] text-gray-500">All available years are combined automatically. Choose one year if you only want that file.</p>
+                <button className={buttonClass} disabled={status.loading || !selectedFiles.length} onClick={loadFolderData}>
                   {status.loading ? <span className="inline-flex items-center gap-2"><RefreshCw size={15} className="animate-spin"/> Loading data…</span> : 'Load data and continue'}
                 </button>
               </> : <div className="rounded-lg border border-dashed border-[#3b4554] p-4 text-center text-sm text-gray-400">
