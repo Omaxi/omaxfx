@@ -58,6 +58,7 @@ test('parses separate date/time columns, alternate headers and drops duplicate t
   assert.equal(result.duplicateRows, 1);
   assert.equal(result.invalidRows, 1);
   assert.equal(result.candles[0].volume, 10);
+  assert.equal(result.timestampsAreUtc, false);
 });
 
 test('parses a combined timestamp and millisecond epoch headers', () => {
@@ -70,6 +71,7 @@ test('parses a combined timestamp and millisecond epoch headers', () => {
   assert.equal(result.candles.length, 2);
   assert.equal(result.candles[0].time, 1704067200);
   assert.equal(result.candles[1].time, 1704067260);
+  assert.equal(result.timestampsAreUtc, true);
 });
 
 test('applies custom quote-to-account conversion to contract PnL multiplier', () => {
@@ -77,4 +79,14 @@ test('applies custom quote-to-account conversion to contract PnL multiplier', ()
   assert.equal(getPnlMultiplier('USDJPY', {
     USDJPY: { contractSize: 100000, quoteToAccountRate: 0.0067 },
   }), 670);
+});
+
+test('recognizes explicit UTC+3 ISO timestamps as absolute instants', () => {
+  const csv = [
+    'Timestamp,Open,High,Low,Close',
+    '2024-01-01T00:00:00+03:00,10,12,9,11',
+  ].join('\\n');
+  const result = parseMarketCsvText(csv);
+  assert.equal(result.timestampsAreUtc, true);
+  assert.equal(result.candles[0].time, 1704056400);
 });
