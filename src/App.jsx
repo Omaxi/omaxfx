@@ -16,7 +16,7 @@ import { useStore } from './store';
 import { useEffect, useRef } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
-import { getPnlMultiplier } from './store';
+import { getPnlMultiplier } from './utils/instrument';
 import { Clock, RotateCcw, Info, Sparkles, AlertTriangle } from 'lucide-react';
 
 const formatTime = (sec) => {
