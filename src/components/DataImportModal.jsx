@@ -17,8 +17,8 @@ export default function DataImportModal() {
   const submit = async () => {
     if (!file) { setStatus({ loading: false, error: 'Choose a CSV file first.', result: null }); return; }
     if (!symbol.trim()) { setStatus({ loading: false, error: 'Enter an instrument symbol.', result: null }); return; }
-    if (!(Number(contractSize) > 0) || !(Number(tickSize) > 0)) {
-      setStatus({ loading: false, error: 'Contract size and tick size must be greater than zero.', result: null }); return;
+    if (!(Number(contractSize) > 0) || !(Number(tickSize) > 0) || !(Number(quoteToAccountRate) > 0)) {
+      setStatus({ loading: false, error: 'Contract size, tick size and quote-to-account rate must be greater than zero.', result: null }); return;
     }
     setStatus({ loading: true, error: '', result: null });
     try {
