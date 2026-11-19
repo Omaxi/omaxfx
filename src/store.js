@@ -9,6 +9,7 @@ import {
 export const INITIAL_BALANCE = 100000;
 const EPSILON = 0.001;
 const SESSION_KEY = 'omaxfx-session-v1';
+const SESSION_LIST_KEY = 'omaxfx-sessions-v2';
 
 const TZ_OFFSETS = {
   'UTC-5': -300, 'UTC-4': -240, 'UTC-3': -180, 'UTC-2': -120, 'UTC-1': -60,
@@ -31,6 +32,7 @@ const formatRangeDate = (unixSeconds) => {
 };
 
 const checkRuleViolations = (state, newBalance, newPeak, newDailyLoss) => {
+  if (state.rules?.propFirmEnabled === false) return null;
   if (state.rules.maxDailyLoss && newDailyLoss.dayStartBalance > 0) {
     const dailyLossAmt = newDailyLoss.dayStartBalance - newBalance;
     const dailyLossPct = dailyLossAmt > 0 ? (dailyLossAmt / newDailyLoss.dayStartBalance) * 100 : 0;
@@ -65,7 +67,7 @@ const DEFAULT_RULES = {
   maxRiskPerTrade: 1,
   maxDailyLoss: 5,
   maxDrawdown: 10,
-  countdownMinutes: 60,
+  propFirmEnabled: true,
   presetName: 'Custom',
 };
 
@@ -218,6 +220,7 @@ export const useStore = create((set, get) => ({
   openPeriodModal: () => set({ isPeriodModalOpen: true }),
   closePeriodModal: () => set({ isPeriodModalOpen: false }),
   
+  sessionId: null,
   sessionName: 'Session 1',
   setSessionName: (name) => set({ sessionName: name }),
 
@@ -225,53 +228,65 @@ export const useStore = create((set, get) => ({
     const s = get();
     if (!s.gameStarted || !s.gamePeriod) return;
     try {
+      const sessionId = s.sessionId || (globalThis.crypto?.randomUUID?.() ?? `session-${Date.now()}-${Math.random().toString(36).slice(2,8)}`);
       const payload = {
-        version: 1,
-        savedAt: Date.now(),
-        sessionName: s.sessionName,
-        playerName: s.playerName,
-        gamePeriod: s.gamePeriod,
-        rules: s.rules,
-        currentIndex: s.currentIndex,
-        timeframe: s.timeframe,
-        symbol: s.symbol,
-        timezone: s.timezone,
-        chartType: s.chartType,
-        balance: s.balance,
-        peakBalance: s.peakBalance,
-        positions: s.positions,
-        tradeHistory: s.tradeHistory,
-        pendingOrders: s.pendingOrders,
-        drawings: s.drawings,
-        drawingsPast: s.drawingsPast,
-        drawingsFuture: s.drawingsFuture,
-        dailyLoss: s.dailyLoss,
-        gameState: s.gameState,
-        theme: s.theme,
-        sessionTimes: s.sessionTimes,
+        version: 2, sessionId, savedAt: Date.now(),
+        sessionName: s.sessionName, playerName: s.playerName,
+        gamePeriod: s.gamePeriod, rules: { ...s.rules, countdownMinutes: null },
+        currentIndex: s.currentIndex, timeframe: s.timeframe,
+        symbol: s.symbol, timezone: 'UTC+3', chartType: s.chartType,
+        balance: s.balance, peakBalance: s.peakBalance,
+        positions: s.positions, tradeHistory: s.tradeHistory,
+        pendingOrders: s.pendingOrders, drawings: s.drawings,
+        drawingsPast: s.drawingsPast, drawingsFuture: s.drawingsFuture,
+        pencilStrokes: s.pencilStrokes, dailyLoss: s.dailyLoss,
+        gameState: { ...s.gameState, timeRemaining: null },
+        theme: s.theme, sessionTimes: s.sessionTimes,
         enableFireworks: s.enableFireworks,
       };
+      const sessions = s.readSessions();
+      const next = [payload, ...sessions.filter(item => item.sessionId !== sessionId)]
+        .sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+      localStorage.setItem(SESSION_LIST_KEY, JSON.stringify(next));
       localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+      if (s.sessionId !== sessionId) set({ sessionId });
+      return true;
     } catch (e) {
       console.warn('Failed to save session:', e);
+      return false;
     }
   },
 
-  readSession: () => {
+  readSessions: () => {
     try {
-      const raw = localStorage.getItem(SESSION_KEY);
-      if (!raw) return null;
-      return JSON.parse(raw);
-    } catch (e) { return null; }
+      const stored = JSON.parse(localStorage.getItem(SESSION_LIST_KEY) || '[]');
+      if (Array.isArray(stored) && stored.length) return stored;
+      const legacy = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+      return legacy?.gamePeriod ? [{ ...legacy, sessionId: legacy.sessionId || 'legacy-session' }] : [];
+    } catch (e) { return []; }
+  },
+
+  readSession: (sessionId = null) => {
+    const sessions = get().readSessions();
+    return sessionId ? sessions.find(item => item.sessionId === sessionId) || null : sessions[0] || null;
+  },
+
+  deleteSavedSession: (sessionId) => {
+    try {
+      const next = get().readSessions().filter(item => item.sessionId !== sessionId);
+      localStorage.setItem(SESSION_LIST_KEY, JSON.stringify(next));
+      if (get().sessionId === sessionId) set({ sessionId: null });
+      return next;
+    } catch (e) { return get().readSessions(); }
   },
 
   clearSession: () => {
-    try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+    try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(SESSION_LIST_KEY); } catch (e) {}
   },
 
-  loadSavedSession: () => {
+  loadSavedSession: (sessionId = null) => {
     const state = get();
-    const saved = state.readSession();
+    const saved = state.readSession(sessionId);
     if (!saved || !saved.gamePeriod) return false;
 
     const savedSymbol = saved.symbol || 'XAUUSD';
@@ -295,10 +310,10 @@ export const useStore = create((set, get) => ({
       gameStarted: true,
       isPeriodModalOpen: false,
       gamePeriod: saved.gamePeriod,
-      rules: saved.rules || DEFAULT_RULES,
+      rules: { ...DEFAULT_RULES, ...(saved.rules || {}), countdownMinutes: null },
       currentIndex: safeIndex,
       timeframe: tf,
-      timezone: saved.timezone || 'UTC-5',
+      timezone: 'UTC+3',
       chartType: saved.chartType || 'candle',
       balance: saved.balance ?? INITIAL_BALANCE,
       peakBalance: saved.peakBalance ?? INITIAL_BALANCE,
@@ -309,8 +324,10 @@ export const useStore = create((set, get) => ({
       drawingsPast: saved.drawingsPast || [],
       drawingsFuture: saved.drawingsFuture || [],
       dailyLoss: saved.dailyLoss || { day: null, dayStartBalance: INITIAL_BALANCE },
-      gameState: saved.gameState || { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
+      gameState: { ...(saved.gameState || { isOver: false, reason: null, message: '', startTime: null }), timeRemaining: null },
+      pencilStrokes: saved.pencilStrokes || [],
       playerName: saved.playerName || 'Trader',
+      sessionId: saved.sessionId || 'legacy-session',
       sessionName: saved.sessionName || 'Session 1',
       theme: saved.theme || DEFAULT_THEME,
       sessionTimes: saved.sessionTimes || { asian: 3, london: 10, newyork: 15 },
@@ -499,7 +516,8 @@ export const useStore = create((set, get) => ({
       gamePeriod: { from, to },
       gameStarted: true,
       isPeriodModalOpen: false,
-      rules,
+      rules: { ...rules, propFirmEnabled: rules.propFirmEnabled !== false, countdownMinutes: null },
+      sessionId: null,
       currentIndex: 0,
       isPlaying: false,
       balance: startBal,
@@ -516,7 +534,7 @@ export const useStore = create((set, get) => ({
       pencilStrokes: [],
       peakBalance: startBal,
       dailyLoss: { day: startDay, dayStartBalance: startBal },
-      gameState: { isOver: false, reason: null, message: '', startTime: Date.now(), timeRemaining: rules.countdownMinutes ? rules.countdownMinutes * 60 : null },
+      gameState: { isOver: false, reason: null, message: '', startTime: Date.now(), timeRemaining: null },
       recenterToken: state.recenterToken + 1,
     };
   }),
@@ -841,7 +859,7 @@ export const useStore = create((set, get) => ({
 
   placeOrder: ({ side, type, riskPercent, entryPrice, slPrice, tpPrice, riskAmount }) => set((state) => {
     if (state.gameState.isOver) return state;
-    if (riskPercent > state.rules.maxRiskPerTrade + EPSILON) return state;
+    if (state.rules?.propFirmEnabled !== false && riskPercent > state.rules.maxRiskPerTrade + EPSILON) return state;
     const currentPrice = state.rawData[state.currentIndex].close;
     const contractSize = getPnlMultiplier(state.symbol, state.contractSpecs);
     const lots = riskAmount / (Math.abs(entryPrice - slPrice) * contractSize);
