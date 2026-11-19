@@ -40,6 +40,7 @@ export default function OrderModal() {
   const [slPrice, setSlPrice] = useState(0);
   const [tpPrice, setTpPrice] = useState(0);
   const [entryPrice, setEntryPrice] = useState(0);
+  const [breakevenEnabled, setBreakevenEnabled] = useState(false);
 
   const currentPrice = rawData[currentIndex]?.close || 0;
   const riskAmount = balance * (riskPercent / 100);
@@ -137,7 +138,8 @@ export default function OrderModal() {
       entryPrice: validation.effectiveEntry,
       slPrice,
       tpPrice,
-      riskAmount
+      riskAmount,
+      breakevenEnabled,
     });
   };
 
@@ -152,14 +154,14 @@ export default function OrderModal() {
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#131722] rounded-2xl w-full max-w-md border border-[#2a2e39] overflow-hidden max-h-[95vh] flex flex-col">
-        <div className="flex justify-between items-center p-4 border-b border-[#2a2e39]">
-          <h2 className="text-xl font-bold">Place Order</h2>
+      <div className="bg-[#131722] rounded-2xl w-full max-w-md border border-[#2a2e39] overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="flex justify-between items-center p-3 border-b border-[#2a2e39]">
+          <h2 className="text-lg font-bold">Place Order</h2>
           <button onClick={handleCancel} className="p-1 hover:bg-[#2a2e39] rounded"><X size={20}/></button>
         </div>
 
         <div className="overflow-y-auto flex-1">
-          <div className="bg-[#1e222d] mx-4 mt-4 p-4 rounded-lg flex justify-between">
+          <div className="bg-[#1e222d] mx-3 mt-3 p-3 rounded-lg flex justify-between">
             <div>
               <p className="text-xs text-gray-400">Estimated Loss</p>
               <p className="text-red-400 font-bold">${fmtMoney(estimatedLoss)}</p>
@@ -170,9 +172,9 @@ export default function OrderModal() {
             </div>
           </div>
 
-          <div className="p-4 space-y-4">
+          <div className="p-3 space-y-3">
             <div>
-              <label className="text-xs text-gray-400 block mb-2">
+              <label className="text-[11px] text-gray-400 block mb-1">
                 Risk Percentage <span className="text-gray-500">(max {maxRisk}%)</span>
               </label>
               <div className="flex gap-2">
@@ -182,16 +184,21 @@ export default function OrderModal() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <label className="flex items-center gap-2 rounded bg-[#1e222d] px-3 py-2 text-[11px] text-gray-300">
+              <input type="checkbox" checked={breakevenEnabled} onChange={(e) => setBreakevenEnabled(e.target.checked)} className="accent-blue-500"/>
+              Automatically move Stop Loss to breakeven at +1R
+            </label>
+
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-gray-400">Side</label>
-                <div className={`mt-1 p-3 rounded font-bold capitalize ${orderSide === 'buy' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                <div className={`mt-1 p-2 rounded font-bold capitalize ${orderSide === 'buy' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
                   {orderSide}
                 </div>
               </div>
               <div>
                 <label className="text-xs text-gray-400">Type</label>
-                <select value={orderType} onChange={(e) => setOrderType(e.target.value)} className="w-full mt-1 p-3 bg-[#1e222d] rounded text-sm border border-[#2a2e39]">
+                <select value={orderType} onChange={(e) => setOrderType(e.target.value)} className="w-full mt-1 p-2 bg-[#1e222d] rounded text-sm border border-[#2a2e39]">
                   <option value="market">Market</option>
                   <option value="limit">Limit</option>
                   <option value="stop">Stop</option>
@@ -212,12 +219,12 @@ export default function OrderModal() {
                   value={entryPrice} 
                   step={inputStep}
                   onChange={(e) => setEntryPrice(Number(e.target.value))} 
-                  className="w-full mt-1 p-3 bg-[#1e222d] rounded border border-[#2a2e39]" 
+                  className="w-full mt-1 p-2 bg-[#1e222d] rounded border border-[#2a2e39]" 
                 />
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-red-400">Stop Loss</label>
                 <input 
@@ -257,12 +264,12 @@ export default function OrderModal() {
           </div>
         </div>
 
-        <div className="p-4 flex gap-3 border-t border-[#2a2e39]">
-          <button onClick={handleCancel} className="flex-1 py-3 bg-[#2a2e39] rounded font-bold">Cancel</button>
+        <div className="p-3 flex gap-2 border-t border-[#2a2e39]">
+          <button onClick={handleCancel} className="flex-1 py-2 bg-[#2a2e39] rounded font-bold text-sm">Cancel</button>
           <button 
             onClick={handleSubmit} 
             disabled={!validation.isValid}
-            className={`flex-1 py-3 rounded font-bold ${
+            className={`flex-1 py-2 rounded font-bold text-sm ${
               !validation.isValid
                 ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
                 : orderSide === 'buy' 
