@@ -125,7 +125,8 @@ export default function PeriodModal() {
   const handleLoadSaved = async (saved) => {
     setError('');
     try {
-      const catalog = await fetchDataCatalog();
+      let catalog = [];
+      try { catalog = await fetchDataCatalog(); } catch (catalogError) { /* Use an already loaded custom dataset when offline. */ }
       const fromYear = new Date((saved.gamePeriod.from + 3 * 3600) * 1000).getUTCFullYear();
       const toYear = new Date((saved.gamePeriod.to + 3 * 3600) * 1000).getUTCFullYear();
       const files = catalog.filter(file => file.symbol === saved.symbol && (file.year == null || (file.year >= fromYear && file.year <= toYear)));
