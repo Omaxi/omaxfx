@@ -24,17 +24,17 @@ test('floating EURUSD PnL uses the correct contract multiplier and adverse candl
   const positions = [{ type: 'buy', symbol: 'EURUSD', entryPrice: 1.1, size: 1 }];
   const candle = { low: 1.099, high: 1.102 };
   assert.equal(getPnlMultiplier('EURUSD'), 100000);
-  assert.equal(calculateIntrabarUnrealizedPnl(positions, candle, 'EURUSD'), -100);
+  assert.ok(Math.abs(calculateIntrabarUnrealizedPnl(positions, candle, 'EURUSD') + 100) < 1e-8);
 });
 
 test('floating Gold PnL uses contract specs', () => {
   const positions = [{ type: 'sell', symbol: 'XAUUSD', entryPrice: 4325.8, size: 0.1 }];
   const candle = { low: 4324.8, high: 4326.3 };
-  assert.equal(calculateIntrabarUnrealizedPnl(positions, candle, 'XAUUSD'), -5);
+  assert.ok(Math.abs(calculateIntrabarUnrealizedPnl(positions, candle, 'XAUUSD') + 5) < 1e-8);
 });
 
 test('floating equity peak uses the favorable intrabar extreme', () => {
   const positions = [{ type: 'buy', symbol: 'EURUSD', entryPrice: 1.1, size: 1 }];
   const candle = { low: 1.099, high: 1.102 };
-  assert.equal(calculateFavorableIntrabarPnl(positions, candle, 'EURUSD'), 200);
+  assert.ok(Math.abs(calculateFavorableIntrabarPnl(positions, candle, 'EURUSD') - 200) < 1e-8);
 });
