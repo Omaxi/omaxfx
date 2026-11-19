@@ -67,7 +67,7 @@ export default function OrderModal() {
         ? currentPrice - DEFAULT_SL_POINTS * pointSize
         : currentPrice + DEFAULT_SL_POINTS * pointSize), precision));
       setTpPrice(0);
-      setOrderType('limit');
+      setOrderType(draftPosition.orderType || 'limit');
     } else {
       // Market order default: SL = 100 points away, TP = 200 points away
       setEntryPrice(roundTo(currentPrice, precision));
