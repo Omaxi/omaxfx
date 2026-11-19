@@ -796,7 +796,18 @@ export const useStore = create((set, get) => ({
             closed = true; tpHit = true;
           }
         }
-        if (!closed) stillOpen.push(pos);
+        // Conservative intrabar handling: test the original SL/TP first. If neither
+        // was hit, arm breakeven for the next candle after price reaches +1R.
+        let updatedPosition = pos;
+        if (!closed && pos.breakevenEnabled && !pos.breakevenDone && pos.sl != null) {
+          const initialRisk = Math.abs(pos.entryPrice - pos.sl);
+          const oneRPrice = isBuy ? pos.entryPrice + initialRisk : pos.entryPrice - initialRisk;
+          const reachedOneR = isBuy ? candle.high >= oneRPrice : candle.low <= oneRPrice;
+          if (initialRisk > 0 && reachedOneR) {
+            updatedPosition = { ...pos, sl: pos.entryPrice, breakevenDone: true };
+          }
+        }
+        if (!closed) stillOpen.push(updatedPosition);
       }
       newPositions = stillOpen;
       if (!gameOverReason) {
@@ -855,7 +866,7 @@ export const useStore = create((set, get) => ({
   
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
 
-  placeOrder: ({ side, type, riskPercent, entryPrice, slPrice, tpPrice, riskAmount }) => set((state) => {
+  placeOrder: ({ side, type, riskPercent, entryPrice, slPrice, tpPrice, riskAmount, breakevenEnabled = false }) => set((state) => {
     if (state.gameState.isOver) return state;
     if (state.rules?.propFirmEnabled !== false && riskPercent > state.rules.maxRiskPerTrade + EPSILON) return state;
     const currentPrice = state.rawData[state.currentIndex].close;
@@ -867,6 +878,8 @@ export const useStore = create((set, get) => ({
       type: side, orderType: type,
       entryPrice: type === 'market' ? currentPrice : entryPrice,
       sl: slPrice, tp: tpPrice,
+      breakevenEnabled: !!breakevenEnabled,
+      breakevenDone: false,
       size: Number(lots.toFixed(4)),
       riskPercent, riskAmount,
       isPending: type !== 'market',
