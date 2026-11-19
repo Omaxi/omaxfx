@@ -13,16 +13,23 @@ const aliases = {
 
 const cleanHeader = (value) => String(value ?? '').replace(/^\uFEFF/, '').trim().toLowerCase().replace(/[._-]+/g, ' ').replace(/\s+/g, ' ');
 
-function pick(row, names) {
-  for (const name of names) {
-    const key = Object.keys(row).find((candidate) => cleanHeader(candidate) === name);
-    if (key != null && row[key] !== '') return row[key];
-  }
-  return undefined;
+function makeRowPicker(fields = []) {
+  const fieldByName = new Map(fields.map((field) => [cleanHeader(field), field]));
+  const keys = Object.fromEntries(Object.entries(aliases).map(([name, candidates]) => [
+    name,
+    candidates.map((candidate) => fieldByName.get(candidate)).filter(Boolean),
+  ]));
+  return (row, candidates) => {
+    for (const key of candidates) {
+      const value = row?.[key];
+      if (value !== undefined && value !== null && value !== '') return value;
+    }
+    return undefined;
+  };
 }
 
-function parseTimestamp(row) {
-  const raw = pick(row, aliases.time);
+function parseTimestamp(row, pick) {
+  const raw = pick(row, aliases.time.map((name) => name));
   if (raw !== undefined) {
     const numeric = Number(raw);
     if (Number.isFinite(numeric) && String(raw).trim() !== '') {
@@ -55,32 +62,66 @@ function parseTimestamp(row) {
   return Number.isFinite(parsed) ? { time: Math.floor(parsed / 1000), isUtc: hasExplicitZone } : null;
 }
 
-export function normalizeMarketRows({ data = [], errors = [], meta = {} }) {
-  if (!meta.fields?.length) throw new Error('The CSV has no readable header row.');
+function createRowNormalizer(fields = []) {
+  if (!fields.length) throw new Error('The CSV has no readable header row.');
+  const pick = makeRowPicker(fields);
+  const keys = Object.fromEntries(Object.entries(aliases).map(([name, candidates]) => [
+    name,
+    candidates.map((candidate) => fields.find((field) => cleanHeader(field) === candidate)).filter(Boolean),
+  ]));
   const candles = [];
-  let invalid = 0;
+  let invalidRows = 0;
   let timestampsAreUtc = true;
-  for (const row of data) {
-    const parsedTimestamp = parseTimestamp(row);
-    const time = parsedTimestamp?.time;
-    if (parsedTimestamp && !parsedTimestamp.isUtc) timestampsAreUtc = false;
-    const open = Number(pick(row, aliases.open));
-    const high = Number(pick(row, aliases.high));
-    const low = Number(pick(row, aliases.low));
-    const close = Number(pick(row, aliases.close));
-    const volumeRaw = pick(row, aliases.volume);
-    const volume = volumeRaw == null ? 0 : Number(volumeRaw);
-    if (time == null || ![open, high, low, close].every(Number.isFinite) ||
-        high < Math.max(open, close, low) || low > Math.min(open, close, high)) {
-      invalid++;
-      continue;
+  let previousTime = -Infinity;
+  let isChronological = true;
+
+  const addRows = (rows) => {
+    for (const row of rows) {
+      const parsedTimestamp = parseTimestamp(row, pick);
+      const time = parsedTimestamp?.time;
+      if (parsedTimestamp && !parsedTimestamp.isUtc) timestampsAreUtc = false;
+      const open = Number(pick(row, keys.open));
+      const high = Number(pick(row, keys.high));
+      const low = Number(pick(row, keys.low));
+      const close = Number(pick(row, keys.close));
+      const volumeRaw = pick(row, keys.volume);
+      const volume = volumeRaw == null ? 0 : Number(volumeRaw);
+      if (time == null || ![open, high, low, close].every(Number.isFinite) ||
+          high < Math.max(open, close, low) || low > Math.min(open, close, high)) {
+        invalidRows++;
+        continue;
+      }
+      if (time < previousTime) isChronological = false;
+      previousTime = time;
+      candles.push({ time, open, high, low, close, volume: Number.isFinite(volume) && volume >= 0 ? volume : 0 });
     }
-    candles.push({ time, open, high, low, close, volume: Number.isFinite(volume) && volume >= 0 ? volume : 0 });
-  }
-  candles.sort((a, b) => a.time - b.time);
-  const unique = candles.filter((candle, index) => index === 0 || candle.time > candles[index - 1].time);
-  if (!unique.length) throw new Error('No valid candles found. Expected time/date and OHLC columns.');
-  return { candles: unique, invalidRows: invalid, duplicateRows: candles.length - unique.length, parserWarnings: errors.length, timestampsAreUtc };
+  };
+
+  const finish = (parserWarnings = 0) => {
+    if (!candles.length) throw new Error('No valid candles found. Expected time/date and OHLC columns.');
+    // Most broker exports are already chronological. Avoid an O(n log n) sort in that common case.
+    if (!isChronological) candles.sort((a, b) => a.time - b.time);
+    const unique = [];
+    let lastTime = -Infinity;
+    let duplicateRows = 0;
+    for (const candle of candles) {
+      if (candle.time <= lastTime) {
+        duplicateRows++;
+        continue;
+      }
+      unique.push(candle);
+      lastTime = candle.time;
+    }
+    return { candles: unique, invalidRows, duplicateRows, parserWarnings, timestampsAreUtc };
+  };
+
+  return { addRows, finish };
+}
+
+export function normalizeMarketRows({ data = [], errors = [], meta = {} }) {
+  const normalizer = createRowNormalizer(meta.fields || []);
+  normalizer.addRows(data);
+  return normalizer.finish(errors.length);
 }
 
 const parseOptions = {
@@ -93,16 +134,57 @@ export function parseMarketCsvText(text) {
   return normalizeMarketRows(Papa.parse(text, parseOptions));
 }
 
-export function parseMarketCsv(file) {
+// Parse CSVs in chunks. Papa's worker keeps CSV tokenization off the UI thread,
+// while chunk callbacks normalize bounded batches instead of one huge result array.
+export function parseMarketCsv(file, onProgress = () => {}) {
   return new Promise((resolve, reject) => {
-    Papa.parse(file, {
-      ...parseOptions,
-      worker: true,
-      complete: (results) => {
-        try { resolve(normalizeMarketRows(results)); }
-        catch (error) { reject(error); }
-      },
-      error: reject,
-    });
+    let normalizer = null;
+    let parserWarnings = 0;
+    let settled = false;
+    const fileSize = Number(file?.size) || 0;
+
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    };
+
+    try {
+      Papa.parse(file, {
+        ...parseOptions,
+        worker: true,
+        chunkSize: 1024 * 1024,
+        chunk: (results) => {
+          try {
+            if (!normalizer) normalizer = createRowNormalizer(results.meta?.fields || []);
+            normalizer.addRows(results.data || []);
+            parserWarnings += results.errors?.length || 0;
+            const loaded = Math.min(fileSize || (results.meta?.cursor || 0), results.meta?.cursor || fileSize);
+            onProgress({
+              loaded,
+              total: fileSize,
+              percent: fileSize ? Math.min(99, Math.round((loaded / fileSize) * 100)) : 0,
+            });
+          } catch (error) {
+            fail(error);
+          }
+        },
+        complete: () => {
+          if (settled) return;
+          try {
+            if (!normalizer) throw new Error('The CSV file is empty or has no readable header row.');
+            const result = normalizer.finish(parserWarnings);
+            onProgress({ loaded: fileSize, total: fileSize, percent: 100 });
+            settled = true;
+            resolve(result);
+          } catch (error) {
+            fail(error);
+          }
+        },
+        error: fail,
+      });
+    } catch (error) {
+      fail(error);
+    }
   });
 }
