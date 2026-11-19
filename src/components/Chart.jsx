@@ -799,7 +799,18 @@ export default function Chart() {
       if (state.isDrawingMode && seriesRef.current) {
         const price = seriesRef.current.coordinateToPrice(y);
         if (price != null) {
+          const placingStop = state.drawingStep === 'sl';
           state.setDraftPrice(price);
+          if (placingStop) {
+            const updated = useStore.getState();
+            useStore.setState({
+              isDrawingMode: false,
+              drawingStep: null,
+              draftPosition: updated.draftPosition ? { ...updated.draftPosition, tp: null } : null,
+              isOrderModalOpen: true,
+              orderSide: updated.drawingSide || updated.draftPosition?.type || 'buy',
+            });
+          }
           e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         }
         return;
