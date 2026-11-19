@@ -11,6 +11,7 @@ import PeriodModal from './components/PeriodModal';
 import GameOverModal from './components/GameOverModal';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import LoadingScreen from './components/LoadingScreen';
+import DataImport from './components/DataImport';
 import { useStore, INITIAL_BALANCE } from './store';
 import { aggregateData } from './utils/timeframe';
 import { useEffect, useRef } from 'react';
@@ -277,19 +278,25 @@ function App() {
     let t = null;
     const unsub = useStore.subscribe((state) => {
       if (!state.gameStarted) return;
-      const key = [
-        state.currentIndex,
-        state.balance.toFixed(2),
-        state.positions.length,
-        state.tradeHistory.length,
-        state.pendingOrders.length,
-        state.drawings.length,
-        state.drawingsPast.length,
-        state.timeframe,
-        state.symbol,
-        state.timezone,
-        state.sessionName,
-      ].join('|');
+      // Fingerprint content, not just collection lengths: edits to an existing
+      // stop, target, drawing, or trade must trigger persistence too.
+      const key = JSON.stringify({
+        currentIndex: state.currentIndex,
+        balance: state.balance,
+        peakBalance: state.peakBalance,
+        positions: state.positions,
+        tradeHistory: state.tradeHistory,
+        pendingOrders: state.pendingOrders,
+        drawings: state.drawings,
+        drawingsPast: state.drawingsPast,
+        drawingsFuture: state.drawingsFuture,
+        timeframe: state.timeframe,
+        symbol: state.symbol,
+        timezone: state.timezone,
+        sessionName: state.sessionName,
+        dailyLoss: state.dailyLoss,
+        gameState: state.gameState,
+      });
       if (key === App._lastSaveKey) return;
       App._lastSaveKey = key;
       if (t) clearTimeout(t);
@@ -373,10 +380,11 @@ function App() {
   }, [musicEnabled]);
 
   const currentPrice = rawData[currentIndex]?.close || 0;
+  const contractSizeBySymbol = { XAUUSD: 100, EURUSD: 100000 };
   const unrealisedPnl = positions.reduce((sum, pos) => {
     const isBuy = pos.type === 'buy';
     const priceDiff = isBuy ? currentPrice - pos.entryPrice : pos.entryPrice - currentPrice;
-    return sum + priceDiff * 100 * pos.size;
+    return sum + priceDiff * (contractSizeBySymbol[pos.symbol || useStore.getState().symbol] || 100) * pos.size;
   }, 0);
 
   const timeRemaining = gameState.timeRemaining;
@@ -454,6 +462,7 @@ function App() {
               <RotateCcw size={13} />
             </button>
           )}
+          <DataImport />
           <SoundToggle />
           
           <button
