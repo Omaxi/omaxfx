@@ -1,7 +1,8 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { createChart, CandlestickSeries, LineSeries } from 'lightweight-charts';
 import { useStore } from '../store';
-import { X, Play, Pause, SkipForward, Trash2, Lock } from 'lucide-react';
+import { X, Play, Pause, SkipForward, Trash2, Lock, Maximize2 } from 'lucide-react';
+import IndicatorsPanel from './IndicatorsPanel';
 import DrawingToolbar from './DrawingToolbar';
 import StylePanel from './StylePanel';
 
@@ -72,7 +73,8 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
   ctx.fillStyle = fillColor;
   ctx.lineWidth = isDraft ? 1.5 : lineWidth;
   ctx.setLineDash(isDraft ? [5, 5] : []);
-  const canvasW = ctx.canvas.width;
+  const canvasW = ctx.canvas.clientWidth || ctx.canvas.width;
+  const canvasH = ctx.canvas.clientHeight || ctx.canvas.height;
 
   if (drawing.type === 'text' && pts.length === 1) {
     ctx.font = `${drawing.fontSize || 14}px ${drawing.fontFamily || 'sans-serif'}`;
@@ -85,6 +87,14 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(canvasW, y);
+      ctx.stroke();
+    }
+  } else if (drawing.type === 'vertical') {
+    const { x } = pts[0];
+    if (showBorder) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvasH);
       ctx.stroke();
     }
   } else if (drawing.type === 'trendline' && pts.length === 2) {
@@ -187,6 +197,12 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
       ctx.moveTo(0, y);
       ctx.lineTo(canvasW, y);
       ctx.stroke();
+    } else if (drawing.type === 'vertical') {
+      const { x } = pts[0];
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, canvasH);
+      ctx.stroke();
     } else if (drawing.type === 'trendline' && pts.length === 2) {
       ctx.beginPath();
       ctx.moveTo(pts[0].x, pts[0].y);
@@ -265,6 +281,7 @@ export default function Chart() {
   const [pendingBtnPos, setPendingBtnPos] = useState([]);
   const [positionBtnPos, setPositionBtnPos] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [chartReady, setChartReady] = useState(false);
   const [textInput, setTextInput] = useState(null);
   const cancelTextEditRef = useRef(false);
 
@@ -350,6 +367,8 @@ export default function Chart() {
       },
     });
 
+    setChartReady(true);
+
     // Per-symbol price format at init: EURUSD gets 4 decimals, others get 2.
     const initialState = useStore.getState();
     const initialSpec = initialState.contractSpecs?.[initialState.symbol];
@@ -387,7 +406,7 @@ export default function Chart() {
       try { chartRef.current.timeScale().fitContent(); } catch (e) {}
       window.dispatchEvent(new Event('resize'));
     }, 50);
-    return () => { clearTimeout(timer); chartRef.current.remove(); };
+    return () => { clearTimeout(timer); setChartReady(false); chartRef.current.remove(); };
   }, []);
 
   // Update price format when the active symbol changes.
@@ -725,10 +744,12 @@ export default function Chart() {
         }
         if (d.type === 'horizontal' && pts[0]) {
           if (Math.abs(y - pts[0].y) < BODY_TOL) return { drawingId: d.id, mode: 'drag-body' };
+        } else if (d.type === 'vertical' && pts[0]) {
+          if (Math.abs(x - pts[0].x) < BODY_TOL) return { drawingId: d.id, mode: 'drag-body' };
         } else if (d.type === 'trendline' && pts.length === 2) {
           if (distToSegment(x, y, pts[0].x, pts[0].y, pts[1].x, pts[1].y) < BODY_TOL)
             return { drawingId: d.id, mode: 'drag-body' };
-        } else if ((d.type === 'rectangle' || d.type === 'volumeProfile' || d.type === 'fibonacci') && pts.length === 2) {
+        } else if ((d.type === 'rectangle' || d.type === 'fibonacci') && pts.length === 2) {
           const x1 = Math.min(pts[0].x, pts[1].x), x2 = Math.max(pts[0].x, pts[1].x);
           const y1 = Math.min(pts[0].y, pts[1].y), y2 = Math.max(pts[0].y, pts[1].y);
           const onEdge =
@@ -827,8 +848,8 @@ export default function Chart() {
           return;
         }
 
-        if (tool === 'horizontal') {
-          state.addDrawing({ type: 'horizontal', points: [point] });
+        if (tool === 'horizontal' || tool === 'vertical') {
+          state.addDrawing({ type: tool, points: [point] });
           state.setActiveDrawingTool(null);
           return;
         }
@@ -957,6 +978,7 @@ export default function Chart() {
       const state = useStore.getState();
       const { x, y } = getLocalXY(e);
 
+      scheduleDrawRef.current();
       if (state.isPencilMode && currentPencilRef.current) {
         e.preventDefault();
         const stroke = currentPencilRef.current;
@@ -1282,7 +1304,7 @@ export default function Chart() {
     pendingOrders.forEach(order => {
       const rrr = calcRRR(order.entryPrice, order.sl, order.tp);
       const label = `${order.type === 'buy' ? 'Buy' : 'Sell'} ${order.orderType}${rrr ? ` · RRR ${rrr}` : ''}`;
-      addLine(order.entryPrice, '#facc15', label, 3, 2);
+      addLine(order.entryPrice, '#facc15', label, 3, 1);
       addLine(order.sl, '#ef5350', 'SL', 2, 1);
       addLine(order.tp, '#26a69a', 'TP', 2, 1);
     });
@@ -1320,6 +1342,20 @@ export default function Chart() {
     <div className="relative w-full h-full" style={{ backgroundColor: theme.background }}>
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none', cursor: isPencilMode ? 'crosshair' : 'default' }} />
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
+
+      <button onClick={() => {
+        const chart = chartRef.current;
+        if (!chart || !visibleData.length) return;
+        const timeScale = chart.timeScale();
+        const width = chartContainerRef.current?.clientWidth || 800;
+        const axisWidth = chart.priceScale('right').width();
+        const halfBars = Math.max(25, Math.floor(Math.max(100, width - axisWidth) / 12));
+        const last = visibleData.length - 1;
+        timeScale.applyOptions({ barSpacing: 6, rightOffset: 60 });
+        timeScale.setVisibleLogicalRange({ from: Math.max(0, last - halfBars), to: last + halfBars });
+        chart.priceScale('right').applyOptions({ autoScale: true });
+        scheduleDrawRef.current();
+      }} title="Reset chart zoom and candle size" className="absolute top-2 right-2 z-30 flex h-7 w-7 items-center justify-center rounded-md border border-[#2a2e39] bg-[#131722]/90 text-gray-300 shadow hover:bg-[#2a2e39] hover:text-white"><Maximize2 size={13}/></button>
 
       {isPencilMode && (
         <div 
@@ -1392,6 +1428,7 @@ export default function Chart() {
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 20 }}>
         <div className="pointer-events-auto">
           <DrawingToolbar />
+          <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={visibleData} />
         </div>
 
         {pendingBtnPos.map(p => (
