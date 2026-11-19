@@ -3,7 +3,7 @@ import { X, Camera, ImageOff, Download } from 'lucide-react';
 import { getTradeScreenshot, renderTradeScreenshot, saveTradeScreenshot } from '../utils/tradeScreenshots';
 import { fmtMoney } from '../utils/format';
 
-const stamp = (unix) => unix ? new Date(unix * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+const stamp = (unix) => unix ? new Date((unix + 3 * 3600) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) : '—';
 
 export default function TradeDayModal({ date, trades, onClose, sessionId, candles, timeframe = 1 }) {
   const [images, setImages] = useState({});
