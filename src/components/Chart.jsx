@@ -1082,6 +1082,7 @@ export default function Chart() {
 
   useEffect(() => {
     const onKey = (e) => {
+      if (e.target instanceof HTMLElement && (e.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName))) return;
       const state = useStore.getState();
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
         e.preventDefault();
@@ -1389,7 +1390,7 @@ export default function Chart() {
             onChange={(e) => setTextInput({ ...textInput, value: e.target.value })}
             onKeyDown={(e) => {
               if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
-              if (e.key === 'Escape') { cancelTextEditRef.current = true; setTextInput(null); }
+              if (e.key === 'Escape') { cancelTextEditRef.current = true; e.currentTarget.blur(); setTextInput(null); }
             }}
             onBlur={commitText}
             className="bg-[#1e222d] border-2 border-blue-500 text-white px-2 py-1 text-sm outline-none rounded shadow-xl min-w-[150px]"
