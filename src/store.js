@@ -936,7 +936,7 @@ export const useStore = create((set, get) => ({
       // candle's extremes (those may have occurred before the entry).
       lastEquity = pendingFilledThisCandle && newPositions.length
         ? newBalance
-        : newBalance + getIntrabarUnrealizedPnl(newPositions, candle, state.symbol, state.contractSpecs);
+        : newBalance + calculateIntrabarUnrealizedPnl(newPositions, candle, state.symbol, state.contractSpecs);
       newPeak = Math.max(newPeak, lastEquity, newBalance);
       if (gameOverReason) break;
     }
