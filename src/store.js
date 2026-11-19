@@ -127,7 +127,7 @@ export const useStore = create((set, get) => ({
       drawings: [], drawingsPast: [], drawingsFuture: [], pencilStrokes: [],
       balance: INITIAL_BALANCE, peakBalance: INITIAL_BALANCE,
       gameState: { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
-      symbolWarning: null, recenterToken: state.recenterToken + 1,
+      symbolWarning: null, sessionId: null, recenterToken: state.recenterToken + 1,
     };
   }),
 
@@ -275,6 +275,7 @@ export const useStore = create((set, get) => ({
     try {
       const next = get().readSessions().filter(item => item.sessionId !== sessionId);
       localStorage.setItem(SESSION_LIST_KEY, JSON.stringify(next));
+      if (next.length === 0) localStorage.removeItem(SESSION_KEY);
       if (get().sessionId === sessionId) set({ sessionId: null });
       return next;
     } catch (e) { return get().readSessions(); }
@@ -314,6 +315,7 @@ export const useStore = create((set, get) => ({
       currentIndex: safeIndex,
       timeframe: tf,
       timezone: 'UTC+3',
+      contractSpecs: saved.contractSpecs || state.contractSpecs,
       chartType: saved.chartType || 'candle',
       balance: saved.balance ?? INITIAL_BALANCE,
       peakBalance: saved.peakBalance ?? INITIAL_BALANCE,
