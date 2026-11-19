@@ -34,7 +34,7 @@ export default defineConfig(({ command }) => ({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,mp3,ico}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,mp3,ico,json}'],
         maximumFileSizeToCacheInBytes: 30 * 1024 * 1024,
         navigateFallback: 'index.html',
         runtimeCaching: [
@@ -44,7 +44,7 @@ export default defineConfig(({ command }) => ({
             options: {
               cacheName: 'csv-cache',
               expiration: {
-                maxEntries: 5,
+                maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24 * 365,
               },
               cacheableResponse: { statuses: [0, 200] },
