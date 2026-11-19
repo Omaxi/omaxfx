@@ -32,9 +32,12 @@ export const getPnlMultiplier = (symbol, specs = {}) => {
 
 export const calculateUnrealizedPnlAtPrice = (positions, markPrice, fallbackSymbol, specs = {}) =>
   (positions || []).reduce((sum, pos) => {
+    const entry = Number(pos.entryPrice), size = Number(pos.size);
+    const multiplier = Number(getPnlMultiplier(pos.symbol || fallbackSymbol, specs));
+    if (![markPrice, entry, size, multiplier].every(Number.isFinite) || size < 0 || multiplier <= 0) return sum;
     const isBuy = pos.type === 'buy';
-    const diff = isBuy ? markPrice - Number(pos.entryPrice) : Number(pos.entryPrice) - markPrice;
-    return sum + diff * getPnlMultiplier(pos.symbol || fallbackSymbol, specs) * Number(pos.size || 0);
+    const diff = isBuy ? markPrice - entry : entry - markPrice;
+    return sum + diff * multiplier * size;
   }, 0);
 
 export const calculateIntrabarUnrealizedPnl = (positions, candle, fallbackSymbol, specs = {}) =>
@@ -42,8 +45,11 @@ export const calculateIntrabarUnrealizedPnl = (positions, candle, fallbackSymbol
     if (!candle) return sum;
     const isBuy = pos.type === 'buy';
     const markPrice = isBuy ? Number(candle.low) : Number(candle.high);
-    const diff = isBuy ? markPrice - Number(pos.entryPrice) : Number(pos.entryPrice) - markPrice;
-    return sum + diff * getPnlMultiplier(pos.symbol || fallbackSymbol, specs) * Number(pos.size || 0);
+    const entry = Number(pos.entryPrice), size = Number(pos.size);
+    const multiplier = Number(getPnlMultiplier(pos.symbol || fallbackSymbol, specs));
+    if (![markPrice, entry, size, multiplier].every(Number.isFinite) || size < 0 || multiplier <= 0) return sum;
+    const diff = isBuy ? markPrice - entry : entry - markPrice;
+    return sum + diff * multiplier * size;
   }, 0);
 
 export const calculateFavorableIntrabarPnl = (positions, candle, fallbackSymbol, specs = {}) =>
@@ -51,6 +57,9 @@ export const calculateFavorableIntrabarPnl = (positions, candle, fallbackSymbol,
     if (!candle) return sum;
     const isBuy = pos.type === 'buy';
     const markPrice = isBuy ? Number(candle.high) : Number(candle.low);
-    const diff = isBuy ? markPrice - Number(pos.entryPrice) : Number(pos.entryPrice) - markPrice;
-    return sum + diff * getPnlMultiplier(pos.symbol || fallbackSymbol, specs) * Number(pos.size || 0);
+    const entry = Number(pos.entryPrice), size = Number(pos.size);
+    const multiplier = Number(getPnlMultiplier(pos.symbol || fallbackSymbol, specs));
+    if (![markPrice, entry, size, multiplier].every(Number.isFinite) || size < 0 || multiplier <= 0) return sum;
+    const diff = isBuy ? markPrice - entry : entry - markPrice;
+    return sum + diff * multiplier * size;
   }, 0);
