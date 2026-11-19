@@ -27,6 +27,11 @@ const SYMBOL_CONTRACT = {
 const DEFAULT_CONTRACT = 100;
 
 export const getContractSize = (symbol, specs = {}) => specs?.[symbol]?.contractSize ?? SYMBOL_CONTRACT[symbol] ?? DEFAULT_CONTRACT;
+export const getPnlMultiplier = (symbol, specs = {}) => {
+  const spec = specs?.[symbol];
+  const conversion = Number(spec?.quoteToAccountRate);
+  return getContractSize(symbol, specs) * (Number.isFinite(conversion) && conversion > 0 ? conversion : 1);
+};
 
 const getDayKey = (unixSeconds) => {
   const d = new Date(unixSeconds * 1000);
@@ -677,7 +682,7 @@ export const useStore = create((set, get) => ({
     const exitPrice = currentCandle.close;
     const isBuy = pos.type === 'buy';
     const priceDiff = isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice;
-    const contractSize = getContractSize(pos.symbol || state.symbol, state.contractSpecs);
+    const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
     const pnl = priceDiff * contractSize * pos.size;
     if (state.soundEnabled) playPositionClosed();
     const newBalance = state.balance + pnl;
@@ -705,7 +710,7 @@ export const useStore = create((set, get) => ({
     state.positions.forEach(pos => {
       const isBuy = pos.type === 'buy';
       const priceDiff = isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice;
-      const contractSize = getContractSize(pos.symbol || state.symbol, state.contractSpecs);
+      const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
       const pnl = priceDiff * contractSize * pos.size;
       newBalance += pnl;
       newHistory.push({ ...pos, exitPrice, pnl, reason: 'MANUAL', closeTime: currentCandle.time });
@@ -770,7 +775,7 @@ export const useStore = create((set, get) => ({
         if (pos.sl) {
           const hitSl = isBuy ? candle.low <= pos.sl : candle.high >= pos.sl;
           if (hitSl) {
-            const contractSize = getContractSize(pos.symbol || state.symbol, state.contractSpecs);
+            const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
             const pnl = (isBuy ? pos.sl - pos.entryPrice : pos.entryPrice - pos.sl) * contractSize * pos.size;
             newBalance += pnl;
             newHistory.push({ ...pos, exitPrice: pos.sl, pnl, reason: 'SL', closeTime: candle.time });
@@ -780,7 +785,7 @@ export const useStore = create((set, get) => ({
         if (!closed && pos.tp) {
           const hitTp = isBuy ? candle.high >= pos.tp : candle.low <= pos.tp;
           if (hitTp) {
-            const contractSize = getContractSize(pos.symbol || state.symbol, state.contractSpecs);
+            const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
             const pnl = (isBuy ? pos.tp - pos.entryPrice : pos.entryPrice - pos.tp) * contractSize * pos.size;
             newBalance += pnl;
             newHistory.push({ ...pos, exitPrice: pos.tp, pnl, reason: 'TP', closeTime: candle.time });
