@@ -169,12 +169,13 @@ function calculateIndicators(candles, config, active, timeframe) {
   }
   return result;
 }
-export default function IndicatorsPanel({ chartRef, chartReady, visibleData, timeframe }) {
+export default function IndicatorsPanel({ chartRef, chartReady, visibleData, timeframe, priceSeriesRef }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState({});
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const seriesRef = useRef({});
   const readyRef = useRef(false);
+  const sessionCanvasRef = useRef(null);
 
   const selected = useMemo(() => INDICATORS.filter(item => active[item.key]), [active]);
 
@@ -205,11 +206,6 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
         });
       }
       if (item.key === 'vwap') add('vwap', item.color, 0, 1.5);
-      if (item.key === 'sessions') {
-        add('session_asia_high', '#f59e0b', 0, 1.2); add('session_asia_low', '#f59e0b', 0, 1.2);
-        add('session_london_high', '#38bdf8', 0, 1.2); add('session_london_low', '#38bdf8', 0, 1.2);
-        add('session_newyork_high', '#a78bfa', 0, 1.2); add('session_newyork_low', '#a78bfa', 0, 1.2);
-      }
       if (item.key === 'rsi') add('rsi', item.color, lowerPane++);
       if (item.key === 'atr') add('atr', item.color, lowerPane++);
       if (item.key === 'adx') add('adx', item.color, lowerPane++);
@@ -239,6 +235,103 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
     });
   }, [chartRef, visibleData, config, active, chartReady, timeframe]);
 
+  // LuxAlgo-inspired session boxes: translucent range rectangles with dashed
+  // borders and session labels. Times use the simulator's fixed UTC+3 clock.
+  useEffect(() => {
+    const canvas = sessionCanvasRef.current;
+    const chart = chartReady ? chartRef.current : null;
+    const priceSeries = priceSeriesRef?.current;
+    if (!canvas || !chart) return undefined;
+    let frame = 0;
+    const draw = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        canvas.width = Math.round(rect.width * dpr);
+        canvas.height = Math.round(rect.height * dpr);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        if (!active.sessions || !priceSeries) return;
+
+        const data = timeframe === 1 ? visibleData.slice(0, -1) : visibleData;
+        if (!data?.length) return;
+        const defs = [
+          { key: 'asia', label: 'Sydney / Asia', start: 1, end: 10, color: '#f59e0b' },
+          { key: 'london', label: 'London', start: 10, end: 15, color: '#38bdf8' },
+          { key: 'newyork', label: 'New York', start: 15, end: 23, color: '#fb7185' },
+        ];
+        const groups = new Map();
+        data.forEach(candle => {
+          const local = new Date((Number(candle.time) + 3 * 3600) * 1000);
+          const day = local.toISOString().slice(0, 10);
+          const hour = local.getUTCHours();
+          defs.forEach(def => {
+            if (hour < def.start || hour >= def.end) return;
+            const id = day + ':' + def.key;
+            let item = groups.get(id);
+            if (!item) {
+              item = { ...def, startTime: Number(candle.time), endTime: Number(candle.time) + timeframe * 60, high: Number(candle.high), low: Number(candle.low) };
+              groups.set(id, item);
+            } else {
+              item.endTime = Number(candle.time) + timeframe * 60;
+              item.high = Math.max(item.high, Number(candle.high));
+              item.low = Math.min(item.low, Number(candle.low));
+            }
+          });
+        });
+
+        let paneWidth = rect.width, paneHeight = rect.height;
+        try {
+          const axisWidth = chart.priceScale('right').width();
+          const timeAxisHeight = chart.timeScale().height();
+          if (axisWidth > 0) paneWidth -= axisWidth;
+          if (timeAxisHeight > 0) paneHeight -= timeAxisHeight;
+        } catch {}
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, paneWidth, paneHeight);
+        ctx.clip();
+        groups.forEach(item => {
+          const x1 = chart.timeScale().timeToCoordinate(item.startTime);
+          const x2 = chart.timeScale().timeToCoordinate(item.endTime);
+          const y1 = priceSeries.priceToCoordinate(item.high);
+          const y2 = priceSeries.priceToCoordinate(item.low);
+          if ([x1, x2, y1, y2].some(value => value == null || !Number.isFinite(value))) return;
+          const left = Math.max(0, Math.min(x1, x2));
+          const right = Math.min(paneWidth, Math.max(x1, x2));
+          const top = Math.max(0, Math.min(y1, y2));
+          const bottom = Math.min(paneHeight, Math.max(y1, y2));
+          if (right <= left || bottom <= top) return;
+          ctx.fillStyle = item.color + '16';
+          ctx.fillRect(left, top, right - left, bottom - top);
+          ctx.strokeStyle = item.color;
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 3]);
+          ctx.strokeRect(left + 0.5, top + 0.5, Math.max(0, right - left - 1), Math.max(0, bottom - top - 1));
+          ctx.setLineDash([]);
+          ctx.font = '600 10px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = item.color;
+          ctx.fillText(item.label, Math.max(36, Math.min(paneWidth - 36, (left + right) / 2)), Math.max(11, top - 5));
+        });
+        ctx.restore();
+      });
+    };
+    draw();
+    const timeScale = chart.timeScale();
+    timeScale.subscribeVisibleLogicalRangeChange(draw);
+    const observer = new ResizeObserver(draw);
+    observer.observe(canvas);
+    return () => {
+      cancelAnimationFrame(frame);
+      timeScale.unsubscribeVisibleLogicalRangeChange(draw);
+      observer.disconnect();
+    };
+  }, [active.sessions, chartRef, chartReady, visibleData, timeframe]);
+
   const toggle = (key) => setActive(current => ({ ...current, [key]: !current[key] }));
   const updateConfig = (key, field, value) => setConfig(current => ({
     ...current,
@@ -260,7 +353,9 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
   }));
 
   return (
-    <div className="absolute top-2 left-12 z-40 pointer-events-auto" onPointerDown={event => event.stopPropagation()}>
+    <div className="absolute inset-0 z-10 pointer-events-none">
+      <canvas ref={sessionCanvasRef} className="absolute inset-0 h-full w-full pointer-events-none" aria-hidden="true"/>
+      <div className="absolute top-2 left-12 z-40 pointer-events-auto" onPointerDown={event => event.stopPropagation()}>
       <button onClick={() => setOpen(value => !value)} className="flex items-center gap-1 rounded-md border border-[#2a2e39] bg-[#131722]/95 px-2 py-1 text-[10px] font-bold text-gray-200 shadow-lg hover:bg-[#1e222d]">
         Indicators <ChevronDown size={11} className={open ? 'rotate-180' : ''}/>
         {selected.length > 0 && <span className="rounded bg-blue-600 px-1 text-white">{selected.length}</span>}
@@ -311,6 +406,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
