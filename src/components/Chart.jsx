@@ -262,7 +262,7 @@ export default function Chart() {
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
     theme, snapshotDrawings, recenterToken,
     isPencilMode, pencilColor, pencilStrokes, addPencilStroke, setPencilColor,
-    chartType, tradeHistory, symbol
+    chartType, tradeHistory, symbol, contractSpecs
   } = useStore();
 
   useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
@@ -398,7 +398,7 @@ export default function Chart() {
         priceFormat: { type: 'price', precision, minMove },
       });
     } catch (e) {}
-  }, [symbol, useStore(s => s.contractSpecs[symbol])]);
+  }, [symbol, contractSpecs]);
 
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
