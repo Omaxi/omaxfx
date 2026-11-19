@@ -1,6 +1,23 @@
 import { parseMarketCsv } from './marketData';
 
 const UTC_PLUS_3_SECONDS = 3 * 60 * 60;
+const DATA_CACHE = 'omaxfx-market-data-v1';
+
+async function fetchCachedCsv(url) {
+  if (typeof caches !== 'undefined') {
+    try {
+      const cache = await caches.open(DATA_CACHE);
+      const cached = await cache.match(url);
+      if (cached) return cached;
+      const response = await fetchCachedCsv(url);
+      if (response.ok) await cache.put(url, response.clone());
+      return response;
+    } catch (error) {
+      // Cache storage can be unavailable in private browsing; normal fetch still works.
+    }
+  }
+  return fetch(url);
+}
 
 export async function fetchDataCatalog() {
   const response = await fetch(`${import.meta.env.BASE_URL}data-manifest.json`, { cache: 'no-cache' });
