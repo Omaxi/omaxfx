@@ -863,7 +863,7 @@ export const useStore = create((set, get) => ({
       type: side, orderType: type,
       entryPrice: type === 'market' ? currentPrice : entryPrice,
       sl: slPrice, tp: tpPrice,
-      size: Number(lots.toFixed(2)),
+      size: Number(lots.toFixed(4)),
       riskPercent, riskAmount,
       isPending: type !== 'market',
       openTime,
