@@ -5,6 +5,18 @@ import { fmtMoney } from '../utils/format';
 import TradeScreenshotChart from './TradeScreenshotChart';
 
 const stamp = (unix) => unix ? new Date((unix + 3 * 3600) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) : '—';
+const duration = (trade) => {
+  const total = Number(trade.closeTime) - Number(trade.openTime);
+  if (!Number.isFinite(total) || total < 0) return '—';
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = Math.floor(total % 60);
+  if (days) return `${days}d ${hours}h ${minutes}m`;
+  if (hours) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+};
 
 export default function TradeDayModal({ date, trades, onClose, sessionId, candles, timeframe = 1 }) {
   const [images, setImages] = useState({});
@@ -61,6 +73,7 @@ export default function TradeDayModal({ date, trades, onClose, sessionId, candle
                     <Info label="Result" value={pnl >= 0 ? 'WIN / BREAKEVEN' : 'LOSS'} color={pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}/>
                     <Info label="Entry time" value={stamp(trade.openTime)}/>
                     <Info label="Close time" value={stamp(trade.closeTime)}/>
+                    <Info label="Trade duration" value={duration(trade)} color="text-blue-300"/>
                     <Info label="Entry" value={trade.entryPrice}/>
                     <Info label="Exit" value={trade.exitPrice}/>
                     <Info label="Stop Loss" value={trade.sl}/>
