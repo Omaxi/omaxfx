@@ -8,7 +8,9 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "node --test"
+    "test": "node --test",
+    "predev": "node scripts/generate-data-manifest.mjs",
+    "prebuild": "node scripts/generate-data-manifest.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
