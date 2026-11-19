@@ -46,10 +46,11 @@ export default function OrderModal() {
   const currentPrice = rawData[currentIndex]?.close || 0;
   const riskAmount = balance * (riskPercent / 100);
   const maxRisk = rules?.maxRiskPerTrade ?? 3;
+  const propFirmEnabled = rules?.propFirmEnabled !== false;
 
   useEffect(() => {
-    if (riskPercent > maxRisk) setRiskPercent(maxRisk);
-  }, [maxRisk, riskPercent]);
+    if (propFirmEnabled && riskPercent > maxRisk) setRiskPercent(maxRisk);
+  }, [propFirmEnabled, maxRisk, riskPercent]);
 
   useEffect(() => { if (isOrderModalOpen) setRiskReward('2'); }, [isOrderModalOpen]);
 
@@ -106,8 +107,17 @@ export default function OrderModal() {
     const errors = [];
     const effectiveEntry = orderType === 'market' ? currentPrice : entryPrice;
 
-    if (orderType !== 'market' && (!entryPrice || entryPrice <= 0)) {
-      errors.push('Entry price must be greater than 0');
+    if (!Number.isFinite(effectiveEntry) || effectiveEntry <= 0) {
+      errors.push('Entry price must be a valid positive price');
+    }
+    if (!Number.isFinite(slPrice) || slPrice <= 0) {
+      errors.push('Stop Loss must be a valid positive price');
+    }
+    if (riskReward !== 'none' && (!Number.isFinite(tpPrice) || tpPrice <= 0)) {
+      errors.push('Take Profit must be a valid positive price');
+    }
+    if (!Number.isFinite(riskPercent) || riskPercent <= 0) {
+      errors.push('Risk percentage must be greater than 0');
     }
 
     if (orderSide === 'buy') {
@@ -118,12 +128,12 @@ export default function OrderModal() {
       if (riskReward !== 'none' && tpPrice >= effectiveEntry) errors.push('SELL: Take Profit must be BELOW entry');
     }
 
-    if (riskPercent > maxRisk) {
+    if (propFirmEnabled && riskPercent > maxRisk) {
       errors.push(`Risk ${riskPercent}% exceeds game rule (max ${maxRisk}%)`);
     }
 
     return { errors, isValid: errors.length === 0, effectiveEntry };
-  }, [orderSide, entryPrice, slPrice, tpPrice, orderType, currentPrice, riskPercent, maxRisk, riskReward]);
+  }, [orderSide, entryPrice, slPrice, tpPrice, orderType, currentPrice, riskPercent, maxRisk, riskReward, propFirmEnabled]);
 
   const { estimatedLoss, estimatedProfit } = useMemo(() => {
     const entry = validation.effectiveEntry;
@@ -183,10 +193,10 @@ export default function OrderModal() {
           <div className="p-3 space-y-3">
             <div>
               <label className="text-[11px] text-gray-400 block mb-1">
-                Risk Percentage <span className="text-gray-500">(max {maxRisk}%)</span>
+                Risk Percentage {propFirmEnabled && <span className="text-gray-500">(max {maxRisk}%)</span>}
               </label>
               <div className="flex gap-2">
-                {[0.5, 1, 2, 3].filter(pct => pct <= maxRisk).map(pct => (
+                {[0.5, 1, 2, 3].filter(pct => !propFirmEnabled || pct <= maxRisk).map(pct => (
                   <button key={pct} onClick={() => setRiskPercent(pct)} className={`flex-1 py-2 rounded text-sm font-bold ${riskPercent === pct ? 'bg-blue-600' : 'bg-[#1e222d]'}`}>{pct}%</button>
                 ))}
               </div>
