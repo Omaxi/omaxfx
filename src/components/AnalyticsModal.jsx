@@ -122,7 +122,16 @@ export default function AnalyticsModal() {
   const shortWins = shortTrades.filter(t => t.pnl > 0).length;
   let maxBalance = startBalance;
   let runningBalance = startBalance;
-  trades.forEach(t => { runningBalance += t.pnl; maxBalance = Math.max(maxBalance, runningBalance); });
+  let maxClosedDrawdown = 0;
+  trades.forEach(t => {
+    runningBalance += t.pnl;
+    maxBalance = Math.max(maxBalance, runningBalance);
+    if (maxBalance > 0) maxClosedDrawdown = Math.max(maxClosedDrawdown, (maxBalance - runningBalance) / maxBalance * 100);
+  });
+  const rTrades = trades.filter(t => Number.isFinite(Number(t.riskAmount)) && Number(t.riskAmount) > 0);
+  const averageR = rTrades.length
+    ? rTrades.reduce((sum, trade) => sum + Number(trade.pnl) / Number(trade.riskAmount), 0) / rTrades.length
+    : 0;
   const returnPct = startBalance ? netPnl / startBalance * 100 : 0;
   const monthChange = (offset) => setMonthCursor(new Date(year, month + offset, 1));
   const selectedDayTrades = selectedDate ? trades.filter(t => dateKey(t.closeTime || t.openTime) === selectedDate) : [];
@@ -142,11 +151,13 @@ export default function AnalyticsModal() {
           <button onClick={closeAnalytics} className="rounded p-1 text-gray-400 hover:bg-[#25282c] hover:text-white" aria-label="Close analytics"><X size={15}/></button>
         </div>
 
-        <div className="grid grid-cols-5 gap-1.5 p-1.5 shrink-0">
+        <div className="grid grid-cols-7 gap-1.5 p-1.5 shrink-0">
           <Metric title="Net P&L" value={`${netPnl >= 0 ? '+' : '-'}${money(netPnl)}`} color={netPnl >= 0 ? '#21c58b' : '#f05252'} detail={`${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(2)}% return`}/>
           <Metric title="Trade win %" value={fmtPct(winRate)} color="#f4f4f5" detail={`${wins.length} wins · ${losses.length} losses`} gauge={winRate}/>
           <Metric title="Avg win/loss trade" value={avgRatio.toFixed(2)} color="#f4f4f5" detail={`${money(avgWin)} avg win / -${money(avgLoss)} avg loss`}/>
           <Metric title="Profit factor" value={profitFactor === Infinity ? '∞' : profitFactor.toFixed(2)} color="#f4f4f5" detail={`${trades.length} closed trades`} ring={profitFactor}/>
+          <Metric title="Average R" value={`${averageR >= 0 ? '+' : ''}${averageR.toFixed(2)}R`} color={averageR >= 0 ? '#21c58b' : '#f05252'} detail="Average realized R multiple"/>
+          <Metric title="Closed DD" value={`${maxClosedDrawdown.toFixed(2)}%`} color="#f05252" detail="Closed-trade equity curve"/>
           <Metric title="Current streak" value={`${currentTradeStreak} trades`} color="#f4f4f5" detail={streakText} streak/>
         </div>
 
