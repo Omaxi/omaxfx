@@ -265,9 +265,21 @@ export default function Chart() {
     draftPosition, timeframe, cancelPendingOrder, closePosition, activeDrawingTool,
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
     theme, snapshotDrawings, recenterToken,
-    isPencilMode, pencilColor, pencilStrokes, addPencilStroke, setPencilColor,
-    chartType, tradeHistory, symbol, contractSpecs
+    isPencilMode, pencilColor, setPencilColor,
+    chartType, symbol, contractSpecs
   } = useStore();
+
+  const lockChart = useCallback((locked) => {
+    if (!chartRef.current) return;
+    if (chartLockedRef.current === locked) return;
+    try {
+      chartRef.current.applyOptions({
+        handleScroll: !locked,
+        handleScale: !locked,
+      });
+      chartLockedRef.current = locked;
+    } catch (e) {}
+  }, []);
 
   useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
 
@@ -287,18 +299,6 @@ export default function Chart() {
       if (!exists) { setSelectedItem(null); lockChart(false); }
     }
   }, [positions, pendingOrders, selectedItem]);
-
-  const lockChart = useCallback((locked) => {
-    if (!chartRef.current) return;
-    if (chartLockedRef.current === locked) return;
-    try {
-      chartRef.current.applyOptions({
-        handleScroll: !locked,
-        handleScale: !locked,
-      });
-      chartLockedRef.current = locked;
-    } catch (e) {}
-  }, []);
 
   useEffect(() => {
     const shouldLock = !!activeDrawingTool || !!isDrawingMode || !!selectedItem || !!isPencilMode || !!textInput;
