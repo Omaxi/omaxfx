@@ -26,12 +26,13 @@ const roundTo = (n, precision) => {
 
 export default function OrderModal() {
   const { 
+    contractSpecs,
     isOrderModalOpen, closeOrderModal, orderSide, placeOrder, 
     balance, rawData, currentIndex, draftPosition, clearDraft, rules,
     symbol,
   } = useStore();
 
-  const meta = SYMBOL_META[symbol] ?? DEFAULT_META;
+  const meta = contractSpecs?.[symbol] ? { pointSize: contractSpecs[symbol].tickSize, precision: contractSpecs[symbol].precision } : (SYMBOL_META[symbol] ?? DEFAULT_META);
   const { pointSize, precision } = meta;
 
   const [orderType, setOrderType] = useState('market');
