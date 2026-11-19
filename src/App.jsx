@@ -37,7 +37,6 @@ function App() {
     symbolWarning, clearSymbolWarning,
   } = useStore();
   const soundtrackStarted = useRef(false);
-  const restoredRef = useRef(false);
 
   useEffect(() => {
     if (!symbolWarning) return;
