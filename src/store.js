@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { aggregateData } from './utils/timeframe.js';
 import { getPnlMultiplier } from './utils/instrument.js';
-export { getContractSize, getPnlMultiplier } from './utils/instrument';
+export { getContractSize, getPnlMultiplier } from './utils/instrument.js';
 import { 
   playOrderPlaced, playPositionClosed, playTPHit, playSLHit, playPendingTriggered, playRestart
 } from './utils/audio.js';
