@@ -8,14 +8,23 @@ export default function HistoryModal() {
   if (!isHistoryOpen) return null;
 
   const formatTime = (t) => t ? new Date(t * 1000).toLocaleString() : '-';
+  const formatDuration = (open, close) => {
+    if (!Number.isFinite(open) || !Number.isFinite(close) || close < open) return '-';
+    const seconds = close - open;
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return days ? `${days}d ${hours}h` : hours ? `${hours}h ${minutes}m` : `${minutes}m`;
+  };
 
-  // Symbol-aware price formatter: EURUSD gets 4 decimals, others get 2.
+  // Symbol-aware price formatter: EURUSD gets 5 decimals, Gold gets 2.
   const fmtPrice = (value, symbol) => {
     if (value == null || Number.isNaN(value)) return '-';
-    const precision = symbol === 'EURUSD' ? 4 : 2;
+    const precision = symbol === 'EURUSD' ? 5 : 2;
     return value.toFixed(precision);
   };
 
+  const sortedTrades = [...tradeHistory].sort((a, b) => (b.closeTime || b.openTime || 0) - (a.closeTime || a.openTime || 0));
   const totalTrades = tradeHistory.length;
   const wins = tradeHistory.filter(t => t.pnl > 0).length;
   const losses = tradeHistory.filter(t => t.pnl < 0).length;
@@ -70,10 +79,11 @@ export default function HistoryModal() {
                   <th className="p-2 text-left">Reason</th>
                   <th className="p-2 text-left">Opened</th>
                   <th className="p-2 text-left">Closed</th>
+                  <th className="p-2 text-right">Duration</th>
                 </tr>
               </thead>
               <tbody>
-                {tradeHistory.map((t, i) => {
+                {sortedTrades.map((t, i) => {
                   // Fallback to the currently active symbol for legacy trades
                   // that don't have a `symbol` field (saved before this update).
                   const sym = t.symbol || activeSymbol || 'XAUUSD';
@@ -109,6 +119,7 @@ export default function HistoryModal() {
                       </td>
                       <td className="p-2 text-[10px] text-gray-400 font-mono">{formatTime(t.openTime)}</td>
                       <td className="p-2 text-[10px] text-gray-400 font-mono">{formatTime(t.closeTime)}</td>
+                      <td className="p-2 text-right text-[10px] text-gray-400 font-mono">{formatDuration(t.openTime, t.closeTime)}</td>
                     </tr>
                   );
                 })}
