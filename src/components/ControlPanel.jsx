@@ -30,15 +30,7 @@ const SYMBOLS = [
 ];
 
 const TIMEZONES = [
-  { code: 'UTC-5', label: 'UTC-5' },
-  { code: 'UTC-4', label: 'UTC-4' },
-  { code: 'UTC-3', label: 'UTC-3' },
-  { code: 'UTC-2', label: 'UTC-2' },
-  { code: 'UTC-1', label: 'UTC-1' },
-  { code: 'UTC',   label: 'UTC' },
-  { code: 'UTC+1', label: 'UTC+1' },
-  { code: 'UTC+2', label: 'UTC+2' },
-  { code: 'UTC+3', label: 'UTC+3' },
+  { code: 'UTC+3', label: 'UTC+3 (project data timezone)' },
 ];
 
 const SESSIONS = [
