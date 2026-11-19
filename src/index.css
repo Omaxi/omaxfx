@@ -71,3 +71,39 @@ html, body, #root {
 .chart-no-touch .tv-lightweight-charts table tr td:last-child {
   font-size: 9px !important;
 }
+
+/* Application-wide light theme (chart candle colors remain independently configurable). */
+html[data-ui-theme="light"] body { background: #f4f6fa !important; color: #172033 !important; }
+html[data-ui-theme="light"] [class*="bg-[#131722]"],
+html[data-ui-theme="light"] [class*="bg-[#101214]"],
+html[data-ui-theme="light"] [class*="bg-[#151719]"],
+html[data-ui-theme="light"] [class*="bg-[#17191b]"],
+html[data-ui-theme="light"] [class*="bg-[#1e222d]"],
+html[data-ui-theme="light"] [class*="bg-[#191e29]"],
+html[data-ui-theme="light"] [class*="bg-[#202633]"],
+html[data-ui-theme="light"] [class*="bg-[#0d1117]"],
+html[data-ui-theme="light"] [class*="bg-[#111315]"],
+html[data-ui-theme="light"] [class*="bg-[#191c1f]"],
+html[data-ui-theme="light"] [class*="bg-[#1c1f22]"],
+html[data-ui-theme="light"] [class*="bg-[#292d31]"],
+html[data-ui-theme="light"] [class*="bg-[#0b0e11]"] {
+  background-color: #ffffff !important;
+}
+html[data-ui-theme="light"] [class*="text-white"],
+html[data-ui-theme="light"] .text-gray-100,
+html[data-ui-theme="light"] .text-gray-200,
+html[data-ui-theme="light"] .text-gray-300 { color: #172033 !important; }
+html[data-ui-theme="light"] .text-gray-400,
+html[data-ui-theme="light"] .text-gray-500 { color: #667085 !important; }
+html[data-ui-theme="light"] [class*="border-[#2a2e39]"],
+html[data-ui-theme="light"] [class*="border-[#25282c]"],
+html[data-ui-theme="light"] [class*="border-[#343a40]"],
+html[data-ui-theme="light"] [class*="border-[#303744]"],
+html[data-ui-theme="light"] [class*="border-[#292d31]"],
+html[data-ui-theme="light"] [class*="border-[#202326]"] { border-color: #d7dce5 !important; }
+html[data-ui-theme="light"] input:not([type="color"]),
+html[data-ui-theme="light"] select,
+html[data-ui-theme="light"] textarea { background-color: #fff !important; color: #172033 !important; border-color: #cbd3df !important; }
+html[data-ui-theme="light"] table thead { background-color: #edf1f6 !important; }
+html[data-ui-theme="light"] ::-webkit-scrollbar-track { background: #edf1f6; }
+html[data-ui-theme="light"] ::-webkit-scrollbar-thumb { background: #c3cbd8; }
