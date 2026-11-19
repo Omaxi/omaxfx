@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { aggregateData, getExecutionCandle } from './utils/timeframe.js';
-import { getPnlMultiplier } from './utils/instrument.js';
+import { getPnlMultiplier, calculateIntrabarUnrealizedPnl, calculateUnrealizedPnlAtPrice } from './utils/instrument.js';
 import { getPendingOrderFillPrice, getStopLossFillPrice, getTakeProfitFillPrice } from './utils/orderExecution.js';
 export { getContractSize, getPnlMultiplier } from './utils/instrument.js';
 import { 
@@ -24,20 +24,6 @@ const getDayKey = (unixSeconds) => {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 };
 
-const getUnrealizedPnlAtPrice = (positions, markPrice, fallbackSymbol, contractSpecs) =>
-  positions.reduce((sum, pos) => {
-    const isBuy = pos.type === 'buy';
-    const diff = isBuy ? markPrice - pos.entryPrice : pos.entryPrice - markPrice;
-    return sum + diff * getPnlMultiplier(pos.symbol || fallbackSymbol, contractSpecs) * Number(pos.size || 0);
-  }, 0);
-
-const getIntrabarUnrealizedPnl = (positions, candle, fallbackSymbol, contractSpecs) =>
-  positions.reduce((sum, pos) => {
-    const isBuy = pos.type === 'buy';
-    const markPrice = isBuy ? candle.low : candle.high;
-    const diff = isBuy ? markPrice - pos.entryPrice : pos.entryPrice - markPrice;
-    return sum + diff * getPnlMultiplier(pos.symbol || fallbackSymbol, contractSpecs) * Number(pos.size || 0);
-  }, 0);
 
 const formatRangeDate = (unixSeconds) => {
   const d = new Date((unixSeconds + 3 * 3600) * 1000);
@@ -816,7 +802,7 @@ export const useStore = create((set, get) => ({
       if (newDailyLoss.day !== dayKey) {
         newDailyLoss = {
           day: dayKey,
-          dayStartBalance: newBalance + getUnrealizedPnlAtPrice(newPositions, candle.open, state.symbol, state.contractSpecs),
+          dayStartBalance: newBalance + calculateUnrealizedPnlAtPrice(newPositions, candle.open, state.symbol, state.contractSpecs),
         };
       }
       const stillOpen = [];
@@ -859,7 +845,7 @@ export const useStore = create((set, get) => ({
         if (!closed) stillOpen.push(updatedPosition);
       }
       newPositions = stillOpen;
-      const equity = newBalance + getIntrabarUnrealizedPnl(newPositions, candle, state.symbol, state.contractSpecs);
+      const equity = newBalance + calculateIntrabarUnrealizedPnl(newPositions, candle, state.symbol, state.contractSpecs);
       newPeak = Math.max(newPeak, equity);
       lastEquity = equity;
       if (!gameOverReason) {
