@@ -204,17 +204,19 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
   }
 };
 
-const drawPencilStroke = (ctx, stroke) => {
+const drawPencilStroke = (ctx, stroke, pointToXY) => {
   if (!stroke.points || stroke.points.length < 2) return;
+  const points = stroke.points.map(p => Number.isFinite(p.time) && Number.isFinite(p.price) ? pointToXY(p) : p).filter(Boolean);
+  if (points.length < 2) return;
   ctx.strokeStyle = stroke.color || '#3b82f6';
   ctx.lineWidth = 2;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.setLineDash([]);
   ctx.beginPath();
-  ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-  for (let i = 1; i < stroke.points.length; i++) {
-    ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i].x, points[i].y);
   }
   ctx.stroke();
 };
@@ -605,8 +607,8 @@ export default function Chart() {
       if (draftRef.current) drawShape(ctx, draftRef.current, pointToXY, true, cache, false);
 
       // 3. Draw pencil strokes
-      state.pencilStrokes.forEach(s => drawPencilStroke(ctx, s));
-      if (currentPencilRef.current) drawPencilStroke(ctx, currentPencilRef.current);
+      state.pencilStrokes.forEach(s => drawPencilStroke(ctx, s, pointToXY));
+      if (currentPencilRef.current) drawPencilStroke(ctx, currentPencilRef.current, pointToXY);
 
       // 4. Draw selected trade line indicator
       if (sel?.type === 'trade' && seriesRef.current) {
@@ -772,7 +774,7 @@ export default function Chart() {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         currentPencilRef.current = {
           color: state.pencilColor,
-          points: [{ x, y }],
+          points: [xyToPoint(x, y)].filter(Boolean),
         };
         return;
       }
@@ -920,7 +922,8 @@ export default function Chart() {
 
       if (state.isPencilMode && currentPencilRef.current) {
         e.preventDefault();
-        currentPencilRef.current.points.push({ x, y });
+        const marketPoint = xyToPoint(x, y);
+        if (marketPoint) currentPencilRef.current.points.push(marketPoint);
         return;
       }
 
