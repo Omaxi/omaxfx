@@ -234,7 +234,7 @@ export const useStore = create((set, get) => ({
         sessionName: s.sessionName, playerName: s.playerName,
         gamePeriod: s.gamePeriod, rules: { ...s.rules, countdownMinutes: null },
         currentIndex: s.currentIndex, timeframe: s.timeframe,
-        symbol: s.symbol, timezone: 'UTC+3', chartType: s.chartType,
+        symbol: s.symbol, contractSpecs: s.contractSpecs, timezone: 'UTC+3', chartType: s.chartType,
         balance: s.balance, peakBalance: s.peakBalance,
         positions: s.positions, tradeHistory: s.tradeHistory,
         pendingOrders: s.pendingOrders, drawings: s.drawings,
