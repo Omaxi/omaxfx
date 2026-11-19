@@ -1058,6 +1058,8 @@ export default function Chart() {
       }
     };
 
+    const handleOverlayWheel = () => scheduleDrawRef.current();
+
     const handleContextMenu = (e) => {
       const state = useStore.getState();
       if (state.activeDrawingTool || state.isPencilMode) return;
@@ -1072,6 +1074,7 @@ export default function Chart() {
     container.addEventListener('touchstart', handleTouchStart, { capture: true, passive: false });
     container.addEventListener('pointerdown', handlePointerDown, true);
     container.addEventListener('contextmenu', handleContextMenu);
+    container.addEventListener('wheel', handleOverlayWheel, { passive: true });
     window.addEventListener('pointermove', handlePointerMove, { passive: false });
     window.addEventListener('pointerup', handlePointerUp);
     window.addEventListener('pointercancel', handlePointerUp);
@@ -1080,6 +1083,7 @@ export default function Chart() {
       container.removeEventListener('touchstart', handleTouchStart, { capture: true });
       container.removeEventListener('pointerdown', handlePointerDown, true);
       container.removeEventListener('contextmenu', handleContextMenu);
+      container.removeEventListener('wheel', handleOverlayWheel);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
       window.removeEventListener('pointercancel', handlePointerUp);
