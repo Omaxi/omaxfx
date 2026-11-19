@@ -12,16 +12,32 @@ import {
 // images for the selected day instead of rendering hundreds on startup.
 export default function TradeScreenshotCapture() {
   useEffect(() => {
-    const inFlight = new Set();
+    const inFlight = new Map();
+
+    const captureTrade = (trade, candles, timeframe, sessionId) => {
+      const key = getTradeScreenshotKey(trade.id, sessionId);
+      if (!key || inFlight.has(key)) return inFlight.get(key);
+      const task = (async () => {
+        const image = renderTradeScreenshot(trade, candles, timeframe);
+        if (image) await saveTradeScreenshot(trade.id, image, sessionId);
+        else console.warn('[TradeScreenshotCapture] Historical chart unavailable for trade', trade.id);
+      })().catch(error => {
+        console.warn('[TradeScreenshotCapture] Could not save screenshot for trade', trade.id, error);
+      }).finally(() => inFlight.delete(key));
+      inFlight.set(key, task);
+      return task;
+    };
 
     const unsubscribe = useStore.subscribe((state, previous) => {
-      if (state.tradeHistory === previous.tradeHistory) return;
-      // A session restore/switch is not a new batch of closures. If the
-      // first trade closed before the autosave created a session ID, migrate
-      // only that unsaved session's captures to its newly assigned ID.
+      if (state.tradeHistory === previous.tradeHistory && state.sessionId === previous.sessionId) return;
+
+      // If a trade closed before autosave assigned its session ID, wait for its
+      // first write to finish before copying it into the permanent session key.
       if (state.sessionId !== previous.sessionId) {
         if (!previous.sessionId && state.sessionId) {
           (state.tradeHistory || []).forEach(async trade => {
+            const pending = inFlight.get(getTradeScreenshotKey(trade.id, 'unsaved-session'));
+            if (pending) await pending;
             const image = await getTradeScreenshot(trade.id, 'unsaved-session');
             if (image) await saveTradeScreenshot(trade.id, image, state.sessionId).catch(() => false);
           });
@@ -29,6 +45,7 @@ export default function TradeScreenshotCapture() {
         return;
       }
 
+      if (state.tradeHistory === previous.tradeHistory) return;
       const previousIds = new Set((previous.tradeHistory || []).map(trade => String(trade.id)));
       const newlyClosed = (state.tradeHistory || []).filter(trade =>
         trade?.id != null && !previousIds.has(String(trade.id))
@@ -38,21 +55,7 @@ export default function TradeScreenshotCapture() {
       const candles = state.rawData || [];
       const timeframe = state.timeframe || 1;
       const sessionId = state.sessionId || 'unsaved-session';
-
-      newlyClosed.forEach(async trade => {
-        const key = getTradeScreenshotKey(trade.id, sessionId);
-        if (!key || inFlight.has(key)) return;
-        inFlight.add(key);
-        try {
-          const image = renderTradeScreenshot(trade, candles, timeframe);
-          if (image) await saveTradeScreenshot(trade.id, image, sessionId);
-          else console.warn('[TradeScreenshotCapture] Historical chart unavailable for trade', trade.id);
-        } catch (error) {
-          console.warn('[TradeScreenshotCapture] Could not save screenshot for trade', trade.id, error);
-        } finally {
-          inFlight.delete(key);
-        }
-      });
+      newlyClosed.forEach(trade => captureTrade(trade, candles, timeframe, sessionId));
     });
 
     return unsubscribe;
