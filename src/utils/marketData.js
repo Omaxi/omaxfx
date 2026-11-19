@@ -26,13 +26,15 @@ function parseTimestamp(row) {
   if (raw !== undefined) {
     const numeric = Number(raw);
     if (Number.isFinite(numeric) && String(raw).trim() !== '') {
-      if (numeric > 1e12) return Math.floor(numeric / 1000);
-      if (numeric > 1e9) return Math.floor(numeric);
+      if (numeric > 1e12) return { time: Math.floor(numeric / 1000), isUtc: true };
+      if (numeric > 1e9) return { time: Math.floor(numeric), isUtc: true };
     }
     const rawText = String(raw).trim();
     if (!/^\d{1,2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(rawText)) {
-      const parsed = Date.parse(rawText);
-      if (Number.isFinite(parsed)) return Math.floor(parsed / 1000);
+      const hasExplicitZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(rawText);
+      const normalized = rawText.includes(' ') && !rawText.includes('T') ? rawText.replace(' ', 'T') : rawText;
+      const parsed = Date.parse(hasExplicitZone ? normalized : `${normalized}Z`);
+      if (Number.isFinite(parsed)) return { time: Math.floor(parsed / 1000), isUtc: hasExplicitZone };
     }
   }
   const date = pick(row, aliases.date);
@@ -48,16 +50,20 @@ function parseTimestamp(row) {
     if (european) normalizedDate = `${european[3]}-${european[2].padStart(2,'0')}-${european[1].padStart(2,'0')}`;
   }
   const iso = `${normalizedDate}T${t}`;
-  const parsed = Date.parse(/Z$|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`);
-  return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : null;
+  const hasExplicitZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(t);
+  const parsed = Date.parse(hasExplicitZone ? iso : `${iso}Z`);
+  return Number.isFinite(parsed) ? { time: Math.floor(parsed / 1000), isUtc: hasExplicitZone } : null;
 }
 
 export function normalizeMarketRows({ data = [], errors = [], meta = {} }) {
   if (!meta.fields?.length) throw new Error('The CSV has no readable header row.');
   const candles = [];
   let invalid = 0;
+  let timestampsAreUtc = true;
   for (const row of data) {
-    const time = parseTimestamp(row);
+    const parsedTimestamp = parseTimestamp(row);
+    const time = parsedTimestamp?.time;
+    if (parsedTimestamp && !parsedTimestamp.isUtc) timestampsAreUtc = false;
     const open = Number(pick(row, aliases.open));
     const high = Number(pick(row, aliases.high));
     const low = Number(pick(row, aliases.low));
@@ -74,7 +80,7 @@ export function normalizeMarketRows({ data = [], errors = [], meta = {} }) {
   candles.sort((a, b) => a.time - b.time);
   const unique = candles.filter((candle, index) => index === 0 || candle.time > candles[index - 1].time);
   if (!unique.length) throw new Error('No valid candles found. Expected time/date and OHLC columns.');
-  return { candles: unique, invalidRows: invalid, duplicateRows: candles.length - unique.length, parserWarnings: errors.length };
+  return { candles: unique, invalidRows: invalid, duplicateRows: candles.length - unique.length, parserWarnings: errors.length, timestampsAreUtc };
 }
 
 const parseOptions = {
