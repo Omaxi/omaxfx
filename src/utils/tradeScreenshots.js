@@ -1,4 +1,4 @@
-const DB_NAME = 'omaxfx-trade-journal-v2';
+const DB_NAME = 'omaxfx-trade-journal-v3';
 const STORE_NAME = 'screenshots';
 let dbPromise;
 
