@@ -15,6 +15,7 @@ function defaultSpecs(symbol) {
 }
 
 export default function DataImportModal() {
+  const [open, setOpen] = useState(true);
   const [file, setFile] = useState(null);
   const [symbol, setSymbol] = useState('CUSTOM');
   const [contractSize, setContractSize] = useState('1');
@@ -47,12 +48,12 @@ export default function DataImportModal() {
   const symbols = useMemo(() => [...new Set(catalog.map(item => item.symbol))].sort(), [catalog]);
   const symbolFiles = useMemo(() => catalog.filter(item => item.symbol === selectedSymbol), [catalog, selectedSymbol]);
   const selectedFiles = selectedFileName === '__ALL__' ? symbolFiles : symbolFiles.filter(item => item.name === selectedFileName);
-  const selectedLabel = selectedFileName === '__ALL__' ? 'All available years (combined)' : selectedFiles[0]?.name || '';
 
   const openBacktestSetup = (code, candles, spec) => {
     if (!candles?.length) throw new Error('This CSV contains no valid market candles.');
     useStore.getState().setCustomSymbolData(code, candles, spec);
     useStore.getState().openPeriodModal();
+    setOpen(false);
   };
 
   const loadFolderData = async () => {
@@ -90,6 +91,8 @@ export default function DataImportModal() {
     }
   };
 
+  if (!open) return <button onClick={() => setOpen(true)} className="fixed top-2 left-1/2 z-40 -translate-x-1/2 rounded-lg border border-blue-500/50 bg-[#131722] px-3 py-1.5 text-xs font-semibold text-blue-300 shadow-lg">Import / Load market data</button>;
+
   const inputClass = 'mt-1 w-full rounded-lg border border-[#303846] bg-[#0b0e11] px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500';
   const buttonClass = 'w-full rounded-lg bg-blue-600 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 px-4 py-3 text-sm font-bold text-white';
 
@@ -116,7 +119,7 @@ export default function DataImportModal() {
                     const code = event.target.value;
                     setSelectedSymbol(code);
                     const group = catalog.filter(item => item.symbol === code);
-                    setSelectedFileName(group[group.length - 1]?.name || '');
+                    setSelectedFileName(group.length > 1 ? '__ALL__' : group[0]?.name || '');
                   }}>
                     {symbols.map(code => <option key={code} value={code}>{code}</option>)}
                   </select>
