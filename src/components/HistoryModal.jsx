@@ -62,7 +62,7 @@ export default function HistoryModal() {
             <table className="w-full table-fixed text-[10px]">
               <thead className="bg-[#1e222d] text-gray-400 sticky top-0">
                 <tr>
-                  <th className="p-2 text-left">#</th>
+                  <th className="p-1 text-left">#</th>
                   <th className="p-1 text-left hidden sm:table-cell">Symbol</th>
                   <th className="p-1 text-left">Side</th>
                   <th className="p-1 text-right">Entry</th>
@@ -86,13 +86,13 @@ export default function HistoryModal() {
                     <tr key={i} className="border-b border-[#2a2e39] hover:bg-[#1e222d]">
                       <td className="p-1">{page * pageSize + i + 1}</td>
                       <td className="p-1 font-bold text-white hidden sm:table-cell">{sym}</td>
-                      <td className={`p-2 font-bold ${t.type === 'buy' ? 'text-green-400' : 'text-red-400'}`}>
+                      <td className={`p-1 font-bold ${t.type === 'buy' ? 'text-green-400' : 'text-red-400'}`}>
                         {t.type.toUpperCase()}
                       </td>
                       <td className="p-1 text-right font-mono">{fmtPrice(t.entryPrice, sym)}</td>
                       <td className="p-1 text-right font-mono">{fmtPrice(t.exitPrice, sym)}</td>
-                      <td className="p-1 text-right font-mono text-red-400">{fmtPrice(t.sl, sym)}</td>
-                      <td className="p-1 text-right font-mono text-green-400">{fmtPrice(t.tp, sym)}</td>
+                      <td className="p-1 text-right font-mono text-red-400 hidden xl:table-cell">{fmtPrice(t.sl, sym)}</td>
+                      <td className="p-1 text-right font-mono text-green-400 hidden xl:table-cell">{fmtPrice(t.tp, sym)}</td>
                       <td className="p-1 text-right">{t.size}</td>
                       <td className="p-1 text-right font-mono text-yellow-400 hidden lg:table-cell">
                         {t.riskAmount ? `$${fmtMoney(t.riskAmount, 0)}` : '-'}
@@ -100,7 +100,7 @@ export default function HistoryModal() {
                           <span className="text-gray-500 text-[10px] ml-1">({t.riskPercent}%)</span>
                         )}
                       </td>
-                      <td className={`p-2 text-right font-bold ${t.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      <td className={`p-1 text-right font-bold ${t.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         ${fmtMoney(t.pnl)}
                       </td>
                       <td className="p-2">
@@ -113,7 +113,7 @@ export default function HistoryModal() {
                         </span>
                       </td>
                       <td className="p-1 text-[9px] text-gray-400 font-mono hidden xl:table-cell">{formatTime(t.openTime)}</td>
-                      <td className="p-1 text-[10px] text-gray-400 font-mono">{formatTime(t.closeTime)}</td>
+                      <td className="p-1 text-[9px] text-gray-400 font-mono hidden xl:table-cell">{formatTime(t.closeTime)}</td>
                     </tr>
                   );
                 })}
