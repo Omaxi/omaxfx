@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import Papa from 'papaparse';
 import { Upload, X, FileSpreadsheet, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useStore } from '../store';
+import { aggregateData } from '../utils/timeframe';
 
 const normalizeKey = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const findValue = (row, aliases) => {
@@ -22,11 +23,9 @@ const parseTimestamp = (row, sourceOffsetMinutes) => {
       const seconds = n > 1e12 ? n / 1000 : n;
       return seconds + (-300 - sourceOffsetMinutes) * 60;
     }
-    const parsed = Date.parse(raw);
-    if (Number.isFinite(parsed)) {
-      const hasZone = /(?:z|[+-]\\d{2}:?\\d{2})$/i.test(raw);
-      return parsed / 1000 + (hasZone ? 0 : (-300 - sourceOffsetMinutes) * 60);
-    }
+    const hasZone = /(?:z|[+-]\\d{2}:?\\d{2})$/i.test(raw);
+    const parsed = Date.parse(hasZone ? raw : (raw.replace(' ', 'T') + 'Z'));
+    if (Number.isFinite(parsed)) return parsed / 1000 + (hasZone ? 0 : (-300 - sourceOffsetMinutes) * 60);
   }
   const date = findValue(row, ['date', 'tradedate']);
   const time = findValue(row, ['time', 'tradetime']);
@@ -41,7 +40,7 @@ export default function DataImport() {
   const [sourceOffset, setSourceOffset] = useState('-300');
   const [status, setStatus] = useState(null);
   const inputRef = useRef(null);
-  const { setAllDataForSymbol, setSymbol: activateSymbol, openPeriodModal } = useStore();
+  const { setAllDataForSymbol, openPeriodModal } = useStore();
 
   const importFile = (file) => {
     if (!file) return;
@@ -75,7 +74,14 @@ export default function DataImport() {
           return;
         }
         setAllDataForSymbol(symbol, candles);
-        activateSymbol(symbol);
+        const state = useStore.getState();
+        useStore.setState({
+          symbol, allRawData: candles, rawData: candles,
+          displayData: aggregateData(candles, state.timeframe), currentIndex: 0,
+          gameStarted: false, isPlaying: false,
+          gameState: { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
+          symbolWarning: null,
+        });
         openPeriodModal();
         setStatus({ type: 'success', message: `Imported ${candles.length.toLocaleString()} candles for ${symbol}. ${invalid} invalid or incomplete rows skipped.` });
       },
