@@ -746,6 +746,14 @@ export default function Chart() {
       const { x, y } = getLocalXY(e);
       touchDownPosRef.current = { x, y };
 
+      // Keep price-scale gestures native: clicking or dragging the Y-axis must never hit-select a drawing.
+      const chartBounds = container.getBoundingClientRect();
+      const priceScaleWidth = chartRef.current?.priceScale('right').width() || 0;
+      if (priceScaleWidth > 0 && e.clientX >= chartBounds.right - priceScaleWidth - 2) {
+        resetTapTimer();
+        return;
+      }
+
       if (state.isPencilMode) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         currentPencilRef.current = {
@@ -839,17 +847,6 @@ export default function Chart() {
           }
         }
         return;
-      }
-
-      if (drawingHit && !sel) {
-        const hitDrawing = state.drawings.find(d => d.id === drawingHit.drawingId);
-        if (hitDrawing) {
-          e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-          lockChart(true);
-          setSelectedItem({ type: 'drawing', id: hitDrawing.id });
-          lastTapRef.current = { time: now, x, y };
-          return;
-        }
       }
 
       if (isDoubleTap) {
