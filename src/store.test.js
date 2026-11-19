@@ -60,3 +60,48 @@ test('invalid order prices are rejected without mutating positions or pending or
     assert.equal(useStore.getState().pendingOrders.length, 0);
   } finally { restore(); }
 });
+
+test('stepForward fills a buy limit at the requested price and removes it from pending orders', () => {
+  const restore = configureStore({
+    gameStarted: true,
+    rawData: [
+      { time: 60, open: 100, high: 101, low: 99, close: 100 },
+      { time: 120, open: 100, high: 101, low: 98, close: 100 },
+      { time: 180, open: 100, high: 101, low: 99, close: 100 },
+    ],
+    pendingOrders: [{
+      id: 'limit-1', type: 'buy', orderType: 'limit', entryPrice: 99,
+      sl: 98, tp: 102, size: 0.001, riskAmount: 100, symbol: 'EURUSD',
+    }],
+  });
+  try {
+    useStore.getState().stepForward();
+    const state = useStore.getState();
+    assert.equal(state.pendingOrders.length, 0);
+    assert.equal(state.positions.length, 1);
+    assert.equal(state.positions[0].entryPrice, 99);
+    assert.equal(state.positions[0].isPending, false);
+  } finally { restore(); }
+});
+
+test('stepForward fills a buy stop only on an upward trigger', () => {
+  const restore = configureStore({
+    gameStarted: true,
+    rawData: [
+      { time: 60, open: 100, high: 100.5, low: 99.5, close: 100 },
+      { time: 120, open: 100, high: 102, low: 99, close: 101 },
+      { time: 180, open: 101, high: 102, low: 100, close: 101 },
+    ],
+    pendingOrders: [{
+      id: 'stop-1', type: 'buy', orderType: 'stop', entryPrice: 101,
+      sl: 100, tp: 103, size: 0.001, riskAmount: 100, symbol: 'EURUSD',
+    }],
+  });
+  try {
+    useStore.getState().stepForward();
+    const state = useStore.getState();
+    assert.equal(state.pendingOrders.length, 0);
+    assert.equal(state.positions.length, 1);
+    assert.equal(state.positions[0].entryPrice, 101);
+  } finally { restore(); }
+});
