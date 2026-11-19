@@ -13,11 +13,11 @@ import LoadingScreen from './components/LoadingScreen';
 import TradeScreenshotCapture from './components/TradeScreenshotCapture';
 import DataImportModal from './components/DataImportModal';
 import { useStore } from './store';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
 import { getPnlMultiplier } from './utils/instrument';
-import { RotateCcw, Info, Sparkles, AlertTriangle } from 'lucide-react';
+import { RotateCcw, Info, Sparkles, AlertTriangle, ChevronDown, LogOut } from 'lucide-react';
 
 function App() {
   const { 
@@ -30,6 +30,8 @@ function App() {
     symbolWarning, clearSymbolWarning,
   } = useStore();
   const soundtrackStarted = useRef(false);
+  const [sessionMenuOpen, setSessionMenuOpen] = useState(false);
+  const [savedSessions, setSavedSessions] = useState([]);
 
   useEffect(() => {
     if (!symbolWarning) return;
@@ -158,6 +160,32 @@ function App() {
     return sum + priceDiff * getPnlMultiplier(pos.symbol || useStore.getState().symbol, useStore.getState().contractSpecs) * pos.size;
   }, 0);
 
+  const handleExitPlatform = () => {
+    try { useStore.getState().saveSession(); } catch (e) {}
+    useStore.setState({ isPlaying: false });
+    stopSoundtrack();
+    setSessionMenuOpen(false);
+    window.close();
+    window.setTimeout(() => {
+      if (!window.closed) window.alert('Your session has been saved. Please close this browser tab to exit OmaxFX.');
+    }, 80);
+  };
+
+  const toggleSessionMenu = () => {
+    if (!sessionMenuOpen) {
+      try { saveSession(); } catch (e) {}
+      setSavedSessions(useStore.getState().readSessions());
+    }
+    setSessionMenuOpen(value => !value);
+  };
+
+  const handleResumeSession = (sessionId) => {
+    try { saveSession(); } catch (e) {}
+    const loaded = useStore.getState().loadSavedSession(sessionId);
+    if (!loaded) window.alert('This session could not be resumed. Its market data may not be loaded.');
+    setSessionMenuOpen(false);
+  };
+
   const handleNewSession = () => {
     try { saveSession(); } catch (e) {}
     restartGame();
@@ -198,6 +226,25 @@ function App() {
               {positions.length}
             </span>
           )}
+          {gameStarted && (
+            <div className="relative">
+              <button onClick={toggleSessionMenu} className="h-7 px-2 bg-[#1e222d] border border-[#2a2e39] hover:bg-[#2a2e39] rounded flex items-center gap-1 text-[10px] text-gray-200" title="Switch to a previous saved session">
+                Sessions <ChevronDown size={11}/>
+              </button>
+              {sessionMenuOpen && <>
+                <button aria-label="Close sessions menu" className="fixed inset-0 z-[90] cursor-default" onClick={() => setSessionMenuOpen(false)}/>
+                <div className="absolute right-0 top-9 z-[100] w-64 max-h-[60vh] overflow-y-auto rounded-lg border border-[#2a2e39] bg-[#1e222d] p-1 shadow-2xl">
+                  <div className="px-2 py-1.5 text-[9px] uppercase tracking-wide text-gray-500">Saved sessions</div>
+                  {savedSessions.length === 0 ? <div className="px-2 py-3 text-xs text-gray-500">No saved sessions yet</div> : savedSessions.map(item => (
+                    <button key={item.sessionId} onClick={() => handleResumeSession(item.sessionId)} className="w-full rounded px-2 py-2 text-left hover:bg-[#2a2e39]">
+                      <div className="text-xs font-bold text-white">{item.sessionName || 'Untitled session'} · {item.symbol || 'Market'}</div>
+                      <div className="text-[10px] text-gray-400">{new Date(item.savedAt || Date.now()).toLocaleString()} · ${Number(item.balance || 0).toLocaleString()}</div>
+                    </button>
+                  ))}
+                </div>
+              </>}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2 text-[11px] flex-shrink-0">
@@ -232,6 +279,10 @@ function App() {
             title={enableFireworks ? 'Disable Fireworks' : 'Enable Fireworks'}
           >
             <Sparkles size={13} />
+          </button>
+
+          <button onClick={handleExitPlatform} className="w-7 h-7 bg-[#1e222d] border border-red-900/50 hover:bg-red-900/40 text-red-400 rounded flex items-center justify-center" title="Save and exit OmaxFX">
+            <LogOut size={13}/>
           </button>
 
           <button 
