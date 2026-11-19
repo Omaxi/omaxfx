@@ -609,7 +609,7 @@ export const useStore = create((set, get) => ({
     let targetIndex = -1;
     
     for (let i = state.currentIndex + 1; i < maxScan; i++) {
-      const d = new Date(state.rawData[i].time * 1000);
+      const d = new Date((state.rawData[i].time + 3 * 3600) * 1000);
       if (new Date((d.getTime() + 3 * 3600 * 1000)).getUTCHours() === targetHour && d.getUTCMinutes() === 0) {
         targetIndex = i;
         break;
