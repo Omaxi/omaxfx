@@ -83,7 +83,7 @@ export default function DataImportModal() {
     setStatus({ loading: true, error: '', result: null });
     try {
       const parsed = await parseMarketCsv(file);
-      parsed.candles = parsed.candles.map(candle => ({ ...candle, time: candle.time - UTC_PLUS_3_SECONDS }));
+      parsed.candles = parsed.candles.map(candle => ({ ...candle, time: candle.time - (parsed.timestampsAreUtc ? 0 : UTC_PLUS_3_SECONDS) }));
       const code = symbol.trim().toUpperCase().replace(/[^A-Z0-9._-]/g, '').slice(0, 20);
       registerData(code, parsed.candles, {
         contractSize: Number(contractSize), tickSize: Number(tickSize),
