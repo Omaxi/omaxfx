@@ -16,7 +16,8 @@ export default function DataImportModal() {
   const [quoteCurrency, setQuoteCurrency] = useState('USD');
   const [quoteToAccountRate, setQuoteToAccountRate] = useState('1');
   const [catalog, setCatalog] = useState([]);
-  const [selectedSymbols, setSelectedSymbols] = useState([]);
+  const [selectedSymbol, setSelectedSymbol] = useState('');
+  const [selectedFileNames, setSelectedFileNames] = useState([]);
   const [catalogError, setCatalogError] = useState('');
   const [folderProgress, setFolderProgress] = useState(null);
   const [status, setStatus] = useState({ loading: false, error: '', result: null });
@@ -26,8 +27,11 @@ export default function DataImportModal() {
     fetchDataCatalog().then(files => {
       if (!alive) return;
       setCatalog(files);
-      const available = [...new Set(files.map(file => file.symbol))];
-      setSelectedSymbols(available.slice(0, 1));
+      const available = [...new Set(files.map(file => file.symbol))].sort();
+      const firstSymbol = available[0] || '';
+      setSelectedSymbol(firstSymbol);
+      const firstGroup = files.filter(file => file.symbol === firstSymbol);
+      setSelectedFileNames(firstGroup.length ? [firstGroup[firstGroup.length - 1].name] : []);
     }).catch(error => {
       if (alive) setCatalogError(error.message);
     });
@@ -35,7 +39,8 @@ export default function DataImportModal() {
   }, []);
 
   const symbols = useMemo(() => [...new Set(catalog.map(file => file.symbol))].sort(), [catalog]);
-  const selectedFiles = useMemo(() => catalog.filter(file => selectedSymbols.includes(file.symbol)), [catalog, selectedSymbols]);
+  const symbolFiles = useMemo(() => catalog.filter(file => file.symbol === selectedSymbol), [catalog, selectedSymbol]);
+  const selectedFiles = useMemo(() => symbolFiles.filter(file => selectedFileNames.includes(file.name)), [symbolFiles, selectedFileNames]);
 
   const registerData = (code, candles, spec) => {
     useStore.getState().setCustomSymbolData(code, candles, spec);
@@ -110,13 +115,22 @@ export default function DataImportModal() {
             {catalogError && <p className="text-xs text-amber-300">{catalogError}</p>}
             {symbols.length > 0 ? (
               <>
+                <label className="block text-[10px] text-gray-400">Symbol
+                  <select value={selectedSymbol} onChange={event => {
+                    const code = event.target.value;
+                    setSelectedSymbol(code);
+                    const group = catalog.filter(file => file.symbol === code);
+                    setSelectedFileNames(group.length ? [group[group.length - 1].name] : []);
+                  }} className="mt-1 w-full p-2 rounded bg-[#0b0e11] border border-[#2a2e39] text-white text-xs">
+                    {symbols.map(code => <option key={code} value={code}>{code}</option>)}
+                  </select>
+                </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                  {symbols.map(code => {
-                    const checked = selectedSymbols.includes(code);
-                    const count = catalog.filter(item => item.symbol === code).length;
-                    return <label key={code} className={`flex items-center gap-2 rounded-lg border px-2 py-2 text-xs cursor-pointer ${checked ? 'border-blue-500 bg-blue-950/30 text-white' : 'border-[#2a2e39] text-gray-400'}`}>
-                      <input type="checkbox" checked={checked} onChange={e => setSelectedSymbols(current => e.target.checked ? [...current, code] : current.filter(value => value !== code))}/>
-                      <span className="font-bold">{code}</span><span className="ml-auto text-[10px] text-gray-500">{count} file{count===1?'':'s'}</span>
+                  {symbolFiles.map(item => {
+                    const checked = selectedFileNames.includes(item.name);
+                    return <label key={item.name} className={`flex items-center gap-2 rounded-lg border px-2 py-2 text-[10px] cursor-pointer ${checked ? 'border-blue-500 bg-blue-950/30 text-white' : 'border-[#2a2e39] text-gray-400'}`}>
+                      <input type="checkbox" checked={checked} onChange={event => setSelectedFileNames(current => event.target.checked ? [...current, item.name] : current.filter(name => name !== item.name))}/>
+                      <span className="truncate">{item.name}</span>
                     </label>;
                   })}
                 </div>
