@@ -124,7 +124,7 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, profileCache, isSelected) =
       ctx.font = 'bold 10px monospace';
       const pct = (level * 100).toFixed(1);
       const price = drawing.points[0].price + (drawing.points[1].price - drawing.points[0].price) * level;
-      ctx.fillText(`${pct}%  ${price.toFixed(2)}`, xMax + 4, y + 3);
+      ctx.fillText(`${pct}%  ${price.toFixed(useStore.getState().symbol === 'EURUSD' ? 5 : 2)}`, xMax + 4, y + 3);
     });
   } else if (drawing.type === 'volumeProfile' && pts.length === 2) {
     const x1 = Math.min(pts[0].x, pts[1].x);
