@@ -12,6 +12,7 @@ export default function DataImportModal() {
   const [precision, setPrecision] = useState('2');
   const [quoteCurrency, setQuoteCurrency] = useState('USD');
   const [quoteToAccountRate, setQuoteToAccountRate] = useState('1');
+  const [sourceUtcOffset, setSourceUtcOffset] = useState('0');
   const [status, setStatus] = useState({ loading: false, error: '', result: null });
 
   const submit = async () => {
@@ -23,6 +24,8 @@ export default function DataImportModal() {
     setStatus({ loading: true, error: '', result: null });
     try {
       const parsed = await parseMarketCsv(file);
+      const offsetSeconds = Number(sourceUtcOffset) * 60;
+      parsed.candles = parsed.candles.map(candle => ({ ...candle, time: candle.time - offsetSeconds }));
       const code = symbol.trim().toUpperCase().replace(/[^A-Z0-9._-]/g, '').slice(0, 20);
       useStore.getState().setCustomSymbolData(code, parsed.candles, {
         contractSize: Number(contractSize), tickSize: Number(tickSize),
@@ -60,10 +63,11 @@ export default function DataImportModal() {
             <label className="text-xs text-gray-400">Quote currency<input value={quoteCurrency} onChange={e=>setQuoteCurrency(e.target.value.toUpperCase())} placeholder="USD" className="mt-1 w-full p-2 rounded bg-[#0b0e11] border border-[#2a2e39] text-white text-sm"/></label>
             <label className="text-xs text-gray-400">Contract size (units / lot)<input type="number" min="0.000001" step="any" value={contractSize} onChange={e=>setContractSize(e.target.value)} className="mt-1 w-full p-2 rounded bg-[#0b0e11] border border-[#2a2e39] text-white text-sm"/></label>
             <label className="text-xs text-gray-400">Tick size<input type="number" min="0.00000001" step="any" value={tickSize} onChange={e=>setTickSize(e.target.value)} className="mt-1 w-full p-2 rounded bg-[#0b0e11] border border-[#2a2e39] text-white text-sm"/></label>
+            <label className="text-xs text-gray-400">CSV timezone (UTC offset)<select value={sourceUtcOffset} onChange={e=>setSourceUtcOffset(e.target.value)} className="mt-1 w-full p-2 rounded bg-[#0b0e11] border border-[#2a2e39] text-white text-sm">{Array.from({length:27},(_,i)=>i-12).map(offset=><option key={offset} value={offset*60}>{offset===0?'UTC':`UTC${offset>0?'+':''}${offset}`}</option>)}</select></label>
             <label className="text-xs text-gray-400">Price decimal places<input type="number" min="0" max="10" value={precision} onChange={e=>setPrecision(e.target.value)} className="mt-1 w-full p-2 rounded bg-[#0b0e11] border border-[#2a2e39] text-white text-sm"/></label>
             <label className="text-xs text-gray-400">Quote → account FX rate<input type="number" min="0.000001" step="any" value={quoteToAccountRate} onChange={e=>setQuoteToAccountRate(e.target.value)} className="mt-1 w-full p-2 rounded bg-[#0b0e11] border border-[#2a2e39] text-white text-sm"/></label>
           </div>
-          <p className="text-[10px] leading-relaxed text-gray-500">Contract size, tick size and quote-to-account FX rate are broker/instrument-specific. Confirm these values against your data provider; OHLC prices alone cannot safely infer them.</p>
+          <p className="text-[10px] leading-relaxed text-gray-500">Contract size, tick size and quote-to-account FX rate are broker/instrument-specific. Confirm these values against your data provider. The timezone selection is applied before charting; contract metadata cannot be inferred from OHLC prices alone.</p>
           {status.error && <div className="flex gap-2 p-3 rounded-lg bg-red-950/50 border border-red-800 text-red-300 text-xs"><AlertTriangle size={15}/>{status.error}</div>}
           {status.result && <div className="flex gap-2 p-3 rounded-lg bg-green-950/40 border border-green-800 text-green-300 text-xs"><CheckCircle2 size={15}/>{status.result.symbol}: {status.result.candles.length.toLocaleString()} candles imported. {status.result.invalidRows} invalid and {status.result.duplicateRows} duplicate rows skipped.</div>}
         </div>
