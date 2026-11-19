@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { X, Camera, ImageOff, Download } from 'lucide-react';
 import { getTradeScreenshot, renderTradeScreenshot, saveTradeScreenshot } from '../utils/tradeScreenshots';
 import { fmtMoney } from '../utils/format';
+import TradeScreenshotChart from './TradeScreenshotChart';
 
 const stamp = (unix) => unix ? new Date((unix + 3 * 3600) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) : '—';
 
@@ -71,21 +72,17 @@ export default function TradeDayModal({ date, trades, onClose, sessionId, candle
                   </div>
                   <div className="text-[10px] text-gray-500">Close reason: {trade.reason || '—'} · Trade ID: {trade.id}</div>
                 </div>
-                <div className="min-h-[180px] rounded-md border border-[#303744] bg-[#0d1117] overflow-hidden flex flex-col">
-                  {image ? (
-                    <>
-                      <img src={image} alt={'Chart screenshot for trade ' + trade.id} className="w-full h-full min-h-[180px] max-h-[360px] object-contain"/>
-                      <div className="shrink-0 flex justify-end border-t border-[#303744] p-1.5">
-                        <a href={image} download={'omaxfx-trade-' + trade.id + '.jpg'} className="inline-flex items-center gap-1 rounded bg-[#2a2e39] px-2 py-1 text-[10px] hover:bg-[#394253]"><Download size={12}/> Download screenshot</a>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-1 flex-col items-center justify-center gap-2 p-4 text-center">
-                      <ImageOff size={22} className="text-gray-500"/>
-                      <p className="text-xs text-gray-400">A historical screenshot could not be generated for this trade.</p>
-                      <button disabled={savingId === String(trade.id)} onClick={() => captureForTrade(trade)} className="inline-flex items-center gap-1 rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold hover:bg-blue-500 disabled:opacity-50"><Camera size={13}/>{savingId === String(trade.id) ? 'Saving…' : 'Retry trade screenshot'}</button>
-                    </div>
-                  )}
+                <div className="min-h-[240px] rounded-md border border-[#303744] bg-[#0d1117] overflow-hidden flex flex-col">
+                  <div className="min-h-[220px] flex-1">
+                    <TradeScreenshotChart trade={trade} candles={candles} timeframe={timeframe}/>
+                  </div>
+                  <div className="shrink-0 flex justify-end border-t border-[#303744] p-1.5">
+                    {image ? (
+                      <a href={image} download={'omaxfx-trade-' + trade.id + '.jpg'} className="inline-flex items-center gap-1 rounded bg-[#2a2e39] px-2 py-1 text-[10px] hover:bg-[#394253]"><Download size={12}/> Download screenshot</a>
+                    ) : (
+                      <button disabled={savingId === String(trade.id)} onClick={() => captureForTrade(trade)} className="inline-flex items-center gap-1 rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold hover:bg-blue-500 disabled:opacity-50"><Camera size={13}/>{savingId === String(trade.id) ? 'Saving screenshot…' : 'Save screenshot'}</button>
+                    )}
+                  </div>
                 </div>
               </article>
             );
