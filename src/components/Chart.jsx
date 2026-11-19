@@ -1,6 +1,7 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { createChart, CandlestickSeries, LineSeries } from 'lightweight-charts';
 import { useStore } from '../store';
+import { getPricePrecision, getPriceTickSize } from '../utils/instrument';
 import { getExecutionCandle } from '../utils/timeframe';
 import { X, Play, Pause, SkipForward, Trash2, Lock, Maximize2 } from 'lucide-react';
 import IndicatorsPanel from './IndicatorsPanel';
@@ -102,7 +103,7 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, isSelected) => {
       ctx.font = 'bold 10px monospace';
       const pct = (level * 100).toFixed(1);
       const price = drawing.points[0].price + (drawing.points[1].price - drawing.points[0].price) * level;
-      ctx.fillText(`${pct}%  ${price.toFixed(2)}`, xMax + 4, y + 3);
+      ctx.fillText(`${pct}%  ${price.toFixed(getPricePrecision(useStore.getState().symbol, useStore.getState().contractSpecs))}`, xMax + 4, y + 3);
     });
 
   }
@@ -295,11 +296,10 @@ export default function Chart() {
 
     setChartReady(true);
 
-    // Per-symbol price format at init: EURUSD gets 4 decimals, others get 2.
+    // Per-symbol price format: EURUSD 5 decimals, Gold 2 decimals.
     const initialState = useStore.getState();
-    const initialSpec = initialState.contractSpecs?.[initialState.symbol];
-    const initialPrecision = initialSpec?.precision ?? (initialState.symbol === 'EURUSD' ? 4 : 2);
-    const initialMinMove = initialSpec?.tickSize ?? (initialState.symbol === 'EURUSD' ? 0.0001 : 0.01);
+    const initialPrecision = getPricePrecision(initialState.symbol, initialState.contractSpecs);
+    const initialMinMove = getPriceTickSize(initialState.symbol, initialState.contractSpecs);
 
     seriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
       upColor: t.upBody, downColor: t.downBody, borderVisible: false,
@@ -336,12 +336,11 @@ export default function Chart() {
   }, []);
 
   // Update price format when the active symbol changes.
-  // EURUSD shows 4 decimals (e.g. 1.1212), XAUUSD shows 2 (e.g. 1916.62).
+  // EURUSD shows five decimals (e.g. 1.11987), XAUUSD shows two (e.g. 4325.80).
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
-    const spec = useStore.getState().contractSpecs?.[symbol];
-    const precision = spec?.precision ?? (symbol === 'EURUSD' ? 4 : 2);
-    const minMove = spec?.tickSize ?? (symbol === 'EURUSD' ? 0.0001 : 0.01);
+    const precision = getPricePrecision(symbol, useStore.getState().contractSpecs);
+    const minMove = getPriceTickSize(symbol, useStore.getState().contractSpecs);
     try {
       seriesRef.current.applyOptions({
         priceFormat: { type: 'price', precision, minMove },
