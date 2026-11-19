@@ -45,7 +45,7 @@ export default function PeriodModal() {
   const { 
     allRawData, isPeriodModalOpen, closePeriodModal, gameStarted, startGame, 
     playerName, setPlayerName, sessionName, setSessionName,
-    readSessions, loadSavedSession, deleteSavedSession, symbol, contractSpecs
+    readSessions, loadSavedSession, deleteSavedSession
   } = useStore();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
