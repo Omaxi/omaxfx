@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { aggregateData } from './utils/timeframe.js';
 import { getPnlMultiplier } from './utils/instrument.js';
+import { getPendingOrderFillPrice } from './utils/orderExecution.js';
 export { getContractSize, getPnlMultiplier } from './utils/instrument.js';
 import { 
   playOrderPlaced, playPositionClosed, playTPHit, playSLHit, playPendingTriggered, playRestart
@@ -816,12 +817,26 @@ export const useStore = create((set, get) => ({
       }
       const stillPending = [];
       for (const order of newPendingOrders) {
-        const isBuy = order.type === 'buy';
-        const hitEntry = isBuy 
-          ? candle.low <= order.entryPrice && candle.high >= order.entryPrice
-          : candle.high >= order.entryPrice && candle.low <= order.entryPrice;
-        if (hitEntry) {
-          newPositions.push({ ...order, isPending: false, openTime: candle.time });
+        const fillPrice = getPendingOrderFillPrice(order, candle);
+        if (fillPrice != null) {
+          const riskDistance = Math.abs(fillPrice - Number(order.sl));
+          const contractSize = getPnlMultiplier(order.symbol || state.symbol, state.contractSpecs);
+          const recalculatedLots = Number(order.riskAmount) > 0 && riskDistance > 0
+            ? Number((Number(order.riskAmount) / (riskDistance * contractSize)).toFixed(4))
+            : Number(order.size);
+          // Never create a zero-sized position after a large gap through a stop.
+          if (!Number.isFinite(recalculatedLots) || recalculatedLots <= 0) {
+            stillPending.push(order);
+            continue;
+          }
+          newPositions.push({
+            ...order,
+            entryPrice: fillPrice,
+            size: recalculatedLots,
+            initialRiskDistance: riskDistance,
+            isPending: false,
+            openTime: candle.time,
+          });
           pendingTriggered = true;
         } else stillPending.push(order);
       }
