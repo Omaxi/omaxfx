@@ -16,7 +16,7 @@ import { aggregateData } from './utils/timeframe';
 import { useEffect, useRef } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney, fmtMB } from './utils/format';
-import Papa from 'papaparse';
+import { getContractSize } from './store';
 import { Clock, RotateCcw, Info, Sparkles, AlertTriangle } from 'lucide-react';
 
 const formatTime = (sec) => {
@@ -126,149 +126,10 @@ function App() {
     }
   }, [loadingState.isActive]);
 
-  // ============================================================
-  // CSV LOADING — supports one or MANY files per symbol
-  // ============================================================
   useEffect(() => {
-    let cancelled = false;
-    const setLoadingState = useStore.getState().setLoadingState;
-
-    const parseCSVText = (csvText, sourceOffset) => {
-      return new Promise((resolve) => {
-        Papa.parse(csvText, {
-          header: true,
-          dynamicTyping: false,
-          skipEmptyLines: true,
-          complete: (results) => {
-            const shiftSec = (CANONICAL_OFFSET - sourceOffset) * 60;
-            const formattedData = results.data
-              .map(row => {
-                const rawTime = parseDateTimeToUnix(row.date, row.time);
-                if (rawTime == null) return null;
-                const open  = Number(row.open);
-                const high  = Number(row.high);
-                const low   = Number(row.low);
-                const close = Number(row.close);
-                if (!Number.isFinite(open) || !Number.isFinite(high) ||
-                    !Number.isFinite(low)  || !Number.isFinite(close)) return null;
-                return {
-                  time: rawTime + shiftSec,
-                  open, high, low, close,
-                  volume: Number(row.volume) || 0,
-                };
-              })
-              .filter(Boolean);
-            resolve(formattedData);
-          },
-          error: () => resolve([]),
-        });
-      });
-    };
-
-    const loadAll = async () => {
-      try {
-        setLoadingState({ isActive: true, loaded: 0, total: 0, error: null });
-
-        const available = SYMBOL_CONFIG.filter(s => s.available);
-        let totalBytes = 0;
-        let loadedBytes = 0;
-        const buffers = {};
-
-        for (const sym of available) {
-          if (cancelled) return;
-          const texts = [];
-
-          for (const file of sym.files) {
-            if (cancelled) return;
-            const url = `${import.meta.env.BASE_URL}data/${file}`;
-            try {
-              const res = await fetch(url);
-              if (!res.ok) {
-                console.warn(`Skipping ${sym.code}/${file}: HTTP ${res.status}`);
-                continue;
-              }
-              const contentLength = res.headers.get('Content-Length');
-              const buf = await res.arrayBuffer();
-              loadedBytes += buf.byteLength;
-              totalBytes += contentLength ? parseInt(contentLength, 10) : buf.byteLength;
-              setLoadingState({ loaded: loadedBytes, total: Math.max(totalBytes, loadedBytes) });
-              texts.push(new TextDecoder('utf-8').decode(buf));
-            } catch (e) {
-              console.warn(`Failed to load ${sym.code}/${file}:`, e);
-            }
-          }
-
-          buffers[sym.code] = { texts, sourceOffset: sym.sourceOffset };
-        }
-
-        // Parse each symbol's files, merge, sort, store
-        for (const [code, { texts, sourceOffset }] of Object.entries(buffers)) {
-          if (cancelled) return;
-          let all = [];
-          for (const text of texts) {
-            const parsed = await parseCSVText(text, sourceOffset);
-            all = all.concat(parsed);
-          }
-          all.sort((a, b) => a.time - b.time);
-          console.log(`[Data] ${code}: ${all.length} candles loaded`);
-          useStore.getState().setAllDataForSymbol(code, all);
-        }
-
-        setLoadingState({ isActive: false });
-      } catch (err) {
-        console.error('CSV load error:', err);
-        setLoadingState({ isActive: false, error: err.message });
-      }
-    };
-
-    loadAll();
-    return () => { cancelled = true; };
+    useStore.getState().setLoadingState({ isActive: false, loaded: 0, total: 0, error: null });
+    useStore.getState().openPeriodModal();
   }, []);
-
-  // ============================================================
-  // SESSION RESTORE
-  // - If no saved session → show PeriodModal
-  // - If saved session is invalid → clear it and show PeriodModal
-  // ============================================================
-  useEffect(() => {
-    const state = useStore.getState();
-    if (!state.allRawDataBySymbol.XAUUSD) return;
-    if (restoredRef.current) return;
-    restoredRef.current = true;
-
-    const saved = useStore.getState().readSession();
-    if (!saved || !saved.gameStarted || !saved.gamePeriod) {
-      useStore.getState().openPeriodModal();
-      return;
-    }
-
-    const ok = useStore.getState().loadSavedSession();
-    if (!ok) {
-      try { useStore.getState().clearSession(); } catch (e) {}
-      useStore.getState().openPeriodModal();
-    }
-  }, [loadingState.isActive]);
-
-  // ============================================================
-  // SAFETY NET — if gameStarted is true but rawData is empty,
-  // wipe the corrupt state and force the PeriodModal open.
-  // ============================================================
-  useEffect(() => {
-    if (loadingState.isActive) return;
-    const s = useStore.getState();
-    if (s.gameStarted && (!s.rawData || s.rawData.length === 0)) {
-      try { s.clearSession(); } catch (e) {}
-      useStore.setState({
-        gameStarted: false,
-        rawData: [],
-        displayData: [],
-        currentIndex: 0,
-        isPlaying: false,
-        gameState: { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
-      });
-      useStore.getState().openPeriodModal();
-    }
-  }, [loadingState.isActive]);
 
   // ============================================================
   // AUTO-SAVE
@@ -376,7 +237,7 @@ function App() {
   const unrealisedPnl = positions.reduce((sum, pos) => {
     const isBuy = pos.type === 'buy';
     const priceDiff = isBuy ? currentPrice - pos.entryPrice : pos.entryPrice - currentPrice;
-    return sum + priceDiff * 100 * pos.size;
+    return sum + priceDiff * getContractSize(pos.symbol || useStore.getState().symbol, useStore.getState().contractSpecs) * pos.size;
   }, 0);
 
   const timeRemaining = gameState.timeRemaining;
