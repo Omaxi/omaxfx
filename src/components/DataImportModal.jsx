@@ -9,7 +9,7 @@ const UTC_PLUS_3_SECONDS = 3 * 60 * 60;
 function defaultSpecs(symbol) {
   const code = symbol.toUpperCase();
   if (code === 'XAUUSD') return { contractSize: 100, tickSize: 0.01, precision: 2 };
-  if (code === 'EURUSD' || code.endsWith('USD') && code.length === 6) return { contractSize: 100000, tickSize: 0.0001, precision: 5 };
+  if (code === 'EURUSD' || code.endsWith('USD') && code.length === 6) return { contractSize: 100000, tickSize: 0.00001, precision: 5 };
   if (code.includes('JPY')) return { contractSize: 100000, tickSize: 0.001, precision: 3 };
   return { contractSize: 1, tickSize: 0.01, precision: 2 };
 }
