@@ -151,7 +151,7 @@ export default function AnalyticsModal() {
           <button onClick={closeAnalytics} className="rounded p-1 text-gray-400 hover:bg-[#25282c] hover:text-white" aria-label="Close analytics"><X size={15}/></button>
         </div>
 
-        <div className="grid grid-cols-7 gap-1.5 p-1.5 shrink-0">
+        <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-1.5 p-1.5 shrink-0">
           <Metric title="Net P&L" value={`${netPnl >= 0 ? '+' : '-'}${money(netPnl)}`} color={netPnl >= 0 ? '#21c58b' : '#f05252'} detail={`${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(2)}% return`}/>
           <Metric title="Trade win %" value={fmtPct(winRate)} color="#f4f4f5" detail={`${wins.length} wins · ${losses.length} losses`} gauge={winRate}/>
           <Metric title="Avg win/loss trade" value={avgRatio.toFixed(2)} color="#f4f4f5" detail={`${money(avgWin)} avg win / -${money(avgLoss)} avg loss`}/>
