@@ -705,7 +705,7 @@ export const useStore = create((set, get) => ({
     state.positions.forEach(pos => {
       const isBuy = pos.type === 'buy';
       const priceDiff = isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice;
-      const contractSize = getContractSize(pos.symbol || state.symbol);
+      const contractSize = getContractSize(pos.symbol || state.symbol, state.contractSpecs);
       const pnl = priceDiff * contractSize * pos.size;
       newBalance += pnl;
       newHistory.push({ ...pos, exitPrice, pnl, reason: 'MANUAL', closeTime: currentCandle.time });
@@ -770,7 +770,7 @@ export const useStore = create((set, get) => ({
         if (pos.sl) {
           const hitSl = isBuy ? candle.low <= pos.sl : candle.high >= pos.sl;
           if (hitSl) {
-            const contractSize = getContractSize(pos.symbol || state.symbol);
+            const contractSize = getContractSize(pos.symbol || state.symbol, state.contractSpecs);
             const pnl = (isBuy ? pos.sl - pos.entryPrice : pos.entryPrice - pos.sl) * contractSize * pos.size;
             newBalance += pnl;
             newHistory.push({ ...pos, exitPrice: pos.sl, pnl, reason: 'SL', closeTime: candle.time });
@@ -780,7 +780,7 @@ export const useStore = create((set, get) => ({
         if (!closed && pos.tp) {
           const hitTp = isBuy ? candle.high >= pos.tp : candle.low <= pos.tp;
           if (hitTp) {
-            const contractSize = getContractSize(pos.symbol || state.symbol);
+            const contractSize = getContractSize(pos.symbol || state.symbol, state.contractSpecs);
             const pnl = (isBuy ? pos.tp - pos.entryPrice : pos.entryPrice - pos.tp) * contractSize * pos.size;
             newBalance += pnl;
             newHistory.push({ ...pos, exitPrice: pos.tp, pnl, reason: 'TP', closeTime: candle.time });
