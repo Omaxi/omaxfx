@@ -1,34 +1,35 @@
+// Aggregate sorted OHLC candles into UTC-aligned timeframe buckets.
 export const aggregateData = (data, timeframeMinutes) => {
-  if (timeframeMinutes === 1 || data.length === 0) return data;
+  if (!Array.isArray(data) || data.length === 0) return [];
+  const minutes = Number(timeframeMinutes);
+  if (!Number.isFinite(minutes) || minutes <= 0) return data;
+  if (minutes === 1) return data;
 
-  const firstTime = data[0].time;
+  const interval = Math.round(minutes * 60);
   const aggregated = [];
-  let currentCandle = null;
-  const timeframeSeconds = timeframeMinutes * 60;
+  let current = null;
 
-  data.forEach((candle) => {
-    const offset = candle.time - firstTime;
-    const blockOffset = Math.floor(offset / timeframeSeconds) * timeframeSeconds;
-    const blockTime = firstTime + blockOffset;
-
-    if (!currentCandle || currentCandle.time !== blockTime) {
-      if (currentCandle) aggregated.push(currentCandle);
-      currentCandle = {
-        time: blockTime,
+  for (const candle of data) {
+    if (!candle || !Number.isFinite(candle.time)) continue;
+    const bucketTime = Math.floor(candle.time / interval) * interval;
+    if (!current || current.time !== bucketTime) {
+      if (current) aggregated.push(current);
+      current = {
+        time: bucketTime,
         open: candle.open,
         high: candle.high,
         low: candle.low,
         close: candle.close,
-        volume: candle.volume || 0,
+        volume: Number.isFinite(candle.volume) ? candle.volume : 0,
       };
-    } else {
-      currentCandle.high = Math.max(currentCandle.high, candle.high);
-      currentCandle.low = Math.min(currentCandle.low, candle.low);
-      currentCandle.close = candle.close;
-      currentCandle.volume = (currentCandle.volume || 0) + (candle.volume || 0);
+      continue;
     }
-  });
+    current.high = Math.max(current.high, candle.high);
+    current.low = Math.min(current.low, candle.low);
+    current.close = candle.close;
+    current.volume += Number.isFinite(candle.volume) ? candle.volume : 0;
+  }
 
-  if (currentCandle) aggregated.push(currentCandle);
+  if (current) aggregated.push(current);
   return aggregated;
 };
