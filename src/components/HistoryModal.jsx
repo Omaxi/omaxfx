@@ -17,7 +17,7 @@ export default function HistoryModal() {
 
   if (!isHistoryOpen) return null;
 
-  const formatTime = (t) => t ? new Date(t * 1000).toLocaleString() : '-';
+  const formatTime = (t) => t ? new Date((t + 3 * 3600) * 1000).toLocaleString(undefined, { timeZone: 'UTC' }) : '-';
   const formatDuration = (trade) => {
     const seconds = Number(trade.closeTime) - Number(trade.openTime);
     if (!Number.isFinite(seconds) || seconds < 0) return '—';
