@@ -117,7 +117,7 @@ export default function EquityModal() {
   return (
     <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[60] p-2" onClick={() => setMenuOpen(false)}>
       <div 
-        className="bg-[#131722] rounded-lg w-full max-w-2xl border border-[#2a2e39] overflow-hidden flex flex-col max-h-[96vh] relative" 
+        className="bg-[#131722] rounded-lg w-full max-w-2xl border border-[#2a2e39] overflow-hidden flex flex-col h-[min(94dvh,900px)] relative" 
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center px-2 py-1.5 border-b border-[#2a2e39] flex-shrink-0">
@@ -158,7 +158,7 @@ export default function EquityModal() {
           </div>
         </div>
 
-        <div className="overflow-y-auto flex-1 min-h-0 p-2">
+        <div className="overflow-hidden flex-1 min-h-0 p-2 flex items-center justify-center">
           <div 
             ref={captureRef}
             style={{
@@ -228,7 +228,7 @@ export default function EquityModal() {
 
               <div style={{
                 flex: 1,
-                height: '280px',
+                height: 'min(38dvh, 280px)',
                 backgroundColor: '#0b0e11',
                 borderRadius: '6px',
                 padding: '6px',
