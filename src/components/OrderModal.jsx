@@ -232,7 +232,7 @@ export default function OrderModal() {
                   value={slPrice} 
                   step={inputStep}
                   onChange={(e) => setSlPrice(Number(e.target.value))} 
-                  className={`w-full mt-1 p-3 bg-[#1e222d] rounded border ${
+                  className={`w-full mt-1 p-2 bg-[#1e222d] rounded border ${
                     validation.errors.some(e => e.includes('Stop Loss')) ? 'border-red-500' : 'border-[#2a2e39]'
                   }`}
                 />
@@ -244,7 +244,7 @@ export default function OrderModal() {
                   value={tpPrice} 
                   step={inputStep}
                   onChange={(e) => setTpPrice(Number(e.target.value))} 
-                  className={`w-full mt-1 p-3 bg-[#1e222d] rounded border ${
+                  className={`w-full mt-1 p-2 bg-[#1e222d] rounded border ${
                     validation.errors.some(e => e.includes('Take Profit')) ? 'border-red-500' : 'border-[#2a2e39]'
                   }`}
                 />
