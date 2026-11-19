@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "node --test",
     "predev": "node scripts/generate-data-manifest.mjs",
-    "prebuild": "node scripts/generate-data-manifest.mjs"
+    "prebuild": "node scripts/generate-data-manifest.mjs",
+    "prebuild:offline": "node scripts/generate-data-manifest.mjs",
+    "build:offline": "vite build --base=./"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
