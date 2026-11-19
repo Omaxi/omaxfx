@@ -64,7 +64,7 @@ export default function DataImportModal() {
     setStatus({ loading: true, error: '', progress: 0, fileName: selectedFiles[0]?.name || '' });
     try {
       const result = await loadBundledCsvFiles(selectedFiles, (progress) => {
-        setStatus((current) => ({ ...current, progress: progress.percent ?? current.progress, fileName: progress.file || current.fileName }));
+        setStatus((current) => ({ ...current, progress: progress.percent ?? current.progress, fileName: progress.file || current.fileName, stage: progress.stage || current.stage }));
       });
       const specs = defaultSpecs(result.symbol);
       openBacktestSetup(result.symbol, result.candles, { ...specs, quoteCurrency: 'USD', quoteToAccountRate: 1 });
@@ -143,7 +143,7 @@ export default function DataImportModal() {
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#202938]">
                       <div className="h-full rounded-full bg-blue-500 transition-[width] duration-200" style={{ width: `${status.progress || 0}%` }} />
                     </div>
-                    <p className="text-[10px] text-gray-500">Processing {status.fileName || 'CSV data'} · {status.progress || 0}%</p>
+                    <p className="text-[10px] text-gray-500">{status.stage === 'downloading' ? 'Downloading' : 'Parsing'} {status.fileName || 'CSV data'} · {status.progress || 0}%</p>
                   </div>
                 )}
               </> : <div className="rounded-lg border border-dashed border-[#3b4554] p-4 text-center text-sm text-gray-400">
