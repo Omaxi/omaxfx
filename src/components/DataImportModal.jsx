@@ -21,6 +21,7 @@ export default function DataImportModal() {
   const [catalogError, setCatalogError] = useState('');
   const [folderProgress, setFolderProgress] = useState(null);
   const [status, setStatus] = useState({ loading: false, error: '', result: null });
+  const hasData = useStore(state => state.allRawData.length > 0);
 
   useEffect(() => {
     let alive = true;
@@ -106,7 +107,7 @@ export default function DataImportModal() {
       <div className="w-full max-w-2xl max-h-[94dvh] bg-[#131722] border border-[#2a2e39] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         <div className="flex items-center justify-between p-3 border-b border-[#2a2e39] shrink-0">
           <div className="flex items-center gap-2"><Upload size={18} className="text-blue-400"/><div><h2 className="font-bold text-white">Market data</h2><p className="text-[11px] text-gray-400">Offline data folder or custom CSV import · all timestamps UTC+3</p></div></div>
-          <button onClick={() => { setOpen(false); useStore.getState().openPeriodModal(); }} className="p-2 rounded hover:bg-[#2a2e39]" title="Close"><X size={17}/></button>
+          <button onClick={() => { if (hasData) { setOpen(false); useStore.getState().openPeriodModal(); } }} disabled={!hasData} className="p-2 rounded hover:bg-[#2a2e39] disabled:opacity-30" title="Close"><X size={17}/></button>
         </div>
         <div className="p-3 space-y-3 overflow-y-auto min-h-0">
           <section className="rounded-xl border border-[#2a2e39] bg-[#0e121a] p-3 space-y-2">
@@ -162,7 +163,7 @@ export default function DataImportModal() {
           {status.result && <div className="flex gap-2 p-2 rounded-lg bg-green-950/40 border border-green-800 text-green-300 text-xs"><CheckCircle2 size={15}/>{status.result.symbol}: {status.result.candles?.length?.toLocaleString()} candles ready.</div>}
         </div>
         <div className="flex gap-2 p-3 border-t border-[#2a2e39] shrink-0">
-          <button onClick={()=>{setOpen(false);useStore.getState().openPeriodModal();}} className="flex-1 py-2 rounded-lg bg-[#2a2e39] text-gray-300 text-sm">Close</button>
+          <button onClick={()=>{if(hasData){setOpen(false);useStore.getState().openPeriodModal();}}} disabled={!hasData} className="flex-1 py-2 rounded-lg bg-[#2a2e39] text-gray-300 text-sm disabled:opacity-30">Close</button>
           <button disabled={status.loading} onClick={submit} className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-sm">{status.loading ? 'Importing…' : 'Import custom CSV'}</button>
         </div>
       </div>
