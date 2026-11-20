@@ -1455,7 +1455,7 @@ export default function Chart() {
     <div className="relative w-full h-full" style={{ backgroundColor: theme.background }}>
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none', cursor: isPencilMode ? 'crosshair' : 'default' }} />
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
-      <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 4 }} aria-hidden="true" />
+      <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 25 }} aria-hidden="true" />
 
       <div className="absolute top-2 right-12 z-30 min-w-[166px] bg-[#131722]/85 px-2.5 py-2 text-[10px] leading-4 text-gray-300 pointer-events-none font-mono">
         <div className="mb-1 flex items-center justify-between gap-3 pb-1">
