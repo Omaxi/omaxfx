@@ -559,6 +559,33 @@ export default function Chart() {
       ctx.clip();
       const state = useStore.getState();
 
+      // Keep SL/TP guides visually compact: draw only from order/position start
+      // to the current replay candle. Their price-axis tags remain visible.
+      const currentTime = state.rawData?.[state.currentIndex]?.time;
+      const currentX = currentTime != null ? timeToX(findClosestCandleTime(currentTime)) : null;
+      const drawCompactRiskLines = (item, startTime) => {
+        if (currentX == null || !Number.isFinite(currentX)) return;
+        const startX = timeToX(findClosestCandleTime(startTime));
+        if (startX == null || !Number.isFinite(startX)) return;
+        [['sl', '#ef5350'], ['tp', '#26a69a']].forEach(([key, color]) => {
+          const price = item[key];
+          if (price == null) return;
+          const lineY = seriesRef.current?.priceToCoordinate(Number(price));
+          if (lineY == null || !Number.isFinite(lineY)) return;
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([5, 4]);
+          ctx.beginPath();
+          ctx.moveTo(Math.max(0, Math.min(startX, currentX)), lineY);
+          ctx.lineTo(Math.min(paneW, Math.max(startX, currentX)), lineY);
+          ctx.stroke();
+          ctx.restore();
+        });
+      };
+      (state.positions || []).forEach(position => drawCompactRiskLines(position, position.openTime));
+      (state.pendingOrders || []).forEach(order => drawCompactRiskLines(order, order.openTime));
+
       // 1. Draw trade history (Entry/Exit boxes + SL area + TP area)
       const tradeHistory = state.tradeHistory || [];
       tradeHistory.forEach(trade => {
@@ -1353,10 +1380,10 @@ export default function Chart() {
     if (!seriesRef.current) return;
     linesRef.current.forEach(line => seriesRef.current.removePriceLine(line));
     linesRef.current = [];
-    const addLine = (price, color, title, lineStyle = 2, lineWidth = 2) => {
+    const addLine = (price, color, title, lineStyle = 2, lineWidth = 2, showLine = true) => {
       if (price == null) return;
       const line = seriesRef.current.createPriceLine({
-        price: Number(price), color, lineWidth, lineStyle, axisLabelVisible: true, title,
+        price: Number(price), color, lineWidth, lineStyle, lineVisible: showLine, axisLabelVisible: true, title,
       });
       linesRef.current.push(line);
     };
@@ -1364,15 +1391,15 @@ export default function Chart() {
       const rrr = calcRRR(pos.entryPrice, pos.sl, pos.tp);
       const dirLabel = pos.type === 'buy' ? 'BUY' : 'SELL';
       addLine(pos.entryPrice, pos.type === 'buy' ? '#4ade80' : '#f87171', `${dirLabel} · RRR ${rrr || '-'}`, 0, 1);
-      addLine(pos.sl, '#ef5350', 'SL', 2, 2);
-      addLine(pos.tp, '#26a69a', 'TP', 2, 2);
+      addLine(pos.sl, '#ef5350', 'SL', 2, 1, false);
+      addLine(pos.tp, '#26a69a', 'TP', 2, 1, false);
     });
     pendingOrders.forEach(order => {
       const rrr = calcRRR(order.entryPrice, order.sl, order.tp);
       const label = `${order.type === 'buy' ? 'Buy' : 'Sell'} ${order.orderType}${rrr ? ` · RRR ${rrr}` : ''}`;
       addLine(order.entryPrice, '#facc15', label, 3, 1);
-      addLine(order.sl, '#ef5350', 'SL', 2, 1);
-      addLine(order.tp, '#26a69a', 'TP', 2, 1);
+      addLine(order.sl, '#ef5350', 'SL', 2, 1, false);
+      addLine(order.tp, '#26a69a', 'TP', 2, 1, false);
     });
     if (draftPosition) {
       const rrr = calcRRR(draftPosition.entry, draftPosition.sl, draftPosition.tp);
