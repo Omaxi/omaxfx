@@ -34,7 +34,7 @@ const TIMEZONES = [
 ];
 
 const SESSIONS = [
-  { key: 'asian',   label: 'Asian',    icon: Sunrise, color: 'text-orange-400' },
+  { key: 'asian',   label: 'Asian & Sydney', icon: Sunrise, color: 'text-orange-400' },
   { key: 'london',  label: 'London',   icon: Sun,     color: 'text-blue-400' },
   { key: 'newyork', label: 'New York', icon: Sunset,  color: 'text-purple-400' },
 ];
@@ -233,7 +233,7 @@ export default function ControlPanel() {
       <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[260px]" style={{ zIndex: 9999, left: jumpLeft, bottom: 52 }}>
         <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide flex justify-between items-center">
           <span>Jump to Session</span>
-          <span className="text-[8px] text-gray-600 normal-case">chart hour</span>
+          <span className="text-[8px] text-gray-600 normal-case">UTC+3</span>
         </div>
         {SESSIONS.map(s => {
           const Icon = s.icon;
@@ -241,7 +241,7 @@ export default function ControlPanel() {
           return (
             <div key={s.key} className="flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39]/40">
               <Icon size={12} className={s.color} />
-              <span className="text-xs text-white font-bold w-16">{s.label}</span>
+              <span className="text-xs text-white font-bold w-24">{s.label}</span>
               <input
                 type="number"
                 min="0"
