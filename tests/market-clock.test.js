@@ -24,7 +24,7 @@ test('parses single-digit CSV hours without dropping the early session candles',
     'date,time,open,high,low,close,volume',
     '20260102,2:00:00,4323.698,4332.848,4323.698,4328.198,236',
     '20260102,2:01:00,4328.198,4331.998,4328.098,4328.898,174',
-  ].join('\\n');
+  ].join('\n');
   const parsed = parseMarketCsvText(csv);
   assert.equal(parsed.invalidRows, 0);
   assert.equal(parsed.candles.length, 2);
