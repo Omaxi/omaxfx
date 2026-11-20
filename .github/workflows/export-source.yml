@@ -1,0 +1,24 @@
+name: Export OmaxFX source for sandbox work
+
+on:
+  push:
+    branches:
+      - sandbox/source-export
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package repository source
+        run: |
+          zip -qr /tmp/omaxfx-source.zip . \
+            -x ".git/*" "node_modules/*" "dist/*" "coverage/*"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: omaxfx-source
+          path: /tmp/omaxfx-source.zip
+          retention-days: 1
