@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LineSeries } from 'lightweight-charts';
 import { ChevronDown, Settings2, X } from 'lucide-react';
+import { useStore } from '../store';
 
 const INDICATORS = [
   { key: 'ma', label: 'Moving Average', color: '#f59e0b', pane: 'price' },
@@ -176,6 +177,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
   const seriesRef = useRef({});
   const readyRef = useRef(false);
   const sessionCanvasRef = useRef(null);
+  const sessionColors = useStore(state => state.sessionColors);
 
   const selected = useMemo(() => INDICATORS.filter(item => active[item.key]), [active]);
   const sessionCandles = useMemo(() => {
@@ -270,9 +272,9 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
         const data = sessionCandles;
         if (!data?.length) return;
         const defs = [
-          { key: 'asia', label: 'Sydney / Asia', start: 1, end: 10, color: '#f59e0b' },
-          { key: 'london', label: 'London', start: 10, end: 15, color: '#38bdf8' },
-          { key: 'newyork', label: 'New York', start: 15, end: 23, color: '#fb7185' },
+          { key: 'asia', label: 'Sydney / Asia', start: 1, end: 10, color: sessionColors?.asia || '#f59e0b' },
+          { key: 'london', label: 'London', start: 10, end: 15, color: sessionColors?.london || '#38bdf8' },
+          { key: 'newyork', label: 'New York', start: 15, end: 23, color: sessionColors?.newyork || '#fb7185' },
         ];
         const groups = new Map();
         data.forEach(candle => {
@@ -343,7 +345,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
       timeScale.unsubscribeVisibleLogicalRangeChange(draw);
       observer.disconnect();
     };
-  }, [active.sessions, chartRef, chartReady, sessionCandles, timeframe]);
+  }, [active.sessions, chartRef, chartReady, sessionCandles, timeframe, sessionColors]);
 
   const toggle = (key) => setActive(current => ({ ...current, [key]: !current[key] }));
   const updateConfig = (key, field, value) => setConfig(current => ({
