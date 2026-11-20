@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore, INITIAL_BALANCE } from '../store';
 import { fmtMoney } from '../utils/format';
-import { X, TrendingUp, TrendingDown, CalendarDays, ChevronLeft, ChevronRight, BarChart3, Target, Activity, Award } from 'lucide-react';
+import { X, TrendingUp, TrendingDown, CalendarDays, ChevronLeft, ChevronRight, BarChart3, Target, Activity, Award, Download } from 'lucide-react';
 import TradeDayModal from './TradeDayModal';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { getTradeScreenshot, renderTradeScreenshot, saveTradeScreenshot } from '../utils/tradeScreenshots';
+import { buildAnalyticsPrintHtml, writeAnalyticsPrintWindow } from '../utils/analyticsPdf';
 
 const money = (value) => `$${fmtMoney(Math.abs(value), 0)}`;
 const MARKET_TZ_OFFSET_SECONDS = 3 * 60 * 60;
@@ -36,6 +38,7 @@ export default function AnalyticsModal() {
   const timeframe = analyticsSnapshot?.timeframe || store.timeframe;
   const reviewName = analyticsSnapshot?.sessionName || '';
   const [selectedDate, setSelectedDate] = useState(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [monthCursor, setMonthCursor] = useState(() => {
     const marketTime = rawData?.[currentIndex]?.time;
     const latest = tradeHistory.reduce((value, trade) => Math.max(value, Number(trade.closeTime || trade.openTime || 0)), 0);
@@ -152,12 +155,68 @@ export default function AnalyticsModal() {
   };
   const streakText = latestTrade ? (latestTrade.pnl > 0 ? 'Winning' : latestTrade.pnl < 0 ? 'Losing' : 'Flat') : 'No streak';
 
+  const exportAnalyticsPdf = async () => {
+    // Open synchronously in the click handler to avoid popup blockers while
+    // screenshot images are being loaded from IndexedDB.
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      window.alert('Please allow pop-ups for OmaxFX to export the analytics PDF.');
+      return;
+    }
+    printWindow.document.write('<!doctype html><title>Preparing OmaxFX report</title><body style="font:14px Arial;padding:32px;background:#131722;color:white">Preparing your analytics report and loading trade screenshots…</body>');
+    setIsExportingPdf(true);
+    try {
+      const screenshots = {};
+      await Promise.all(trades.map(async trade => {
+        const key = String(trade.id);
+        let image = await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
+        if (!image) {
+          image = renderTradeScreenshot(trade, rawData, timeframe);
+          if (image) await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
+        }
+        if (image) screenshots[key] = image;
+      }));
+      const metrics = {
+        netPnl, returnPct, totalTrades: trades.length, wins: wins.length, losses: losses.length,
+        breakeven: breakeven.length, winRate, grossProfit, grossLoss, avgWin, avgLoss, avgRatio,
+        profitFactor, averageR, maxClosedDrawdown, largestWin, largestLoss, maxWins, maxLosses,
+        currentStreak: `${currentTradeStreak} ${streakText.toLowerCase()}`,
+        longTrades: longTrades.length, longWinRate: longTrades.length ? longWins / longTrades.length * 100 : 0,
+        shortTrades: shortTrades.length, shortWinRate: shortTrades.length ? shortWins / shortTrades.length * 100 : 0,
+        maxBalance,
+      };
+      const html = buildAnalyticsPrintHtml({
+        sessionName: reviewName || store.sessionName || 'Trading session',
+        symbol: analyticsSnapshot?.symbol || store.symbol,
+        sessionId,
+        startBalance,
+        balance,
+        timezone: analyticsSnapshot?.timezone || store.timezone || 'UTC+3',
+        trades,
+        metrics,
+        dailyEntries,
+        curve,
+        screenshots,
+      });
+      writeAnalyticsPrintWindow(printWindow, html);
+    } catch (error) {
+      printWindow.close();
+      window.alert('The analytics PDF could not be prepared. Please try again.');
+      console.error('Analytics PDF export failed:', error);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[300] bg-[#0b0e11] p-1.5 sm:p-2" onClick={closeAnalytics}>
       <div className="h-full w-full overflow-hidden rounded-lg border border-[#2a2e39] bg-[#131722] text-white flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="h-8 shrink-0 flex items-center justify-between px-3 border-b border-[#2a2e39]">
           <div className="flex items-center gap-2 text-xs font-bold"><BarChart3 size={14} className="text-blue-400"/> OmaxFX <span className="text-gray-400 font-medium">Performance analytics</span>{reviewName && <span className="text-blue-300 font-medium">· {reviewName} · Read-only review</span>}</div>
-          <button onClick={closeAnalytics} className="rounded p-1 text-gray-400 hover:bg-[#2a2e39] hover:text-white" aria-label="Close analytics"><X size={15}/></button>
+          <div className="flex items-center gap-2">
+            <button onClick={exportAnalyticsPdf} disabled={isExportingPdf} className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-2.5 py-1 text-[10px] font-semibold text-white hover:bg-blue-500 disabled:cursor-wait disabled:opacity-60"><Download size={12}/>{isExportingPdf ? 'Preparing PDF…' : 'Export PDF'}</button>
+            <button onClick={closeAnalytics} className="rounded p-1 text-gray-400 hover:bg-[#2a2e39] hover:text-white" aria-label="Close analytics"><X size={15}/></button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-1.5 p-1.5 shrink-0">
