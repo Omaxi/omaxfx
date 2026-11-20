@@ -12,11 +12,11 @@ import CelebrationOverlay from './components/CelebrationOverlay';
 import LoadingScreen from './components/LoadingScreen';
 import TradeScreenshotCapture from './components/TradeScreenshotCapture';
 import DataImportModal from './components/DataImportModal';
-import PreviousSessionsModal from './components/PreviousSessionsModal';
 import { useStore } from './store';
 import { useEffect, useRef, useState } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
+import { fetchDataCatalog, loadBundledCsvFiles } from './utils/dataCatalog';
 import { getPnlMultiplier } from './utils/instrument';
 import { RotateCcw, Info, Sparkles, AlertTriangle, ChevronDown, LogOut, Sun, Moon } from 'lucide-react';
 
@@ -33,6 +33,7 @@ function App() {
   const soundtrackStarted = useRef(false);
   const [sessionMenuOpen, setSessionMenuOpen] = useState(false);
   const [savedSessions, setSavedSessions] = useState([]);
+  const [sessionLoadingId, setSessionLoadingId] = useState(null);
   const [uiTheme, setUiTheme] = useState(() => {
     try { return localStorage.getItem('omaxfx-ui-theme') === 'light' ? 'light' : 'dark'; }
     catch { return 'dark'; }
@@ -190,11 +191,75 @@ function App() {
     setSessionMenuOpen(value => !value);
   };
 
-  const handleResumeSession = (sessionId) => {
+  const handleResumeSession = async (sessionId) => {
+    if (sessionLoadingId) return;
     try { saveSession(); } catch (e) {}
-    const loaded = useStore.getState().loadSavedSession(sessionId);
-    if (!loaded) window.alert('This session could not be resumed. Its market data may not be loaded.');
-    setSessionMenuOpen(false);
+    setSessionLoadingId(sessionId);
+    try {
+      const saved = useStore.getState().readSession(sessionId);
+      if (!saved?.gamePeriod || !saved.symbol) throw new Error('This saved session is incomplete.');
+
+      // Session timestamps are stored in the saved display timezone. Convert
+      // the range back to the UTC+3 market calendar used by public/data.
+      const offsets = { 'UTC-5': -300, 'UTC-4': -240, 'UTC-3': -180, 'UTC-2': -120, 'UTC-1': -60, UTC: 0, 'UTC+1': 60, 'UTC+2': 120, 'UTC+3': 180 };
+      const savedOffset = offsets[saved.timezone || 'UTC+3'] ?? 180;
+      const displayShiftSeconds = (savedOffset - 180) * 60;
+      const from = Number(saved.gamePeriod.from) - displayShiftSeconds;
+      const to = Number(saved.gamePeriod.to) - displayShiftSeconds;
+      if (!Number.isFinite(from) || !Number.isFinite(to) || to < from) throw new Error('The saved session has an invalid market-data date range.');
+
+      const start = new Date((from + 10800) * 1000);
+      const end = new Date((to + 10800) * 1000);
+      const requiredMonths = [];
+      const cursor = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
+      const lastMonth = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1);
+      while (cursor.getTime() <= lastMonth) {
+        requiredMonths.push(`${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, '0')}`);
+        cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+      }
+
+      const catalog = await fetchDataCatalog();
+      const symbolFiles = catalog.filter(file => String(file.symbol).toUpperCase() === String(saved.symbol).toUpperCase());
+      if (!symbolFiles.length) {
+        throw new Error(`Session data is not available. No ${saved.symbol} CSV dataset was found in public/data/.`);
+      }
+
+      const selectedFiles = [];
+      const years = [...new Set(requiredMonths.map(month => Number(month.slice(0, 4))))];
+      for (const year of years) {
+        const yearFile = symbolFiles.find(file => Number(file.year) === year);
+        const monthsForYear = requiredMonths.filter(month => Number(month.slice(0, 4)) === year);
+        const monthFiles = monthsForYear.map(month => (yearFile?.monthlyFiles || []).find(file => `${file.year}-${String(file.month).padStart(2, '0')}` === month));
+        if (monthFiles.every(Boolean)) selectedFiles.push(...monthFiles);
+        else if (yearFile) selectedFiles.push(yearFile);
+        else throw new Error(`Session data is not available. The required ${saved.symbol} data for ${year} is missing from public/data/.`);
+      }
+
+      const result = await loadBundledCsvFiles(selectedFiles);
+      const specs = saved.contractSpecs?.[saved.symbol] || (
+        saved.symbol === 'XAUUSD' ? { contractSize: 100, tickSize: 0.01, precision: 2, quoteCurrency: 'USD', quoteToAccountRate: 1 } :
+        { contractSize: 100000, tickSize: saved.symbol.includes('JPY') ? 0.001 : 0.00001, precision: saved.symbol.includes('JPY') ? 3 : 5, quoteCurrency: 'USD', quoteToAccountRate: 1 }
+      );
+      useStore.getState().setCustomSymbolData(saved.symbol, result.candles, specs);
+      const loaded = useStore.getState().loadSavedSession(sessionId);
+      if (!loaded) throw new Error('The required CSV exists, but it does not contain enough valid candles for this saved session date range.');
+      setSessionMenuOpen(false);
+    } catch (error) {
+      window.alert(error?.message || 'Session data is not available. Check that its CSV file exists in public/data/.');
+    } finally {
+      setSessionLoadingId(null);
+    }
+  };
+
+  const handleDeleteSession = (sessionId) => {
+    const activeSessionId = useStore.getState().sessionId;
+    if (sessionId === activeSessionId) {
+      window.alert('The active session cannot be deleted while it is open. Start another session first, then delete it here.');
+      return;
+    }
+    if (!window.confirm('Delete this saved session permanently? This cannot be undone.')) return;
+    const remaining = useStore.getState().deleteSavedSession(sessionId);
+    setSavedSessions(remaining);
   };
 
   const handleNewSession = () => {
@@ -246,12 +311,19 @@ function App() {
                 <button aria-label="Close sessions menu" className="fixed inset-0 z-[90] cursor-default" onClick={() => setSessionMenuOpen(false)}/>
                 <div className="absolute right-0 top-9 z-[100] w-64 max-h-[60vh] overflow-y-auto rounded-lg border border-[#2a2e39] bg-[#1e222d] p-1 shadow-2xl">
                   <div className="px-2 py-1.5 text-[9px] uppercase tracking-wide text-gray-500">Saved sessions</div>
-                  {savedSessions.length === 0 ? <div className="px-2 py-3 text-xs text-gray-500">No saved sessions yet</div> : savedSessions.map(item => (
-                    <button key={item.sessionId} onClick={() => handleResumeSession(item.sessionId)} className="w-full rounded px-2 py-2 text-left hover:bg-[#2a2e39]">
-                      <div className="text-xs font-bold text-white">{item.sessionName || 'Untitled session'} · {item.symbol || 'Market'}</div>
-                      <div className="text-[10px] text-gray-400">{new Date(item.savedAt || Date.now()).toLocaleString()} · ${Number(item.balance || 0).toLocaleString()}</div>
-                    </button>
-                  ))}
+                  {savedSessions.length === 0 ? <div className="px-2 py-3 text-xs text-gray-500">No saved sessions yet</div> : savedSessions.map(item => {
+                    const isActive = item.sessionId === useStore.getState().sessionId;
+                    return (
+                      <div key={item.sessionId} className="flex items-center gap-1 rounded px-1 py-1 hover:bg-[#2a2e39]">
+                        <button disabled={Boolean(sessionLoadingId)} onClick={() => handleResumeSession(item.sessionId)} className="min-w-0 flex-1 rounded px-1 py-1 text-left disabled:opacity-60">
+                          <div className="truncate text-xs font-bold text-white">{item.sessionName || 'Untitled session'} · {item.symbol || 'Market'}{isActive ? ' · Active' : ''}</div>
+                          <div className="text-[10px] text-gray-400">{new Date(item.savedAt || Date.now()).toLocaleString()} · ${Number(item.balance || 0).toLocaleString()}</div>
+                          {sessionLoadingId === item.sessionId && <div className="mt-1 text-[10px] text-blue-300">Loading market data…</div>}
+                        </button>
+                        <button type="button" disabled={isActive || Boolean(sessionLoadingId)} onClick={() => handleDeleteSession(item.sessionId)} title={isActive ? 'Start another session before deleting the active session' : 'Delete saved session'} className="shrink-0 rounded px-2 py-1.5 text-[10px] font-semibold text-red-300 hover:bg-red-500/15 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-30">Delete</button>
+                      </div>
+                    );
+                  })}
                 </div>
               </>}
             </div>
@@ -324,7 +396,6 @@ function App() {
       
       <ControlPanel />
       <DataImportModal />
-      <PreviousSessionsModal />
 
       <OrderModal />
       <HistoryModal />
