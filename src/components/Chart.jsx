@@ -1312,7 +1312,7 @@ export default function Chart() {
   const currentCandle = visibleData[visibleData.length - 1] || null;
   const candleClock = currentCandle ? new Date((Number(currentCandle.time) + 3 * 3600) * 1000) : null;
   const candleHour = candleClock ? candleClock.getUTCHours() : -1;
-  const candleSession = candleHour >= 1 && candleHour < 10 ? 'Asian' : candleHour >= 10 && candleHour < 15 ? 'London' : candleHour >= 15 && candleHour < 23 ? 'New York' : 'Off-session';
+  const candleSession = candleHour >= 1 && candleHour < 11 ? 'Asian & Sydney' : candleHour >= 11 && candleHour < 16 ? 'London' : 'New York';
   const candleDate = candleClock ? candleClock.toISOString().slice(0, 16).replace('T', ' ') : '—';
   const candlePrice = value => Number.isFinite(Number(value)) ? Number(value).toFixed(3) : '—';
 
