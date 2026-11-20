@@ -277,3 +277,36 @@ test('switching between 1m and 15m preserves the last closed-bar boundary', () =
     assert.equal(useStore.getState().currentIndex, 14);
   } finally { restore(); }
 });
+
+
+test('1m replay advances exactly one source candle even when timestamps cross a large date gap', () => {
+  const rawData = [
+    { time: 60, open: 100, high: 101, low: 99, close: 100 },
+    { time: 60 + 30 * 86400, open: 200, high: 201, low: 199, close: 200 },
+    { time: 60 + 30 * 86400 + 60, open: 201, high: 202, low: 200, close: 201 },
+  ];
+  const restore = configureStore({ gameStarted: true, timeframe: 1, currentIndex: 0, rawData });
+  try {
+    useStore.getState().stepForward();
+    assert.equal(useStore.getState().currentIndex, 1);
+    assert.equal(useStore.getState().rawData[useStore.getState().currentIndex].close, 200);
+  } finally { restore(); }
+});
+
+test('5m replay advances one timestamp-aligned candle bucket across missing-minute gaps', () => {
+  const rawData = [
+    { time: 60, open: 100, high: 101, low: 99, close: 100 },
+    { time: 120, open: 100, high: 102, low: 99, close: 101 },
+    { time: 180, open: 101, high: 103, low: 100, close: 102 },
+    { time: 300, open: 102, high: 104, low: 101, close: 103 },
+    { time: 900, open: 103, high: 105, low: 102, close: 104 },
+    { time: 960, open: 104, high: 106, low: 103, close: 105 },
+  ];
+  const restore = configureStore({ gameStarted: true, timeframe: 5, currentIndex: 0, rawData });
+  try {
+    useStore.getState().stepForward();
+    assert.equal(useStore.getState().currentIndex, 3);
+    useStore.getState().stepForward();
+    assert.equal(useStore.getState().currentIndex, 4);
+  } finally { restore(); }
+});
