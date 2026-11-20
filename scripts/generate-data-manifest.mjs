@@ -11,7 +11,7 @@ const output = join(process.cwd(), 'public', 'data-manifest.json');
 
 function monthFromRow(row) {
   const normalized = Object.entries(row || {}).map(([key, value]) => [String(key).trim().toLowerCase(), String(value ?? '').trim()]);
-  const dateEntry = normalized.find(([key]) => ['date', 'day', 'datetime', 'timestamp', 'time'].includes(key) || key.includes('date'));
+  const dateEntry = normalized.find(([key]) => ['date', 'day', 'datetime', 'timestamp', 'time', 'date time', 'gmt time', 'utc time'].includes(key) || key.includes('date'));
   if (!dateEntry) return null;
   const raw = dateEntry[1];
   let match = raw.match(/^(\d{4})[-/.](\d{1,2})[-/.]\d{1,2}/);
