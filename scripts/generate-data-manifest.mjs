@@ -1,9 +1,36 @@
 import { createHash } from 'node:crypto';
-import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
+import Papa from 'papaparse';
 
 const dataDir = join(process.cwd(), 'public', 'data');
+const monthlyDir = join(process.cwd(), 'public', 'data-monthly');
 const output = join(process.cwd(), 'public', 'data-manifest.json');
+
+function monthFromRow(row) {
+  const entries = Object.entries(row || {});
+  const normalized = entries.map(([key, value]) => [String(key).trim().toLowerCase(), String(value ?? '').trim()]);
+  const dateEntry = normalized.find(([key]) => ['date', 'day', 'datetime', 'timestamp', 'time'].includes(key) || key.includes('date'));
+  if (!dateEntry) return null;
+  const raw = dateEntry[1];
+  let match = raw.match(/^(\d{4})[-/.](\d{1,2})[-/.]\d{1,2}/);
+  if (!match) match = raw.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (!match) {
+    const european = raw.match(/^(\d{1,2})[/. -](\d{1,2})[/. -](\d{4})/);
+    if (european) return { year: Number(european[3]), month: String(Number(european[2])).padStart(2, '0') };
+  }
+  if (match) return { year: Number(match[1]), month: String(Number(match[2])).padStart(2, '0') };
+  const parsed = Date.parse(raw);
+  if (Number.isFinite(parsed)) {
+    const date = new Date(parsed);
+    return { year: date.getUTCFullYear(), month: String(date.getUTCMonth() + 1).padStart(2, '0') };
+  }
+  return null;
+}
+
+await rm(monthlyDir, { recursive: true, force: true });
+await mkdir(monthlyDir, { recursive: true });
 let names = [];
 try { names = await readdir(dataDir); } catch { names = []; }
 const files = [];
@@ -14,10 +41,39 @@ for (const name of names.filter((entry) => entry.toLowerCase().endsWith('.csv'))
   const yearMatch = stem.match(/[_-](\d{4})$/);
   const year = yearMatch ? Number(yearMatch[1]) : null;
   const symbol = stem.replace(/[_-]\d{4}$/, '').replace(/[^a-z0-9._-]/gi, '').toUpperCase();
-  // Content fingerprints change only when the actual CSV bytes change. File
-  // mtimes are unreliable across ZIP extraction, deploys and copied datasets.
   const version = createHash('sha256').update(contents).digest('hex').slice(0, 16);
-  files.push({ name, symbol, year, version, url: `data/${encodeURIComponent(name)}?v=${version}`, size: contents.byteLength });
+  const monthlyFiles = new Map();
+  const parser = Papa.parse(Papa.NODE_STREAM_INPUT, { header: true, skipEmptyLines: 'greedy' });
+  createReadStream(path).pipe(parser);
+  for await (const row of parser) {
+    const date = monthFromRow(row);
+    if (!date || (year && date.year !== year)) continue;
+    const key = date.month;
+    let entry = monthlyFiles.get(key);
+    if (!entry) {
+      const monthName = `${symbol}_${date.year}-${key}.csv`;
+      entry = { name: monthName, symbol, year: date.year, month: key, path: join(monthlyDir, monthName), rows: [] };
+      monthlyFiles.set(key, entry);
+    }
+    entry.rows.push(row);
+  }
+  const monthEntries = [];
+  for (const entry of monthlyFiles.values()) {
+    if (!entry.rows.length) continue;
+    const csv = Papa.unparse(entry.rows, { header: true });
+    await writeFile(entry.path, csv + '\n');
+    const bytes = Buffer.from(csv + '\n');
+    const monthVersion = createHash('sha256').update(bytes).digest('hex').slice(0, 16);
+    monthEntries.push({
+      name: entry.name, symbol, year: entry.year, month: entry.month,
+      version: monthVersion, size: bytes.byteLength,
+      url: `data-monthly/${encodeURIComponent(entry.name)}?v=${monthVersion}`,
+    });
+  }
+  files.push({
+    name, symbol, year, version, url: `data/${encodeURIComponent(name)}?v=${version}`,
+    size: contents.byteLength, monthlyFiles: monthEntries,
+  });
 }
-await writeFile(output, JSON.stringify({ version: 2, timezone: 'UTC+3', files }, null, 2) + '\n');
-console.log(`Generated data manifest with ${files.length} CSV file(s).`);
+await writeFile(output, JSON.stringify({ version: 3, timezone: 'UTC+3', files }, null, 2) + '\n');
+console.log(`Generated data manifest with ${files.length} CSV file(s) and ${files.reduce((n, f) => n + f.monthlyFiles.length, 0)} monthly dataset(s).`);
