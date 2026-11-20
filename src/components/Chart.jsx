@@ -1367,15 +1367,15 @@ export default function Chart() {
       const rrr = calcRRR(pos.entryPrice, pos.sl, pos.tp);
       const dirLabel = pos.type === 'buy' ? 'BUY' : 'SELL';
       addLine(pos.entryPrice, pos.type === 'buy' ? '#4ade80' : '#f87171', `${dirLabel} · RRR ${rrr || '-'}`, 0, 1);
-      addLine(pos.sl, '#ef5350', 'SL', 2, 1);
-      addLine(pos.tp, '#26a69a', 'TP', 2, 1);
+      addLine(pos.sl, '#ef5350', 'SL', 1, 1);
+      addLine(pos.tp, '#26a69a', 'TP', 1, 1);
     });
     pendingOrders.forEach(order => {
       const rrr = calcRRR(order.entryPrice, order.sl, order.tp);
       const label = `${order.type === 'buy' ? 'Buy' : 'Sell'} ${order.orderType}${rrr ? ` · RRR ${rrr}` : ''}`;
       addLine(order.entryPrice, '#facc15', label, 3, 1);
-      addLine(order.sl, '#ef5350', 'SL', 2, 1);
-      addLine(order.tp, '#26a69a', 'TP', 2, 1);
+      addLine(order.sl, '#ef5350', 'SL', 1, 1);
+      addLine(order.tp, '#26a69a', 'TP', 1, 1);
     });
     if (draftPosition) {
       const rrr = calcRRR(draftPosition.entry, draftPosition.sl, draftPosition.tp);
