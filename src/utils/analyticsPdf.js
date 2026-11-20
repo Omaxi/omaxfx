@@ -155,8 +155,8 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
             <div><small>Close time</small><b class="journal-value blue">${escapeHtml(timeLabel(trade.closeTime))}</b></div><div><small>Duration</small><b class="journal-value blue">${escapeHtml(duration(trade))}</b></div>
             <div><small>Entry</small><b class="journal-value blue">${escapeHtml(trade.entryPrice)}</b></div><div><small>Exit</small><b class="journal-value blue">${escapeHtml(trade.exitPrice)}</b></div>
             <div><small>Stop loss</small><b class="journal-value loss">${escapeHtml(trade.sl)}</b></div><div><small>Take profit</small><b class="journal-value gain">${escapeHtml(trade.tp ?? '—')}</b></div>
-            <div><small>Size</small><b>${escapeHtml(trade.size)}</b></div><div><small>Risk amount</small><b class="journal-value warn">${money(trade.riskAmount)}</b></div>
-            <div><small>Close reason</small><b>${escapeHtml(trade.reason||'—')}</b></div><div><small>Trade ID</small><b>${escapeHtml(trade.id)}</b></div>
+            <div><small>Size</small><b class="journal-value blue">${escapeHtml(trade.size)}</b></div><div><small>Risk amount</small><b class="journal-value warn">${money(trade.riskAmount)}</b></div>
+            <div><small>Close reason</small><b class="journal-value warn">${escapeHtml(trade.reason||'—')}</b></div><div><small>Trade ID</small><b class="journal-value">${escapeHtml(trade.id)}</b></div>
           </div>
           ${image ? `<img class="trade-image" src="${image}" alt="Trade ${escapeHtml(trade.id)} chart screenshot"/>` : '<div class="no-image">Screenshot unavailable on this device for this trade.</div>'}
         </article>`;
