@@ -1380,7 +1380,7 @@ export default function Chart() {
     if (!seriesRef.current) return;
     linesRef.current.forEach(line => seriesRef.current.removePriceLine(line));
     linesRef.current = [];
-    const addLine = (price, color, title, lineStyle = 2, lineWidth = 2, showLine = true) => {
+    const addLine = (price, color, title, lineStyle = 2, lineWidth = 2) => {
       if (price == null) return;
       const line = seriesRef.current.createPriceLine({
         price: Number(price), color, lineWidth, lineStyle, lineVisible: true, axisLabelVisible: true, title,
@@ -1391,15 +1391,15 @@ export default function Chart() {
       const rrr = calcRRR(pos.entryPrice, pos.sl, pos.tp);
       const dirLabel = pos.type === 'buy' ? 'BUY' : 'SELL';
       addLine(pos.entryPrice, pos.type === 'buy' ? '#4ade80' : '#f87171', `${dirLabel} · RRR ${rrr || '-'}`, 0, 1);
-      addLine(pos.sl, '#ef5350', 'SL', 2, 1, false);
-      addLine(pos.tp, '#26a69a', 'TP', 2, 1, false);
+      addLine(pos.sl, '#ef5350', 'SL', 2, 1);
+      addLine(pos.tp, '#26a69a', 'TP', 2, 1);
     });
     pendingOrders.forEach(order => {
       const rrr = calcRRR(order.entryPrice, order.sl, order.tp);
       const label = `${order.type === 'buy' ? 'Buy' : 'Sell'} ${order.orderType}${rrr ? ` · RRR ${rrr}` : ''}`;
       addLine(order.entryPrice, '#facc15', label, 3, 1);
-      addLine(order.sl, '#ef5350', 'SL', 2, 1, false);
-      addLine(order.tp, '#26a69a', 'TP', 2, 1, false);
+      addLine(order.sl, '#ef5350', 'SL', 2, 1);
+      addLine(order.tp, '#26a69a', 'TP', 2, 1);
     });
     if (draftPosition) {
       const rrr = calcRRR(draftPosition.entry, draftPosition.sl, draftPosition.tp);
