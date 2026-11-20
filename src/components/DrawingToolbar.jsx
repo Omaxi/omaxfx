@@ -39,7 +39,7 @@ export default function DrawingToolbar() {
   const locked = isPencilMode; // when pencil active, other tools locked
 
   return (
-    <div className="absolute top-1 left-1 md:top-2 md:left-2 z-20 flex flex-col gap-0.5 md:gap-1 bg-[#131722]/95 backdrop-blur border border-[#2a2e39] rounded-md md:rounded-lg p-0.5 md:p-1 shadow-lg">
+    <div className="absolute top-1 left-1 md:top-2 md:left-2 z-20 flex flex-col gap-0.5 md:gap-1 bg-[#131722]/95 backdrop-blur rounded-md md:rounded-lg p-0.5 md:p-1 shadow-lg">
       {/* Pencil — top priority button */}
       <button
         onClick={() => setPencilMode(!isPencilMode)}
