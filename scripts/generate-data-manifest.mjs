@@ -10,8 +10,7 @@ const monthlyDir = join(process.cwd(), 'public', 'data-monthly');
 const output = join(process.cwd(), 'public', 'data-manifest.json');
 
 function monthFromRow(row) {
-  const entries = Object.entries(row || {});
-  const normalized = entries.map(([key, value]) => [String(key).trim().toLowerCase(), String(value ?? '').trim()]);
+  const normalized = Object.entries(row || {}).map(([key, value]) => [String(key).trim().toLowerCase(), String(value ?? '').trim()]);
   const dateEntry = normalized.find(([key]) => ['date', 'day', 'datetime', 'timestamp', 'time'].includes(key) || key.includes('date'));
   if (!dateEntry) return null;
   const raw = dateEntry[1];
@@ -49,33 +48,33 @@ for (const name of names.filter((entry) => entry.toLowerCase().endsWith('.csv'))
   for await (const row of parser) {
     const date = monthFromRow(row);
     if (!date || (year && date.year !== year)) continue;
-    const key = date.month;
-    let entry = monthlyFiles.get(key);
+    let entry = monthlyFiles.get(date.month);
     if (!entry) {
-      const monthName = `${symbol}_${date.year}-${key}.csv`;
-      entry = { name: monthName, symbol, year: date.year, month: key, path: join(monthlyDir, monthName), stream: createWriteStream(join(monthlyDir, monthName)), count: 0 };
-      monthlyFiles.set(key, entry);
+      const monthName = symbol + '_' + date.year + '-' + date.month + '.csv';
+      const monthPath = join(monthlyDir, monthName);
+      entry = { name: monthName, symbol, year: date.year, month: date.month, path: monthPath, stream: createWriteStream(monthPath), count: 0 };
+      monthlyFiles.set(date.month, entry);
     }
-    entry.stream.write(Papa.unparse([row], { header: entry.count === 0 }) + '\\n');
+    entry.stream.write(Papa.unparse([row], { header: entry.count === 0 }) + '\n');
     entry.count++;
   }
   const monthEntries = [];
   for (const entry of monthlyFiles.values()) {
-    if (!entry.rows.length) continue;
-    const csv = Papa.unparse(entry.rows, { header: true });
-    await writeFile(entry.path, csv + '\n');
-    const bytes = Buffer.from(csv + '\n');
+    entry.stream.end();
+    await finished(entry.stream);
+    if (!entry.count) continue;
+    const bytes = await readFile(entry.path);
     const monthVersion = createHash('sha256').update(bytes).digest('hex').slice(0, 16);
     monthEntries.push({
       name: entry.name, symbol, year: entry.year, month: entry.month,
       version: monthVersion, size: bytes.byteLength,
-      url: `data-monthly/${encodeURIComponent(entry.name)}?v=${monthVersion}`,
+      url: 'data-monthly/' + encodeURIComponent(entry.name) + '?v=' + monthVersion,
     });
   }
   files.push({
-    name, symbol, year, version, url: `data/${encodeURIComponent(name)}?v=${version}`,
+    name, symbol, year, version, url: 'data/' + encodeURIComponent(name) + '?v=' + version,
     size: contents.byteLength, monthlyFiles: monthEntries,
   });
 }
 await writeFile(output, JSON.stringify({ version: 3, timezone: 'UTC+3', files }, null, 2) + '\n');
-console.log(`Generated data manifest with ${files.length} CSV file(s) and ${files.reduce((n, f) => n + f.monthlyFiles.length, 0)} monthly dataset(s).`);
+console.log('Generated data manifest with ' + files.length + ' CSV file(s) and ' + files.reduce((n, f) => n + f.monthlyFiles.length, 0) + ' monthly dataset(s).');
