@@ -19,6 +19,19 @@ test('UTC+3 chart labels match the broker wall-clock candle time', () => {
   assert.equal(formatMarketTick(internalFirstBar, 3), '02:00');
 });
 
+test('parses single-digit CSV hours without dropping the early session candles', () => {
+  const csv = [
+    'date,time,open,high,low,close,volume',
+    '20260102,2:00:00,4323.698,4332.848,4323.698,4328.198,236',
+    '20260102,2:01:00,4328.198,4331.998,4328.098,4328.898,174',
+  ].join('\\n');
+  const parsed = parseMarketCsvText(csv);
+  assert.equal(parsed.invalidRows, 0);
+  assert.equal(parsed.candles.length, 2);
+  assert.equal(parsed.candles[0].time, epoch('2026-01-02T02:00:00'));
+  assert.equal(parsed.candles[0].open, 4323.698);
+});
+
 test('XAUUSD CSV contains the full 20:45-to-close sequence and does not jump to 07:00', async () => {
   const csv = await readFile(csvUrl, 'utf8');
   const parsed = parseMarketCsvText(csv);
