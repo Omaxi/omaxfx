@@ -25,7 +25,7 @@ test('XAUUSD CSV contains the full 20:45-to-close sequence and does not jump to 
   const byTime = new Map(parsed.candles.map((candle) => [candle.time, candle]));
 
   const first = byTime.get(epoch('2026-01-02T02:00:00'));
-  assert.ok(first, 'first CSV candle at 02:00 must be present');
+  assert.ok(first, `first CSV candle at 02:00 must be present; parsed first rows=${JSON.stringify(parsed.candles.slice(0, 3))}; invalidRows=${parsed.invalidRows}; warnings=${parsed.parserWarnings}`);
   assert.equal(first.open, 4323.698);
   assert.equal(first.high, 4332.848);
   assert.equal(first.low, 4323.698);
