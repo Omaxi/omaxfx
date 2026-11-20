@@ -41,6 +41,30 @@ test('builds the analytics PDF when the trade-by-trade curve contains a drawdown
   assert.match(html, /Trade-by-trade cumulative realized P&amp;L/);
 });
 
+
+
+test('uses semantic colors for report metrics and the daily trade journal', () => {
+  const html = buildAnalyticsPrintHtml({
+    ...base,
+    trades: [{
+      id: 'trade-color-test', symbol: 'XAUUSD', type: 'buy', pnl: 50,
+      openTime: 1793600400, closeTime: 1793601000,
+      entryPrice: 3900, exitPrice: 3901, sl: 3898, tp: 3904,
+      size: 0.1, riskAmount: 20, reason: 'TP',
+    }],
+    dailyEntries: [['2026-11-02', { pnl: 50, trades: 1, wins: 1 }]],
+    curve: [{ timestamp: 1793601000, label: '11-02 02:10', pnl: 50 }],
+  });
+
+  assert.doesNotMatch(html, /class="eyebrow"/);
+  assert.match(html, /metric-value gain/);
+  assert.match(html, /metric-value loss/);
+  assert.match(html, /journal-value gain/);
+  assert.match(html, /journal-value loss/);
+  assert.match(html, /journal-value warn/);
+  assert.match(html, /trade-side buy/);
+});
+
 test('builds the analytics PDF when no drawdown exists', () => {
   const html = buildAnalyticsPrintHtml({
     ...base,
