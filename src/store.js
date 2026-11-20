@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { aggregateData, getExecutionCandle } from './utils/timeframe.js';
+import { aggregateData, getExecutionCandle, getTimeframeBucketStart } from './utils/timeframe.js';
 import { getPnlMultiplier, calculateIntrabarUnrealizedPnl, calculateUnrealizedPnlAtPrice, calculateFavorableIntrabarPnl } from './utils/instrument.js';
 import { getPendingOrderFillPrice, getStopLossFillPrice, getTakeProfitFillPrice } from './utils/orderExecution.js';
 export { getContractSize, getPnlMultiplier } from './utils/instrument.js';
