@@ -428,6 +428,30 @@ export default function Chart() {
     } catch (e) { return null; }
   }, []);
 
+  // Vertical drawings snap to the center of the displayed candle that
+  // contains their original timestamp. Keep the stored timestamp unchanged,
+  // so returning to the creation timeframe restores the exact original bar.
+  const snapTimeToCandleX = useCallback((time) => {
+    const chart = chartRef.current;
+    const data = visibleDataRef.current;
+    if (!chart || data.length === 0 || !Number.isFinite(Number(time))) return null;
+    let lo = 0, hi = data.length - 1;
+    if (Number(time) <= Number(data[0].time)) hi = lo = 0;
+    else if (Number(time) >= Number(data[hi].time)) lo = hi;
+    else {
+      while (hi - lo > 1) {
+        const mid = Math.floor((lo + hi) / 2);
+        if (Number(data[mid].time) <= Number(time)) lo = mid;
+        else hi = mid;
+      }
+    }
+    try {
+      // timeToCoordinate returns the candle's center, not its left edge.
+      const x = chart.timeScale().timeToCoordinate(Number(data[lo].time));
+      return x == null || !Number.isFinite(x) ? null : x;
+    } catch (e) { return null; }
+  }, []);
+
   const pointToXY = useCallback((point) => {
     const series = seriesRef.current;
     if (!series) return null;
@@ -437,6 +461,16 @@ export default function Chart() {
     if (y == null) return null;
     return { x, y };
   }, [timeToX]);
+
+  const verticalPointToXY = useCallback((point) => {
+    const series = seriesRef.current;
+    if (!series) return null;
+    const x = snapTimeToCandleX(point.time);
+    if (x == null) return null;
+    const y = series.priceToCoordinate(point.price);
+    if (y == null) return null;
+    return { x, y };
+  }, [snapTimeToCandleX]);
 
   const xyToPoint = useCallback((x, y) => {
     const chart = chartRef.current;
@@ -582,7 +616,7 @@ export default function Chart() {
       const selectedId = sel?.type === 'drawing' ? sel.id : null;
       state.drawings.forEach(d => {
         if (d.symbol && d.symbol !== state.symbol) return;
-        drawShape(ctx, d, pointToXY, false, d.id === selectedId);
+        drawShape(ctx, d, d.type === 'vertical' ? verticalPointToXY : pointToXY, false, d.id === selectedId);
       });
       if (draftRef.current) drawShape(ctx, draftRef.current, pointToXY, true, false);
 
@@ -645,7 +679,7 @@ export default function Chart() {
             ctx.fillText(Number(point.price).toFixed(precision), paneW + axisWidth / 2, y);
           }
         } else if (drawing.type === 'vertical') {
-          const x = timeToX(Number(point.time));
+          const x = snapTimeToCandleX(Number(point.time));
           if (x != null && x >= 0 && x <= paneW) {
             const label = formatMarketDateTime(Number(point.time));
             const width = Math.ceil(ctx.measureText(label).width) + 8;
@@ -705,7 +739,7 @@ export default function Chart() {
       for (let i = state.drawings.length - 1; i >= 0; i--) {
         const d = state.drawings[i];
         if (d.symbol && d.symbol !== state.symbol) continue;
-        const pts = d.points.map(p => pointToXY(p)).filter(Boolean);
+        const pts = d.points.map(p => (d.type === 'vertical' ? verticalPointToXY(p) : pointToXY(p))).filter(Boolean);
         if (pts.length === 0) continue;
         
         if (d.type === 'text' && pts[0]) {
