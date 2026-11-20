@@ -399,20 +399,25 @@ export default function Chart() {
     if (!chart) return null;
     const data = visibleDataRef.current;
     if (data.length < 2) return null;
-    const tf = useStore.getState().timeframe;
-    const step = tf * 60;
-    const firstTime = data[0].time;
-    const lastTime = data[data.length - 1].time;
+    // A drawing is anchored to its original market timestamp, not to the
+    // candle index/timeframe on which it was created. Interpolate against the
+    // actual chart data so changing 1m -> 15m cannot shift it to an edge.
+    const firstTime = Number(data[0].time);
+    const lastTime = Number(data[data.length - 1].time);
     let logical;
-    if (time <= firstTime) logical = (time - firstTime) / step;
-    else if (time >= lastTime) logical = (data.length - 1) + (time - lastTime) / step;
-    else {
+    if (time <= firstTime) {
+      const step = Math.max(1, Number(data[1].time) - firstTime);
+      logical = (time - firstTime) / step;
+    } else if (time >= lastTime) {
+      const step = Math.max(1, lastTime - Number(data[data.length - 2].time));
+      logical = (data.length - 1) + (time - lastTime) / step;
+    } else {
       let lo = 0, hi = data.length - 1;
       while (hi - lo > 1) {
         const mid = Math.floor((lo + hi) / 2);
-        if (data[mid].time < time) lo = mid; else hi = mid;
+        if (Number(data[mid].time) < time) lo = mid; else hi = mid;
       }
-      const t1 = data[lo].time, t2 = data[hi].time;
+      const t1 = Number(data[lo].time), t2 = Number(data[hi].time);
       const frac = t2 !== t1 ? (time - t1) / (t2 - t1) : 0;
       logical = lo + frac;
     }
@@ -642,13 +647,14 @@ export default function Chart() {
           const x = timeToX(Number(point.time));
           if (x != null && x >= 0 && x <= paneW) {
             const label = formatMarketDateTime(Number(point.time));
-            const width = Math.min(132, Math.max(88, label.length * 5.4 + 10));
+            const width = Math.ceil(ctx.measureText(label).width) + 8;
+            const height = 14;
             const left = Math.max(0, Math.min(paneW - width, x - width / 2));
             ctx.fillStyle = color;
-            ctx.fillRect(left, paneH, width, Math.max(14, rect.height - paneH));
+            ctx.fillRect(left, paneH, width, height);
             ctx.fillStyle = '#ffffff';
             ctx.textAlign = 'center';
-            ctx.fillText(label, left + width / 2, paneH + Math.max(7, (rect.height - paneH) / 2));
+            ctx.fillText(label, left + width / 2, paneH + height / 2);
           }
         }
         ctx.restore();
@@ -1428,12 +1434,13 @@ export default function Chart() {
           ctx.fillText(text, paneWidth + (rect.width - paneWidth) / 2, y);
         }
         if (dateLabel) {
-          const w = Math.min(132, Math.max(88, dateLabel.length * 5.4 + 10));
+          const w = Math.ceil(ctx.measureText(dateLabel).width) + 8;
+          const h = 14;
           const left = Math.max(0, Math.min(paneWidth - w, x - w / 2));
           ctx.fillStyle = '#374151';
-          ctx.fillRect(left, paneHeight, w, Math.max(14, rect.height - paneHeight));
+          ctx.fillRect(left, paneHeight, w, h);
           ctx.fillStyle = '#f9fafb';
-          ctx.fillText(dateLabel, left + w / 2, paneHeight + Math.max(7, (rect.height - paneHeight) / 2));
+          ctx.fillText(dateLabel, left + w / 2, paneHeight + h / 2);
         }
         ctx.restore();
       });
