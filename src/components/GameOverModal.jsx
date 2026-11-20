@@ -34,7 +34,6 @@ export default function GameOverModal() {
     'daily_loss': { color: 'text-red-400', icon: <TrendingDown size={48} />, title: 'Daily Loss Limit Hit' },
     'daily_risk': { color: 'text-red-400', icon: <TrendingDown size={48} />, title: 'Daily Risk Limit Hit' },
     'drawdown': { color: 'text-red-400', icon: <TrendingDown size={48} />, title: 'Max Drawdown Hit' },
-    'countdown': { color: 'text-blue-400', icon: <Zap size={48} />, title: "Time's Up!" },
     'period_end': { color: 'text-green-400', icon: <Trophy size={48} />, title: 'Period Completed!' },
   };
   const info = reasonInfo[gameState.reason] || reasonInfo.period_end;

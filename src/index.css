@@ -71,3 +71,69 @@ html, body, #root {
 .chart-no-touch .tv-lightweight-charts table tr td:last-child {
   font-size: 9px !important;
 }
+
+/* Application-wide light theme (chart candle colors remain independently configurable). */
+html[data-ui-theme="light"] body { background: #f4f6fa !important; color: #172033 !important; }
+html[data-ui-theme="light"] [class*="bg-[#131722]"],
+html[data-ui-theme="light"] [class*="bg-[#101214]"],
+html[data-ui-theme="light"] [class*="bg-[#151719]"],
+html[data-ui-theme="light"] [class*="bg-[#17191b]"],
+html[data-ui-theme="light"] [class*="bg-[#1e222d]"],
+html[data-ui-theme="light"] [class*="bg-[#191e29]"],
+html[data-ui-theme="light"] [class*="bg-[#202633]"],
+html[data-ui-theme="light"] [class*="bg-[#0d1117]"],
+html[data-ui-theme="light"] [class*="bg-[#111315]"],
+html[data-ui-theme="light"] [class*="bg-[#191c1f]"],
+html[data-ui-theme="light"] [class*="bg-[#1c1f22]"],
+html[data-ui-theme="light"] [class*="bg-[#292d31]"],
+html[data-ui-theme="light"] [class*="bg-[#0b0e11]"] {
+  background-color: #ffffff !important;
+}
+html[data-ui-theme="light"] [class*="text-white"],
+html[data-ui-theme="light"] .text-gray-100,
+html[data-ui-theme="light"] .text-gray-200,
+html[data-ui-theme="light"] .text-gray-300 { color: #172033 !important; }
+html[data-ui-theme="light"] .text-gray-400,
+html[data-ui-theme="light"] .text-gray-500 { color: #667085 !important; }
+html[data-ui-theme="light"] [class*="border-[#2a2e39]"],
+html[data-ui-theme="light"] [class*="border-[#25282c]"],
+html[data-ui-theme="light"] [class*="border-[#343a40]"],
+html[data-ui-theme="light"] [class*="border-[#303744]"],
+html[data-ui-theme="light"] [class*="border-[#292d31]"],
+html[data-ui-theme="light"] [class*="border-[#202326]"] { border-color: #d7dce5 !important; }
+html[data-ui-theme="light"] input:not([type="color"]),
+html[data-ui-theme="light"] select,
+html[data-ui-theme="light"] textarea { background-color: #fff !important; color: #172033 !important; border-color: #cbd3df !important; }
+html[data-ui-theme="light"] table thead { background-color: #edf1f6 !important; }
+html[data-ui-theme="light"] ::-webkit-scrollbar-track { background: #edf1f6; }
+html[data-ui-theme="light"] ::-webkit-scrollbar-thumb { background: #c3cbd8; }
+
+
+/* Consistent dark dropdown treatment across the application, including the
+   initial market-data loader and modal forms. Native selects keep their
+   accessible keyboard behavior while matching the chart menu palette. */
+select {
+  color-scheme: dark;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background-color: #1e222d !important;
+  color: #f3f4f6 !important;
+  border: 1px solid #2a2e39 !important;
+  border-radius: 8px !important;
+  padding-right: 34px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 11px center !important;
+  background-size: 14px 14px !important;
+  cursor: pointer;
+}
+select:hover { border-color: #46536a !important; }
+select:focus {
+  outline: none !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgb(59 130 246 / 16%);
+}
+select option {
+  background: #1e222d;
+  color: #f3f4f6;
+}

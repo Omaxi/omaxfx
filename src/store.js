@@ -1,12 +1,16 @@
 import { create } from 'zustand';
-import { aggregateData } from './utils/timeframe';
+import { aggregateData, getExecutionCandle, getTimeframeBucketStart } from './utils/timeframe.js';
+import { getPnlMultiplier, calculateIntrabarUnrealizedPnl, calculateUnrealizedPnlAtPrice, calculateFavorableIntrabarPnl } from './utils/instrument.js';
+import { getPendingOrderFillPrice, getStopLossFillPrice, getTakeProfitFillPrice } from './utils/orderExecution.js';
+export { getContractSize, getPnlMultiplier } from './utils/instrument.js';
 import { 
   playOrderPlaced, playPositionClosed, playTPHit, playSLHit, playPendingTriggered, playRestart
-} from './utils/audio';
+} from './utils/audio.js';
 
 export const INITIAL_BALANCE = 100000;
 const EPSILON = 0.001;
 const SESSION_KEY = 'omaxfx-session-v1';
+const SESSION_LIST_KEY = 'omaxfx-sessions-v2';
 
 const TZ_OFFSETS = {
   'UTC-5': -300, 'UTC-4': -240, 'UTC-3': -180, 'UTC-2': -120, 'UTC-1': -60,
@@ -14,27 +18,15 @@ const TZ_OFFSETS = {
   'UTC+1': 60, 'UTC+2': 120, 'UTC+3': 180,
 };
 
-// =========================================================================
-// Per-symbol contract multiplier (units per 1 lot).
-// -------------------------------------------------------------------------
-// XAUUSD: 100 oz / lot        → $1 price move × 100      = $100 / lot
-// EURUSD: 100,000 units / lot → 0.0001 price move × 100k = $10  / lot
-// =========================================================================
-const SYMBOL_CONTRACT = {
-  XAUUSD: 100,
-  EURUSD: 100000,
-};
-const DEFAULT_CONTRACT = 100;
-
-const getContractSize = (symbol) => SYMBOL_CONTRACT[symbol] ?? DEFAULT_CONTRACT;
 
 const getDayKey = (unixSeconds) => {
-  const d = new Date(unixSeconds * 1000);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const d = new Date((unixSeconds + 3 * 3600) * 1000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 };
 
+
 const formatRangeDate = (unixSeconds) => {
-  const d = new Date(unixSeconds * 1000);
+  const d = new Date((unixSeconds + 3 * 3600) * 1000);
   const dd = String(d.getUTCDate()).padStart(2, '0');
   const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
   const yyyy = d.getUTCFullYear();
@@ -42,6 +34,7 @@ const formatRangeDate = (unixSeconds) => {
 };
 
 const checkRuleViolations = (state, newBalance, newPeak, newDailyLoss) => {
+  if (state.rules?.propFirmEnabled === false) return null;
   if (state.rules.maxDailyLoss && newDailyLoss.dayStartBalance > 0) {
     const dailyLossAmt = newDailyLoss.dayStartBalance - newBalance;
     const dailyLossPct = dailyLossAmt > 0 ? (dailyLossAmt / newDailyLoss.dayStartBalance) * 100 : 0;
@@ -70,13 +63,18 @@ const DEFAULT_THEME = {
   upWick: '#26a69a',
   downWick: '#ef5350',
 };
+const DEFAULT_SESSION_COLORS = { asia: '#f59e0b', london: '#38bdf8', newyork: '#fb7185' };
+const DEFAULT_DRAWING_STYLES = {
+  vertical: { color: '#f59e0b', lineWidth: 1 },
+  horizontal: { color: '#f59e0b', lineWidth: 1 },
+};
 
 const DEFAULT_RULES = {
   startingBalance: INITIAL_BALANCE,
   maxRiskPerTrade: 1,
   maxDailyLoss: 5,
   maxDrawdown: 10,
-  countdownMinutes: 60,
+  propFirmEnabled: true,
   presetName: 'Custom',
 };
 
@@ -85,6 +83,7 @@ export const useStore = create((set, get) => ({
   // MULTI-SYMBOL DATA CACHE
   // ============================================================
   allRawDataBySymbol: {},
+  contractSpecs: {},
   allRawData: [],
   rawData: [],        
   displayData: [],    
@@ -94,12 +93,28 @@ export const useStore = create((set, get) => ({
   recenterToken: 0,
 
   symbol: 'XAUUSD',
-  timezone: 'UTC-5',
+  timezone: 'UTC+3',
 
   symbolWarning: null,
   clearSymbolWarning: () => set({ symbolWarning: null }),
 
-  sessionTimes: { asian: 3, london: 10, newyork: 15 },
+  sessionTimes: { asian: 1, london: 11, newyork: 16 },
+  sessionColors: { ...DEFAULT_SESSION_COLORS },
+  setSessionColor: (key, color) => set((state) => ({
+    sessionColors: { ...state.sessionColors, [key]: color },
+  })),
+  drawingStyles: {
+    vertical: { ...DEFAULT_DRAWING_STYLES.vertical },
+    horizontal: { ...DEFAULT_DRAWING_STYLES.horizontal },
+  },
+  setDrawingStyle: (key, patch) => set((state) => ({
+    drawingStyles: { ...state.drawingStyles, [key]: { ...state.drawingStyles[key], ...patch } },
+    drawings: state.drawings.map(d => d.type === key ? {
+      ...d,
+      ...(patch.color ? { color: patch.color, borderColor: patch.color } : {}),
+      ...(patch.lineWidth != null ? { lineWidth: patch.lineWidth } : {}),
+    } : d),
+  })),
 
   setSessionTime: (key, hour) => set((state) => ({
     sessionTimes: { ...state.sessionTimes, [key]: Math.max(0, Math.min(23, Number(hour) || 0)) }
@@ -110,6 +125,35 @@ export const useStore = create((set, get) => ({
     return {
       allRawDataBySymbol: { ...state.allRawDataBySymbol, [symbol]: data },
       allRawData: data,
+    };
+  }),
+
+  setCustomSymbolData: (symbol, data, spec = {}) => set((state) => {
+    const code = String(symbol || '').trim().toUpperCase().replace(/[^A-Z0-9._-]/g, '').slice(0, 20);
+    if (!code || !Array.isArray(data) || data.length === 0) return state;
+    const currentOffset = TZ_OFFSETS[state.timezone || 'UTC+3'] ?? 180;
+    const displayShift = (currentOffset - 180) * 60;
+    const displayData = displayShift === 0 ? data : data.map(candle => ({ ...candle, time: candle.time + displayShift }));
+    const nextCache = { ...state.allRawDataBySymbol, [code]: displayData };
+    const contractSpecs = {
+      ...state.contractSpecs,
+      [code]: {
+        contractSize: Number(spec.contractSize) > 0 ? Number(spec.contractSize) : 1,
+        tickSize: Number(spec.tickSize) > 0 ? Number(spec.tickSize) : 0.01,
+        precision: Number.isInteger(Number(spec.precision)) ? Math.max(0, Math.min(10, Number(spec.precision))) : 2,
+        quoteCurrency: String(spec.quoteCurrency || 'USD').toUpperCase(),
+        quoteToAccountRate: Number(spec.quoteToAccountRate) > 0 ? Number(spec.quoteToAccountRate) : 1,
+      },
+    };
+    return {
+      symbol: code, contractSpecs, allRawDataBySymbol: nextCache, allRawData: displayData,
+      rawData: displayData, displayData: aggregateData(displayData, state.timeframe), currentIndex: 0,
+      isPlaying: false, gameStarted: false, isPeriodModalOpen: true,
+      gamePeriod: null, positions: [], pendingOrders: [], tradeHistory: [],
+      drawings: [], drawingsPast: [], drawingsFuture: [], pencilStrokes: [],
+      balance: INITIAL_BALANCE, peakBalance: INITIAL_BALANCE,
+      gameState: { isOver: false, reason: null, message: '', startTime: null },
+      symbolWarning: null, sessionId: null, recenterToken: state.recenterToken + 1,
     };
   }),
 
@@ -186,6 +230,9 @@ export const useStore = create((set, get) => ({
       rawData: state.rawData.map(c => ({ ...c, time: shift(c.time) })),
       displayData: state.displayData.map(c => ({ ...c, time: shift(c.time) })),
       drawings: state.drawings.map(d => ({ ...d, points: d.points.map(p => ({ ...p, time: shift(p.time) })) })),
+      drawingsPast: state.drawingsPast.map(group => group.map(d => ({ ...d, points: d.points.map(p => ({ ...p, time: shift(p.time) })) }))),
+      drawingsFuture: state.drawingsFuture.map(group => group.map(d => ({ ...d, points: d.points.map(p => ({ ...p, time: shift(p.time) })) }))),
+      pencilStrokes: state.pencilStrokes.map(stroke => ({ ...stroke, points: stroke.points.map(p => Number.isFinite(p.time) ? { ...p, time: shift(p.time) } : p) })),
       tradeHistory: state.tradeHistory.map(t => ({ ...t, openTime: shift(t.openTime), closeTime: shift(t.closeTime) })),
       positions: state.positions.map(p => ({ ...p, openTime: shift(p.openTime) })),
       pendingOrders: state.pendingOrders.map(o => ({ ...o, openTime: shift(o.openTime) })),
@@ -199,6 +246,7 @@ export const useStore = create((set, get) => ({
   openPeriodModal: () => set({ isPeriodModalOpen: true }),
   closePeriodModal: () => set({ isPeriodModalOpen: false }),
   
+  sessionId: null,
   sessionName: 'Session 1',
   setSessionName: (name) => set({ sessionName: name }),
 
@@ -206,60 +254,93 @@ export const useStore = create((set, get) => ({
     const s = get();
     if (!s.gameStarted || !s.gamePeriod) return;
     try {
+      const sessionId = s.sessionId || (globalThis.crypto?.randomUUID?.() ?? `session-${Date.now()}-${Math.random().toString(36).slice(2,8)}`);
       const payload = {
-        version: 1,
-        savedAt: Date.now(),
-        sessionName: s.sessionName,
-        playerName: s.playerName,
-        gamePeriod: s.gamePeriod,
-        rules: s.rules,
-        currentIndex: s.currentIndex,
-        timeframe: s.timeframe,
-        symbol: s.symbol,
-        timezone: s.timezone,
-        chartType: s.chartType,
-        balance: s.balance,
-        peakBalance: s.peakBalance,
-        positions: s.positions,
-        tradeHistory: s.tradeHistory,
-        pendingOrders: s.pendingOrders,
-        drawings: s.drawings,
-        drawingsPast: s.drawingsPast,
-        drawingsFuture: s.drawingsFuture,
-        dailyLoss: s.dailyLoss,
-        gameState: s.gameState,
-        theme: s.theme,
-        sessionTimes: s.sessionTimes,
+        version: 2, sessionId, savedAt: Date.now(),
+        sessionName: s.sessionName, playerName: s.playerName,
+        gamePeriod: s.gamePeriod, rules: { ...s.rules },
+        currentIndex: s.currentIndex, timeframe: s.timeframe,
+        symbol: s.symbol, contractSpecs: s.contractSpecs, timezone: s.timezone || 'UTC+3', chartType: s.chartType,
+        balance: s.balance, peakBalance: s.peakBalance,
+        positions: s.positions, tradeHistory: s.tradeHistory,
+        pendingOrders: s.pendingOrders, drawings: s.drawings,
+        drawingsPast: s.drawingsPast, drawingsFuture: s.drawingsFuture,
+        pencilStrokes: s.pencilStrokes, dailyLoss: s.dailyLoss,
+        gameState: { isOver: s.gameState.isOver, reason: s.gameState.reason, message: s.gameState.message, startTime: s.gameState.startTime },
+        theme: s.theme, sessionTimes: s.sessionTimes,
+        sessionColors: s.sessionColors, drawingStyles: s.drawingStyles,
         enableFireworks: s.enableFireworks,
       };
+      const sessions = s.readSessions();
+      const next = [payload, ...sessions.filter(item => item.sessionId !== sessionId)]
+        .sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+      localStorage.setItem(SESSION_LIST_KEY, JSON.stringify(next));
       localStorage.setItem(SESSION_KEY, JSON.stringify(payload));
+      if (s.sessionId !== sessionId) set({ sessionId });
+      return true;
     } catch (e) {
       console.warn('Failed to save session:', e);
+      return false;
     }
   },
 
-  readSession: () => {
+  readSessions: () => {
     try {
-      const raw = localStorage.getItem(SESSION_KEY);
-      if (!raw) return null;
-      return JSON.parse(raw);
-    } catch (e) { return null; }
+      const stored = JSON.parse(localStorage.getItem(SESSION_LIST_KEY) || '[]');
+      if (Array.isArray(stored) && stored.length) return stored;
+      const legacy = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+      return legacy?.gamePeriod ? [{ ...legacy, sessionId: legacy.sessionId || 'legacy-session' }] : [];
+    } catch (e) { return []; }
+  },
+
+  readSession: (sessionId = null) => {
+    const sessions = get().readSessions();
+    return sessionId ? sessions.find(item => item.sessionId === sessionId) || null : sessions[0] || null;
+  },
+
+  deleteSavedSession: (sessionId) => {
+    try {
+      const next = get().readSessions().filter(item => item.sessionId !== sessionId);
+      localStorage.setItem(SESSION_LIST_KEY, JSON.stringify(next));
+      if (next.length === 0) localStorage.removeItem(SESSION_KEY);
+      if (get().sessionId === sessionId) set({ sessionId: null });
+      return next;
+    } catch (e) { return get().readSessions(); }
   },
 
   clearSession: () => {
-    try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+    try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(SESSION_LIST_KEY); } catch (e) {}
   },
 
-  loadSavedSession: () => {
+  loadSavedSession: (sessionId = null) => {
     const state = get();
-    const saved = state.readSession();
+    const saved = state.readSession(sessionId);
     if (!saved || !saved.gamePeriod) return false;
 
     const savedSymbol = saved.symbol || 'XAUUSD';
     const symbolData = state.allRawDataBySymbol[savedSymbol];
     if (!symbolData || symbolData.length === 0) return false;
 
-    const filtered = symbolData.filter(c => c.time >= saved.gamePeriod.from && c.time <= saved.gamePeriod.to);
+    // Stored CSV timestamps are normalized to UTC. Sessions saved in a
+    // different display offset have their timeline shifted by offset−UTC+3.
+    const savedTimezone = saved.timezone || 'UTC+3';
+    const savedOffset = TZ_OFFSETS[savedTimezone] ?? 180;
+    const currentOffset = TZ_OFFSETS[state.timezone || 'UTC+3'] ?? 180;
+    const restoreShift = (savedOffset - currentOffset) * 60;
+    const legacySessionTimes = saved.sessionTimes?.asian === 3 && saved.sessionTimes?.london === 10 && saved.sessionTimes?.newyork === 15;
+    const restoredSessionTimes = !saved.sessionTimes || legacySessionTimes
+      ? { asian: 1, london: 11, newyork: 16 }
+      : saved.sessionTimes;
+    const restoredData = restoreShift === 0
+      ? symbolData
+      : symbolData.map(c => ({ ...c, time: c.time + restoreShift }));
+    const restoredCache = restoreShift === 0
+      ? state.allRawDataBySymbol
+      : Object.fromEntries(Object.entries(state.allRawDataBySymbol).map(([code, candles]) => [
+          code,
+          code === savedSymbol ? restoredData : candles.map(candle => ({ ...candle, time: candle.time + restoreShift })),
+        ]));
+    const filtered = restoredData.filter(c => c.time >= saved.gamePeriod.from && c.time <= saved.gamePeriod.to);
     if (filtered.length === 0) return false;
 
     // Guard against a saved session that was already at the last candle:
@@ -270,16 +351,18 @@ export const useStore = create((set, get) => ({
     const tf = saved.timeframe || 1;
     set({
       symbol: savedSymbol,
-      allRawData: symbolData,
+      allRawDataBySymbol: restoredCache,
+      allRawData: restoredData,
       rawData: filtered,
       displayData: aggregateData(filtered, tf),
       gameStarted: true,
       isPeriodModalOpen: false,
       gamePeriod: saved.gamePeriod,
-      rules: saved.rules || DEFAULT_RULES,
+      rules: { ...DEFAULT_RULES, ...(saved.rules || {}), propFirmEnabled: saved.rules?.propFirmEnabled !== false },
       currentIndex: safeIndex,
       timeframe: tf,
-      timezone: saved.timezone || 'UTC-5',
+      timezone: savedTimezone,
+      contractSpecs: saved.contractSpecs || state.contractSpecs,
       chartType: saved.chartType || 'candle',
       balance: saved.balance ?? INITIAL_BALANCE,
       peakBalance: saved.peakBalance ?? INITIAL_BALANCE,
@@ -290,11 +373,18 @@ export const useStore = create((set, get) => ({
       drawingsPast: saved.drawingsPast || [],
       drawingsFuture: saved.drawingsFuture || [],
       dailyLoss: saved.dailyLoss || { day: null, dayStartBalance: INITIAL_BALANCE },
-      gameState: saved.gameState || { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
+      gameState: { isOver: saved.gameState?.isOver ?? false, reason: saved.gameState?.reason ?? null, message: saved.gameState?.message ?? '', startTime: saved.gameState?.startTime ?? null },
+      pencilStrokes: saved.pencilStrokes || [],
       playerName: saved.playerName || 'Trader',
+      sessionId: saved.sessionId || 'legacy-session',
       sessionName: saved.sessionName || 'Session 1',
       theme: saved.theme || DEFAULT_THEME,
-      sessionTimes: saved.sessionTimes || { asian: 3, london: 10, newyork: 15 },
+      sessionTimes: restoredSessionTimes,
+      sessionColors: { ...DEFAULT_SESSION_COLORS, ...(saved.sessionColors || {}) },
+      drawingStyles: {
+        vertical: { ...DEFAULT_DRAWING_STYLES.vertical, ...(saved.drawingStyles?.vertical || {}) },
+        horizontal: { ...DEFAULT_DRAWING_STYLES.horizontal, ...(saved.drawingStyles?.horizontal || {}) },
+      },
       enableFireworks: saved.enableFireworks ?? true,
       recenterToken: state.recenterToken + 1,
     });
@@ -309,7 +399,7 @@ export const useStore = create((set, get) => ({
 
   rules: { ...DEFAULT_RULES },
 
-  gameState: { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
+  gameState: { isOver: false, reason: null, message: '', startTime: null },
 
   peakBalance: INITIAL_BALANCE,
   dailyLoss: { day: null, dayStartBalance: INITIAL_BALANCE },
@@ -324,6 +414,10 @@ export const useStore = create((set, get) => ({
   isEquityOpen: false,
   isInfoOpen: false,
   isAnalyticsOpen: false,
+  analyticsSnapshot: null,
+  isPreviousSessionsOpen: false,
+  openPreviousSessions: () => set({ isPreviousSessionsOpen: true }),
+  closePreviousSessions: () => set({ isPreviousSessionsOpen: false }),
   isThemeOpen: false,
   orderSide: 'buy',
 
@@ -379,8 +473,12 @@ export const useStore = create((set, get) => ({
       color: drawing.color || '#f59e0b',
       borderColor: drawing.borderColor || drawing.color || '#f59e0b',
       fillColor: drawing.fillColor || '#f59e0b33',
-      lineWidth: drawing.lineWidth ?? 1,
-      showBorder: drawing.showBorder !== false,
+      lineWidth: drawing.lineWidth ?? state.drawingStyles?.[drawing.type]?.lineWidth ?? 1,
+      ...(drawing.type === 'vertical' || drawing.type === 'horizontal'
+        ? { color: state.drawingStyles?.[drawing.type]?.color || drawing.color || '#f59e0b',
+            borderColor: state.drawingStyles?.[drawing.type]?.color || drawing.borderColor || drawing.color || '#f59e0b' }
+        : {}),
+      showBorder: drawing.showBorder === true,
       symbol: state.symbol,
       timeframe: state.timeframe,
     };
@@ -480,7 +578,8 @@ export const useStore = create((set, get) => ({
       gamePeriod: { from, to },
       gameStarted: true,
       isPeriodModalOpen: false,
-      rules,
+      rules: { ...rules, propFirmEnabled: rules.propFirmEnabled !== false },
+      sessionId: null,
       currentIndex: 0,
       isPlaying: false,
       balance: startBal,
@@ -497,7 +596,7 @@ export const useStore = create((set, get) => ({
       pencilStrokes: [],
       peakBalance: startBal,
       dailyLoss: { day: startDay, dayStartBalance: startBal },
-      gameState: { isOver: false, reason: null, message: '', startTime: Date.now(), timeRemaining: rules.countdownMinutes ? rules.countdownMinutes * 60 : null },
+      gameState: { isOver: false, reason: null, message: '', startTime: Date.now() },
       recenterToken: state.recenterToken + 1,
     };
   }),
@@ -507,17 +606,13 @@ export const useStore = create((set, get) => ({
     gameState: { ...state.gameState, isOver: true, reason, message },
   })),
 
-  updateTimeRemaining: (seconds) => set((state) => ({
-    gameState: { ...state.gameState, timeRemaining: seconds },
-  })),
-
   restartGame: () => {
     const state = get();
     if (state.soundEnabled) playRestart();
     set({
       gameStarted: false,
       isPeriodModalOpen: true,
-      gameState: { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
+      gameState: { isOver: false, reason: null, message: '', startTime: null },
       currentIndex: 0,
       isPlaying: false,
       positions: [],
@@ -535,10 +630,21 @@ export const useStore = create((set, get) => ({
   },
 
   setTimeframe: (newTimeframe) => set((state) => {
-    if (newTimeframe === state.timeframe) return state;
+    const nextTimeframe = Number(newTimeframe);
+    if (!Number.isFinite(nextTimeframe) || nextTimeframe <= 0 || nextTimeframe === state.timeframe) return state;
+    // At 1m, currentIndex is the last completed raw candle. At higher timeframes,
+    // it is the next raw candle at the replay boundary. Preserve that boundary
+    // when switching views instead of exposing an unfinished lower-timeframe bar.
+    let currentIndex = state.currentIndex;
+    if (state.timeframe === 1 && nextTimeframe > 1) {
+      currentIndex = Math.min(Math.max(0, state.rawData.length - 1), currentIndex + 1);
+    } else if (state.timeframe > 1 && nextTimeframe === 1) {
+      currentIndex = Math.max(0, currentIndex - 1);
+    }
     return {
-      timeframe: newTimeframe,
-      displayData: aggregateData(state.rawData, newTimeframe),
+      timeframe: nextTimeframe,
+      currentIndex,
+      displayData: aggregateData(state.rawData, nextTimeframe),
       drawings: state.drawings,
     };
   }),
@@ -552,7 +658,8 @@ export const useStore = create((set, get) => ({
     let targetIndex = -1;
     
     for (let i = state.currentIndex + 1; i < maxScan; i++) {
-      const d = new Date(state.rawData[i].time * 1000);
+      // Stored candle epochs are UTC; add the configured UTC+3 market offset once.
+      const d = new Date((state.rawData[i].time + 3 * 3600) * 1000);
       if (d.getUTCHours() === targetHour && d.getUTCMinutes() === 0) {
         targetIndex = i;
         break;
@@ -591,8 +698,9 @@ export const useStore = create((set, get) => ({
   closeEquity: () => set({ isEquityOpen: false }),
   openInfo: () => set({ isInfoOpen: true }),
   closeInfo: () => set({ isInfoOpen: false }),
-  openAnalytics: () => set({ isAnalyticsOpen: true }),
-  closeAnalytics: () => set({ isAnalyticsOpen: false }),
+  openAnalytics: () => set({ isAnalyticsOpen: true, analyticsSnapshot: null }),
+  openAnalyticsForSession: (session) => set({ isAnalyticsOpen: true, analyticsSnapshot: session, isPreviousSessionsOpen: false }),
+  closeAnalytics: () => set({ isAnalyticsOpen: false, analyticsSnapshot: null }),
   openTheme: () => set({ isThemeOpen: true }),
   closeTheme: () => set({ isThemeOpen: false }),
 
@@ -647,11 +755,11 @@ export const useStore = create((set, get) => ({
   closePosition: (id) => set((state) => {
     const pos = state.positions.find(p => p.id === id);
     if (!pos || !state.rawData[state.currentIndex]) return state;
-    const currentCandle = state.rawData[state.currentIndex];
+    const currentCandle = getExecutionCandle(state.rawData, state.displayData, state.currentIndex, state.timeframe) || state.rawData[state.currentIndex];
     const exitPrice = currentCandle.close;
     const isBuy = pos.type === 'buy';
     const priceDiff = isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice;
-    const contractSize = getContractSize(pos.symbol || state.symbol);
+    const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
     const pnl = priceDiff * contractSize * pos.size;
     if (state.soundEnabled) playPositionClosed();
     const newBalance = state.balance + pnl;
@@ -672,14 +780,14 @@ export const useStore = create((set, get) => ({
 
   closeAllPositions: () => set((state) => {
     if (state.positions.length === 0 || !state.rawData[state.currentIndex]) return state;
-    const currentCandle = state.rawData[state.currentIndex];
+    const currentCandle = getExecutionCandle(state.rawData, state.displayData, state.currentIndex, state.timeframe) || state.rawData[state.currentIndex];
     const exitPrice = currentCandle.close;
     let newBalance = state.balance;
     const newHistory = [...state.tradeHistory];
     state.positions.forEach(pos => {
       const isBuy = pos.type === 'buy';
       const priceDiff = isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice;
-      const contractSize = getContractSize(pos.symbol || state.symbol);
+      const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
       const pnl = priceDiff * contractSize * pos.size;
       newBalance += pnl;
       newHistory.push({ ...pos, exitPrice, pnl, reason: 'MANUAL', closeTime: currentCandle.time });
@@ -717,8 +825,34 @@ export const useStore = create((set, get) => ({
     // Already at the last candle — nothing to advance to.
     if (state.currentIndex >= state.rawData.length - 1) return state;
 
-    const jumpSize = state.timeframe;
-    const nextIndex = Math.min(state.currentIndex + jumpSize, state.rawData.length - 1);
+    const jumpSize = Number(state.timeframe) || 1;
+    let nextIndex;
+    let firstProcessedIndex;
+    let lastProcessedIndex;
+
+    if (jumpSize <= 1) {
+      // On 1m, the replay cursor is the last completed candle: advance exactly
+      // one source candle, regardless of the absolute date or array position.
+      nextIndex = state.currentIndex + 1;
+      firstProcessedIndex = nextIndex;
+      lastProcessedIndex = nextIndex;
+    } else {
+      // Higher-timeframe replay advances one actual OHLC bucket, not a fixed
+      // number of array rows. This remains correct when the CSV has missing
+      // minutes, market closures, or starts part-way through a timeframe.
+      const current = state.rawData[state.currentIndex];
+      const bucketStart = getTimeframeBucketStart(current.time, jumpSize);
+      let bucketEnd = state.currentIndex + 1;
+      while (bucketEnd < state.rawData.length &&
+        getTimeframeBucketStart(state.rawData[bucketEnd].time, jumpSize) === bucketStart) {
+        bucketEnd++;
+      }
+      firstProcessedIndex = state.currentIndex;
+      lastProcessedIndex = bucketEnd - 1;
+      nextIndex = bucketEnd < state.rawData.length ? bucketEnd : state.rawData.length - 1;
+    }
+
+    nextIndex = Math.min(nextIndex, state.rawData.length - 1);
     const advanced = nextIndex > state.currentIndex;
 
     let newBalance = state.balance;
@@ -729,58 +863,141 @@ export const useStore = create((set, get) => ({
     let newDailyLoss = { ...state.dailyLoss };
     let tpHit = false, slHit = false, pendingTriggered = false;
     let gameOverReason = null, gameOverMessage = '';
+    let lastEquity = state.balance;
 
-    for (let i = state.currentIndex + 1; i <= nextIndex; i++) {
+    for (let i = firstProcessedIndex; i <= lastProcessedIndex; i++) {
       const candle = state.rawData[i];
       if (!candle) break;
       const dayKey = getDayKey(candle.time);
       if (newDailyLoss.day !== dayKey) {
-        newDailyLoss = { day: dayKey, dayStartBalance: newBalance };
+        newDailyLoss = {
+          day: dayKey,
+          dayStartBalance: newBalance + calculateUnrealizedPnlAtPrice(newPositions, candle.open, state.symbol, state.contractSpecs),
+        };
       }
       const stillOpen = [];
       for (const pos of newPositions) {
         const isBuy = pos.type === 'buy';
         let closed = false;
-        if (pos.sl) {
+        if (pos.sl != null) {
           const hitSl = isBuy ? candle.low <= pos.sl : candle.high >= pos.sl;
           if (hitSl) {
-            const contractSize = getContractSize(pos.symbol || state.symbol);
-            const pnl = (isBuy ? pos.sl - pos.entryPrice : pos.entryPrice - pos.sl) * contractSize * pos.size;
+            const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
+            const exitPrice = getStopLossFillPrice(pos.type, pos.sl, candle);
+            const pnl = (isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice) * contractSize * pos.size;
             newBalance += pnl;
-            newHistory.push({ ...pos, exitPrice: pos.sl, pnl, reason: 'SL', closeTime: candle.time });
+            newHistory.push({ ...pos, exitPrice, pnl, reason: 'SL', closeTime: candle.time });
             closed = true; slHit = true;
           }
         }
-        if (!closed && pos.tp) {
+        if (!closed && pos.tp != null) {
           const hitTp = isBuy ? candle.high >= pos.tp : candle.low <= pos.tp;
           if (hitTp) {
-            const contractSize = getContractSize(pos.symbol || state.symbol);
-            const pnl = (isBuy ? pos.tp - pos.entryPrice : pos.entryPrice - pos.tp) * contractSize * pos.size;
+            const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
+            const exitPrice = getTakeProfitFillPrice(pos.type, pos.tp, candle);
+            const pnl = (isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice) * contractSize * pos.size;
             newBalance += pnl;
-            newHistory.push({ ...pos, exitPrice: pos.tp, pnl, reason: 'TP', closeTime: candle.time });
+            newHistory.push({ ...pos, exitPrice, pnl, reason: 'TP', closeTime: candle.time });
             closed = true; tpHit = true;
           }
         }
-        if (!closed) stillOpen.push(pos);
+        // Conservative intrabar handling: test the original SL/TP first. If neither
+        // was hit, arm breakeven for the next candle after price reaches +1R.
+        let updatedPosition = pos;
+        if (!closed && pos.breakevenEnabled && !pos.breakevenDone && pos.sl != null) {
+          const initialRisk = pos.initialRiskDistance ?? Math.abs(pos.entryPrice - pos.sl);
+          const oneRPrice = isBuy ? pos.entryPrice + initialRisk : pos.entryPrice - initialRisk;
+          const reachedOneR = isBuy ? candle.high >= oneRPrice : candle.low <= oneRPrice;
+          if (initialRisk > 0 && reachedOneR) {
+            updatedPosition = { ...pos, sl: pos.entryPrice, breakevenDone: true };
+          }
+        }
+        if (!closed) stillOpen.push(updatedPosition);
       }
       newPositions = stillOpen;
+      const equity = newBalance + calculateIntrabarUnrealizedPnl(newPositions, candle, state.symbol, state.contractSpecs);
+      const favorableEquity = newBalance + calculateFavorableIntrabarPnl(newPositions, candle, state.symbol, state.contractSpecs);
+      newPeak = Math.max(newPeak, favorableEquity);
+      lastEquity = equity;
       if (!gameOverReason) {
-        const violation = checkRuleViolations(state, newBalance, newPeak, newDailyLoss);
+        const violation = checkRuleViolations(state, equity, newPeak, newDailyLoss);
         if (violation) { gameOverReason = violation.reason; gameOverMessage = violation.message; }
       }
       const stillPending = [];
+      let pendingSlotTaken = newPositions.length > 0;
+      let pendingFilledThisCandle = false;
       for (const order of newPendingOrders) {
-        const isBuy = order.type === 'buy';
-        const hitEntry = isBuy 
-          ? candle.low <= order.entryPrice && candle.high >= order.entryPrice
-          : candle.high >= order.entryPrice && candle.low <= order.entryPrice;
-        if (hitEntry) {
-          newPositions.push({ ...order, isPending: false, openTime: candle.time });
+        if (pendingSlotTaken) continue;
+        if (gameOverReason) { stillPending.push(order); continue; }
+        const fillPrice = getPendingOrderFillPrice(order, candle);
+        if (fillPrice != null) {
+          const riskDistance = Math.abs(fillPrice - Number(order.sl));
+          const contractSize = Number(getPnlMultiplier(order.symbol || state.symbol, state.contractSpecs));
+          if (!Number.isFinite(riskDistance) || riskDistance <= 0 ||
+              !Number.isFinite(contractSize) || contractSize <= 0) {
+            stillPending.push(order);
+            continue;
+          }
+          const rawLots = Number(order.riskAmount) > 0
+            ? Number(order.riskAmount) / (riskDistance * contractSize)
+            : Number(order.size);
+          const recalculatedLots = Math.floor(rawLots * 10000) / 10000;
+          // Never create a zero-sized position after a large gap through a stop.
+          if (!Number.isFinite(recalculatedLots) || recalculatedLots <= 0) {
+            stillPending.push(order);
+            continue;
+          }
+          // A single active trade is enforced even for legacy sessions that
+          // may contain more than one pending order.
+          const filledPosition = {
+            ...order,
+            entryPrice: fillPrice,
+            size: recalculatedLots,
+            riskAmount: riskDistance * contractSize * recalculatedLots,
+            riskPercent: state.balance > 0 ? (riskDistance * contractSize * recalculatedLots / state.balance) * 100 : 0,
+            initialRiskDistance: riskDistance,
+            isPending: false,
+            openTime: candle.time,
+          };
+          const isBuy = order.type === 'buy';
+          const stopPrice = Number(order.sl);
+          const targetPrice = order.tp == null ? null : Number(order.tp);
+          const hitStopOnEntryBar = Number.isFinite(stopPrice) &&
+            (isBuy ? candle.low <= stopPrice : candle.high >= stopPrice);
+          const hitTargetOnEntryBar = Number.isFinite(targetPrice) &&
+            (isBuy ? candle.high >= targetPrice : candle.low <= targetPrice);
+
+          // If OHLC cannot reveal whether SL or TP came first, resolve
+          // conservatively: stop loss wins when both are touched in this bar.
+          if (hitStopOnEntryBar) {
+            const exitPrice = getStopLossFillPrice(order.type, stopPrice, candle);
+            const pnl = (isBuy ? exitPrice - fillPrice : fillPrice - exitPrice) *
+              contractSize * recalculatedLots;
+            newBalance += pnl;
+            newHistory.push({ ...filledPosition, exitPrice, pnl, reason: 'SL', closeTime: candle.time });
+            slHit = true;
+          } else if (hitTargetOnEntryBar) {
+            const exitPrice = getTakeProfitFillPrice(order.type, targetPrice, candle);
+            const pnl = (isBuy ? exitPrice - fillPrice : fillPrice - exitPrice) *
+              contractSize * recalculatedLots;
+            newBalance += pnl;
+            newHistory.push({ ...filledPosition, exitPrice, pnl, reason: 'TP', closeTime: candle.time });
+            tpHit = true;
+          } else {
+            newPositions.push(filledPosition);
+          }
           pendingTriggered = true;
+          pendingFilledThisCandle = true;
+          pendingSlotTaken = true;
         } else stillPending.push(order);
       }
       newPendingOrders = stillPending;
-      if (newBalance > newPeak) newPeak = newBalance;
+      // A just-filled pending position is not marked against the entire entry
+      // candle's extremes (those may have occurred before the entry).
+      lastEquity = pendingFilledThisCandle && newPositions.length
+        ? newBalance
+        : newBalance + calculateIntrabarUnrealizedPnl(newPositions, candle, state.symbol, state.contractSpecs);
+      newPeak = Math.max(newPeak, lastEquity, newBalance);
       if (gameOverReason) break;
     }
 
@@ -791,7 +1008,7 @@ export const useStore = create((set, get) => ({
     }
 
     if (!gameOverReason) {
-      const violation = checkRuleViolations(state, newBalance, newPeak, newDailyLoss);
+      const violation = checkRuleViolations(state, lastEquity, newPeak, newDailyLoss);
       if (violation) { gameOverReason = violation.reason; gameOverMessage = violation.message; }
     }
 
@@ -820,29 +1037,59 @@ export const useStore = create((set, get) => ({
   
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
 
-  placeOrder: ({ side, type, riskPercent, entryPrice, slPrice, tpPrice, riskAmount }) => set((state) => {
-    if (state.gameState.isOver) return state;
-    if (riskPercent > state.rules.maxRiskPerTrade + EPSILON) return state;
-    const currentPrice = state.rawData[state.currentIndex].close;
-    const contractSize = getContractSize(state.symbol);
-    const lots = riskAmount / (Math.abs(entryPrice - slPrice) * contractSize);
-    const openTime = state.rawData[state.currentIndex].time;
+  placeOrder: ({ side, type, riskPercent, entryPrice, slPrice, tpPrice, riskAmount, breakevenEnabled = false }) => set((state) => {
+    const candle = state.rawData?.[state.currentIndex];
+    if (state.gameState.isOver || !candle || !['buy', 'sell'].includes(side) ||
+        !['market', 'limit', 'stop'].includes(type)) return state;
+    // Only one live position OR one pending order is allowed at a time.
+    if (state.positions.length > 0 || state.pendingOrders.length > 0) return state;
+    const executionCandle = getExecutionCandle(
+      state.rawData, state.displayData, state.currentIndex, state.timeframe
+    );
+    if (!executionCandle) return state;
+
+    const marketPrice = Number(executionCandle.close);
+    const actualEntry = type === 'market' ? marketPrice : Number(entryPrice);
+    const stop = Number(slPrice);
+    const riskPct = Number(riskPercent);
+    const risk = Number(riskAmount);
+    const target = tpPrice == null ? null : Number(tpPrice);
+    if (![marketPrice, actualEntry, stop, riskPct, risk].every(Number.isFinite) ||
+        actualEntry <= 0 || stop <= 0 || actualEntry === stop || riskPct <= 0 || risk <= 0) return state;
+    if (side === 'buy' ? stop >= actualEntry : stop <= actualEntry) return state;
+    if (target != null && (!Number.isFinite(target) || target <= 0 ||
+        (side === 'buy' ? target <= actualEntry : target >= actualEntry))) return state;
+    if (state.rules?.propFirmEnabled !== false &&
+        riskPct > Number(state.rules?.maxRiskPerTrade ?? 0) + EPSILON) return state;
+
+    const contractSize = Number(getPnlMultiplier(state.symbol, state.contractSpecs));
+    const riskDistance = Math.abs(actualEntry - stop);
+    if (!Number.isFinite(contractSize) || contractSize <= 0 || riskDistance <= 0) return state;
+    const lots = risk / (riskDistance * contractSize);
+    // Round down to the volume step so execution never exceeds requested risk.
+    const roundedLots = Math.floor(lots * 10000) / 10000;
+    if (!Number.isFinite(lots) || lots <= 0 || !Number.isFinite(roundedLots) || roundedLots <= 0) return state;
+    const actualRisk = riskDistance * contractSize * roundedLots;
+    const actualRiskPercent = state.balance > 0 ? actualRisk / state.balance * 100 : 0;
+
     const newOrder = {
       id: Date.now() + Math.random(),
       type: side, orderType: type,
-      entryPrice: type === 'market' ? currentPrice : entryPrice,
-      sl: slPrice, tp: tpPrice,
-      size: Number(lots.toFixed(2)),
-      riskPercent, riskAmount,
+      entryPrice: actualEntry,
+      sl: stop, tp: target,
+      breakevenEnabled: !!breakevenEnabled,
+      breakevenDone: false,
+      initialRiskDistance: riskDistance,
+      size: roundedLots,
+      riskPercent: actualRiskPercent, riskAmount: actualRisk,
       isPending: type !== 'market',
-      openTime,
+      openTime: executionCandle.time,
       symbol: state.symbol,
     };
     if (state.soundEnabled) playOrderPlaced();
     if (type === 'market') {
       return { positions: [...state.positions, newOrder], isOrderModalOpen: false, draftPosition: null };
-    } else {
-      return { pendingOrders: [...state.pendingOrders, newOrder], isOrderModalOpen: false, draftPosition: null };
     }
+    return { pendingOrders: [...state.pendingOrders, newOrder], isOrderModalOpen: false, draftPosition: null };
   }),
 }));

@@ -119,7 +119,8 @@ export const playRestart = () => {
 };
 
 // ---------- SOUNDTRACK ----------
-const SOUNDTRACK_URL = `${import.meta.env.BASE_URL}sounds/soundtrack.mp3`;
+const APP_BASE_URL = typeof import.meta.env !== 'undefined' ? import.meta.env.BASE_URL : '/';
+const SOUNDTRACK_URL = `${APP_BASE_URL}sounds/soundtrack.mp3`;
 
 let soundtrackAudio = null;
 let soundtrackGain = null;

@@ -2,115 +2,49 @@ import Chart from './components/Chart';
 import ControlPanel from './components/ControlPanel';
 import OrderModal from './components/OrderModal';
 import HistoryModal from './components/HistoryModal';
-import EquityModal from './components/EquityModal';
 import AnalyticsModal from './components/AnalyticsModal';
 import ChartThemeModal from './components/ChartThemeModal';
 import InfoModal from './components/InfoModal';
 import SoundToggle from './components/SoundToggle';
 import PeriodModal from './components/PeriodModal';
 import GameOverModal from './components/GameOverModal';
+import EquityModal from './components/EquityModal';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import LoadingScreen from './components/LoadingScreen';
-import { useStore, INITIAL_BALANCE } from './store';
-import { aggregateData } from './utils/timeframe';
-import { useEffect, useRef } from 'react';
+import TradeScreenshotCapture from './components/TradeScreenshotCapture';
+import DataImportModal from './components/DataImportModal';
+import { useStore } from './store';
+import { useEffect, useRef, useState } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
-import { fmtMoney, fmtMB } from './utils/format';
-import Papa from 'papaparse';
-import { Clock, RotateCcw, Info, Sparkles, AlertTriangle } from 'lucide-react';
-
-const formatTime = (sec) => {
-  if (sec == null) return '∞';
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-};
-
-// Canonical timezone for the whole app (in minutes). All CSVs are shifted
-// to this offset at load time.
-const CANONICAL_OFFSET = -300; // UTC-5
-
-// =========================================================================
-// SYMBOL CONFIGURATION
-// =========================================================================
-const SYMBOL_CONFIG = [
-  {
-    code: 'XAUUSD',
-    files: [
-      'xauusd_2020.csv',
-      'xauusd_2021.csv',
-      'xauusd_2022.csv',
-      'xauusd_2023.csv',
-      'xauusd_2024.csv',
-      'xauusd_2025.csv',
-    ],
-    sourceOffset: -300, // UTC-5
-    available: true,
-  },
-  {
-    code: 'EURUSD',
-    files: [
-      'eurusd_2020.csv',
-      'eurusd_2021.csv',
-      'eurusd_2022.csv',
-      'eurusd_2023.csv',
-      'eurusd_2024.csv',
-      'eurusd_2025.csv',
-    ],
-    sourceOffset: -300, // UTC-5
-    available: true,
-  },
-  { code: 'CHFJPY', files: ['chfjpy.csv'], sourceOffset: 0, available: false },
-  { code: 'GBPAUD', files: ['gbpaud.csv'], sourceOffset: 0, available: false },
-];
-
-// =========================================================================
-// FORMAT-AGNOSTIC DATE/TIME PARSER
-// =========================================================================
-const parseDateTimeToUnix = (dateStr, timeStr) => {
-  if (!dateStr || timeStr == null) return null;
-
-  const dateClean = String(dateStr).replace(/\D/g, '');
-  if (dateClean.length !== 8) return null;
-  const year  = dateClean.substring(0, 4);
-  const month = dateClean.substring(4, 6);
-  const day   = dateClean.substring(6, 8);
-
-  const timeClean = String(timeStr).trim();
-  const parts = timeClean.split(':');
-  if (parts.length < 2) return null;
-  const hour   = String(parts[0]).padStart(2, '0');
-  const minute = String(parts[1]).padStart(2, '0');
-  const second = parts[2] ? String(parts[2].split('.')[0]).padStart(2, '0') : '00';
-
-  const h  = parseInt(hour, 10);
-  const m  = parseInt(minute, 10);
-  const s  = parseInt(second, 10);
-  const mo = parseInt(month, 10);
-  const d  = parseInt(day, 10);
-  if (
-    h < 0 || h > 23 || m < 0 || m > 59 || s < 0 || s > 59 ||
-    mo < 1 || mo > 12 || d < 1 || d > 31
-  ) return null;
-
-  const isoString = `${year}-${month}-${day}T${hour}:${minute}:${second}Z`;
-  const ms = new Date(isoString).getTime();
-  if (isNaN(ms)) return null;
-  return ms / 1000;
-};
+import { fmtMoney } from './utils/format';
+import { fetchDataCatalog, loadBundledCsvFiles } from './utils/dataCatalog';
+import { getPnlMultiplier } from './utils/instrument';
+import { RotateCcw, Info, Sparkles, AlertTriangle, ChevronDown, LogOut, Sun, Moon } from 'lucide-react';
 
 function App() {
   const { 
     isPlaying, stepForward, currentIndex, rawData, balance, positions, 
     musicEnabled, gameStarted,
-    gameState, rules, updateTimeRemaining, endGame, restartGame,
-    loadingState, openInfo, theme,
+    gameState, restartGame,
+    loadingState, openInfo, openHistory, openAnalytics, openTheme, theme,
     sessionName, setSessionName, saveSession,
     enableFireworks, toggleFireworks,
     symbolWarning, clearSymbolWarning,
   } = useStore();
   const soundtrackStarted = useRef(false);
-  const restoredRef = useRef(false);
+  const [sessionMenuOpen, setSessionMenuOpen] = useState(false);
+  const [savedSessions, setSavedSessions] = useState([]);
+  const [sessionLoadingId, setSessionLoadingId] = useState(null);
+  const [uiTheme, setUiTheme] = useState(() => {
+    try { return localStorage.getItem('omaxfx-ui-theme') === 'light' ? 'light' : 'dark'; }
+    catch { return 'dark'; }
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.uiTheme = uiTheme;
+    window.dispatchEvent(new CustomEvent('omaxfx-ui-theme-change', { detail: uiTheme }));
+    try { localStorage.setItem('omaxfx-ui-theme', uiTheme); } catch {}
+  }, [uiTheme]);
 
   useEffect(() => {
     if (!symbolWarning) return;
@@ -126,155 +60,24 @@ function App() {
     }
   }, [loadingState.isActive]);
 
-  // ============================================================
-  // CSV LOADING — supports one or MANY files per symbol
-  // ============================================================
   useEffect(() => {
-    let cancelled = false;
-    const setLoadingState = useStore.getState().setLoadingState;
-
-    const parseCSVText = (csvText, sourceOffset) => {
-      return new Promise((resolve) => {
-        Papa.parse(csvText, {
-          header: true,
-          dynamicTyping: false,
-          skipEmptyLines: true,
-          complete: (results) => {
-            const shiftSec = (CANONICAL_OFFSET - sourceOffset) * 60;
-            const formattedData = results.data
-              .map(row => {
-                const rawTime = parseDateTimeToUnix(row.date, row.time);
-                if (rawTime == null) return null;
-                const open  = Number(row.open);
-                const high  = Number(row.high);
-                const low   = Number(row.low);
-                const close = Number(row.close);
-                if (!Number.isFinite(open) || !Number.isFinite(high) ||
-                    !Number.isFinite(low)  || !Number.isFinite(close)) return null;
-                return {
-                  time: rawTime + shiftSec,
-                  open, high, low, close,
-                  volume: Number(row.volume) || 0,
-                };
-              })
-              .filter(Boolean);
-            resolve(formattedData);
-          },
-          error: () => resolve([]),
-        });
-      });
-    };
-
-    const loadAll = async () => {
-      try {
-        setLoadingState({ isActive: true, loaded: 0, total: 0, error: null });
-
-        const available = SYMBOL_CONFIG.filter(s => s.available);
-        let totalBytes = 0;
-        let loadedBytes = 0;
-        const buffers = {};
-
-        for (const sym of available) {
-          if (cancelled) return;
-          const texts = [];
-
-          for (const file of sym.files) {
-            if (cancelled) return;
-            const url = `${import.meta.env.BASE_URL}data/${file}`;
-            try {
-              const res = await fetch(url);
-              if (!res.ok) {
-                console.warn(`Skipping ${sym.code}/${file}: HTTP ${res.status}`);
-                continue;
-              }
-              const contentLength = res.headers.get('Content-Length');
-              const buf = await res.arrayBuffer();
-              loadedBytes += buf.byteLength;
-              totalBytes += contentLength ? parseInt(contentLength, 10) : buf.byteLength;
-              setLoadingState({ loaded: loadedBytes, total: Math.max(totalBytes, loadedBytes) });
-              texts.push(new TextDecoder('utf-8').decode(buf));
-            } catch (e) {
-              console.warn(`Failed to load ${sym.code}/${file}:`, e);
-            }
-          }
-
-          buffers[sym.code] = { texts, sourceOffset: sym.sourceOffset };
-        }
-
-        // Parse each symbol's files, merge, sort, store
-        for (const [code, { texts, sourceOffset }] of Object.entries(buffers)) {
-          if (cancelled) return;
-          let all = [];
-          for (const text of texts) {
-            const parsed = await parseCSVText(text, sourceOffset);
-            all = all.concat(parsed);
-          }
-          all.sort((a, b) => a.time - b.time);
-          console.log(`[Data] ${code}: ${all.length} candles loaded`);
-          useStore.getState().setAllDataForSymbol(code, all);
-        }
-
-        setLoadingState({ isActive: false });
-      } catch (err) {
-        console.error('CSV load error:', err);
-        setLoadingState({ isActive: false, error: err.message });
-      }
-    };
-
-    loadAll();
-    return () => { cancelled = true; };
+    useStore.getState().setLoadingState({ isActive: false, loaded: 0, total: 0, error: null });
+    useStore.getState().openPeriodModal();
   }, []);
-
-  // ============================================================
-  // SESSION RESTORE
-  // - If no saved session → show PeriodModal
-  // - If saved session is invalid → clear it and show PeriodModal
-  // ============================================================
-  useEffect(() => {
-    const state = useStore.getState();
-    if (!state.allRawDataBySymbol.XAUUSD) return;
-    if (restoredRef.current) return;
-    restoredRef.current = true;
-
-    const saved = useStore.getState().readSession();
-    if (!saved || !saved.gameStarted || !saved.gamePeriod) {
-      useStore.getState().openPeriodModal();
-      return;
-    }
-
-    const ok = useStore.getState().loadSavedSession();
-    if (!ok) {
-      try { useStore.getState().clearSession(); } catch (e) {}
-      useStore.getState().openPeriodModal();
-    }
-  }, [loadingState.isActive]);
-
-  // ============================================================
-  // SAFETY NET — if gameStarted is true but rawData is empty,
-  // wipe the corrupt state and force the PeriodModal open.
-  // ============================================================
-  useEffect(() => {
-    if (loadingState.isActive) return;
-    const s = useStore.getState();
-    if (s.gameStarted && (!s.rawData || s.rawData.length === 0)) {
-      try { s.clearSession(); } catch (e) {}
-      useStore.setState({
-        gameStarted: false,
-        rawData: [],
-        displayData: [],
-        currentIndex: 0,
-        isPlaying: false,
-        gameState: { isOver: false, reason: null, message: '', startTime: null, timeRemaining: null },
-      });
-      useStore.getState().openPeriodModal();
-    }
-  }, [loadingState.isActive]);
 
   // ============================================================
   // AUTO-SAVE
   // ============================================================
   useEffect(() => {
     let t = null;
+    const periodicSave = setInterval(() => {
+      if (useStore.getState().gameStarted) useStore.getState().saveSession();
+    }, 5000);
+    const flushSave = () => {
+      if (useStore.getState().gameStarted) useStore.getState().saveSession();
+    };
+    window.addEventListener('pagehide', flushSave);
+    window.addEventListener('beforeunload', flushSave);
     const unsub = useStore.subscribe((state) => {
       if (!state.gameStarted) return;
       const key = [
@@ -285,6 +88,7 @@ function App() {
         state.pendingOrders.length,
         state.drawings.length,
         state.drawingsPast.length,
+        state.pencilStrokes.length,
         state.timeframe,
         state.symbol,
         state.timezone,
@@ -297,7 +101,11 @@ function App() {
         try { useStore.getState().saveSession(); } catch (e) {}
       }, 800);
     });
-    return () => { unsub(); if (t) clearTimeout(t); };
+    return () => {
+      unsub(); if (t) clearTimeout(t); clearInterval(periodicSave);
+      window.removeEventListener('pagehide', flushSave);
+      window.removeEventListener('beforeunload', flushSave);
+    };
   }, []);
 
   useEffect(() => {
@@ -336,21 +144,7 @@ function App() {
     return () => clearInterval(interval);
   }, [isPlaying, currentIndex, rawData, stepForward, gameState.isOver]);
 
-  useEffect(() => {
-    if (!gameStarted || gameState.isOver || !rules.countdownMinutes) return;
-    const interval = setInterval(() => {
-      const elapsed = (Date.now() - gameState.startTime) / 1000;
-      const total = rules.countdownMinutes * 60;
-      const remaining = Math.max(0, total - elapsed);
-      if (remaining <= 0) {
-        endGame('countdown', `Time's up! Your ${rules.countdownMinutes}-minute session ended.`);
-        clearInterval(interval);
-      } else {
-        updateTimeRemaining(remaining);
-      }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [gameStarted, gameState.isOver, gameState.startTime, rules.countdownMinutes, endGame, updateTimeRemaining]);
+
 
   useEffect(() => {
     const startAudio = () => {
@@ -376,17 +170,98 @@ function App() {
   const unrealisedPnl = positions.reduce((sum, pos) => {
     const isBuy = pos.type === 'buy';
     const priceDiff = isBuy ? currentPrice - pos.entryPrice : pos.entryPrice - currentPrice;
-    return sum + priceDiff * 100 * pos.size;
+    return sum + priceDiff * getPnlMultiplier(pos.symbol || useStore.getState().symbol, useStore.getState().contractSpecs) * pos.size;
   }, 0);
 
-  const timeRemaining = gameState.timeRemaining;
-  const timeBoxClass = timeRemaining == null 
-    ? 'text-gray-500 border-gray-700 bg-gray-900/20'
-    : timeRemaining < 60 
-      ? 'text-red-400 border-red-600 bg-red-900/40 animate-pulse' 
-      : timeRemaining < 300 
-        ? 'text-yellow-400 border-yellow-600 bg-yellow-900/30' 
-        : 'text-blue-400 border-blue-600 bg-blue-900/30';
+  const handleExitPlatform = () => {
+    try { useStore.getState().saveSession(); } catch (e) {}
+    useStore.setState({ isPlaying: false });
+    stopSoundtrack();
+    setSessionMenuOpen(false);
+    window.close();
+    window.setTimeout(() => {
+      if (!window.closed) window.alert('Your session has been saved. Please close this browser tab to exit OmaxFX.');
+    }, 80);
+  };
+
+  const toggleSessionMenu = () => {
+    if (!sessionMenuOpen) {
+      try { saveSession(); } catch (e) {}
+      setSavedSessions(useStore.getState().readSessions());
+    }
+    setSessionMenuOpen(value => !value);
+  };
+
+  const handleResumeSession = async (sessionId) => {
+    if (sessionLoadingId) return;
+    try { saveSession(); } catch (e) {}
+    setSessionLoadingId(sessionId);
+    try {
+      const saved = useStore.getState().readSession(sessionId);
+      if (!saved?.gamePeriod || !saved.symbol) throw new Error('This saved session is incomplete.');
+
+      // Session timestamps are stored in the saved display timezone. Convert
+      // the range back to the UTC+3 market calendar used by public/data.
+      const offsets = { 'UTC-5': -300, 'UTC-4': -240, 'UTC-3': -180, 'UTC-2': -120, 'UTC-1': -60, UTC: 0, 'UTC+1': 60, 'UTC+2': 120, 'UTC+3': 180 };
+      const savedOffset = offsets[saved.timezone || 'UTC+3'] ?? 180;
+      const displayShiftSeconds = (savedOffset - 180) * 60;
+      const from = Number(saved.gamePeriod.from) - displayShiftSeconds;
+      const to = Number(saved.gamePeriod.to) - displayShiftSeconds;
+      if (!Number.isFinite(from) || !Number.isFinite(to) || to < from) throw new Error('The saved session has an invalid market-data date range.');
+
+      const start = new Date((from + 10800) * 1000);
+      const end = new Date((to + 10800) * 1000);
+      const requiredMonths = [];
+      const cursor = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
+      const lastMonth = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1);
+      while (cursor.getTime() <= lastMonth) {
+        requiredMonths.push(`${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, '0')}`);
+        cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+      }
+
+      const catalog = await fetchDataCatalog();
+      const symbolFiles = catalog.filter(file => String(file.symbol).toUpperCase() === String(saved.symbol).toUpperCase());
+      if (!symbolFiles.length) {
+        throw new Error(`Session data is not available. No ${saved.symbol} CSV dataset was found in public/data/.`);
+      }
+
+      const selectedFiles = [];
+      const years = [...new Set(requiredMonths.map(month => Number(month.slice(0, 4))))];
+      for (const year of years) {
+        const yearFile = symbolFiles.find(file => Number(file.year) === year);
+        const monthsForYear = requiredMonths.filter(month => Number(month.slice(0, 4)) === year);
+        const monthFiles = monthsForYear.map(month => (yearFile?.monthlyFiles || []).find(file => `${file.year}-${String(file.month).padStart(2, '0')}` === month));
+        if (monthFiles.every(Boolean)) selectedFiles.push(...monthFiles);
+        else if (yearFile) selectedFiles.push(yearFile);
+        else throw new Error(`Session data is not available. The required ${saved.symbol} data for ${year} is missing from public/data/.`);
+      }
+
+      const result = await loadBundledCsvFiles(selectedFiles);
+      const specs = saved.contractSpecs?.[saved.symbol] || (
+        saved.symbol === 'XAUUSD' ? { contractSize: 100, tickSize: 0.01, precision: 2, quoteCurrency: 'USD', quoteToAccountRate: 1 } :
+        { contractSize: 100000, tickSize: saved.symbol.includes('JPY') ? 0.001 : 0.00001, precision: saved.symbol.includes('JPY') ? 3 : 5, quoteCurrency: 'USD', quoteToAccountRate: 1 }
+      );
+      useStore.getState().setCustomSymbolData(saved.symbol, result.candles, specs);
+      const loaded = useStore.getState().loadSavedSession(sessionId);
+      if (!loaded) throw new Error('The required CSV exists, but it does not contain enough valid candles for this saved session date range.');
+      setSessionMenuOpen(false);
+    } catch (error) {
+      window.alert(error?.message || 'Session data is not available. Check that its CSV file exists in public/data/.');
+    } finally {
+      setSessionLoadingId(null);
+    }
+  };
+
+  const handleDeleteSession = (sessionId) => {
+    const activeSessionId = useStore.getState().sessionId;
+    if (sessionId === activeSessionId) {
+      window.alert('The active session cannot be deleted while it is open. Start another session first, then delete it here.');
+      return;
+    }
+    if (!window.confirm('Delete this saved session permanently? This cannot be undone.')) return;
+    const remaining = useStore.getState().deleteSavedSession(sessionId);
+    setSavedSessions(remaining);
+  };
 
   const handleNewSession = () => {
     try { saveSession(); } catch (e) {}
@@ -394,7 +269,7 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col h-dvh overflow-hidden" style={{ backgroundColor: theme.background }}>
+    <div className="flex flex-col h-dvh overflow-hidden" style={{ backgroundColor: uiTheme === 'light' ? '#f4f6fa' : theme.background, color: uiTheme === 'light' ? '#172033' : '#ffffff' }}>
       {/* Hidden audio element — preloaded by the browser at page load. */}
       <audio
         id="sfx-tphit"
@@ -412,10 +287,6 @@ function App() {
           </h1>
           {gameStarted && (
             <>
-              <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded font-mono font-bold text-[11px] border ${timeBoxClass}`}>
-                <Clock size={10} />
-                <span>{formatTime(timeRemaining)}</span>
-              </div>
               <input
                 type="text"
                 value={sessionName}
@@ -432,7 +303,40 @@ function App() {
               {positions.length}
             </span>
           )}
+          {gameStarted && (
+            <div className="relative">
+              <button onClick={toggleSessionMenu} className="h-7 px-2 bg-[#1e222d] border border-[#2a2e39] hover:bg-[#2a2e39] rounded flex items-center gap-1 text-[10px] text-gray-200" title="Switch to a previous saved session">
+                Sessions <ChevronDown size={11}/>
+              </button>
+              {sessionMenuOpen && <>
+                <button aria-label="Close sessions menu" className="fixed inset-0 z-[90] cursor-default" onClick={() => setSessionMenuOpen(false)}/>
+                <div className="absolute right-0 top-9 z-[100] w-64 max-h-[60vh] overflow-y-auto rounded-lg border border-[#2a2e39] bg-[#1e222d] p-1 shadow-2xl">
+                  <div className="px-2 py-1.5 text-[9px] uppercase tracking-wide text-gray-500">Saved sessions</div>
+                  {savedSessions.length === 0 ? <div className="px-2 py-3 text-xs text-gray-500">No saved sessions yet</div> : savedSessions.map(item => {
+                    const isActive = item.sessionId === useStore.getState().sessionId;
+                    return (
+                      <div key={item.sessionId} className="flex items-center gap-1 rounded px-1 py-1 hover:bg-[#2a2e39]">
+                        <button disabled={Boolean(sessionLoadingId)} onClick={() => handleResumeSession(item.sessionId)} className="min-w-0 flex-1 rounded px-1 py-1 text-left disabled:opacity-60">
+                          <div className="truncate text-xs font-bold text-white">{item.sessionName || 'Untitled session'} · {item.symbol || 'Market'}{isActive ? ' · Active' : ''}</div>
+                          <div className="text-[10px] text-gray-400">{new Date(item.savedAt || Date.now()).toLocaleString()} · ${Number(item.balance || 0).toLocaleString()}</div>
+                          {sessionLoadingId === item.sessionId && <div className="mt-1 text-[10px] text-blue-300">Loading market data…</div>}
+                        </button>
+                        <button type="button" disabled={isActive || Boolean(sessionLoadingId)} onClick={() => handleDeleteSession(item.sessionId)} title={isActive ? 'Start another session before deleting the active session' : 'Delete saved session'} className="shrink-0 rounded px-2 py-1.5 text-[10px] font-semibold text-red-300 hover:bg-red-500/15 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-30">Delete</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>}
+            </div>
+          )}
         </div>
+
+        {gameStarted && <div className="hidden lg:flex items-center gap-1.5 flex-shrink-0">
+          <button onClick={openHistory} className="px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">History</button>
+          <button onClick={openAnalytics} className="px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Analytics</button>
+          <button onClick={openTheme} className="px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Theme</button>
+          <button onClick={() => window.dispatchEvent(new Event('omaxfx:reset-chart'))} className="px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Reset Chart</button>
+        </div>}
 
         <div className="flex items-center gap-2 text-[11px] flex-shrink-0">
           <div className="flex items-baseline gap-1">
@@ -468,6 +372,14 @@ function App() {
             <Sparkles size={13} />
           </button>
 
+          <button onClick={() => setUiTheme(value => value === 'dark' ? 'light' : 'dark')} className="w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-[#2a2e39] text-gray-300 rounded flex items-center justify-center" title={uiTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} aria-label="Toggle light and dark theme">
+            {uiTheme === 'dark' ? <Sun size={13}/> : <Moon size={13}/>}
+          </button>
+
+          <button onClick={handleExitPlatform} className="w-7 h-7 bg-[#1e222d] border border-red-900/50 hover:bg-red-900/40 text-red-400 rounded flex items-center justify-center" title="Save and exit OmaxFX">
+            <LogOut size={13}/>
+          </button>
+
           <button 
             onClick={openInfo}
             className="w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 hover:text-blue-400 rounded flex items-center justify-center"
@@ -481,17 +393,19 @@ function App() {
       <main className="flex-1 relative min-h-0">
         <Chart />
       </main>
+      <TradeScreenshotCapture />
       
       <ControlPanel />
+      <DataImportModal />
 
       <OrderModal />
       <HistoryModal />
-      <EquityModal />
       <AnalyticsModal />
       <ChartThemeModal />
       <InfoModal />
       <PeriodModal />
       <GameOverModal />
+      <EquityModal />
 
       <CelebrationOverlay />
 

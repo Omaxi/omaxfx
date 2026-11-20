@@ -1,0 +1,32 @@
+name: OmaxFX validation
+
+on:
+  push:
+    branches:
+      - improvement/instrument-data-chart-audit
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test
+      - run: npm run build
+      - run: npm run build:offline
+      - name: Production dependency security audit
+        run: npm audit --omit=dev --audit-level=high
+        continue-on-error: true
+      - name: Lint audit (existing legacy backlog)
+        run: npm run lint
+        continue-on-error: true

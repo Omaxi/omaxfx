@@ -15,7 +15,7 @@ export default function StylePanel({ selectedId, onClose }) {
   const currentBorder = drawing.borderColor || drawing.color || '#f59e0b';
   const currentFill = drawing.fillColor || (currentBorder + '33');
   const currentWidth = drawing.lineWidth ?? 1;
-  const showBorder = drawing.showBorder !== false;
+  const showBorder = drawing.showBorder === true;
   const isText = drawing.type === 'text';
   const fontSize = drawing.fontSize || 14;
 

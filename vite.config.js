@@ -34,17 +34,17 @@ export default defineConfig(({ command }) => ({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,mp3,ico}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,mp3,ico,json}'],
         maximumFileSizeToCacheInBytes: 30 * 1024 * 1024,
         navigateFallback: 'index.html',
         runtimeCaching: [
           {
-            urlPattern: /\/data\/.*\.csv$/i,
+            urlPattern: /\/data\/.*\.csv(?:\?.*)?$/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'csv-cache',
+              cacheName: 'csv-cache-v2',
               expiration: {
-                maxEntries: 5,
+                maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24 * 365,
               },
               cacheableResponse: { statuses: [0, 200] },

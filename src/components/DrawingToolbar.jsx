@@ -1,5 +1,5 @@
 import { useStore } from '../store';
-import { Minus, Square, Layers, BarChart2, Trash2, Undo2, Redo2, Pencil, Type } from 'lucide-react';
+import { Minus, Square, Layers, MoveVertical, Trash2, Undo2, Redo2, Pencil, Type } from 'lucide-react';
 
 const TrendlineIcon = ({ size = 14 }) => (
   <svg
@@ -20,10 +20,10 @@ const TrendlineIcon = ({ size = 14 }) => (
 
 const TOOLS = [
   { key: 'horizontal',    label: 'Horizontal',     icon: Minus },
+  { key: 'vertical',      label: 'Vertical',       icon: MoveVertical },
   { key: 'trendline',     label: 'Trendline',      icon: TrendlineIcon },
   { key: 'rectangle',     label: 'Rectangle',      icon: Square },
   { key: 'fibonacci',     label: 'Fibonacci',      icon: Layers },
-  { key: 'volumeProfile', label: 'Volume Profile', icon: BarChart2 },
   { key: 'text',          label: 'Text Note',      icon: Type },
 ];
 
@@ -39,7 +39,7 @@ export default function DrawingToolbar() {
   const locked = isPencilMode; // when pencil active, other tools locked
 
   return (
-    <div className="absolute top-1 left-1 md:top-2 md:left-2 z-20 flex flex-col gap-0.5 md:gap-1 bg-[#131722]/95 backdrop-blur border border-[#2a2e39] rounded-md md:rounded-lg p-0.5 md:p-1 shadow-lg">
+    <div className="absolute top-1 left-1 md:top-2 md:left-2 z-20 flex flex-col gap-0.5 md:gap-1 bg-[#131722]/95 backdrop-blur rounded-md md:rounded-lg p-0.5 md:p-1 shadow-lg">
       {/* Pencil — top priority button */}
       <button
         onClick={() => setPencilMode(!isPencilMode)}

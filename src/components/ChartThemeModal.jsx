@@ -21,7 +21,7 @@ const CANDLE_PRESETS = [
 ];
 
 export default function ChartThemeModal() {
-  const { isThemeOpen, closeTheme, theme, setTheme, resetTheme } = useStore();
+  const { isThemeOpen, closeTheme, theme, setTheme, resetTheme, sessionColors, setSessionColor, drawingStyles, setDrawingStyle } = useStore();
   const [activeTab, setActiveTab] = useState('background');
 
   if (!isThemeOpen) return null;
@@ -55,6 +55,7 @@ export default function ChartThemeModal() {
           {[
             { key: 'background', label: 'Background' },
             { key: 'candles', label: 'Candles' },
+            { key: 'drawings', label: 'Drawings' },
           ].map(tab => (
             <button
               key={tab.key}
@@ -118,6 +119,44 @@ export default function ChartThemeModal() {
                 </div>
               </div>
             </>
+          )}
+
+          {activeTab === 'drawings' && (
+            <div className="space-y-4">
+              <section className="space-y-2">
+                <h3 className="text-[10px] font-bold uppercase text-gray-400">Session range colors</h3>
+                {[
+                  { key: 'asia', label: 'Sydney / Asia' },
+                  { key: 'london', label: 'London' },
+                  { key: 'newyork', label: 'New York' },
+                ].map(item => (
+                  <label key={item.key} className="flex items-center justify-between rounded bg-[#1e222d] px-3 py-2">
+                    <span className="text-xs text-gray-200">{item.label}</span>
+                    <input type="color" value={sessionColors?.[item.key] || '#64748b'}
+                      onChange={event => setSessionColor(item.key, event.target.value)}
+                      className="h-7 w-9 bg-transparent"/>
+                  </label>
+                ))}
+              </section>
+              {['vertical', 'horizontal'].map(key => (
+                <section key={key} className="space-y-2 border-t border-[#2a2e39] pt-3">
+                  <h3 className="text-[10px] font-bold uppercase text-gray-400">{key} line</h3>
+                  <div className="flex items-center justify-between rounded bg-[#1e222d] px-3 py-2">
+                    <span className="text-xs text-gray-200">Color</span>
+                    <input type="color" value={drawingStyles?.[key]?.color || '#f59e0b'}
+                      onChange={event => setDrawingStyle(key, { color: event.target.value })}
+                      className="h-7 w-9 bg-transparent"/>
+                  </div>
+                  <label className="flex items-center justify-between rounded bg-[#1e222d] px-3 py-2 text-xs text-gray-200">
+                    Width — {drawingStyles?.[key]?.lineWidth || 1}px
+                    <input type="range" min="1" max="6" step="1"
+                      value={drawingStyles?.[key]?.lineWidth || 1}
+                      onChange={event => setDrawingStyle(key, { lineWidth: Number(event.target.value) })}
+                      className="w-28 accent-blue-500"/>
+                  </label>
+                </section>
+              ))}
+            </div>
           )}
 
           {activeTab === 'candles' && (

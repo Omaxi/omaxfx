@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import { X, ChevronDown, Check, BarChart3, Palette, Sunrise, Sun, Sunset, ArrowUpDown, CandlestickChart } from 'lucide-react';
+import { X, ChevronDown, Check, Sunrise, Sun, Sunset, ArrowUpDown, CandlestickChart } from 'lucide-react';
 
 const TIMEFRAMES = [
   { label: '1 min', value: 1 },
@@ -30,19 +30,11 @@ const SYMBOLS = [
 ];
 
 const TIMEZONES = [
-  { code: 'UTC-5', label: 'UTC-5' },
-  { code: 'UTC-4', label: 'UTC-4' },
-  { code: 'UTC-3', label: 'UTC-3' },
-  { code: 'UTC-2', label: 'UTC-2' },
-  { code: 'UTC-1', label: 'UTC-1' },
-  { code: 'UTC',   label: 'UTC' },
-  { code: 'UTC+1', label: 'UTC+1' },
-  { code: 'UTC+2', label: 'UTC+2' },
-  { code: 'UTC+3', label: 'UTC+3' },
+  { code: 'UTC+3', label: 'UTC+3 (project data timezone)' },
 ];
 
 const SESSIONS = [
-  { key: 'asian',   label: 'Asian',    icon: Sunrise, color: 'text-orange-400' },
+  { key: 'asian',   label: 'Asian & Sydney', icon: Sunrise, color: 'text-orange-400' },
   { key: 'london',  label: 'London',   icon: Sun,     color: 'text-blue-400' },
   { key: 'newyork', label: 'New York', icon: Sunset,  color: 'text-purple-400' },
 ];
@@ -51,10 +43,9 @@ export default function ControlPanel() {
   const { 
     positions, setTimeframe, timeframe, closeAllPositions, openOrderModal,
     pendingOrders, startDrawing, isDrawingMode, drawingStep, clearDraft,
-    openHistory, openEquity, openAnalytics, openTheme,
     symbol, setSymbol, timezone, setTimezone,
     sessionTimes, setSessionTime, jumpToSession,
-    chartType, setChartType
+    chartType, setChartType, allRawDataBySymbol
   } = useStore();
 
   const [symbolOpen, setSymbolOpen] = useState(false);
@@ -117,6 +108,7 @@ export default function ControlPanel() {
   };
 
   const tfLabel = TIMEFRAMES.find(t => t.value === timeframe)?.label || '1 min';
+  const symbolChoices = [...SYMBOLS.filter(s => allRawDataBySymbol[s.code]?.length), ...Object.keys(allRawDataBySymbol).filter(code => !SYMBOLS.some(s => s.code === code)).map(code => ({ code, source: 'Imported', available: true }))];
 
   const SymbolDropdown = () => (
     <>
@@ -126,9 +118,9 @@ export default function ControlPanel() {
           <span>Choose Symbol</span>
           <span className="text-[8px] text-gray-600 normal-case">green = data loaded</span>
         </div>
-        {SYMBOLS.map(s => {
+        {symbolChoices.map(s => {
           const isSelected = symbol === s.code;
-          const isAvailable = s.available;
+          const isAvailable = !!allRawDataBySymbol[s.code]?.length;
           return (
             <button key={s.code}
               onClick={() => { if (isAvailable) { setSymbol(s.code); closeAll(); } }}
@@ -146,14 +138,14 @@ export default function ControlPanel() {
                       ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.9)]'
                       : 'bg-gray-700'
                   }`}
-                  title={isAvailable ? 'Data downloaded' : 'Data not available'}
+                  title={s.source === 'Imported' ? 'User imported data' : 'Data loaded'}
                 />
                 <span className={`${isSelected && isAvailable ? 'font-bold' : ''} ${isAvailable ? '' : 'italic'}`}>
                   {s.code}
                 </span>
               </div>
               <span className={`text-[9px] ${isAvailable ? 'text-emerald-400' : 'text-gray-700'}`}>
-                {isAvailable ? 'Ready' : 'Unavailable'}
+                {s.source === 'Imported' ? 'Imported' : 'Ready'}
               </span>
             </button>
           );
@@ -240,7 +232,7 @@ export default function ControlPanel() {
       <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[260px]" style={{ zIndex: 9999, left: jumpLeft, bottom: 52 }}>
         <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide flex justify-between items-center">
           <span>Jump to Session</span>
-          <span className="text-[8px] text-gray-600 normal-case">chart hour</span>
+          <span className="text-[8px] text-gray-600 normal-case">UTC+3</span>
         </div>
         {SESSIONS.map(s => {
           const Icon = s.icon;
@@ -248,7 +240,7 @@ export default function ControlPanel() {
           return (
             <div key={s.key} className="flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39]/40">
               <Icon size={12} className={s.color} />
-              <span className="text-xs text-white font-bold w-16">{s.label}</span>
+              <span className="text-xs text-white font-bold w-24">{s.label}</span>
               <input
                 type="number"
                 min="0"
@@ -318,19 +310,6 @@ export default function ControlPanel() {
               <button onClick={clearDraft} className="text-red-400"><X size={11}/></button>
             </div>
           )}
-
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <button onClick={openHistory} className="px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold">History</button>
-            <button onClick={openEquity} className="px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold">Equity</button>
-            <button onClick={openAnalytics} title="Advanced Analytics"
-              className="p-1.5 bg-[#1e222d] rounded border border-[#2a2e39] text-blue-400 hover:bg-[#2a2e39] transition-colors">
-              <BarChart3 size={12} />
-            </button>
-            <button onClick={openTheme} title="Chart Appearance"
-              className="p-1.5 bg-[#1e222d] rounded border border-[#2a2e39] text-purple-400 hover:bg-[#2a2e39] transition-colors">
-              <Palette size={12} />
-            </button>
-          </div>
 
           {positions.length > 0 && (
             <button onClick={closeAllPositions} className="px-2 py-1 bg-yellow-600 rounded font-bold text-[10px] text-white whitespace-nowrap flex-shrink-0">✕ {positions.length}</button>
