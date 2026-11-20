@@ -37,6 +37,7 @@ export default function AnalyticsModal() {
   const sessionId = analyticsSnapshot?.sessionId || store.sessionId;
   const timeframe = analyticsSnapshot?.timeframe || store.timeframe;
   const reviewName = analyticsSnapshot?.sessionName || '';
+  const gamePeriod = analyticsSnapshot?.gamePeriod || store.gamePeriod || null;
   const screenshotCandles = rawData.length ? rawData : (store.allRawDataBySymbol?.[analyticsSnapshot?.symbol || store.symbol] || []);
   const [selectedDate, setSelectedDate] = useState(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -159,6 +160,21 @@ export default function AnalyticsModal() {
     const timestamp = marketTime || latestTradeTime;
     if (timestamp) setMonthCursor(marketMonth(timestamp));
   };
+  const periodCandles = gamePeriod
+    ? screenshotCandles.filter(c => Number(c.time) >= Number(gamePeriod.from) && Number(c.time) <= Number(gamePeriod.to))
+    : screenshotCandles;
+  const rangeStart = periodCandles[0]?.time ?? rawData[0]?.time ?? null;
+  const rangeEnd = periodCandles[periodCandles.length - 1]?.time ?? rawData[rawData.length - 1]?.time ?? null;
+  const formatRangeTime = value => value == null ? '—' : marketDate(value).toLocaleString(undefined, {
+    timeZone: 'UTC', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+  const rangeSeconds = rangeStart != null && rangeEnd != null ? Math.max(0, Number(rangeEnd) - Number(rangeStart)) : 0;
+  const rangeElapsed = rangeSeconds >= 86400
+    ? Math.floor(rangeSeconds / 86400)+'d '+Math.floor(rangeSeconds % 86400 / 3600)+'h '+Math.floor(rangeSeconds % 3600 / 60)+'m'
+    : rangeSeconds >= 3600 ? Math.floor(rangeSeconds / 3600)+'h '+Math.floor(rangeSeconds % 3600 / 60)+'m'
+    : Math.floor(rangeSeconds / 60)+'m';
+  const backtestRange = { from: formatRangeTime(rangeStart), to: formatRangeTime(rangeEnd), elapsed: 'Elapsed: '+rangeElapsed };
+
   const streakText = latestTrade ? (latestTrade.pnl > 0 ? 'Winning' : latestTrade.pnl < 0 ? 'Losing' : 'Flat') : 'No streak';
 
   const exportAnalyticsPdf = async () => {
@@ -198,6 +214,7 @@ export default function AnalyticsModal() {
         startBalance,
         balance,
         timezone: analyticsSnapshot?.timezone || store.timezone || 'UTC+3',
+        backtestRange,
         trades,
         metrics,
         dailyEntries,
