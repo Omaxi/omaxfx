@@ -1309,10 +1309,32 @@ export default function Chart() {
     state.setActiveDrawingTool(null);
   };
 
+  const currentCandle = visibleData[visibleData.length - 1] || null;
+  const candleClock = currentCandle ? new Date((Number(currentCandle.time) + 3 * 3600) * 1000) : null;
+  const candleHour = candleClock ? candleClock.getUTCHours() : -1;
+  const candleSession = candleHour >= 1 && candleHour < 10 ? 'Asian' : candleHour >= 10 && candleHour < 15 ? 'London' : candleHour >= 15 && candleHour < 23 ? 'New York' : 'Off-session';
+  const candleDate = candleClock ? candleClock.toISOString().slice(0, 16).replace('T', ' ') : '—';
+  const candlePrice = value => Number.isFinite(Number(value)) ? Number(value).toFixed(3) : '—';
+
   return (
     <div className="relative w-full h-full" style={{ backgroundColor: theme.background }}>
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none', cursor: isPencilMode ? 'crosshair' : 'default' }} />
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
+
+      <div className="absolute top-2 right-12 z-30 min-w-[166px] rounded-md border border-[#2a2e39] bg-[#131722]/95 px-2.5 py-2 text-[10px] leading-4 text-gray-300 shadow-lg backdrop-blur pointer-events-none font-mono">
+        <div className="mb-1 flex items-center justify-between gap-3 border-b border-[#2a2e39] pb-1">
+          <span className="font-sans font-bold tracking-wide text-gray-200">CANDLE CHECK</span>
+          <span className="font-sans text-[9px] text-blue-400">{timeframe}m</span>
+        </div>
+        <div className="grid grid-cols-[48px_1fr] gap-x-2">
+          <span className="text-gray-500">Open</span><span className="text-right text-white">{candlePrice(currentCandle?.open)}</span>
+          <span className="text-gray-500">High</span><span className="text-right text-white">{candlePrice(currentCandle?.high)}</span>
+          <span className="text-gray-500">Low</span><span className="text-right text-white">{candlePrice(currentCandle?.low)}</span>
+          <span className="text-gray-500">Close</span><span className="text-right text-white">{candlePrice(currentCandle?.close)}</span>
+          <span className="text-gray-500">Datetime</span><span className="text-right text-white">{candleDate}</span>
+          <span className="text-gray-500">Session</span><span className="text-right text-white">{candleSession}</span>
+        </div>
+      </div>
 
       <button onClick={() => {
         const chart = chartRef.current;
