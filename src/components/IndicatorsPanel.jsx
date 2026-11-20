@@ -275,7 +275,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
           { key: 'newyork', label: 'New York', start: 15, end: 23, color: '#fb7185' },
         ];
         const groups = new Map();
-        data.forEach(candle => {
+        data.forEach((candle, candleIndex) => {
           const local = new Date((Number(candle.time) + 3 * 3600) * 1000);
           const day = local.toISOString().slice(0, 10);
           const hour = local.getUTCHours();
@@ -284,10 +284,10 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
             const id = day + ':' + def.key;
             let item = groups.get(id);
             if (!item) {
-              item = { ...def, startTime: Number(candle.time), endTime: Number(candle.time) + timeframe * 60, high: Number(candle.high), low: Number(candle.low) };
+              item = { ...def, startIndex: candleIndex, endIndex: candleIndex, high: Number(candle.high), low: Number(candle.low) };
               groups.set(id, item);
             } else {
-              item.endTime = Number(candle.time) + timeframe * 60;
+              item.endIndex = candleIndex;
               item.high = Math.max(item.high, Number(candle.high));
               item.low = Math.min(item.low, Number(candle.low));
             }
@@ -306,8 +306,10 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
         ctx.rect(0, 0, paneWidth, paneHeight);
         ctx.clip();
         groups.forEach(item => {
-          const x1 = chart.timeScale().timeToCoordinate(item.startTime);
-          const x2 = chart.timeScale().timeToCoordinate(item.endTime);
+          // The right edge extends half a bar beyond the latest replay candle.
+          // Logical coordinates support this; timeToCoordinate returns null there.
+          const x1 = chart.timeScale().logicalToCoordinate(item.startIndex - 0.5);
+          const x2 = chart.timeScale().logicalToCoordinate(item.endIndex + 0.5);
           const y1 = priceSeries.priceToCoordinate(item.high);
           const y2 = priceSeries.priceToCoordinate(item.low);
           if ([x1, x2, y1, y2].some(value => value == null || !Number.isFinite(value))) return;
