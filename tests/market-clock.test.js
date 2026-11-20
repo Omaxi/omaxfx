@@ -32,6 +32,25 @@ test('parses single-digit CSV hours without dropping the early session candles',
   assert.equal(parsed.candles[0].open, 4323.698);
 });
 
+test('parses combined dotted and European broker timestamps', () => {
+  const dotted = parseMarketCsvText([
+    'Gmt time,Open,High,Low,Close',
+    '2026.01.02 02:00:00,4323.698,4332.848,4323.698,4328.198',
+    '2026.01.02 02:01:00,4328.198,4331.998,4328.098,4328.898',
+  ].join('\\n'));
+  assert.equal(dotted.candles.length, 2);
+  assert.equal(dotted.invalidRows, 0);
+  assert.equal(dotted.candles[0].time, epoch('2026-01-02T02:00:00'));
+
+  const european = parseMarketCsvText([
+    'DateTime,Open,High,Low,Close',
+    '02.01.2026 02:00:00,4323.698,4332.848,4323.698,4328.198',
+    '02.01.2026 02:01:00,4328.198,4331.998,4328.098,4328.898',
+  ].join('\\n'));
+  assert.equal(european.candles.length, 2);
+  assert.equal(european.candles[0].time, epoch('2026-01-02T02:00:00'));
+});
+
 test('XAUUSD CSV contains the full 20:45-to-close sequence and does not jump to 07:00', async () => {
   const csv = await readFile(csvUrl, 'utf8');
   const parsed = parseMarketCsvText(csv);
