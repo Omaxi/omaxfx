@@ -160,11 +160,12 @@ export default function AnalyticsModal() {
     const timestamp = marketTime || latestTradeTime;
     if (timestamp) setMonthCursor(marketMonth(timestamp));
   };
-  const periodCandles = gamePeriod
-    ? screenshotCandles.filter(c => Number(c.time) >= Number(gamePeriod.from) && Number(c.time) <= Number(gamePeriod.to))
-    : screenshotCandles;
-  const rangeStart = periodCandles[0]?.time ?? rawData[0]?.time ?? null;
-  const rangeEnd = periodCandles[periodCandles.length - 1]?.time ?? rawData[rawData.length - 1]?.time ?? null;
+  // Report the actual active trading session, not the much wider CSV/backtest
+  // data-selection window. This prevents inactive calendar days inflating elapsed time.
+  const tradeStart = trades.length ? Math.min(...trades.map(t => Number(t.openTime)).filter(Number.isFinite)) : null;
+  const tradeEnd = trades.length ? Math.max(...trades.map(t => Number(t.closeTime)).filter(Number.isFinite)) : null;
+  const rangeStart = Number.isFinite(tradeStart) ? tradeStart : (rawData[0]?.time ?? screenshotCandles[0]?.time ?? null);
+  const rangeEnd = Number.isFinite(tradeEnd) ? tradeEnd : (rawData[rawData.length - 1]?.time ?? screenshotCandles[screenshotCandles.length - 1]?.time ?? null);
   const formatRangeTime = value => value == null ? '—' : marketDate(value).toLocaleString(undefined, {
     timeZone: 'UTC', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
   });
