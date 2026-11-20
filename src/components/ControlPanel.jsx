@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import { X, ChevronDown, Check, BarChart3, Palette, Sunrise, Sun, Sunset, ArrowUpDown, CandlestickChart } from 'lucide-react';
+import { X, ChevronDown, Check, Sunrise, Sun, Sunset, ArrowUpDown, CandlestickChart } from 'lucide-react';
 
 const TIMEFRAMES = [
   { label: '1 min', value: 1 },
@@ -43,7 +43,6 @@ export default function ControlPanel() {
   const { 
     positions, setTimeframe, timeframe, closeAllPositions, openOrderModal,
     pendingOrders, startDrawing, isDrawingMode, drawingStep, clearDraft,
-    openHistory, openAnalytics, openTheme,
     symbol, setSymbol, timezone, setTimezone,
     sessionTimes, setSessionTime, jumpToSession,
     chartType, setChartType, allRawDataBySymbol
@@ -311,18 +310,6 @@ export default function ControlPanel() {
               <button onClick={clearDraft} className="text-red-400"><X size={11}/></button>
             </div>
           )}
-
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <button onClick={openHistory} className="px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold">History</button>
-            <button onClick={openAnalytics} title="Advanced Analytics"
-              className="p-1.5 bg-[#1e222d] rounded border border-[#2a2e39] text-blue-400 hover:bg-[#2a2e39] transition-colors">
-              <BarChart3 size={12} />
-            </button>
-            <button onClick={openTheme} title="Chart Appearance"
-              className="p-1.5 bg-[#1e222d] rounded border border-[#2a2e39] text-purple-400 hover:bg-[#2a2e39] transition-colors">
-              <Palette size={12} />
-            </button>
-          </div>
 
           {positions.length > 0 && (
             <button onClick={closeAllPositions} className="px-2 py-1 bg-yellow-600 rounded font-bold text-[10px] text-white whitespace-nowrap flex-shrink-0">✕ {positions.length}</button>
