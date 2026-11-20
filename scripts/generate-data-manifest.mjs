@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { createReadStream } from 'node:fs';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { finished } from 'node:stream/promises';
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import Papa from 'papaparse';
@@ -52,10 +53,11 @@ for (const name of names.filter((entry) => entry.toLowerCase().endsWith('.csv'))
     let entry = monthlyFiles.get(key);
     if (!entry) {
       const monthName = `${symbol}_${date.year}-${key}.csv`;
-      entry = { name: monthName, symbol, year: date.year, month: key, path: join(monthlyDir, monthName), rows: [] };
+      entry = { name: monthName, symbol, year: date.year, month: key, path: join(monthlyDir, monthName), stream: createWriteStream(join(monthlyDir, monthName)), count: 0 };
       monthlyFiles.set(key, entry);
     }
-    entry.rows.push(row);
+    entry.stream.write(Papa.unparse([row], { header: entry.count === 0 }) + '\\n');
+    entry.count++;
   }
   const monthEntries = [];
   for (const entry of monthlyFiles.values()) {
