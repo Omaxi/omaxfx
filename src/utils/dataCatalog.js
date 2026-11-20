@@ -99,15 +99,20 @@ export async function loadBundledCsvFiles(files, onProgress = () => {}) {
         stage: progress.stage || 'downloading',
       });
     });
-    const parsed = await parseMarketCsv(blob, (progress) => {
-      onProgress({
-        completed: index,
-        total: files.length,
-        file: file.name,
-        percent: Math.round(((index + (0.35 + (progress.percent / 100) * 0.64)) / files.length) * 100),
-        stage: 'parsing',
+    let parsed;
+    try {
+      parsed = await parseMarketCsv(blob, (progress) => {
+        onProgress({
+          completed: index,
+          total: files.length,
+          file: file.name,
+          percent: Math.round(((index + (0.35 + (progress.percent / 100) * 0.64)) / files.length) * 100),
+          stage: 'parsing',
+        });
       });
-    });
+    } catch (error) {
+      throw new Error(`${file.name}: ${error?.message || 'CSV parsing failed.'}`);
+    }
 
     invalidRows += parsed.invalidRows;
     duplicateRows += parsed.duplicateRows;
@@ -135,7 +140,9 @@ export async function loadBundledCsvFiles(files, onProgress = () => {}) {
     lastTime = candle.time;
   }
 
-  if (unique.length < 2) throw new Error('The selected files contain fewer than two unique valid candles.');
+  if (unique.length < 2) {
+    throw new Error(`Only ${unique.length} unique valid candle(s) were found in ${files.map(file => file.name).join(', ')}. ${invalidRows} row(s) had invalid timestamps/OHLC values and ${duplicateRows} duplicate timestamp(s) were skipped. Check that the CSV contains at least two rows with Date/Time and Open, High, Low, Close columns.`);
+  }
   return {
     candles: unique,
     invalidRows,
