@@ -275,7 +275,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
           { key: 'newyork', label: 'New York', start: 15, end: 23, color: '#fb7185' },
         ];
         const groups = new Map();
-        data.forEach((candle, candleIndex) => {
+        data.forEach(candle => {
           const local = new Date((Number(candle.time) + 3 * 3600) * 1000);
           const day = local.toISOString().slice(0, 10);
           const hour = local.getUTCHours();
