@@ -166,7 +166,7 @@ export default function DataImportModal() {
 
           {source === 'folder' ? (
             <section className="space-y-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-white"><FolderOpen size={16} className="text-emerald-400"/> Project data folder <span className="ml-auto text-xs font-normal text-gray-500">{catalog.length} files</span></div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-white"><FolderOpen size={16} className="text-emerald-400"/> Project data folder <button type="button" onClick={() => useStore.getState().openPreviousSessions()} className="ml-auto text-xs font-medium text-emerald-400 underline decoration-emerald-700 underline-offset-2 hover:text-emerald-300">previous sessions</button></div>
               {symbols.length ? <>
                 <label className="block text-xs text-gray-400">Symbol
                   <select className={inputClass} value={selectedSymbol} onChange={event => {
