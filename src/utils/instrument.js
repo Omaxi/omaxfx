@@ -10,7 +10,7 @@ export const getContractSize = (symbol, specs = {}) =>
 
 export const getPricePrecision = (symbol, specs = {}) => {
   if (symbol === 'EURUSD') return 5;
-  if (symbol === 'XAUUSD') return 2;
+  if (symbol === 'XAUUSD') return 3;
   const configured = Number(specs?.[symbol]?.precision);
   if (Number.isInteger(configured) && configured >= 0 && configured <= 10) return configured;
   return symbol?.includes('JPY') ? 3 : 2;
@@ -18,7 +18,7 @@ export const getPricePrecision = (symbol, specs = {}) => {
 
 export const getPriceTickSize = (symbol, specs = {}) => {
   if (symbol === 'EURUSD') return 0.00001;
-  if (symbol === 'XAUUSD') return 0.01;
+  if (symbol === 'XAUUSD') return 0.001;
   const configured = Number(specs?.[symbol]?.tickSize);
   if (Number.isFinite(configured) && configured > 0) return configured;
   return symbol?.includes('JPY') ? 0.001 : 0.01;
