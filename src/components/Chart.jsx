@@ -987,7 +987,7 @@ export default function Chart() {
 
       // An unselected text label remains unselected on a single press so a
       // double-click can select it. Single-click dragging still works.
-      if (drawingHit) {
+      if (drawingHit && !isDoubleTap) {
         const hitDrawing = state.drawings.find(d => d.id === drawingHit.drawingId);
         if (hitDrawing?.type === 'text') {
           const point = xyToPoint(x, y);
