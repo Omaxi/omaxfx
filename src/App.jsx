@@ -8,6 +8,7 @@ import InfoModal from './components/InfoModal';
 import SoundToggle from './components/SoundToggle';
 import PeriodModal from './components/PeriodModal';
 import GameOverModal from './components/GameOverModal';
+import EquityModal from './components/EquityModal';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import LoadingScreen from './components/LoadingScreen';
 import TradeScreenshotCapture from './components/TradeScreenshotCapture';
@@ -404,6 +405,7 @@ function App() {
       <InfoModal />
       <PeriodModal />
       <GameOverModal />
+      <EquityModal />
 
       <CelebrationOverlay />
 
