@@ -42,7 +42,15 @@ function parseTimestamp(row, pick, keys) {
     const rawText = String(raw).trim();
     if (!/^\d{1,2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(rawText)) {
       const hasExplicitZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(rawText);
-      const normalized = rawText.includes(' ') && !rawText.includes('T') ? rawText.replace(' ', 'T') : rawText;
+      // Broker CSV exports commonly use dotted dates (YYYY.MM.DD HH:mm:ss)
+      // or European dates (DD.MM.YYYY HH:mm:ss). Normalize before Date.parse;
+      // browsers reject those strings when a time component is attached.
+      let normalized = rawText;
+      const yearFirst = normalized.match(/^(\d{4})[./](\d{1,2})[./](\d{1,2})(.*)$/);
+      const dayFirst = normalized.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})(.*)$/);
+      if (yearFirst) normalized = `${yearFirst[1]}-${yearFirst[2].padStart(2, '0')}-${yearFirst[3].padStart(2, '0')}${yearFirst[4]}`;
+      else if (dayFirst) normalized = `${dayFirst[3]}-${dayFirst[2].padStart(2, '0')}-${dayFirst[1].padStart(2, '0')}${dayFirst[4]}`;
+      normalized = normalized.includes(' ') && !normalized.includes('T') ? normalized.replace(' ', 'T') : normalized;
       const parsed = Date.parse(hasExplicitZone ? normalized : `${normalized}Z`);
       if (Number.isFinite(parsed)) return { time: Math.floor(parsed / 1000), isUtc: hasExplicitZone };
     }
@@ -101,7 +109,10 @@ function createRowNormalizer(fields = []) {
   };
 
   const finish = (parserWarnings = 0) => {
-    if (!candles.length) throw new Error('No valid candles found. Expected time/date and OHLC columns.');
+    if (!candles.length) {
+      const detected = fields.join(', ') || 'none';
+      throw new Error(`No valid candles found. Detected columns: ${detected}. Expected a timestamp or Date + Time, plus Open, High, Low and Close. Check date format and OHLC headers.`);
+    }
     // Most broker exports are already chronological. Avoid an O(n log n) sort in that common case.
     if (!isChronological) candles.sort((a, b) => a.time - b.time);
     const unique = [];
@@ -115,7 +126,7 @@ function createRowNormalizer(fields = []) {
       unique.push(candle);
       lastTime = candle.time;
     }
-    return { candles: unique, invalidRows, duplicateRows, parserWarnings, timestampsAreUtc };
+    return { candles: unique, invalidRows, duplicateRows, parserWarnings, timestampsAreUtc, fields: [...fields] };
   };
 
   return { addRows, finish };
