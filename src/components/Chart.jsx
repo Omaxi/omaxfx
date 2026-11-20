@@ -1383,7 +1383,7 @@ export default function Chart() {
     const addLine = (price, color, title, lineStyle = 2, lineWidth = 2, showLine = true) => {
       if (price == null) return;
       const line = seriesRef.current.createPriceLine({
-        price: Number(price), color, lineWidth, lineStyle, lineVisible: showLine, axisLabelVisible: true, title,
+        price: Number(price), color, lineWidth, lineStyle, lineVisible: true, axisLabelVisible: true, title,
       });
       linesRef.current.push(line);
     };
