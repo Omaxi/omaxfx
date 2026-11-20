@@ -45,7 +45,7 @@ test('scopes screenshot storage keys by session and trade ID', () => {
   assert.equal(getTradeScreenshotKey(null, 'session-a'), null);
 });
 
-test('renders distinct screenshot payloads containing each trade ID', () => {
+test('renders distinct screenshot payloads without the removed trade title header', () => {
   const originalDocument = globalThis.document;
   globalThis.document = {
     createElement: () => {
@@ -74,8 +74,11 @@ test('renders distinct screenshot payloads containing each trade ID', () => {
     }, candles, 1);
     assert.ok(first && second);
     assert.notEqual(first, second);
-    assert.match(Buffer.from(first.split(',')[1], 'base64').toString(), /trade-A/);
-    assert.match(Buffer.from(second.split(',')[1], 'base64').toString(), /trade-B/);
+    const firstLabels = Buffer.from(first.split(',')[1], 'base64').toString();
+    const secondLabels = Buffer.from(second.split(',')[1], 'base64').toString();
+    assert.doesNotMatch(firstLabels, /trade-A|TRADE ID/);
+    assert.doesNotMatch(secondLabels, /trade-B|TRADE ID/);
+    assert.notEqual(firstLabels, secondLabels);
   } finally {
     if (originalDocument === undefined) delete globalThis.document;
     else globalThis.document = originalDocument;
