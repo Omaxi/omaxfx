@@ -26,13 +26,18 @@ test('builds the analytics PDF when the trade-by-trade curve contains a drawdown
   const html = buildAnalyticsPrintHtml({
     ...base,
     curve: [
-      { timestamp: 1793600400, label: '11-02 02:00', pnl: 100 },
-      { timestamp: 1793601000, label: '11-02 02:10', pnl: -50 },
-      { timestamp: 1793601600, label: '11-02 02:20', pnl: 20 },
+      { timestamp: 1793600400, label: '11-02 02:00', pnl: 100, benchmarkPnl: 20 },
+      { timestamp: 1793601000, label: '11-02 02:10', pnl: -50, benchmarkPnl: 35 },
+      { timestamp: 1793601600, label: '11-02 02:20', pnl: 20, benchmarkPnl: 55 },
     ],
   });
 
   assert.match(html, /Max DD/);
+  assert.match(html, /OmaxFX Simulator · Performance report/);
+  assert.match(html, /equityBlueFill/);
+  assert.match(html, /drawdownFill/);
+  assert.match(html, /Buy &amp; Hold/);
+  assert.doesNotMatch(html, /Use your browser's Print dialog/);
   assert.match(html, /Trade-by-trade cumulative realized P&amp;L/);
 });
 
