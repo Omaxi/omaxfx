@@ -15,9 +15,9 @@ test('EURUSD uses five decimal places and a 0.00001 tick', () => {
   assert.equal(getPriceTickSize('EURUSD', { EURUSD: { tickSize: 0.0001 } }), 0.00001);
 });
 
-test('Gold uses two decimal places and a 0.01 tick', () => {
-  assert.equal(getPricePrecision('XAUUSD'), 2);
-  assert.equal(getPriceTickSize('XAUUSD'), 0.01);
+test('Gold uses three decimal places and a 0.001 tick to match the CSV', () => {
+  assert.equal(getPricePrecision('XAUUSD'), 3);
+  assert.equal(getPriceTickSize('XAUUSD'), 0.001);
 });
 
 test('floating EURUSD PnL uses the correct contract multiplier and adverse candle price', () => {
