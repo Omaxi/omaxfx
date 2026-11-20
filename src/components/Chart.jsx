@@ -277,10 +277,11 @@ export default function Chart() {
     const ct = useStore.getState().chartType;
     
     chartRef.current = createChart(chartContainerRef.current, {
-      layout: { 
+      layout: {
         background: { type: 'solid', color: 'transparent' },
         textColor: '#d1d4dc',
         fontSize: 9,
+        attributionLogo: false,
       },
       // Lightweight Charts formats Unix timestamps as UTC by default. The CSV
       // is broker wall-clock time UTC+3, stored internally as UTC-3 for replay.
@@ -984,8 +985,8 @@ export default function Chart() {
         return;
       }
 
-      // Text labels can be grabbed and moved with a single click-drag.
-      // Select and begin the drag immediately instead of requiring a double-click.
+      // An unselected text label remains unselected on a single press so a
+      // double-click can select it. Single-click dragging still works.
       if (drawingHit) {
         const hitDrawing = state.drawings.find(d => d.id === drawingHit.drawingId);
         if (hitDrawing?.type === 'text') {
@@ -993,8 +994,6 @@ export default function Chart() {
           if (point) {
             e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
             snapshotDrawings();
-            setSelectedItem({ type: 'drawing', id: hitDrawing.id });
-            lockChart(true);
             dragRef.current = {
               type: 'drawing',
               ...drawingHit,
@@ -1011,19 +1010,6 @@ export default function Chart() {
         resetTapTimer();
 
         if (drawingHit) {
-          const drawing = state.drawings.find(d => d.id === drawingHit.drawingId);
-          if (drawing && drawing.type === 'text') {
-            e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-            const point = drawing.points[0];
-            const x = timeToX(point.time);
-            const y = seriesRef.current?.priceToCoordinate(point.price);
-            if (x != null && y != null) {
-              lockChart(true);
-              setTextInput({ x, y, time: point.time, price: point.price, value: drawing.text, id: drawing.id });
-              setSelectedItem(null);
-              return;
-            }
-          }
           e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
           lockChart(true);
           setSelectedItem({ type: 'drawing', id: drawingHit.drawingId });
