@@ -95,7 +95,7 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
 
-  const left = 76, right = 108, top = 76, bottom = 58;
+  const left = 76, right = 108, top = 34, bottom = 58;
   const plotW = width - left - right, plotH = height - top - bottom;
   const entry = Number(trade.entryPrice), exit = Number(trade.exitPrice);
   const sl = trade.sl == null ? NaN : Number(trade.sl);
@@ -113,19 +113,6 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1) {
   const x = index => left + (index + 0.5) * step;
 
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, width, height);
-  ctx.fillStyle = '#172033'; ctx.font = 'bold 22px Arial'; ctx.textAlign = 'left';
-  ctx.fillText(String(trade.symbol || 'MARKET') + ' · ' + String(trade.type || '').toUpperCase() + ' · TRADE ID ' + String(trade.id), left, 34);
-  const rawDurationSeconds = Number(trade.closeTime) - Number(trade.openTime);
-  const durationSeconds = Number.isFinite(rawDurationSeconds) ? Math.max(0, rawDurationSeconds) : 0;
-  const durationHours = Math.floor(durationSeconds / 3600);
-  const durationMinutes = Math.floor((durationSeconds % 3600) / 60);
-  const durationRemainder = Math.floor(durationSeconds % 60);
-  const durationLabel = durationHours > 0
-    ? `${durationHours}h ${durationMinutes}m ${durationRemainder}s`
-    : durationMinutes > 0 ? `${durationMinutes}m ${durationRemainder}s` : `${durationRemainder}s`;
-  ctx.fillStyle = '#64748b'; ctx.font = '13px Arial';
-  ctx.fillText('Entry ' + (Number.isFinite(entry) ? entry : '—') + '   Exit ' + (Number.isFinite(exit) ? exit : '—') + '   P&L ' + Number(trade.pnl || 0).toFixed(2) + '   Duration ' + durationLabel, left, 56);
-
   ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1; ctx.font = '11px Arial'; ctx.fillStyle = '#64748b';
   for (let i = 0; i <= 6; i++) {
     const yy = top + (plotH * i / 6), value = max - (max - min) * i / 6;
