@@ -293,12 +293,12 @@ export default function Chart() {
       crosshair: {
         mode: 1,
         vertLine: {
-          color: 'rgba(148,163,184,0.5)', width: 1, style: 1, visible: true,
-          labelVisible: true, labelBackgroundColor: '#7b8494',
+          color: 'rgba(190,198,210,0.72)', width: 1, style: 2, visible: true,
+          labelVisible: true, labelBackgroundColor: '#374151',
         },
         horzLine: {
-          color: 'rgba(148,163,184,0.5)', width: 1, style: 1, visible: true,
-          labelVisible: true, labelBackgroundColor: '#7b8494',
+          color: 'rgba(190,198,210,0.72)', width: 1, style: 2, visible: true,
+          labelVisible: true, labelBackgroundColor: '#374151',
         },
       },
     });
@@ -622,6 +622,42 @@ export default function Chart() {
       }
 
       ctx.restore();
+
+      // Axis labels for user-placed price/time lines (TradingView-style tags).
+      const precision = getPricePrecision(state.symbol, state.contractSpecs);
+      (state.drawings || []).forEach(drawing => {
+        if (drawing.symbol && drawing.symbol !== state.symbol) return;
+        const point = drawing.points?.[0];
+        if (!point) return;
+        const color = drawing.borderColor || drawing.color || '#f59e0b';
+        ctx.save();
+        ctx.font = '600 10px Arial';
+        ctx.textBaseline = 'middle';
+        if (drawing.type === 'horizontal') {
+          const y = seriesRef.current?.priceToCoordinate(Number(point.price));
+          if (y != null && y >= 0 && y <= paneH) {
+            const axisWidth = Math.max(0, rect.width - paneW);
+            ctx.fillStyle = color;
+            ctx.fillRect(paneW, y - 9, axisWidth, 18);
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.fillText(Number(point.price).toFixed(precision), paneW + axisWidth / 2, y);
+          }
+        } else if (drawing.type === 'vertical') {
+          const x = timeToX(Number(point.time));
+          if (x != null && x >= 0 && x <= paneW) {
+            const label = formatMarketDateTime(Number(point.time));
+            const width = Math.min(148, Math.max(104, label.length * 6.2 + 14));
+            const left = Math.max(0, Math.min(paneW - width, x - width / 2));
+            ctx.fillStyle = color;
+            ctx.fillRect(left, paneH, width, Math.max(18, rect.height - paneH));
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, left + width / 2, paneH + Math.max(9, (rect.height - paneH) / 2));
+          }
+        }
+        ctx.restore();
+      });
     };
     const scheduleDraw = () => {
       if (disposed || rafId !== null) return;
