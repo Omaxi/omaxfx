@@ -44,7 +44,7 @@ export default function DataImportModal() {
       setSelectedSymbol(firstSymbol);
       const group = sorted.filter(item => item.symbol === firstSymbol);
       setSelectedFileName(group.length > 1 ? '__ALL__' : group[0]?.name || '');
-      const latestMonth = group.flatMap(item => (item.monthlyFiles || []).map(month => month.month)).sort().at(-1);
+      const latestMonth = group.flatMap(item => (item.monthlyFiles || []).map(month => `${month.year}-${month.month}`)).sort().at(-1);
       setSelectedMonth(latestMonth || '__ALL__');
     }).catch(error => { if (alive) setCatalogError(error?.message || 'Could not read the project data folder.'); });
     return () => { alive = false; };
@@ -53,10 +53,10 @@ export default function DataImportModal() {
   const symbols = useMemo(() => [...new Set(catalog.map(item => item.symbol))].sort(), [catalog]);
   const symbolFiles = useMemo(() => catalog.filter(item => item.symbol === selectedSymbol), [catalog, selectedSymbol]);
   const selectedYearFiles = selectedFileName === '__ALL__' ? symbolFiles : symbolFiles.filter(item => item.name === selectedFileName);
-  const availableMonths = [...new Set(selectedYearFiles.flatMap(item => (item.monthlyFiles || []).map(month => month.month)))].sort();
+  const availableMonths = [...new Set(selectedYearFiles.flatMap(item => (item.monthlyFiles || []).map(month => `${month.year}-${month.month}`)))].sort();
   const selectedFiles = selectedMonth === '__ALL__'
     ? selectedYearFiles
-    : selectedYearFiles.flatMap(item => item.monthlyFiles || []).filter(item => item.month === selectedMonth);
+    : selectedYearFiles.flatMap(item => item.monthlyFiles || []).filter(item => `${item.year}-${item.month}` === selectedMonth);
 
   const customMonths = useMemo(() => {
     if (!customParsed?.candles?.length) return [];
@@ -174,7 +174,7 @@ export default function DataImportModal() {
                     setSelectedSymbol(code);
                     const group = catalog.filter(item => item.symbol === code);
                     setSelectedFileName(group.length > 1 ? '__ALL__' : group[0]?.name || '');
-                    const latestMonth = group.flatMap(item => (item.monthlyFiles || []).map(month => month.month)).sort().at(-1);
+                    const latestMonth = group.flatMap(item => (item.monthlyFiles || []).map(month => `${month.year}-${month.month}`)).sort().at(-1);
                     setSelectedMonth(latestMonth || '__ALL__');
                   }}>
                     {symbols.map(code => <option key={code} value={code}>{code}</option>)}
@@ -189,7 +189,7 @@ export default function DataImportModal() {
                 <label className="block text-xs text-gray-400">Month
                   <select className={inputClass} value={selectedMonth} onChange={event => setSelectedMonth(event.target.value)}>
                     <option value="__ALL__">Full dataset (all months)</option>
-                    {availableMonths.map(month => <option key={month} value={month}>{new Date(2000, Number(month) - 1, 1).toLocaleString('en', { month: 'long' })}</option>)}
+                    {availableMonths.map(month => <option key={month} value={month}>{new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1, 1).toLocaleString('en', { month: 'long', year: 'numeric' })}</option>)}
                   </select>
                 </label>
                 <p className="text-[11px] text-gray-500">Choose a month to download and parse only that month. Full dataset loads every available year.</p>
