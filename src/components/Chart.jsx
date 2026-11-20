@@ -3,6 +3,7 @@ import { createChart, CandlestickSeries, LineSeries } from 'lightweight-charts';
 import { useStore } from '../store';
 import { getPricePrecision, getPriceTickSize } from '../utils/instrument';
 import { getExecutionCandle } from '../utils/timeframe';
+import { toMarketDate, formatMarketDateTime, formatMarketTick } from '../utils/marketClock';
 import { X, Play, Pause, SkipForward, Trash2, Lock, Maximize2 } from 'lucide-react';
 import IndicatorsPanel from './IndicatorsPanel';
 import DrawingToolbar from './DrawingToolbar';
@@ -275,10 +276,18 @@ export default function Chart() {
         textColor: '#d1d4dc',
         fontSize: 9,
       },
+      // Lightweight Charts formats Unix timestamps as UTC by default. The CSV
+      // is broker wall-clock time UTC+3, stored internally as UTC-3 for replay.
+      // Apply the same +3 offset to axis and crosshair labels as the candle panel.
+      localization: {
+        locale: 'en-GB',
+        timeFormatter: (time) => formatMarketDateTime(time),
+      },
       grid: { vertLines: { visible: false }, horzLines: { visible: false } },
       timeScale: { 
         timeVisible: true, secondsVisible: false,
         borderVisible: false, barSpacing: 6, rightOffset: 60,
+        tickMarkFormatter: (time, tickMarkType) => formatMarketTick(time, tickMarkType),
       },
       rightPriceScale: { borderVisible: false },
       crosshair: {
@@ -1310,10 +1319,10 @@ export default function Chart() {
   };
 
   const currentCandle = visibleData[visibleData.length - 1] || null;
-  const candleClock = currentCandle ? new Date((Number(currentCandle.time) + 3 * 3600) * 1000) : null;
+  const candleClock = currentCandle ? toMarketDate(Number(currentCandle.time)) : null;
   const candleHour = candleClock ? candleClock.getUTCHours() : -1;
   const candleSession = candleHour >= 1 && candleHour < 11 ? 'Asian & Sydney' : candleHour >= 11 && candleHour < 16 ? 'London' : 'New York';
-  const candleDate = candleClock ? candleClock.toISOString().slice(0, 16).replace('T', ' ') : '—';
+  const candleDate = currentCandle ? formatMarketDateTime(Number(currentCandle.time)) : '—';
   const candlePrice = value => Number.isFinite(Number(value)) ? Number(value).toFixed(3) : '—';
 
   return (
