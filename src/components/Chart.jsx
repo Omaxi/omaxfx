@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import { getPricePrecision, getPriceTickSize } from '../utils/instrument';
 import { getExecutionCandle } from '../utils/timeframe';
 import { toMarketDate, formatMarketDateTime, formatMarketTick } from '../utils/marketClock';
-import { X, Play, Pause, SkipForward, Trash2, Lock, Maximize2 } from 'lucide-react';
+import { X, Play, Pause, SkipForward, Trash2, Lock } from 'lucide-react';
 import IndicatorsPanel from './IndicatorsPanel';
 import DrawingToolbar from './DrawingToolbar';
 import StylePanel from './StylePanel';
@@ -187,6 +187,7 @@ const X_BUTTON_OFFSET_FROM_RIGHT = 200;
 export default function Chart() {
   const chartContainerRef = useRef();
   const canvasRef = useRef();
+  const crosshairCanvasRef = useRef();
   const chartRef = useRef();
   const seriesRef = useRef();
   const lineSeriesRef = useRef();
@@ -292,14 +293,8 @@ export default function Chart() {
       rightPriceScale: { borderVisible: false },
       crosshair: {
         mode: 1,
-        vertLine: {
-          color: 'rgba(190,198,210,0.72)', width: 1, style: 2, visible: true,
-          labelVisible: true, labelBackgroundColor: '#374151',
-        },
-        horzLine: {
-          color: 'rgba(190,198,210,0.72)', width: 1, style: 2, visible: true,
-          labelVisible: true, labelBackgroundColor: '#374151',
-        },
+        vertLine: { visible: false, labelVisible: false },
+        horzLine: { visible: false, labelVisible: false },
       },
     });
 
@@ -631,14 +626,14 @@ export default function Chart() {
         if (!point) return;
         const color = drawing.borderColor || drawing.color || '#f59e0b';
         ctx.save();
-        ctx.font = '600 10px Arial';
+        ctx.font = '500 9px Arial';
         ctx.textBaseline = 'middle';
         if (drawing.type === 'horizontal') {
           const y = seriesRef.current?.priceToCoordinate(Number(point.price));
           if (y != null && y >= 0 && y <= paneH) {
             const axisWidth = Math.max(0, rect.width - paneW);
             ctx.fillStyle = color;
-            ctx.fillRect(paneW, y - 9, axisWidth, 18);
+            ctx.fillRect(paneW, y - 7, axisWidth, 14);
             ctx.fillStyle = '#ffffff';
             ctx.textAlign = 'center';
             ctx.fillText(Number(point.price).toFixed(precision), paneW + axisWidth / 2, y);
@@ -647,13 +642,13 @@ export default function Chart() {
           const x = timeToX(Number(point.time));
           if (x != null && x >= 0 && x <= paneW) {
             const label = formatMarketDateTime(Number(point.time));
-            const width = Math.min(148, Math.max(104, label.length * 6.2 + 14));
+            const width = Math.min(132, Math.max(88, label.length * 5.4 + 10));
             const left = Math.max(0, Math.min(paneW - width, x - width / 2));
             ctx.fillStyle = color;
-            ctx.fillRect(left, paneH, width, Math.max(18, rect.height - paneH));
+            ctx.fillRect(left, paneH, width, Math.max(14, rect.height - paneH));
             ctx.fillStyle = '#ffffff';
             ctx.textAlign = 'center';
-            ctx.fillText(label, left + width / 2, paneH + Math.max(9, (rect.height - paneH) / 2));
+            ctx.fillText(label, left + width / 2, paneH + Math.max(7, (rect.height - paneH) / 2));
           }
         }
         ctx.restore();
@@ -1361,10 +1356,106 @@ export default function Chart() {
   const candleDate = currentCandle ? formatMarketDateTime(Number(currentCandle.time)) : '—';
   const candlePrice = value => Number.isFinite(Number(value)) ? Number(value).toFixed(3) : '—';
 
+  const resetChartView = useCallback(() => {
+    const chart = chartRef.current;
+    if (!chart || !visibleData.length) return;
+    const timeScale = chart.timeScale();
+    const width = chartContainerRef.current?.clientWidth || 800;
+    const axisWidth = chart.priceScale('right').width();
+    const halfBars = Math.max(25, Math.floor(Math.max(100, width - axisWidth) / 12));
+    const last = visibleData.length - 1;
+    timeScale.applyOptions({ barSpacing: 6, rightOffset: 60 });
+    timeScale.setVisibleLogicalRange({ from: Math.max(0, last - halfBars), to: last + halfBars });
+    chart.priceScale('right').applyOptions({ autoScale: true });
+    scheduleDrawRef.current?.();
+  }, [visibleData]);
+
+  useEffect(() => {
+    window.addEventListener('omaxfx:reset-chart', resetChartView);
+    return () => window.removeEventListener('omaxfx:reset-chart', resetChartView);
+  }, [resetChartView]);
+
+  useEffect(() => {
+    const chart = chartReady ? chartRef.current : null;
+    const canvas = crosshairCanvasRef.current;
+    const container = chartContainerRef.current;
+    if (!chart || !canvas || !container) return undefined;
+    let frame = 0;
+    const resize = () => {
+      const rect = container.getBoundingClientRect();
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+    };
+    const drawCrosshair = (param) => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const rect = container.getBoundingClientRect();
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        if (!param?.point || param.time == null || param.point.x < 0 || param.point.y < 0) return;
+        let paneWidth = rect.width, paneHeight = rect.height;
+        try {
+          paneWidth -= chart.priceScale('right').width();
+          paneHeight -= chart.timeScale().height();
+        } catch {}
+        const x = param.point.x, y = param.point.y;
+        if (x > paneWidth || y > paneHeight) return;
+        const candle = param.seriesData?.get(seriesRef.current);
+        const price = Number(candle?.close ?? candle?.value);
+        const precision = getPricePrecision(useStore.getState().symbol, useStore.getState().contractSpecs);
+        const dateLabel = typeof param.time === 'number' ? formatMarketDateTime(param.time) : '';
+        ctx.save();
+        ctx.strokeStyle = 'rgba(190,198,210,0.78)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 4]);
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, paneHeight); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(paneWidth, y); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font = '500 9px Arial';
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'center';
+        if (Number.isFinite(price)) {
+          const text = price.toFixed(precision);
+          ctx.fillStyle = '#374151';
+          ctx.fillRect(paneWidth, y - 7, rect.width - paneWidth, 14);
+          ctx.fillStyle = '#f9fafb';
+          ctx.fillText(text, paneWidth + (rect.width - paneWidth) / 2, y);
+        }
+        if (dateLabel) {
+          const w = Math.min(132, Math.max(88, dateLabel.length * 5.4 + 10));
+          const left = Math.max(0, Math.min(paneWidth - w, x - w / 2));
+          ctx.fillStyle = '#374151';
+          ctx.fillRect(left, paneHeight, w, Math.max(14, rect.height - paneHeight));
+          ctx.fillStyle = '#f9fafb';
+          ctx.fillText(dateLabel, left + w / 2, paneHeight + Math.max(7, (rect.height - paneHeight) / 2));
+        }
+        ctx.restore();
+      });
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(container);
+    chart.subscribeCrosshairMove(drawCrosshair);
+    return () => {
+      cancelAnimationFrame(frame);
+      chart.unsubscribeCrosshairMove(drawCrosshair);
+      observer.disconnect();
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    };
+  }, [chartReady, timeframe, symbol]);
+
   return (
     <div className="relative w-full h-full" style={{ backgroundColor: theme.background }}>
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none', cursor: isPencilMode ? 'crosshair' : 'default' }} />
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
+      <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 4 }} aria-hidden="true" />
 
       <div className="absolute top-2 right-12 z-30 min-w-[166px] bg-[#131722]/85 px-2.5 py-2 text-[10px] leading-4 text-gray-300 pointer-events-none font-mono">
         <div className="mb-1 flex items-center justify-between gap-3 pb-1">
@@ -1380,20 +1471,6 @@ export default function Chart() {
           <span className="text-gray-500">Session</span><span className="text-right text-white">{candleSession}</span>
         </div>
       </div>
-
-      <button onClick={() => {
-        const chart = chartRef.current;
-        if (!chart || !visibleData.length) return;
-        const timeScale = chart.timeScale();
-        const width = chartContainerRef.current?.clientWidth || 800;
-        const axisWidth = chart.priceScale('right').width();
-        const halfBars = Math.max(25, Math.floor(Math.max(100, width - axisWidth) / 12));
-        const last = visibleData.length - 1;
-        timeScale.applyOptions({ barSpacing: 6, rightOffset: 60 });
-        timeScale.setVisibleLogicalRange({ from: Math.max(0, last - halfBars), to: last + halfBars });
-        chart.priceScale('right').applyOptions({ autoScale: true });
-        scheduleDrawRef.current();
-      }} title="Reset chart zoom and candle size" className="absolute top-2 right-2 z-30 flex h-7 w-7 items-center justify-center rounded-md border border-[#2a2e39] bg-[#131722]/90 text-gray-300 shadow hover:bg-[#2a2e39] hover:text-white"><Maximize2 size={13}/></button>
 
       {isPencilMode && (
         <div 
