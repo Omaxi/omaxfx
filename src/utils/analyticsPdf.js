@@ -140,3 +140,24 @@ export function openAnalyticsPrintWindow(html) {
   printWindow.document.close();
   return true;
 }
+
+export function writeAnalyticsPrintWindow(printWindow, html) {
+  if (!printWindow || printWindow.closed) return false;
+  printWindow.onload = async () => {
+    const images = Array.from(printWindow.document.images);
+    await Promise.all(images.map(image => image.complete ? Promise.resolve() : new Promise(resolve => {
+      image.onload = resolve;
+      image.onerror = resolve;
+    })));
+    setTimeout(() => {
+      if (!printWindow.closed) {
+        printWindow.focus();
+        printWindow.print();
+      }
+    }, 300);
+  };
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  return true;
+}
