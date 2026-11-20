@@ -12,6 +12,7 @@ import CelebrationOverlay from './components/CelebrationOverlay';
 import LoadingScreen from './components/LoadingScreen';
 import TradeScreenshotCapture from './components/TradeScreenshotCapture';
 import DataImportModal from './components/DataImportModal';
+import PreviousSessionsModal from './components/PreviousSessionsModal';
 import { useStore } from './store';
 import { useEffect, useRef, useState } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
@@ -323,6 +324,7 @@ function App() {
       
       <ControlPanel />
       <DataImportModal />
+      <PreviousSessionsModal />
 
       <OrderModal />
       <HistoryModal />
