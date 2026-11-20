@@ -1,19 +1,19 @@
 import { parseMarketCsv } from './marketData';
 
 const UTC_PLUS_3_SECONDS = 3 * 60 * 60;
-const DATA_CACHE = 'omaxfx-market-data-v2';
-const LEGACY_DATA_CACHE = 'omaxfx-market-data-v1';
-let legacyCacheCleared = false;
+const DATA_CACHE = 'omaxfx-market-data-v3';
+const LEGACY_DATA_CACHES = ['omaxfx-market-data-v1', 'omaxfx-market-data-v2', 'csv-cache'];
+let legacyCachesCleared = false;
 
 async function fetchCachedCsv(url) {
   const absoluteUrl = new URL(url, document.baseURI).href;
   if (typeof caches !== 'undefined') {
     try {
-      // The previous cache held an older CSV under the same URL. Clear it once
-      // so users receive the corrected full-history dataset after deployment.
-      if (!legacyCacheCleared) {
-        await caches.delete(LEGACY_DATA_CACHE);
-        legacyCacheCleared = true;
+      // Remove only known market-data caches from older releases. Saved
+      // sessions and unrelated browser storage remain untouched.
+      if (!legacyCachesCleared) {
+        await Promise.all(LEGACY_DATA_CACHES.map((cacheName) => caches.delete(cacheName)));
+        legacyCachesCleared = true;
       }
       const cache = await caches.open(DATA_CACHE);
       const cached = await cache.match(absoluteUrl);
