@@ -93,7 +93,7 @@ export const useStore = create((set, get) => ({
   symbolWarning: null,
   clearSymbolWarning: () => set({ symbolWarning: null }),
 
-  sessionTimes: { asian: 3, london: 10, newyork: 15 },
+  sessionTimes: { asian: 1, london: 11, newyork: 16 },
 
   setSessionTime: (key, hour) => set((state) => ({
     sessionTimes: { ...state.sessionTimes, [key]: Math.max(0, Math.min(23, Number(hour) || 0)) }
@@ -353,7 +353,7 @@ export const useStore = create((set, get) => ({
       sessionId: saved.sessionId || 'legacy-session',
       sessionName: saved.sessionName || 'Session 1',
       theme: saved.theme || DEFAULT_THEME,
-      sessionTimes: saved.sessionTimes || { asian: 3, london: 10, newyork: 15 },
+      sessionTimes: saved.sessionTimes || { asian: 1, london: 11, newyork: 16 },
       enableFireworks: saved.enableFireworks ?? true,
       recenterToken: state.recenterToken + 1,
     });
@@ -619,8 +619,9 @@ export const useStore = create((set, get) => ({
     let targetIndex = -1;
     
     for (let i = state.currentIndex + 1; i < maxScan; i++) {
+      // Stored candle epochs are UTC; add the configured UTC+3 market offset once.
       const d = new Date((state.rawData[i].time + 3 * 3600) * 1000);
-      if (new Date((d.getTime() + 3 * 3600 * 1000)).getUTCHours() === targetHour && d.getUTCMinutes() === 0) {
+      if (d.getUTCHours() === targetHour && d.getUTCMinutes() === 0) {
         targetIndex = i;
         break;
       }
