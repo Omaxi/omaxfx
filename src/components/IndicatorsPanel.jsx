@@ -22,7 +22,7 @@ const DEFAULT_CONFIG = {
 
 const average = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
 
-function calculateIndicators(candles, config, active, timeframe) {
+function calculateIndicators(candles, config, active, timeframe, sessionCandles = candles) {
   // At 1-minute resolution the final replay candle is still forming. Higher
   // timeframes already omit their forming aggregate candle in Chart.jsx.
   const completed = timeframe === 1 ? candles.slice(0, -1) : candles;
@@ -152,7 +152,7 @@ function calculateIndicators(candles, config, active, timeframe) {
     sessionDefs.forEach(session => {
       let day = null, sessionHigh = null, sessionLow = null;
       const highs = [], lows = [];
-      completed.forEach(c => {
+      sessionCandles.forEach(c => {
         const d = new Date((c.time + 3 * 3600) * 1000);
         const dateKey = d.toISOString().slice(0, 10), hour = d.getUTCHours();
         if (dateKey !== day) { day = dateKey; sessionHigh = null; sessionLow = null; }
@@ -169,7 +169,7 @@ function calculateIndicators(candles, config, active, timeframe) {
   }
   return result;
 }
-export default function IndicatorsPanel({ chartRef, chartReady, visibleData, timeframe, priceSeriesRef }) {
+export default function IndicatorsPanel({ chartRef, chartReady, visibleData, timeframe, priceSeriesRef, liveCandle }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState({});
   const [config, setConfig] = useState(DEFAULT_CONFIG);
@@ -178,6 +178,17 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
   const sessionCanvasRef = useRef(null);
 
   const selected = useMemo(() => INDICATORS.filter(item => active[item.key]), [active]);
+  const sessionCandles = useMemo(() => {
+    const candles = [...(visibleData || [])];
+    if (!liveCandle || !Number.isFinite(Number(liveCandle.time))) return candles;
+    const interval = Math.max(1, Number(timeframe) || 1) * 60;
+    const bucketTime = Math.floor(Number(liveCandle.time) / interval) * interval;
+    const live = { ...liveCandle, time: bucketTime };
+    const existing = candles.findIndex(candle => Number(candle.time) === bucketTime);
+    if (existing >= 0) candles[existing] = { ...candles[existing], ...live };
+    else candles.push(live);
+    return candles.sort((a, b) => Number(a.time) - Number(b.time));
+  }, [visibleData, liveCandle, timeframe]);
 
   useEffect(() => {
     const chart = chartReady ? chartRef.current : null;
@@ -229,11 +240,11 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
       Object.values(seriesRef.current).forEach(series => { try { series.setData([]); } catch (e) {} });
       return;
     }
-    const calculated = calculateIndicators(visibleData, config, active, timeframe);
+    const calculated = calculateIndicators(visibleData, config, active, timeframe, sessionCandles);
     Object.entries(seriesRef.current).forEach(([key, series]) => {
       try { series.setData(calculated[key] || []); } catch (e) {}
     });
-  }, [chartRef, visibleData, config, active, chartReady, timeframe]);
+  }, [chartRef, visibleData, sessionCandles, config, active, chartReady, timeframe]);
 
   // LuxAlgo-inspired session boxes: translucent range rectangles with dashed
   // borders and session labels. Times use the simulator's fixed UTC+3 clock.
@@ -256,7 +267,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
         ctx.clearRect(0, 0, rect.width, rect.height);
         if (!active.sessions || !priceSeries) return;
 
-        const data = timeframe === 1 ? visibleData.slice(0, -1) : visibleData;
+        const data = sessionCandles;
         if (!data?.length) return;
         const defs = [
           { key: 'asia', label: 'Sydney / Asia', start: 1, end: 10, color: '#f59e0b' },
@@ -307,11 +318,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
           if (right <= left || bottom <= top) return;
           ctx.fillStyle = item.color + '16';
           ctx.fillRect(left, top, right - left, bottom - top);
-          ctx.strokeStyle = item.color;
-          ctx.lineWidth = 1;
-          ctx.setLineDash([3, 3]);
-          ctx.strokeRect(left + 0.5, top + 0.5, Math.max(0, right - left - 1), Math.max(0, bottom - top - 1));
-          ctx.setLineDash([]);
+
           ctx.font = '600 10px Arial';
           ctx.textAlign = 'center';
           ctx.fillStyle = item.color;
@@ -330,7 +337,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
       timeScale.unsubscribeVisibleLogicalRangeChange(draw);
       observer.disconnect();
     };
-  }, [active.sessions, chartRef, chartReady, visibleData, timeframe]);
+  }, [active.sessions, chartRef, chartReady, sessionCandles, timeframe]);
 
   const toggle = (key) => setActive(current => ({ ...current, [key]: !current[key] }));
   const updateConfig = (key, field, value) => setConfig(current => ({
