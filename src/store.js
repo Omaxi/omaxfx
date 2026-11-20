@@ -63,6 +63,11 @@ const DEFAULT_THEME = {
   upWick: '#26a69a',
   downWick: '#ef5350',
 };
+const DEFAULT_SESSION_COLORS = { asia: '#f59e0b', london: '#38bdf8', newyork: '#fb7185' };
+const DEFAULT_DRAWING_STYLES = {
+  vertical: { color: '#f59e0b', lineWidth: 1 },
+  horizontal: { color: '#f59e0b', lineWidth: 1 },
+};
 
 const DEFAULT_RULES = {
   startingBalance: INITIAL_BALANCE,
@@ -94,6 +99,22 @@ export const useStore = create((set, get) => ({
   clearSymbolWarning: () => set({ symbolWarning: null }),
 
   sessionTimes: { asian: 1, london: 11, newyork: 16 },
+  sessionColors: { ...DEFAULT_SESSION_COLORS },
+  setSessionColor: (key, color) => set((state) => ({
+    sessionColors: { ...state.sessionColors, [key]: color },
+  })),
+  drawingStyles: {
+    vertical: { ...DEFAULT_DRAWING_STYLES.vertical },
+    horizontal: { ...DEFAULT_DRAWING_STYLES.horizontal },
+  },
+  setDrawingStyle: (key, patch) => set((state) => ({
+    drawingStyles: { ...state.drawingStyles, [key]: { ...state.drawingStyles[key], ...patch } },
+    drawings: state.drawings.map(d => d.type === key ? {
+      ...d,
+      ...(patch.color ? { color: patch.color, borderColor: patch.color } : {}),
+      ...(patch.lineWidth != null ? { lineWidth: patch.lineWidth } : {}),
+    } : d),
+  })),
 
   setSessionTime: (key, hour) => set((state) => ({
     sessionTimes: { ...state.sessionTimes, [key]: Math.max(0, Math.min(23, Number(hour) || 0)) }
@@ -247,6 +268,7 @@ export const useStore = create((set, get) => ({
         pencilStrokes: s.pencilStrokes, dailyLoss: s.dailyLoss,
         gameState: { isOver: s.gameState.isOver, reason: s.gameState.reason, message: s.gameState.message, startTime: s.gameState.startTime },
         theme: s.theme, sessionTimes: s.sessionTimes,
+        sessionColors: s.sessionColors, drawingStyles: s.drawingStyles,
         enableFireworks: s.enableFireworks,
       };
       const sessions = s.readSessions();
@@ -358,6 +380,11 @@ export const useStore = create((set, get) => ({
       sessionName: saved.sessionName || 'Session 1',
       theme: saved.theme || DEFAULT_THEME,
       sessionTimes: restoredSessionTimes,
+      sessionColors: { ...DEFAULT_SESSION_COLORS, ...(saved.sessionColors || {}) },
+      drawingStyles: {
+        vertical: { ...DEFAULT_DRAWING_STYLES.vertical, ...(saved.drawingStyles?.vertical || {}) },
+        horizontal: { ...DEFAULT_DRAWING_STYLES.horizontal, ...(saved.drawingStyles?.horizontal || {}) },
+      },
       enableFireworks: saved.enableFireworks ?? true,
       recenterToken: state.recenterToken + 1,
     });
@@ -442,7 +469,11 @@ export const useStore = create((set, get) => ({
       color: drawing.color || '#f59e0b',
       borderColor: drawing.borderColor || drawing.color || '#f59e0b',
       fillColor: drawing.fillColor || '#f59e0b33',
-      lineWidth: drawing.lineWidth ?? 1,
+      lineWidth: drawing.lineWidth ?? state.drawingStyles?.[drawing.type]?.lineWidth ?? 1,
+      ...(drawing.type === 'vertical' || drawing.type === 'horizontal'
+        ? { color: state.drawingStyles?.[drawing.type]?.color || drawing.color || '#f59e0b',
+            borderColor: state.drawingStyles?.[drawing.type]?.color || drawing.borderColor || drawing.color || '#f59e0b' }
+        : {}),
       showBorder: drawing.showBorder === true,
       symbol: state.symbol,
       timeframe: state.timeframe,
