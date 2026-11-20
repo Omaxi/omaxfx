@@ -46,7 +46,8 @@ function buildCurveSvg(curve, benchmarkLabel = 'Buy & Hold') {
   };
   const coords=curve.map((point,i)=>({x:x(i),y:y(Number(point.pnl)||0)}));
   const linePath=makePath(coords);
-  const areaBottom=height-bottom;\n  const areaPath=linePath+' L '+coords[coords.length-1].x.toFixed(1)+' '+areaBottom+' L '+coords[0].x.toFixed(1)+' '+areaBottom+' Z';
+  const areaBottom=height-bottom;
+  const areaPath=linePath+' L '+coords[coords.length-1].x.toFixed(1)+' '+areaBottom+' L '+coords[0].x.toFixed(1)+' '+areaBottom+' Z';
   const benchmarkCoords=curve.map((point,i)=>Number.isFinite(Number(point.benchmarkPnl))?({x:x(i),y:y(Number(point.benchmarkPnl))}):null).filter(Boolean);
   const benchmarkPath=benchmarkCoords.length>1?makePath(benchmarkCoords):'';
   let peak=equityValues[0],peakIndex=0,worst=null;
