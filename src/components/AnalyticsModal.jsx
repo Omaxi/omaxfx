@@ -105,9 +105,14 @@ export default function AnalyticsModal() {
   });
   const dailyEntries = Object.entries(daily).sort(([a], [b]) => a.localeCompare(b));
   let cumulative = 0;
-  const curve = dailyEntries.map(([date, d]) => {
-    cumulative += d.pnl;
-    return { date, pnl: cumulative, label: date.slice(5) };
+  const curve = trades.map((trade, index) => {
+    cumulative += Number(trade.pnl) || 0;
+    const timestamp = Number(trade.closeTime || trade.openTime || 0);
+    const date = dateKey(timestamp);
+    const time = marketDate(timestamp);
+    const hh = String(time.getUTCHours()).padStart(2, '0');
+    const mm = String(time.getUTCMinutes()).padStart(2, '0');
+    return { date, timestamp, tradeNumber: index + 1, pnl: cumulative, label: date.slice(5) + ' ' + hh + ':' + mm };
   });
 
   const year = monthCursor.getFullYear();
@@ -234,7 +239,7 @@ export default function AnalyticsModal() {
           <div className="min-h-0 grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-1.5">
             <section className="min-h-0 rounded-md border border-[#2a2e39] bg-[#131722] flex flex-col overflow-hidden">
               <div className="h-7 shrink-0 flex items-center justify-between px-2 border-b border-[#2a2e39]">
-                <span className="text-[10px] font-semibold text-gray-200">Daily net cumulative P&L</span>
+                <span className="text-[10px] font-semibold text-gray-200">Trade-by-trade cumulative P&L</span>
                 <span className={`text-[10px] font-bold ${cumulative >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{money(cumulative)}</span>
               </div>
               <div className="flex-1 min-h-0 p-1">
