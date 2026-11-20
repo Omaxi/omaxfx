@@ -153,7 +153,7 @@ export default function AnalyticsModal() {
   const streakText = latestTrade ? (latestTrade.pnl > 0 ? 'Winning' : latestTrade.pnl < 0 ? 'Losing' : 'Flat') : 'No streak';
 
   return (
-    <div className="fixed inset-0 z-[60] bg-[#0b0e11] p-1.5 sm:p-2" onClick={closeAnalytics}>
+    <div className="fixed inset-0 z-[300] bg-[#0b0e11] p-1.5 sm:p-2" onClick={closeAnalytics}>
       <div className="h-full w-full overflow-hidden rounded-lg border border-[#2a2e39] bg-[#131722] text-white flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="h-8 shrink-0 flex items-center justify-between px-3 border-b border-[#2a2e39]">
           <div className="flex items-center gap-2 text-xs font-bold"><BarChart3 size={14} className="text-blue-400"/> OmaxFX <span className="text-gray-400 font-medium">Performance analytics</span>{reviewName && <span className="text-blue-300 font-medium">· {reviewName} · Read-only review</span>}</div>
