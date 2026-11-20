@@ -35,7 +35,7 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, isSelected) => {
   const borderColor = drawing.borderColor || drawing.color || '#f59e0b';
   const fillColor = drawing.fillColor || (borderColor + '33');
   const lineWidth = drawing.lineWidth ?? 1;
-  const showBorder = drawing.showBorder !== false;
+  const showBorder = drawing.showBorder === true;
   const pts = drawing.points.map(p => pointToXY(p)).filter(Boolean);
   if (pts.length === 0) return;
   
@@ -53,7 +53,7 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, isSelected) => {
     ctx.fillText(drawing.text, pts[0].x, pts[0].y);
   } else if (drawing.type === 'horizontal') {
     const { y } = pts[0];
-    if (showBorder) {
+    {
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(canvasW, y);
@@ -61,14 +61,14 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, isSelected) => {
     }
   } else if (drawing.type === 'vertical') {
     const { x } = pts[0];
-    if (showBorder) {
+    {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, canvasH);
       ctx.stroke();
     }
   } else if (drawing.type === 'trendline' && pts.length === 2) {
-    if (showBorder) {
+    {
       ctx.beginPath();
       ctx.moveTo(pts[0].x, pts[0].y);
       ctx.lineTo(pts[1].x, pts[1].y);
@@ -293,12 +293,12 @@ export default function Chart() {
       crosshair: {
         mode: 1,
         vertLine: {
-          color: 'rgba(128,128,128,0.5)', width: 1, style: 3, visible: true,
-          labelVisible: true, labelBackgroundColor: 'rgba(128,128,128,0.5)',
+          color: 'rgba(148,163,184,0.5)', width: 1, style: 1, visible: true,
+          labelVisible: true, labelBackgroundColor: '#7b8494',
         },
         horzLine: {
-          color: 'rgba(128,128,128,0.5)', width: 1, style: 3, visible: true,
-          labelVisible: true, labelBackgroundColor: 'rgba(128,128,128,0.5)',
+          color: 'rgba(148,163,184,0.5)', width: 1, style: 1, visible: true,
+          labelVisible: true, labelBackgroundColor: '#7b8494',
         },
       },
     });
@@ -1330,9 +1330,9 @@ export default function Chart() {
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none', cursor: isPencilMode ? 'crosshair' : 'default' }} />
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
 
-      <div className="absolute top-2 right-12 z-30 min-w-[166px] rounded-md border border-[#2a2e39] bg-[#131722]/95 px-2.5 py-2 text-[10px] leading-4 text-gray-300 shadow-lg backdrop-blur pointer-events-none font-mono">
-        <div className="mb-1 flex items-center justify-between gap-3 border-b border-[#2a2e39] pb-1">
-          <span className="font-sans font-bold tracking-wide text-gray-200">CANDLE CHECK</span>
+      <div className="absolute top-2 right-12 z-30 min-w-[166px] bg-[#131722]/85 px-2.5 py-2 text-[10px] leading-4 text-gray-300 pointer-events-none font-mono">
+        <div className="mb-1 flex items-center justify-between gap-3 pb-1">
+          <span className="font-sans font-bold tracking-wide text-gray-200">LIVE INFORMATION</span>
           <span className="font-sans text-[9px] text-blue-400">{timeframe}m</span>
         </div>
         <div className="grid grid-cols-[48px_1fr] gap-x-2">
@@ -1430,7 +1430,7 @@ export default function Chart() {
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 20 }}>
         <div className="pointer-events-auto">
           <DrawingToolbar />
-          <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={visibleData} timeframe={timeframe} priceSeriesRef={seriesRef} />
+          <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={visibleData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={getExecutionCandle(rawData, displayData, currentIndex, timeframe)} />
         </div>
 
         {pendingBtnPos.map(p => (
