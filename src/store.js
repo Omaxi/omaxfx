@@ -443,7 +443,7 @@ export const useStore = create((set, get) => ({
       borderColor: drawing.borderColor || drawing.color || '#f59e0b',
       fillColor: drawing.fillColor || '#f59e0b33',
       lineWidth: drawing.lineWidth ?? 1,
-      showBorder: drawing.showBorder !== false,
+      showBorder: drawing.showBorder === true,
       symbol: state.symbol,
       timeframe: state.timeframe,
     };
