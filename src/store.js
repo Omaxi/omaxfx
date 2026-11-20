@@ -825,16 +825,35 @@ export const useStore = create((set, get) => ({
     // Already at the last candle — nothing to advance to.
     if (state.currentIndex >= state.rawData.length - 1) return state;
 
-    const jumpSize = state.timeframe;
-    const nextBoundary = jumpSize > 1
-      ? (Math.floor(state.currentIndex / jumpSize) + 1) * jumpSize
-      : state.currentIndex + 1;
-    const nextIndex = Math.min(nextBoundary, state.rawData.length - 1);
+    const jumpSize = Number(state.timeframe) || 1;
+    let nextIndex;
+    let firstProcessedIndex;
+    let lastProcessedIndex;
+
+    if (jumpSize <= 1) {
+      // On 1m, the replay cursor is the last completed candle: advance exactly
+      // one source candle, regardless of the absolute date or array position.
+      nextIndex = state.currentIndex + 1;
+      firstProcessedIndex = nextIndex;
+      lastProcessedIndex = nextIndex;
+    } else {
+      // Higher-timeframe replay advances one actual OHLC bucket, not a fixed
+      // number of array rows. This remains correct when the CSV has missing
+      // minutes, market closures, or starts part-way through a timeframe.
+      const current = state.rawData[state.currentIndex];
+      const bucketStart = getTimeframeBucketStart(current.time, jumpSize);
+      let bucketEnd = state.currentIndex + 1;
+      while (bucketEnd < state.rawData.length &&
+        getTimeframeBucketStart(state.rawData[bucketEnd].time, jumpSize) === bucketStart) {
+        bucketEnd++;
+      }
+      firstProcessedIndex = state.currentIndex;
+      lastProcessedIndex = bucketEnd - 1;
+      nextIndex = bucketEnd < state.rawData.length ? bucketEnd : state.rawData.length - 1;
+    }
+
+    nextIndex = Math.min(nextIndex, state.rawData.length - 1);
     const advanced = nextIndex > state.currentIndex;
-    const firstProcessedIndex = jumpSize > 1 ? state.currentIndex : nextIndex;
-    const lastProcessedIndex = jumpSize > 1 && nextBoundary <= state.rawData.length - 1
-      ? nextBoundary - 1
-      : nextIndex;
 
     let newBalance = state.balance;
     let newPositions = [...state.positions];
