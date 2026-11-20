@@ -36,7 +36,8 @@ export default function AnalyticsModal() {
   const currentIndex = analyticsSnapshot ? 0 : store.currentIndex;
   const sessionId = analyticsSnapshot?.sessionId || store.sessionId;
   const timeframe = analyticsSnapshot?.timeframe || store.timeframe;
-  const reviewName = analyticsSnapshot?.sessionName || '';\n  const screenshotCandles = rawData.length ? rawData : (store.allRawDataBySymbol?.[analyticsSnapshot?.symbol || store.symbol] || []);
+  const reviewName = analyticsSnapshot?.sessionName || '';
+  const screenshotCandles = rawData.length ? rawData : (store.allRawDataBySymbol?.[analyticsSnapshot?.symbol || store.symbol] || []);
   const [selectedDate, setSelectedDate] = useState(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [monthCursor, setMonthCursor] = useState(() => {
