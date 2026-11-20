@@ -115,7 +115,7 @@ export default function HistoryModal() {
                       <td className="p-1 text-right font-mono text-yellow-400 hidden lg:table-cell">
                         {t.riskAmount ? `$${fmtMoney(t.riskAmount, 0)}` : '-'}
                         {t.riskPercent != null && (
-                          <span className="text-gray-500 text-[10px] ml-1">({t.riskPercent}%)</span>
+                          <span className="text-gray-500 text-[10px] ml-1">({Number.isFinite(Number(t.riskPercent)) ? Number(t.riskPercent).toFixed(2) : '—'}%)</span>
                         )}
                       </td>
                       <td className={`p-1 text-right font-bold ${t.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
