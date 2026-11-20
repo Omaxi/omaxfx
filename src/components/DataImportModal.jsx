@@ -42,7 +42,8 @@ export default function DataImportModal() {
       setSelectedSymbol(firstSymbol);
       const group = sorted.filter(item => item.symbol === firstSymbol);
       setSelectedFileName(group.length > 1 ? '__ALL__' : group[0]?.name || '');
-      setSelectedMonth('__ALL__');
+      const latestMonth = group.flatMap(item => (item.monthlyFiles || []).map(month => month.month)).sort().at(-1);
+      setSelectedMonth(latestMonth || '__ALL__');
     }).catch(error => { if (alive) setCatalogError(error?.message || 'Could not read the project data folder.'); });
     return () => { alive = false; };
   }, []);
@@ -130,7 +131,8 @@ export default function DataImportModal() {
                     setSelectedSymbol(code);
                     const group = catalog.filter(item => item.symbol === code);
                     setSelectedFileName(group.length > 1 ? '__ALL__' : group[0]?.name || '');
-                    setSelectedMonth('__ALL__');
+                    const latestMonth = group.flatMap(item => (item.monthlyFiles || []).map(month => month.month)).sort().at(-1);
+                    setSelectedMonth(latestMonth || '__ALL__');
                   }}>
                     {symbols.map(code => <option key={code} value={code}>{code}</option>)}
                   </select>
