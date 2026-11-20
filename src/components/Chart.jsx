@@ -1406,7 +1406,7 @@ export default function Chart() {
         } catch {}
         const x = param.point.x, y = param.point.y;
         if (x > paneWidth || y > paneHeight) return;
-        const candle = param.seriesData?.get(seriesRef.current);
+        const candle = param.seriesData?.get(seriesRef.current) || param.seriesData?.get(lineSeriesRef.current);
         const price = Number(candle?.close ?? candle?.value);
         const precision = getPricePrecision(useStore.getState().symbol, useStore.getState().contractSpecs);
         const dateLabel = typeof param.time === 'number' ? formatMarketDateTime(param.time) : '';
