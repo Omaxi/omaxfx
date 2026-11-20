@@ -183,6 +183,39 @@ const PENCIL_COLORS = [
 
 const X_BUTTON_OFFSET_FROM_RIGHT = 200;
 
+const formatChartAxisTime = (chartTime, tickMarkType, timeMapRef, timezoneRef, full = false) => {
+  const map = timeMapRef.current;
+  const numericTime = typeof chartTime === 'number'
+    ? chartTime
+    : chartTime && typeof chartTime === 'object'
+      ? Date.UTC(chartTime.year, chartTime.month - 1, chartTime.day) / 1000
+      : Number(chartTime);
+  const index = map?.data?.length && Number.isFinite(numericTime)
+    ? Math.round((numericTime - map.firstChartTime) / map.interval)
+    : -1;
+  const actualTime = index >= 0 && index < map.data.length
+    ? map.data[index].time
+    : numericTime;
+  const offsetMatch = String(timezoneRef.current || 'UTC+3').match(/UTC([+-]\d+)/i);
+  const offsetSeconds = (offsetMatch ? Number(offsetMatch[1]) : 3) * 3600;
+  const date = new Date((actualTime + offsetSeconds) * 1000);
+  const pad = (value) => String(value).padStart(2, '0');
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const day = date.getUTCDate();
+  const hours = date.getUTCHours();
+  const minutes = date.getUTCMinutes();
+  const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][month];
+  if (full) return `${pad(day)} ${monthShort} ${year} ${pad(hours)}:${pad(minutes)}`;
+  switch (tickMarkType) {
+    case 0: return String(year);
+    case 1: return monthShort;
+    case 2: return `${pad(day)} ${monthShort}`;
+    case 4: return `${pad(hours)}:${pad(minutes)}:${pad(date.getUTCSeconds())}`;
+    default: return `${pad(hours)}:${pad(minutes)}`;
+  }
+};
+
 export default function Chart() {
   const chartContainerRef = useRef();
   const canvasRef = useRef();
@@ -204,6 +237,9 @@ export default function Chart() {
   const selectedItemRef = useRef(null);
   const currentPencilRef = useRef(null);
   const scheduleDrawRef = useRef(() => {});
+  const chartTimeMapRef = useRef({ firstChartTime: 0, interval: 60, data: [] });
+  const timezoneRef = useRef(timezone || 'UTC+3');
+  timezoneRef.current = timezone || 'UTC+3';
 
   const [pendingBtnPos, setPendingBtnPos] = useState([]);
   const [positionBtnPos, setPositionBtnPos] = useState([]);
@@ -218,7 +254,7 @@ export default function Chart() {
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
     theme, snapshotDrawings, recenterToken,
     isPencilMode, pencilColor, setPencilColor,
-    chartType, symbol, contractSpecs
+    chartType, symbol, contractSpecs, timezone
   } = useStore();
 
   const lockChart = useCallback((locked) => {
@@ -276,9 +312,18 @@ export default function Chart() {
         fontSize: 9,
       },
       grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-      timeScale: { 
+      timeScale: {
         timeVisible: true, secondsVisible: false,
         borderVisible: false, barSpacing: 6, rightOffset: 60,
+        // Display timestamps in the selected market timezone (UTC+3 by default).
+        // Chart bars use a compressed synthetic timeline so closed-market gaps
+        // do not create large empty horizontal spaces.
+        tickMarkFormatter: (time, tickMarkType) =>
+          formatChartAxisTime(time, tickMarkType, chartTimeMapRef, timezoneRef),
+      },
+      localization: {
+        timeFormatter: (time) =>
+          formatChartAxisTime(time, undefined, chartTimeMapRef, timezoneRef, true),
       },
       rightPriceScale: { borderVisible: false },
       crosshair: {
@@ -1156,9 +1201,27 @@ export default function Chart() {
     return filtered;
   }, [displayData, rawData, currentIndex, timeframe]);
 
+  // Lightweight Charts spaces bars according to elapsed wall-clock time.
+  // Replay data has closed-market gaps (overnight/weekends), which should not
+  // consume chart width. Give each displayed candle a consecutive chart time,
+  // while retaining its real timestamp in visibleData for trades and drawings.
+  const chartData = useMemo(() => {
+    if (!visibleData.length) {
+      chartTimeMapRef.current = { firstChartTime: 0, interval: timeframe * 60, data: [] };
+      return [];
+    }
+    const interval = Math.max(60, Number(timeframe) * 60 || 60);
+    const firstChartTime = Number(visibleData[0].time);
+    chartTimeMapRef.current = { firstChartTime, interval, data: visibleData };
+    return visibleData.map((candle, index) => ({
+      ...candle,
+      time: firstChartTime + index * interval,
+    }));
+  }, [visibleData, timeframe]);
+
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current || !chartRef.current) return;
-    if (visibleData.length === 0) {
+    if (chartData.length === 0) {
       try {
         seriesRef.current.setData([]);
         lineSeriesRef.current.setData([]);
@@ -1181,14 +1244,14 @@ export default function Chart() {
 
     if (canAppend) {
       const start = Math.max(0, previous.length - 1);
-      for (let i = start; i < visibleData.length; i++) {
-        const candle = visibleData[i];
+      for (let i = start; i < chartData.length; i++) {
+        const candle = chartData[i];
         seriesRef.current.update(candle);
         lineSeriesRef.current.update({ time: candle.time, value: candle.close });
       }
     } else {
-      seriesRef.current.setData(visibleData);
-      lineSeriesRef.current.setData(visibleData.map(d => ({ time: d.time, value: d.close })));
+      seriesRef.current.setData(chartData);
+      lineSeriesRef.current.setData(chartData.map(d => ({ time: d.time, value: d.close })));
     }
     lastRenderedDataRef.current = visibleData;
 
@@ -1222,7 +1285,7 @@ export default function Chart() {
 
     lastTimeframeRef.current = timeframe;
     lastRecenterRef.current = recenterToken;
-  }, [visibleData, timeframe, recenterToken]);
+  }, [visibleData, chartData, timeframe, recenterToken]);
 
   useEffect(() => {
     if (!seriesRef.current) return;
