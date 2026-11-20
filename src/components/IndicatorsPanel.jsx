@@ -325,12 +325,6 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
           const boxHeight = Math.max(3, bottom - top);
           ctx.fillStyle = item.color + '18';
           ctx.fillRect(left, top, right - left, boxHeight);
-          ctx.strokeStyle = item.color + 'aa';
-          ctx.lineWidth = 1;
-          ctx.setLineDash([4, 3]);
-          ctx.strokeRect(left + 0.5, top + 0.5, Math.max(0, right - left - 1), Math.max(2, boxHeight - 1));
-          ctx.setLineDash([]);
-
           ctx.font = '600 10px Arial';
           ctx.textAlign = 'center';
           ctx.fillStyle = item.color;
