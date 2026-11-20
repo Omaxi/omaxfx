@@ -144,11 +144,11 @@ export default function AnalyticsModal() {
   const streakText = latestTrade ? (latestTrade.pnl > 0 ? 'Winning' : latestTrade.pnl < 0 ? 'Losing' : 'Flat') : 'No streak';
 
   return (
-    <div className="fixed inset-0 z-[60] bg-[#090b0e] p-1.5 sm:p-2" onClick={closeAnalytics}>
-      <div className="h-full w-full overflow-hidden rounded-lg border border-[#24272b] bg-[#101214] text-white flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="h-8 shrink-0 flex items-center justify-between px-3 border-b border-[#25282c]">
+    <div className="fixed inset-0 z-[60] bg-[#0b0e11] p-1.5 sm:p-2" onClick={closeAnalytics}>
+      <div className="h-full w-full overflow-hidden rounded-lg border border-[#2a2e39] bg-[#131722] text-white flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="h-8 shrink-0 flex items-center justify-between px-3 border-b border-[#2a2e39]">
           <div className="flex items-center gap-2 text-xs font-bold"><BarChart3 size={14} className="text-blue-400"/> OmaxFX <span className="text-gray-400 font-medium">Performance analytics</span></div>
-          <button onClick={closeAnalytics} className="rounded p-1 text-gray-400 hover:bg-[#25282c] hover:text-white" aria-label="Close analytics"><X size={15}/></button>
+          <button onClick={closeAnalytics} className="rounded p-1 text-gray-400 hover:bg-[#2a2e39] hover:text-white" aria-label="Close analytics"><X size={15}/></button>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-1.5 p-1.5 shrink-0">
@@ -163,8 +163,8 @@ export default function AnalyticsModal() {
 
         <div className="flex-1 min-h-0 grid grid-cols-[minmax(220px,34%)_minmax(0,1fr)] gap-1.5 px-1.5 pb-1.5">
           <div className="min-h-0 grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-1.5">
-            <section className="min-h-0 rounded-md border border-[#25282c] bg-[#151719] flex flex-col overflow-hidden">
-              <div className="h-7 shrink-0 flex items-center justify-between px-2 border-b border-[#25282c]">
+            <section className="min-h-0 rounded-md border border-[#2a2e39] bg-[#131722] flex flex-col overflow-hidden">
+              <div className="h-7 shrink-0 flex items-center justify-between px-2 border-b border-[#2a2e39]">
                 <span className="text-[10px] font-semibold text-gray-200">Daily net cumulative P&L</span>
                 <span className={`text-[10px] font-bold ${cumulative >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{money(cumulative)}</span>
               </div>
@@ -172,18 +172,18 @@ export default function AnalyticsModal() {
                 {curve.length ? <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={curve} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
                     <defs><linearGradient id="analyticsPnlFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#20bd89" stopOpacity={0.65}/><stop offset="100%" stopColor="#20bd89" stopOpacity={0.03}/></linearGradient></defs>
-                    <CartesianGrid stroke="#292d31" strokeDasharray="2 3" vertical={false}/>
+                    <CartesianGrid stroke="#2a2e39" strokeDasharray="2 3" vertical={false}/>
                     <XAxis dataKey="label" tick={{ fill: '#777d84', fontSize: 8 }} axisLine={false} tickLine={false} minTickGap={20}/>
                     <YAxis tick={{ fill: '#777d84', fontSize: 8 }} axisLine={false} tickLine={false} width={38} tickFormatter={v => v === 0 ? '$0' : `$${(v / 1000).toFixed(0)}k`}/>
-                    <Tooltip contentStyle={{ background: '#202428', border: '1px solid #343a40', borderRadius: 5, fontSize: 10 }} labelStyle={{ color: '#aab0b6' }} formatter={v => [money(v), 'Cumulative P&L']}/>
+                    <Tooltip contentStyle={{ background: '#131722', border: '1px solid #2a2e39', borderRadius: 5, fontSize: 10 }} labelStyle={{ color: '#aab0b6' }} formatter={v => [money(v), 'Cumulative P&L']}/>
                     <Area type="monotone" dataKey="pnl" stroke="#20bd89" strokeWidth={2} fill="url(#analyticsPnlFill)" isAnimationActive={false}/>
                   </AreaChart>
                 </ResponsiveContainer> : <Empty text="Close trades to build your P&L curve"/>}
               </div>
             </section>
 
-            <section className="min-h-0 rounded-md border border-[#25282c] bg-[#151719] overflow-hidden flex flex-col">
-              <div className="h-7 shrink-0 flex items-center gap-1.5 px-2 border-b border-[#25282c] text-[10px] font-semibold text-gray-200"><Award size={12} className="text-amber-400"/> Trading statistics</div>
+            <section className="min-h-0 rounded-md border border-[#2a2e39] bg-[#131722] overflow-hidden flex flex-col">
+              <div className="h-7 shrink-0 flex items-center gap-1.5 px-2 border-b border-[#2a2e39] text-[10px] font-semibold text-gray-200"><Award size={12} className="text-amber-400"/> Trading statistics</div>
               <div className="grid grid-cols-2 gap-x-3 gap-y-1 p-2 content-start">
                 <Stat label="Largest win" value={`+${money(largestWin)}`} color="text-emerald-400"/>
                 <Stat label="Largest loss" value={`-${money(largestLoss)}`} color="text-red-400"/>
@@ -197,7 +197,7 @@ export default function AnalyticsModal() {
                 <Stat label="Max balance" value={money(maxBalance)}/>
               </div>
               <div className="mt-auto px-2 pb-2">
-                <div className="h-1.5 rounded-full bg-[#292d31] overflow-hidden flex">
+                <div className="h-1.5 rounded-full bg-[#2a2e39] overflow-hidden flex">
                   <div className="bg-emerald-500" style={{ width: `${trades.length ? wins.length / trades.length * 100 : 0}%` }}/>
                   <div className="bg-red-500" style={{ width: `${trades.length ? losses.length / trades.length * 100 : 0}%` }}/>
                   <div className="bg-gray-500 flex-1"/>
@@ -207,28 +207,28 @@ export default function AnalyticsModal() {
             </section>
           </div>
 
-          <section className="min-h-0 rounded-md border border-[#25282c] bg-[#151719] flex flex-col overflow-hidden">
-            <div className="h-8 shrink-0 flex items-center justify-between gap-2 px-2 border-b border-[#25282c]">
+          <section className="min-h-0 rounded-md border border-[#2a2e39] bg-[#131722] flex flex-col overflow-hidden">
+            <div className="h-8 shrink-0 flex items-center justify-between gap-2 px-2 border-b border-[#2a2e39]">
               <div className="flex items-center gap-1.5">
-                <button onClick={() => monthChange(-1)} className="p-1 rounded hover:bg-[#292d31]" aria-label="Previous month"><ChevronLeft size={13}/></button>
+                <button onClick={() => monthChange(-1)} className="p-1 rounded hover:bg-[#2a2e39]" aria-label="Previous month"><ChevronLeft size={13}/></button>
                 <span className="w-28 text-center text-[10px] font-bold">{monthName}</span>
-                <button onClick={() => monthChange(1)} className="p-1 rounded hover:bg-[#292d31]" aria-label="Next month"><ChevronRight size={13}/></button>
-                <button onClick={goToMarketMonth} className="ml-1 px-2 py-0.5 rounded border border-[#343a40] text-[9px] text-gray-300 hover:bg-[#292d31]">Market month</button>
+                <button onClick={() => monthChange(1)} className="p-1 rounded hover:bg-[#2a2e39]" aria-label="Next month"><ChevronRight size={13}/></button>
+                <button onClick={goToMarketMonth} className="ml-1 px-2 py-0.5 rounded border border-[#2a2e39] text-[9px] text-gray-300 hover:bg-[#2a2e39]">Market month</button>
               </div>
-              <div className="flex items-center gap-2 text-[9px]"><span className="text-gray-400">Monthly stats:</span><b className={monthlyPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>{monthlyPnl >= 0 ? '+' : '-'}{money(monthlyPnl)}</b><span className="rounded-full bg-[#28243b] px-2 py-0.5 text-violet-300">{activeDays} days</span></div>
+              <div className="flex items-center gap-2 text-[9px]"><span className="text-gray-400">Monthly stats:</span><b className={monthlyPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}>{monthlyPnl >= 0 ? '+' : '-'}{money(monthlyPnl)}</b><span className="rounded-full bg-[#1e222d] px-2 py-0.5 text-violet-300">{activeDays} days</span></div>
             </div>
             <div className="flex-1 min-h-0 p-1.5 flex flex-col">
               <div className="grid grid-cols-[minmax(0,1fr)_74px] gap-1.5 h-full min-h-0">
                 <div className="min-w-0 min-h-0 flex flex-col">
                   <div className="grid grid-cols-7 gap-1 h-5 shrink-0 mb-1">
-                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="rounded bg-[#1c1f22] text-center text-[9px] leading-5 font-semibold text-gray-400">{d}</div>)}
+                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="rounded bg-[#1e222d] text-center text-[9px] leading-5 font-semibold text-gray-400">{d}</div>)}
                   </div>
                   <div className="grid grid-cols-7 grid-rows-6 gap-1 flex-1 min-h-0">
                     {cells.map((d, i) => <CalendarDay key={d?.key || `empty-${i}`} day={d} selected={selectedDate === d?.key} onClick={() => d && setSelectedDate(d.key)}/>)}
                   </div>
                 </div>
                 <div className="min-h-0 flex flex-col pt-6 gap-1">
-                  {weeks.map((w, i) => <div key={i} className="flex-1 min-h-0 rounded border border-[#292d31] bg-[#191c1f] px-1.5 py-1 flex flex-col justify-center">
+                  {weeks.map((w, i) => <div key={i} className="flex-1 min-h-0 rounded border border-[#2a2e39] bg-[#1e222d] px-1.5 py-1 flex flex-col justify-center">
                     <span className="text-[8px] text-gray-500">Week {i + 1}</span>
                     <b className={`text-[11px] leading-tight ${w.pnl > 0 ? 'text-emerald-400' : w.pnl < 0 ? 'text-red-400' : 'text-gray-300'}`}>{money(w.pnl)}</b>
                     <span className="text-[8px] text-gray-500">{w.trades} trades · {w.days} days</span>
@@ -236,7 +236,7 @@ export default function AnalyticsModal() {
                 </div>
               </div>
             </div>
-            <div className="h-6 shrink-0 px-2 border-t border-[#25282c] flex items-center justify-between text-[9px] text-gray-500">
+            <div className="h-6 shrink-0 px-2 border-t border-[#2a2e39] flex items-center justify-between text-[9px] text-gray-500">
               <span>{monthlyTrades} trades in {monthName}</span>
               <span>{activeDays} active trading days</span>
             </div>
@@ -249,26 +249,26 @@ export default function AnalyticsModal() {
 }
 
 function Metric({ title, value, color, detail, gauge, ring, streak }) {
-  return <div className="h-[58px] min-w-0 rounded-md bg-[#17191b] border border-[#202326] px-2.5 py-1.5 flex items-center justify-between gap-1">
+  return <div className="h-[58px] min-w-0 rounded-md bg-[#1e222d] border border-[#2a2e39] px-2.5 py-1.5 flex items-center justify-between gap-1">
     <div className="min-w-0">
       <div className="text-[8px] text-gray-500 truncate">{title}</div>
       <div className="text-[15px] font-bold leading-5 truncate" style={{ color }}>{value}</div>
       <div className="text-[8px] text-gray-500 truncate">{detail}</div>
     </div>
-    {gauge != null && <div className="w-8 h-8 rounded-full shrink-0 grid place-items-center" style={{ background: `conic-gradient(#20bd89 ${gauge}%, #ef5350 0)` }}><div className="w-6 h-6 rounded-full bg-[#17191b]"/></div>}
+    {gauge != null && <div className="w-8 h-8 rounded-full shrink-0 grid place-items-center" style={{ background: `conic-gradient(#20bd89 ${gauge}%, #ef5350 0)` }}><div className="w-6 h-6 rounded-full bg-[#1e222d]"/></div>}
     {ring != null && <div className="w-8 h-8 rounded-full shrink-0 border-[3px]" style={{ borderColor: ring >= 1 ? '#20bd89' : '#ef5350', opacity: 0.9 }}/>}
     {streak && <Activity size={20} className="shrink-0 text-emerald-400"/>}
   </div>;
 }
 function Stat({ label, value, color = 'text-gray-200' }) {
-  return <div className="flex items-center justify-between gap-1 text-[9px] border-b border-[#25282c]/70 py-0.5"><span className="text-gray-500 truncate">{label}</span><b className={`font-mono ${color}`}>{value}</b></div>;
+  return <div className="flex items-center justify-between gap-1 text-[9px] border-b border-[#2a2e39]/70 py-0.5"><span className="text-gray-500 truncate">{label}</span><b className={`font-mono ${color}`}>{value}</b></div>;
 }
 function CalendarDay({ day, selected, onClick }) {
-  if (!day) return <div className="rounded bg-[#111315] border border-[#1e2225]"/>;
+  if (!day) return <div className="rounded bg-[#131722] border border-[#1e2225]"/>;
   const positive = day.pnl > 0, negative = day.pnl < 0;
   const active = day.trades > 0;
-  const background = !active ? '#1b1d1f' : positive ? '#003a2b' : negative ? '#551b1b' : '#1d2d4b';
-  const border = selected ? '#60a5fa' : !active ? '#292d31' : positive ? '#087b5a' : negative ? '#a33b3b' : '#4268ad';
+  const background = !active ? '#1e222d' : positive ? '#003a2b' : negative ? '#551b1b' : '#1d2d4b';
+  const border = selected ? '#60a5fa' : !active ? '#2a2e39' : positive ? '#087b5a' : negative ? '#a33b3b' : '#4268ad';
   return <button type="button" onClick={onClick} title={day.trades + ' trades · click to open day journal'} className="rounded border min-w-0 p-1 flex flex-col items-end overflow-hidden text-left hover:brightness-125 focus:outline-none focus:ring-1 focus:ring-blue-400" style={{ background, borderColor: border }}>
     <span className="text-[8px] text-gray-400">{day.day}</span>
     {active && <div className="mt-auto mb-auto w-full text-center min-w-0">
