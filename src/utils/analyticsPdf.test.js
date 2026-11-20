@@ -36,6 +36,9 @@ test('builds the analytics PDF when the trade-by-trade curve contains a drawdown
   assert.match(html, /OmaxFX Simulator · Performance report/);
   assert.match(html, /equityBlueFill/);
   assert.match(html, /drawdownFill/);
+  assert.match(html, /stop-color="#2c67c5"/);
+  assert.match(html, /stroke="#2c67c5" stroke-width="3"/);
+  assert.match(html, /const labelY=top\+\(height-top-bottom\)\/2/);
   assert.match(html, /Buy &amp; Hold/);
   assert.doesNotMatch(html, /Use your browser's Print dialog/);
   assert.match(html, /Trade-by-trade cumulative realized P&amp;L/);
