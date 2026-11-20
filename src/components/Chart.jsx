@@ -402,28 +402,29 @@ export default function Chart() {
     // A drawing is anchored to its original market timestamp, not to the
     // candle index/timeframe on which it was created. Interpolate against the
     // actual chart data so changing 1m -> 15m cannot shift it to an edge.
+    // Resolve drawing timestamps through the chart's own time-scale points.
+    // This keeps 1m drawings aligned when the visible series is re-aggregated
+    // to 5m/15m and avoids logical-index offsets that can pin them to the edge.
+    const timeScale = chart.timeScale();
     const firstTime = Number(data[0].time);
     const lastTime = Number(data[data.length - 1].time);
-    let logical;
-    if (time <= firstTime) {
-      const step = Math.max(1, Number(data[1].time) - firstTime);
-      logical = (time - firstTime) / step;
-    } else if (time >= lastTime) {
-      const step = Math.max(1, lastTime - Number(data[data.length - 2].time));
-      logical = (data.length - 1) + (time - lastTime) / step;
-    } else {
-      let lo = 0, hi = data.length - 1;
+    let lo, hi;
+    if (time <= firstTime) { lo = 0; hi = 1; }
+    else if (time >= lastTime) { lo = data.length - 2; hi = data.length - 1; }
+    else {
+      lo = 0; hi = data.length - 1;
       while (hi - lo > 1) {
         const mid = Math.floor((lo + hi) / 2);
         if (Number(data[mid].time) < time) lo = mid; else hi = mid;
       }
-      const t1 = Number(data[lo].time), t2 = Number(data[hi].time);
-      const frac = t2 !== t1 ? (time - t1) / (t2 - t1) : 0;
-      logical = lo + frac;
     }
     try {
-      const x = chart.timeScale().logicalToCoordinate(logical);
-      return (x === null || !Number.isFinite(x)) ? null : x;
+      const t1 = Number(data[lo].time), t2 = Number(data[hi].time);
+      const x1 = timeScale.timeToCoordinate(t1);
+      const x2 = timeScale.timeToCoordinate(t2);
+      if (x1 == null || x2 == null || !Number.isFinite(x1) || !Number.isFinite(x2) || t2 === t1) return null;
+      const x = x1 + (x2 - x1) * ((time - t1) / (t2 - t1));
+      return Number.isFinite(x) ? x : null;
     } catch (e) { return null; }
   }, []);
 
@@ -648,13 +649,13 @@ export default function Chart() {
           if (x != null && x >= 0 && x <= paneW) {
             const label = formatMarketDateTime(Number(point.time));
             const width = Math.ceil(ctx.measureText(label).width) + 8;
-            const height = 14;
+            const axisHeight = Math.max(18, rect.height - paneH);
             const left = Math.max(0, Math.min(paneW - width, x - width / 2));
             ctx.fillStyle = color;
-            ctx.fillRect(left, paneH, width, height);
+            ctx.fillRect(left, paneH, width, axisHeight);
             ctx.fillStyle = '#ffffff';
             ctx.textAlign = 'center';
-            ctx.fillText(label, left + width / 2, paneH + height / 2);
+            ctx.fillText(label, left + width / 2, paneH + axisHeight / 2);
           }
         }
         ctx.restore();
@@ -1435,12 +1436,12 @@ export default function Chart() {
         }
         if (dateLabel) {
           const w = Math.ceil(ctx.measureText(dateLabel).width) + 8;
-          const h = 14;
+          const axisHeight = Math.max(18, rect.height - paneHeight);
           const left = Math.max(0, Math.min(paneWidth - w, x - w / 2));
           ctx.fillStyle = '#374151';
-          ctx.fillRect(left, paneHeight, w, h);
+          ctx.fillRect(left, paneHeight, w, axisHeight);
           ctx.fillStyle = '#f9fafb';
-          ctx.fillText(dateLabel, left + w / 2, paneHeight + h / 2);
+          ctx.fillText(dateLabel, left + w / 2, paneHeight + axisHeight / 2);
         }
         ctx.restore();
       });
