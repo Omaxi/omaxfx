@@ -559,32 +559,8 @@ export default function Chart() {
       ctx.clip();
       const state = useStore.getState();
 
-      // Keep SL/TP guides visually compact: draw only from order/position start
-      // to the current replay candle. Their price-axis tags remain visible.
-      const currentTime = state.rawData?.[state.currentIndex]?.time;
-      const currentX = currentTime != null ? timeToX(findClosestCandleTime(currentTime)) : null;
-      const drawCompactRiskLines = (item, startTime) => {
-        if (currentX == null || !Number.isFinite(currentX)) return;
-        const startX = timeToX(findClosestCandleTime(startTime));
-        if (startX == null || !Number.isFinite(startX)) return;
-        [['sl', '#ef5350'], ['tp', '#26a69a']].forEach(([key, color]) => {
-          const price = item[key];
-          if (price == null) return;
-          const lineY = seriesRef.current?.priceToCoordinate(Number(price));
-          if (lineY == null || !Number.isFinite(lineY)) return;
-          ctx.save();
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([5, 4]);
-          ctx.beginPath();
-          ctx.moveTo(Math.max(0, Math.min(startX, currentX)), lineY);
-          ctx.lineTo(Math.min(paneW, Math.max(startX, currentX)), lineY);
-          ctx.stroke();
-          ctx.restore();
-        });
-      };
-      (state.positions || []).forEach(position => drawCompactRiskLines(position, position.openTime));
-      (state.pendingOrders || []).forEach(order => drawCompactRiskLines(order, order.openTime));
+      // SL/TP are rendered by the chart's native horizontal price lines.
+      // Do not paint a second dashed segment for each replay candle.
 
       // 1. Draw trade history (Entry/Exit boxes + SL area + TP area)
       const tradeHistory = state.tradeHistory || [];
