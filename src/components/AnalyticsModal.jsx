@@ -298,12 +298,12 @@ export default function AnalyticsModal() {
               <div className="flex-1 min-h-0 p-1">
                 {curve.length ? <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={curve} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
-                    <defs><linearGradient id="analyticsPnlFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#20bd89" stopOpacity={0.65}/><stop offset="100%" stopColor="#20bd89" stopOpacity={0.03}/></linearGradient></defs>
+                    <defs><linearGradient id="analyticsPnlFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#2563eb" stopOpacity={0.34}/><stop offset="100%" stopColor="#ffffff" stopOpacity={0.03}/></linearGradient></defs>
                     <CartesianGrid stroke="#2a2e39" strokeDasharray="2 3" vertical={false}/>
                     <XAxis dataKey="label" tick={{ fill: '#777d84', fontSize: 8 }} axisLine={false} tickLine={false} minTickGap={20}/>
                     <YAxis tick={{ fill: '#777d84', fontSize: 8 }} axisLine={false} tickLine={false} width={38} tickFormatter={v => v === 0 ? '$0' : `$${(v / 1000).toFixed(0)}k`}/>
                     <Tooltip contentStyle={{ background: '#131722', border: '1px solid #2a2e39', borderRadius: 5, fontSize: 10 }} labelStyle={{ color: '#aab0b6' }} formatter={v => [money(v), 'Cumulative P&L']}/>
-                    <Area type="monotone" dataKey="pnl" stroke="#20bd89" strokeWidth={2} fill="url(#analyticsPnlFill)" isAnimationActive={false}/>
+                    <Area type="monotone" dataKey="pnl" stroke="#2563eb" strokeWidth={2.5} fill="url(#analyticsPnlFill)" isAnimationActive={false}/>
                   </AreaChart>
                 </ResponsiveContainer> : <Empty text="Close trades to build your P&L curve"/>}
               </div>
