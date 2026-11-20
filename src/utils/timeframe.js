@@ -1,3 +1,12 @@
+// Return the UTC-aligned start timestamp for a selected timeframe bucket.
+export const getTimeframeBucketStart = (time, timeframeMinutes) => {
+  const minutes = Number(timeframeMinutes);
+  if (!Number.isFinite(minutes) || minutes <= 1) return Number(time);
+  const interval = Math.round(minutes * 60);
+  const weekOffset = minutes === 10080 ? 4 * 86400 : 0;
+  return Math.floor((Number(time) - weekOffset) / interval) * interval + weekOffset;
+};
+
 // Aggregate sorted OHLC candles into UTC-aligned timeframe buckets.
 export const aggregateData = (data, timeframeMinutes) => {
   if (!Array.isArray(data) || data.length === 0) return [];
