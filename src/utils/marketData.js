@@ -23,6 +23,15 @@ function makeRowPicker() {
   };
 }
 
+function normalizeClockTime(value) {
+  const raw = String(value ?? '').trim();
+  const match = raw.match(/^(\\d{1,2}):(\\d{2})(?::(\\d{2})(\\.\\d+)?)?$/);
+  if (!match) return raw;
+  const hour = match[1].padStart(2, '0');
+  const seconds = match[3] == null ? '' : `:${match[3]}${match[4] || ''}`;
+  return `${hour}:${match[2]}${seconds}`;
+}
+
 function parseTimestamp(row, pick, keys) {
   const raw = pick(row, keys.time);
   if (raw !== undefined) {
@@ -43,7 +52,7 @@ function parseTimestamp(row, pick, keys) {
   const clock = pick(row, keys.clock);
   if (date === undefined || clock === undefined) return null;
   const d = String(date).trim();
-  const t = String(clock).trim();
+  const t = normalizeClockTime(clock);
   let normalizedDate = d;
   if (/^\d{8}$/.test(d)) normalizedDate = `${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}`;
   else if (/^\d{4}[./-]\d{1,2}[./-]\d{1,2}$/.test(d)) normalizedDate = d.replace(/[./]/g, '-');
