@@ -36,7 +36,7 @@ export default function AnalyticsModal() {
   const currentIndex = analyticsSnapshot ? 0 : store.currentIndex;
   const sessionId = analyticsSnapshot?.sessionId || store.sessionId;
   const timeframe = analyticsSnapshot?.timeframe || store.timeframe;
-  const reviewName = analyticsSnapshot?.sessionName || '';
+  const reviewName = analyticsSnapshot?.sessionName || '';\n  const screenshotCandles = rawData.length ? rawData : (store.allRawDataBySymbol?.[analyticsSnapshot?.symbol || store.symbol] || []);
   const [selectedDate, setSelectedDate] = useState(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [monthCursor, setMonthCursor] = useState(() => {
@@ -171,7 +171,7 @@ export default function AnalyticsModal() {
         const key = String(trade.id);
         let image = await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
         if (!image) {
-          image = renderTradeScreenshot(trade, rawData, timeframe);
+          image = renderTradeScreenshot(trade, screenshotCandles, timeframe);
           if (image) await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
         }
         if (image) screenshots[key] = image;
