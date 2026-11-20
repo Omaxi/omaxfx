@@ -305,6 +305,10 @@ export const useStore = create((set, get) => ({
     const savedOffset = TZ_OFFSETS[savedTimezone] ?? 180;
     const currentOffset = TZ_OFFSETS[state.timezone || 'UTC+3'] ?? 180;
     const restoreShift = (savedOffset - currentOffset) * 60;
+    const legacySessionTimes = saved.sessionTimes?.asian === 3 && saved.sessionTimes?.london === 10 && saved.sessionTimes?.newyork === 15;
+    const restoredSessionTimes = !saved.sessionTimes || legacySessionTimes
+      ? { asian: 1, london: 11, newyork: 16 }
+      : saved.sessionTimes;
     const restoredData = restoreShift === 0
       ? symbolData
       : symbolData.map(c => ({ ...c, time: c.time + restoreShift }));
@@ -353,7 +357,7 @@ export const useStore = create((set, get) => ({
       sessionId: saved.sessionId || 'legacy-session',
       sessionName: saved.sessionName || 'Session 1',
       theme: saved.theme || DEFAULT_THEME,
-      sessionTimes: saved.sessionTimes || { asian: 1, london: 11, newyork: 16 },
+      sessionTimes: restoredSessionTimes,
       enableFireworks: saved.enableFireworks ?? true,
       recenterToken: state.recenterToken + 1,
     });
