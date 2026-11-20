@@ -25,13 +25,12 @@ function makeRowPicker() {
 
 function normalizeClockTime(value) {
   const raw = String(value ?? '').trim();
-  const match = raw.match(/^(\\d{1,2}):(\\d{2})(?::(\\d{2})(\\.\\d+)?)?$/);
+  const match = raw.match(/^(\d{1,2}):(\d{2})(?::(\d{2})(\.\d+)?)?$/);
   if (!match) return raw;
   const hour = match[1].padStart(2, '0');
   const seconds = match[3] == null ? '' : `:${match[3]}${match[4] || ''}`;
   return `${hour}:${match[2]}${seconds}`;
 }
-
 function parseTimestamp(row, pick, keys) {
   const raw = pick(row, keys.time);
   if (raw !== undefined) {
