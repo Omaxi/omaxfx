@@ -284,10 +284,10 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
             const id = day + ':' + def.key;
             let item = groups.get(id);
             if (!item) {
-              item = { ...def, startIndex: candleIndex, endIndex: candleIndex, high: Number(candle.high), low: Number(candle.low) };
+              item = { ...def, startTime: Number(candle.time), endTime: Number(candle.time), high: Number(candle.high), low: Number(candle.low) };
               groups.set(id, item);
             } else {
-              item.endIndex = candleIndex;
+              item.endTime = Number(candle.time);
               item.high = Math.max(item.high, Number(candle.high));
               item.low = Math.min(item.low, Number(candle.low));
             }
@@ -306,10 +306,14 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
         ctx.rect(0, 0, paneWidth, paneHeight);
         ctx.clip();
         groups.forEach(item => {
-          // The right edge extends half a bar beyond the latest replay candle.
-          // Logical coordinates support this; timeToCoordinate returns null there.
-          const x1 = chart.timeScale().logicalToCoordinate(item.startIndex - 0.5);
-          const x2 = chart.timeScale().logicalToCoordinate(item.endIndex + 0.5);
+          // Anchor the session range to candle times to keep it aligned with
+          // the actual chart data after replay jumps and timeframe changes.
+          const timeScale = chart.timeScale();
+          const barSpacing = Math.max(1, Number(timeScale.options().barSpacing) || 6);
+          const firstX = timeScale.timeToCoordinate(item.startTime);
+          const lastX = timeScale.timeToCoordinate(item.endTime);
+          const x1 = firstX == null ? null : firstX - barSpacing / 2;
+          const x2 = lastX == null ? null : lastX + barSpacing / 2;
           const y1 = priceSeries.priceToCoordinate(item.high);
           const y2 = priceSeries.priceToCoordinate(item.low);
           if ([x1, x2, y1, y2].some(value => value == null || !Number.isFinite(value))) return;
@@ -318,8 +322,14 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
           const top = Math.max(0, Math.min(y1, y2));
           const bottom = Math.min(paneHeight, Math.max(y1, y2));
           if (right <= left || bottom <= top) return;
-          ctx.fillStyle = item.color + '16';
-          ctx.fillRect(left, top, right - left, bottom - top);
+          const boxHeight = Math.max(3, bottom - top);
+          ctx.fillStyle = item.color + '18';
+          ctx.fillRect(left, top, right - left, boxHeight);
+          ctx.strokeStyle = item.color + 'aa';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 3]);
+          ctx.strokeRect(left + 0.5, top + 0.5, Math.max(0, right - left - 1), Math.max(2, boxHeight - 1));
+          ctx.setLineDash([]);
 
           ctx.font = '600 10px Arial';
           ctx.textAlign = 'center';
