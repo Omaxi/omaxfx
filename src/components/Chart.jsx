@@ -158,18 +158,23 @@ const drawPencilStroke = (ctx, stroke, pointToXY) => {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.setLineDash([]);
+  // Smooth the freehand path with quadratic curves through segment midpoints.
+  // Unlike the previous uniform spline, this avoids sharp joins and overshoot
+  // when pointer samples arrive at uneven intervals.
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[Math.max(0, i - 1)];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[Math.min(points.length - 1, i + 2)];
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = p1.y + (p2.y - p0.y) / 6;
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = p2.y - (p3.y - p1.y) / 6;
-    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+  if (points.length === 2) {
+    ctx.lineTo(points[1].x, points[1].y);
+  } else {
+    for (let i = 1; i < points.length - 1; i++) {
+      const current = points[i];
+      const next = points[i + 1];
+      const midX = (current.x + next.x) / 2;
+      const midY = (current.y + next.y) / 2;
+      ctx.quadraticCurveTo(current.x, current.y, midX, midY);
+    }
+    const last = points[points.length - 1];
+    ctx.lineTo(last.x, last.y);
   }
   ctx.stroke();
 };
@@ -977,6 +982,29 @@ export default function Chart() {
           }
         }
         return;
+      }
+
+      // Text labels can be grabbed and moved with a single click-drag.
+      // Select and begin the drag immediately instead of requiring a double-click.
+      if (drawingHit) {
+        const hitDrawing = state.drawings.find(d => d.id === drawingHit.drawingId);
+        if (hitDrawing?.type === 'text') {
+          const point = xyToPoint(x, y);
+          if (point) {
+            e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+            snapshotDrawings();
+            setSelectedItem({ type: 'drawing', id: hitDrawing.id });
+            lockChart(true);
+            dragRef.current = {
+              type: 'drawing',
+              ...drawingHit,
+              startMouse: point,
+              originalPoints: hitDrawing.points.map(p => ({ ...p })),
+            };
+            lastTapRef.current = { time: now, x, y };
+            return;
+          }
+        }
       }
 
       if (isDoubleTap) {
