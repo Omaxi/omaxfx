@@ -112,8 +112,8 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1) {
   const candleW = Math.max(1, Math.min(9, step * 0.68));
   const x = index => left + (index + 0.5) * step;
 
-  ctx.fillStyle = '#131722'; ctx.fillRect(0, 0, width, height);
-  ctx.fillStyle = '#e5e7eb'; ctx.font = 'bold 22px Arial'; ctx.textAlign = 'left';
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = '#172033'; ctx.font = 'bold 22px Arial'; ctx.textAlign = 'left';
   ctx.fillText(String(trade.symbol || 'MARKET') + ' · ' + String(trade.type || '').toUpperCase() + ' · TRADE ID ' + String(trade.id), left, 34);
   const rawDurationSeconds = Number(trade.closeTime) - Number(trade.openTime);
   const durationSeconds = Number.isFinite(rawDurationSeconds) ? Math.max(0, rawDurationSeconds) : 0;
@@ -123,10 +123,10 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1) {
   const durationLabel = durationHours > 0
     ? `${durationHours}h ${durationMinutes}m ${durationRemainder}s`
     : durationMinutes > 0 ? `${durationMinutes}m ${durationRemainder}s` : `${durationRemainder}s`;
-  ctx.fillStyle = '#8b98a9'; ctx.font = '13px Arial';
+  ctx.fillStyle = '#64748b'; ctx.font = '13px Arial';
   ctx.fillText('Entry ' + (Number.isFinite(entry) ? entry : '—') + '   Exit ' + (Number.isFinite(exit) ? exit : '—') + '   P&L ' + Number(trade.pnl || 0).toFixed(2) + '   Duration ' + durationLabel, left, 56);
 
-  ctx.strokeStyle = '#293241'; ctx.lineWidth = 1; ctx.font = '11px Arial'; ctx.fillStyle = '#9aa4b2';
+  ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1; ctx.font = '11px Arial'; ctx.fillStyle = '#64748b';
   for (let i = 0; i <= 6; i++) {
     const yy = top + (plotH * i / 6), value = max - (max - min) * i / 6;
     ctx.beginPath(); ctx.moveTo(left, yy); ctx.lineTo(width - right, yy); ctx.stroke();
@@ -136,11 +136,11 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1) {
 
   const boxLeft = x(entryIndex), boxRight = x(exitIndex);
   if (Number.isFinite(entry) && Number.isFinite(sl)) {
-    ctx.fillStyle = 'rgba(239,83,80,0.18)';
+    ctx.fillStyle = 'rgba(239,83,80,0.14)';
     ctx.fillRect(Math.min(boxLeft, boxRight), Math.min(y(entry), y(sl)), Math.max(3, Math.abs(boxRight - boxLeft)), Math.abs(y(entry) - y(sl)));
   }
   if (Number.isFinite(entry) && Number.isFinite(tp)) {
-    ctx.fillStyle = 'rgba(38,166,154,0.18)';
+    ctx.fillStyle = 'rgba(38,166,154,0.14)';
     ctx.fillRect(Math.min(boxLeft, boxRight), Math.min(y(entry), y(tp)), Math.max(3, Math.abs(boxRight - boxLeft)), Math.abs(y(entry) - y(tp)));
   }
 
