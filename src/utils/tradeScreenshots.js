@@ -1,4 +1,4 @@
-const DB_NAME = 'omaxfx-trade-journal-v5';
+const DB_NAME = 'omaxfx-trade-journal-v6';
 const STORE_NAME = 'screenshots';
 let dbPromise;
 
@@ -112,8 +112,8 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1) {
   const candleW = Math.max(1, Math.min(9, step * 0.68));
   const x = index => left + (index + 0.5) * step;
 
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, width, height);
-  ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 1; ctx.font = '11px Arial'; ctx.fillStyle = '#64748b';
+  ctx.fillStyle = '#0d1117'; ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = '#273244'; ctx.lineWidth = 1; ctx.font = '11px Arial'; ctx.fillStyle = '#9aa4b2';
   for (let i = 0; i <= 6; i++) {
     const yy = top + (plotH * i / 6), value = max - (max - min) * i / 6;
     ctx.beginPath(); ctx.moveTo(left, yy); ctx.lineTo(width - right, yy); ctx.stroke();
