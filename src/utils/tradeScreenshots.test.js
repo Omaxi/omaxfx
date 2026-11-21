@@ -47,12 +47,13 @@ test('scopes screenshot storage keys by session and trade ID', () => {
 
 test('renders distinct screenshot payloads without the removed trade title header', () => {
   const originalDocument = globalThis.document;
+  const fillColors = [];
   globalThis.document = {
     createElement: () => {
       const labels = [];
       const context = new Proxy({
         fillText: (value) => labels.push(String(value)),
-        beginPath() {}, moveTo() {}, lineTo() {}, stroke() {}, fillRect() {},
+        beginPath() {}, moveTo() {}, lineTo() {}, stroke() {}, fillRect() { fillColors.push(this.fillStyle); },
         save() {}, restore() {}, setLineDash() {},
       }, { set(target, key, value) { target[key] = value; return true; } });
       return {
@@ -73,6 +74,7 @@ test('renders distinct screenshot payloads without the removed trade title heade
       entryPrice: 1.2, exitPrice: 1.198, sl: 1.201, tp: 1.198, pnl: 20,
     }, candles, 1);
     assert.ok(first && second);
+    assert.equal(fillColors[0], '#0d1117', 'saved trade screenshots must use the dark OmaxFX chart background');
     assert.notEqual(first, second);
     const firstLabels = Buffer.from(first.split(',')[1], 'base64').toString();
     const secondLabels = Buffer.from(second.split(',')[1], 'base64').toString();
