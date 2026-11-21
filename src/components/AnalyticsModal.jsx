@@ -221,7 +221,7 @@ export default function AnalyticsModal() {
       window.alert('Please allow pop-ups for OmaxFX to export the analytics PDF.');
       return;
     }
-    printWindow.document.write('<!doctype html><title>Preparing OmaxFX report</title><body style="font:14px Arial;padding:32px;background:#ffffff;color:#172033">Preparing your analytics report and loading trade screenshots…</body>');
+    printWindow.document.write('<!doctype html><title>Preparing OmaxFX report</title><body style="font:14px Arial;padding:32px;background:#0b0e11;color:#f4f4f5">Preparing your analytics report and loading trade screenshots…</body>');
     setIsExportingPdf(true);
     try {
       const screenshots = {};
