@@ -284,6 +284,18 @@ export default function ControlPanel() {
             <ChevronDown size={10} className={`transition-transform ${tfOpen ? 'rotate-180' : ''}`} />
           </button>
 
+          <label className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold flex-shrink-0" title="Auto-play speed in underlying 1-minute candles per second">
+            <span className="text-gray-400">Speed</span>
+            <select value={replaySpeed} onChange={event => setReplaySpeed(Number(event.target.value))} className="bg-transparent text-white outline-none">
+              <option value={1}>1 bar/s</option>
+              <option value={5}>5 bars/s</option>
+              <option value={10}>10 bars/s</option>
+              <option value={50}>50 bars/s</option>
+              <option value={100}>100 bars/s</option>
+              <option value={500}>500 bars/s</option>
+            </select>
+          </label>
+
           <button ref={ctButtonRef} onClick={toggleCt}
             className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
             title="Chart type">
