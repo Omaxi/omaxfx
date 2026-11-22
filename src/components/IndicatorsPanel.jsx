@@ -404,10 +404,14 @@ export default function IndicatorsPanel({ onHtfDashboard, chartRef, chartReady, 
     const chart = chartReady ? chartRef.current : null;
     const priceSeries = priceSeriesRef?.current;
     if (!canvas || !chart) return undefined;
-    let frame = 0;
+    let frame = null;
     const draw = () => {
-      cancelAnimationFrame(frame);
+      // Coalesce rapid pointer/scale events into one paint per animation frame.
+      // Do not cancel the pending frame: doing so can starve redraws while the
+      // trader is actively dragging the price axis.
+      if (frame !== null) return;
       frame = requestAnimationFrame(() => {
+        frame = null;
         const rect = canvas.getBoundingClientRect();
         const dpr = Math.max(1, window.devicePixelRatio || 1);
         canvas.width = Math.round(rect.width * dpr);
@@ -485,12 +489,25 @@ export default function IndicatorsPanel({ onHtfDashboard, chartRef, chartReady, 
     };
     draw();
     const timeScale = chart.timeScale();
+    const priceScale = chart.priceScale('right');
     timeScale.subscribeVisibleLogicalRangeChange(draw);
+    // Session rectangles use priceToCoordinate for their vertical bounds.
+    // Redraw whenever the visible price range changes (including Y-axis drag).
+    priceScale.subscribeVisiblePriceRangeChange?.(draw);
+    chart.subscribeSizeChange?.(draw);
+    // Price-axis dragging does not consistently emit a time-range event.
+    // Pointer/wheel events keep the overlay synchronized during the gesture.
+    window.addEventListener('pointermove', draw, { passive: true });
+    window.addEventListener('wheel', draw, { passive: true });
     const observer = new ResizeObserver(draw);
     observer.observe(canvas);
     return () => {
-      cancelAnimationFrame(frame);
+      if (frame !== null) cancelAnimationFrame(frame);
       timeScale.unsubscribeVisibleLogicalRangeChange(draw);
+      priceScale.unsubscribeVisiblePriceRangeChange?.(draw);
+      chart.unsubscribeSizeChange?.(draw);
+      window.removeEventListener('pointermove', draw);
+      window.removeEventListener('wheel', draw);
       observer.disconnect();
     };
   }, [active.sessions, chartRef, chartReady, sessionCandles, timeframe, sessionColors]);
@@ -798,7 +815,7 @@ export default function IndicatorsPanel({ onHtfDashboard, chartRef, chartReady, 
       <div className="absolute top-2 left-12 z-40 pointer-events-auto" onPointerDown={event => event.stopPropagation()}>
       <button onClick={() => setOpen(value => !value)} className="flex items-center gap-1 rounded-md border border-[#2a2e39] bg-[#131722]/95 px-2 py-1 text-[10px] font-bold text-gray-200 shadow-lg hover:bg-[#1e222d]">
         Indicators <ChevronDown size={11} className={open ? 'rotate-180' : ''}/>
-        {selected.length > 0 && <span className="rounded bg-blue-600 px-1 text-white">{selected.length}</span>}
+        {selected.length > 0 && <span className="indicator-count-badge rounded bg-blue-600 px-1 text-white">{selected.length}</span>}
       </button>
       {open && (
         <div className="mt-1 w-64 rounded-lg border border-[#2a2e39] bg-[#131722]/98 p-2 shadow-2xl">
