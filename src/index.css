@@ -137,3 +137,9 @@ select option {
   background: #1e222d;
   color: #f3f4f6;
 }
+
+
+/* The chart canvas uses its own Lightweight Charts surface; keep its wrapper
+   in sync with the application theme instead of leaving a dark strip behind. */
+html[data-ui-theme="light"] .chart-root { background-color: #ffffff !important; }
+html[data-ui-theme="dark"] .chart-root { background-color: var(--omax-chart-background, #131722); }
