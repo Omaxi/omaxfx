@@ -117,6 +117,15 @@ function buildCalendar(dailyEntries) {
 
 export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startBalance, balance, timezone, backtestRange, trades, metrics, dailyEntries, curve, screenshots }) {
   const generated = new Date().toLocaleString();
+  const summaryCards = [
+    ['Net P&L', money(metrics.netPnl), metrics.netPnl >= 0 ? 'gain' : 'loss'],
+    ['Trade win rate', percent(metrics.winRate), 'blue'],
+    ['Avg win/loss', Number(metrics.avgRatio || 0).toFixed(2), 'blue'],
+    ['Profit factor', metrics.profitFactor === Infinity ? '∞' : Number(metrics.profitFactor || 0).toFixed(2), metrics.profitFactor >= 1 ? 'gain' : 'loss'],
+    ['Average R', Number(metrics.averageR || 0).toFixed(2) + 'R', metrics.averageR >= 0 ? 'gain' : 'loss'],
+    ['Closed DD', percent(metrics.maxClosedDrawdown), 'loss'],
+    ['Current streak', metrics.currentStreak, 'neutral'],
+  ];
   const metricTone = label => ({
     'Starting balance': 'blue', 'Final balance': 'blue', 'Net P&L': metrics.netPnl >= 0 ? 'gain' : 'loss',
     'Return': metrics.returnPct >= 0 ? 'gain' : 'loss', 'Total closed trades': 'blue', 'Wins': 'gain', 'Losses': 'loss',
@@ -164,13 +173,71 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
       }).join('')}
     </section>`).join('');
   return `<!doctype html><html><head><meta charset="utf-8"><title>OmaxFX Analytics - ${escapeHtml(sessionName)}</title><style>
-    @page{size:A4;margin:14mm 13mm 16mm;background:#0b0e11}*{box-sizing:border-box}body{font:10px/1.45 Arial,sans-serif;color:#f4f4f5;margin:0;background:#0b0e11}h1{font-size:25px;margin:0 0 4px}h2{font-size:17px;margin:0}h3{font-size:12px;margin:0}.muted,small{color:#9ca3af}.report-title{font-size:17px;font-weight:700;letter-spacing:.2px;color:#f4f4f5;padding:10px 0 14px;margin:0 0 12px;border-bottom:1px solid #2a2e39}.cover{border-bottom:3px solid #2c67c5;padding:0 0 13px;margin-bottom:16px}.eyebrow{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#2c67c5;font-weight:bold}.range-line{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:7px;padding:7px 9px;background:#1e222d;border:1px solid #2a2e39;border-radius:5px;color:#e5e7eb;font-size:10px}.range-line b{color:#f4f4f5}.range-duration{margin-left:auto;font-weight:bold;color:#2c67c5}.meta{display:flex;gap:18px;flex-wrap:wrap;color:#9ca3af;margin-top:7px}.section{margin:16px 0}.section h2{margin-bottom:9px;color:#f4f4f5}.journal-date{color:#f4f4f5}.journal-label{color:#aab3c2;font-weight:600}.journal-value{color:#e5e7eb}.journal-value.blue{color:#60a5fa}.journal-value.gain{color:#34d399}.journal-value.loss{color:#f87171}.journal-value.warn{color:#fbbf24}.trade-side.buy{color:#34d399}.trade-side.sell{color:#f87171}.curve{border:1px solid #2a2e39;border-radius:8px;padding:10px;background:#131722}.curve svg{display:block;width:100%;height:auto}.empty{padding:22px;text-align:center;color:#9ca3af;background:#1e222d;border-radius:6px}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:0 20px;border-top:1px solid #2a2e39}.metric{display:flex;justify-content:space-between;gap:12px;padding:6px 2px;border-bottom:1px solid #2a2e39}.metric b{text-align:right}.metric-label{color:#aab3c2;font-weight:600}.metric-value{font-weight:700}.metric-value.blue{color:#60a5fa}.metric-value.gain{color:#34d399}.metric-value.loss{color:#f87171}.metric-value.warn{color:#fbbf24}.metric-value.neutral{color:#e5e7eb}.gain{color:#34d399}.loss{color:#f87171}.calendar-wrap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.calendar-wrap.single-month{grid-template-columns:minmax(0,1fr)}.month-card{border:1px solid #2a2e39;border-radius:7px;padding:8px;break-inside:avoid}.month-heading{display:flex;align-items:center;gap:8px;margin-bottom:7px}.month-heading h3{flex:1}.month-heading span{color:#9ca3af;font-size:9px}.month-content{display:grid;grid-template-columns:minmax(0,1fr) 82px;gap:5px;align-items:stretch}.week-summary{display:flex;flex-direction:column;gap:3px;padding-top:18px}.week-item{flex:1;min-height:34px;border-radius:4px;background:#1e222d;border:1px solid #2a2e39;padding:4px;display:flex;flex-direction:column;justify-content:center;overflow:hidden}.week-item small{font-size:7px;color:#9ca3af}.week-item b{font-size:9px;line-height:1.2}.week-item span{font-size:6px;color:#9ca3af;white-space:nowrap}.calendar{width:100%;border-collapse:separate;border-spacing:2px;table-layout:fixed}.calendar th{font-size:8px;color:#9ca3af;padding:4px 0}.calendar td{height:48px;vertical-align:top;padding:4px;border-radius:3px;background:#1e222d;font-size:9px}.calendar td b{display:block}.calendar td span,.calendar td small{display:block;font-size:7px;margin-top:3px}.calendar td.positive{background:#063b31;color:#34d399}.calendar td.negative{background:#451f28;color:#f87171}.calendar td.flat{background:#1b3158;color:#93c5fd}.calendar td.blank{background:transparent}.day-section{margin-top:18px}.section-title{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #2a2e39;padding-bottom:7px;margin-bottom:10px}.section-title p{margin:2px 0 0;color:#9ca3af}.trade-card{border:1px solid #2a2e39;border-radius:7px;padding:10px;margin:0 0 12px;break-inside:avoid}.trade-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #2a2e39;padding-bottom:7px;margin-bottom:8px}.trade-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:9px}.trade-grid>div{background:#1e222d;border-radius:4px;padding:5px}.trade-grid small{display:block;font-size:8px;color:#aab3c2;font-weight:600}.trade-grid b{color:#e5e7eb}.trade-grid b.gain{color:#34d399}.trade-grid b.loss{color:#f87171}.trade-grid b.warn{color:#fbbf24}.trade-grid b{display:block;font-size:9px;overflow-wrap:anywhere}.trade-image{display:block;width:100%;max-height:350px;object-fit:contain;background:#131722;border:1px solid #2a2e39;border-radius:4px}.no-image{padding:18px;text-align:center;color:#fbbf24;background:#3b2c14;border:1px dashed #8b6a2d;border-radius:4px}.page-break{break-before:page}.footer{margin-top:15px;border-top:1px solid #2a2e39;padding-top:6px;color:#9ca3af;font-size:8px}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#0b0e11;color:#f4f4f5}.calendar-wrap{grid-template-columns:1fr 1fr}.calendar-wrap.single-month{grid-template-columns:1fr}.trade-card,.month-card{break-inside:avoid}}@media screen{body{max-width:1000px;margin:28px auto;padding:0 24px}}
-    </style></head><body>
+    @page{size:A4 landscape;margin:9mm 9mm 10mm;background:#0b0e11}
+    *{box-sizing:border-box}
+    body{font:9px/1.4 Arial,sans-serif;color:#f4f4f5;margin:0;background:#0b0e11}
+    h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;margin:0}h3{font-size:11px;margin:0}
+    .muted,small{color:#9ca3af}
+    .report-title{font-size:14px;font-weight:700;color:#f4f4f5;padding:4px 0 8px;margin:0 0 9px;border-bottom:1px solid #2a2e39}
+    .cover{border-bottom:2px solid #2c67c5;padding:0 0 9px;margin-bottom:10px}
+    .range-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;padding:6px 8px;background:#1e222d;border:1px solid #2a2e39;border-radius:5px;color:#e5e7eb;font-size:9px}
+    .range-line b{color:#f4f4f5}.range-duration{margin-left:auto;font-weight:bold;color:#60a5fa}
+    .meta{display:flex;gap:14px;flex-wrap:wrap;color:#9ca3af;margin-top:6px}
+    .section{margin:10px 0}.section h2{margin-bottom:6px;color:#f4f4f5}
+    .top-metrics{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:8px 0 10px}
+    .summary-card{min-width:0;background:#1e222d;border:1px solid #2a2e39;border-radius:5px;padding:7px}
+    .summary-card small{display:block;font-size:7px;color:#9ca3af;margin-bottom:3px}
+    .summary-card b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .dashboard-grid{display:grid;grid-template-columns:minmax(220px,34%) minmax(0,1fr);gap:8px;align-items:stretch;margin:8px 0 12px}
+    .dashboard-panel{min-width:0;border:1px solid #2a2e39;border-radius:6px;background:#131722;padding:8px;break-inside:avoid}
+    .dashboard-panel h2{margin-bottom:7px}
+    .metrics{display:grid;grid-template-columns:1fr;gap:0;border-top:1px solid #2a2e39}
+    .metric{display:flex;justify-content:space-between;gap:8px;padding:3px 1px;border-bottom:1px solid #2a2e39;font-size:8px}
+    .metric b{text-align:right}.metric-label{color:#aab3c2;font-weight:600}
+    .metric-value{font-weight:700}.metric-value.blue{color:#60a5fa}.metric-value.gain,.gain{color:#34d399}
+    .metric-value.loss,.loss{color:#f87171}.metric-value.warn{color:#fbbf24}.metric-value.neutral{color:#e5e7eb}
+    .calendar-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
+    .calendar-wrap.single-month{grid-template-columns:minmax(0,1fr)}
+    .month-card{border:1px solid #2a2e39;border-radius:5px;padding:6px;break-inside:avoid}
+    .month-heading{display:flex;align-items:center;gap:8px;margin-bottom:5px}.month-heading h3{flex:1}
+    .month-heading span{color:#9ca3af;font-size:8px}
+    .month-content{display:grid;grid-template-columns:minmax(0,1fr) 74px;gap:5px;align-items:stretch}
+    .week-summary{display:flex;flex-direction:column;gap:2px;padding-top:15px}
+    .week-item{flex:1;min-height:26px;border-radius:4px;background:#1e222d;border:1px solid #2a2e39;padding:3px;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+    .week-item small{font-size:6px}.week-item b{font-size:8px;line-height:1.2}.week-item span{font-size:6px;color:#9ca3af;white-space:nowrap}
+    .calendar{width:100%;border-collapse:separate;border-spacing:2px;table-layout:fixed}
+    .calendar th{font-size:7px;color:#9ca3af;padding:3px 0}
+    .calendar td{height:37px;vertical-align:top;padding:3px;border-radius:3px;background:#1e222d;font-size:8px}
+    .calendar td b{display:block}.calendar td span,.calendar td small{display:block;font-size:6px;margin-top:2px}
+    .calendar td.positive{background:#063b31;color:#34d399}.calendar td.negative{background:#451f28;color:#f87171}
+    .calendar td.flat{background:#1b3158;color:#93c5fd}.calendar td.blank{background:transparent}
+    .curve{border:1px solid #2a2e39;border-radius:7px;padding:8px;background:#131722}
+    .curve svg{display:block;width:100%;height:auto}.empty{padding:18px;text-align:center;color:#9ca3af;background:#1e222d;border-radius:6px}
+    .journal-date{color:#f4f4f5}.journal-value{color:#e5e7eb}.journal-value.blue{color:#60a5fa}
+    .journal-value.gain{color:#34d399}.journal-value.loss{color:#f87171}.journal-value.warn{color:#fbbf24}
+    .trade-side.buy{color:#34d399}.trade-side.sell{color:#f87171}
+    .day-section{margin-top:10px}.section-title{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #2a2e39;padding-bottom:6px;margin-bottom:8px}
+    .section-title p{margin:2px 0 0;color:#9ca3af}
+    .trade-card{border:1px solid #2a2e39;border-radius:6px;padding:8px;margin:0 0 9px;break-inside:avoid}
+    .trade-head{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #2a2e39;padding-bottom:6px;margin-bottom:7px}
+    .trade-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:7px}
+    .trade-grid>div{background:#1e222d;border-radius:4px;padding:4px}
+    .trade-grid small{display:block;font-size:7px;color:#aab3c2;font-weight:600}
+    .trade-grid b{display:block;font-size:8px;overflow-wrap:anywhere;color:#e5e7eb}
+    .trade-grid b.gain{color:#34d399}.trade-grid b.loss{color:#f87171}.trade-grid b.warn{color:#fbbf24}
+    .trade-image{display:block;width:100%;max-height:290px;object-fit:contain;background:#131722;border:1px solid #2a2e39;border-radius:4px}
+    .no-image{padding:14px;text-align:center;color:#fbbf24;background:#3b2c14;border:1px dashed #8b6a2d;border-radius:4px}
+    .page-break{break-before:page}.footer{margin-top:12px;border-top:1px solid #2a2e39;padding-top:6px;color:#9ca3af;font-size:7px}
+    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;background:#0b0e11;color:#f4f4f5}.dashboard-grid{grid-template-columns:34% 1fr}.trade-card,.month-card{break-inside:avoid}}
+    @media screen{body{max-width:1400px;margin:20px auto;padding:0 20px}}</style></head><body>
     <div class="report-title">OmaxFX Simulator · Performance report</div>
     <header class="cover"><h1>${escapeHtml(sessionName||'Trading session')}</h1><div class="range-line"><b>Backtest range</b><span>${escapeHtml(backtestRange?.from || "—")}</span><span>TO</span><span>${escapeHtml(backtestRange?.to || "—")}</span><span class="range-duration">${escapeHtml(backtestRange?.elapsed || "")}</span></div><div class="meta"><span>Symbol: <b>${escapeHtml(symbol||'—')}</b></span><span>Session ID: ${escapeHtml(sessionId||'—')}</span><span>Timezone: ${escapeHtml(timezone||'UTC+3')}</span><span>Generated: ${escapeHtml(generated)}</span></div></header>
-    <section class="section"><h2>Equity curve · Trade-by-trade cumulative realized P&amp;L</h2><div class="curve">${buildCurveSvg(curve, 'Buy & Hold · '+(symbol||'Market'))}</div></section>
-    <section class="section"><h2>Full performance metrics</h2><div class="metrics">${metricRows.map(([label,value])=>`<div class="metric"><span class="metric-label">${escapeHtml(label)}</span><b class="metric-value ${metricTone(label)}">${escapeHtml(value)}</b></div>`).join('')}</div></section>
-    <section class="section page-break"><h2>Trading calendar · All active months</h2><p class="muted">Each day shows realized net P&amp;L and closed trade count. Market date uses UTC+3.</p><div class="calendar-wrap ${new Set(dailyEntries.map(([key])=>key.slice(0,7))).size===1?'single-month':''}">${buildCalendar(dailyEntries)}</div></section>
+    <div class="top-metrics">${summaryCards.map(([label,value,tone])=>`<div class="summary-card"><small>${escapeHtml(label)}</small><b class="${tone}">${escapeHtml(value)}</b></div>`).join('')}</div>
+    <div class="dashboard-grid">
+      <section class="dashboard-panel"><h2>Trading statistics</h2><div class="metrics">${metricRows.map(([label,value])=>`<div class="metric"><span class="metric-label">${escapeHtml(label)}</span><b class="metric-value ${metricTone(label)}">${escapeHtml(value)}</b></div>`).join('')}</div></section>
+      <section class="dashboard-panel"><h2>Trading calendar · All active months</h2><p class="muted">Daily realized net P&amp;L and closed trade count · UTC+3</p><div class="calendar-wrap ${new Set(dailyEntries.map(([key])=>key.slice(0,7))).size===1?'single-month':''}">${buildCalendar(dailyEntries)}</div></section>
+    </div>
+    <section class="section"><h2>Equity curve · Strategy vs Buy &amp; Hold</h2><div class="curve">${buildCurveSvg(curve, 'Buy & Hold · '+(symbol||'Market'))}</div></section>
     <section class="page-break"><h2>Daily trade journal · All trades and chart screenshots</h2><p class="muted">${trades.length} closed trades across ${dailyEntries.length} active trading days.</p>${tradePages||'<div class="empty">No closed trades in this session.</div>'}</section>
     <div class="footer">OmaxFX · Report generated ${escapeHtml(generated)} · Values are based on the saved session trade history.</div>
     <script>window.addEventListener('load',()=>{const imgs=[...document.images];Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve}))).then(()=>setTimeout(()=>{document.querySelector('.print-hint')?.classList.add('ready')},150));});</script>
