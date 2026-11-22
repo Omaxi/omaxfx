@@ -11,6 +11,21 @@ export function toMarketDate(time) {
   return null;
 }
 
+// Trading-session boundaries are fixed to the simulator's broker clock (UTC+3).
+// New York runs overnight, so 00:00–00:59 belongs to the previous day's NY session.
+export function getMarketSession(time) {
+  const date = toMarketDate(time);
+  if (!date || !Number.isFinite(date.getTime())) return null;
+  const hour = date.getUTCHours();
+  let key, label;
+  if (hour >= 1 && hour < 11) { key = 'asia'; label = 'Asian'; }
+  else if (hour >= 11 && hour < 16) { key = 'london'; label = 'London'; }
+  else { key = 'newyork'; label = 'New York'; }
+  if (key === 'newyork' && hour < 1) date.setUTCDate(date.getUTCDate() - 1);
+  const sessionDate = `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
+  return { key, label, sessionDate };
+}
+
 const pad = (value) => String(value).padStart(2, '0');
 
 export function formatMarketDateTime(time) {
