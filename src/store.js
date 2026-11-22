@@ -632,18 +632,10 @@ export const useStore = create((set, get) => ({
   setTimeframe: (newTimeframe) => set((state) => {
     const nextTimeframe = Number(newTimeframe);
     if (!Number.isFinite(nextTimeframe) || nextTimeframe <= 0 || nextTimeframe === state.timeframe) return state;
-    // At 1m, currentIndex is the last completed raw candle. At higher timeframes,
-    // it is the next raw candle at the replay boundary. Preserve that boundary
-    // when switching views instead of exposing an unfinished lower-timeframe bar.
-    let currentIndex = state.currentIndex;
-    if (state.timeframe === 1 && nextTimeframe > 1) {
-      currentIndex = Math.min(Math.max(0, state.rawData.length - 1), currentIndex + 1);
-    } else if (state.timeframe > 1 && nextTimeframe === 1) {
-      currentIndex = Math.max(0, currentIndex - 1);
-    }
+    // The replay cursor is always a 1m source-candle index. Changing the
+    // chart timeframe changes only aggregation/display, never replay position.
     return {
       timeframe: nextTimeframe,
-      currentIndex,
       displayData: aggregateData(state.rawData, nextTimeframe),
       drawings: state.drawings,
     };
@@ -817,7 +809,7 @@ export const useStore = create((set, get) => ({
   //   3. Bail if already at the last candle (do nothing)
   //   4. Only fire 'period_end' if we actually consumed new candles
   // =========================================================================
-  stepForward: () => set((state) => {
+  stepForward: (mode = 'timeframe', count = 1) => set((state) => {
     if (state.gameState.isOver) return state;
     if (!state.gameStarted) return state;
     if (state.rawData.length === 0) return state;
@@ -825,31 +817,28 @@ export const useStore = create((set, get) => ({
     // Already at the last candle — nothing to advance to.
     if (state.currentIndex >= state.rawData.length - 1) return state;
 
-    const jumpSize = Number(state.timeframe) || 1;
-    let nextIndex;
-    let firstProcessedIndex;
+    // currentIndex always identifies the last 1-minute source candle processed,
+    // no matter which chart timeframe is selected.
+    let firstProcessedIndex = state.currentIndex + 1;
     let lastProcessedIndex;
+    let nextIndex;
 
-    if (jumpSize <= 1) {
-      // On 1m, the replay cursor is the last completed candle: advance exactly
-      // one source candle, regardless of the absolute date or array position.
-      nextIndex = state.currentIndex + 1;
-      firstProcessedIndex = nextIndex;
-      lastProcessedIndex = nextIndex;
+    if (mode === 'minute') {
+      const barsToAdvance = Math.max(1, Math.floor(Number(count) || 1));
+      lastProcessedIndex = Math.min(state.rawData.length - 1, state.currentIndex + barsToAdvance);
+      nextIndex = lastProcessedIndex;
     } else {
-      // Higher-timeframe replay advances one actual OHLC bucket, not a fixed
-      // number of array rows. This remains correct when the CSV has missing
-      // minutes, market closures, or starts part-way through a timeframe.
-      const current = state.rawData[state.currentIndex];
-      const bucketStart = getTimeframeBucketStart(current.time, jumpSize);
-      let bucketEnd = state.currentIndex + 1;
-      while (bucketEnd < state.rawData.length &&
-        getTimeframeBucketStart(state.rawData[bucketEnd].time, jumpSize) === bucketStart) {
-        bucketEnd++;
+      // Manual Next Bar jumps to the end of the next displayed timeframe bucket.
+      // The cursor remains on the final underlying 1m candle in that bucket.
+      const nextRaw = state.rawData[firstProcessedIndex];
+      if (!nextRaw) return state;
+      const bucketStart = getTimeframeBucketStart(nextRaw.time, Number(state.timeframe) || 1);
+      lastProcessedIndex = firstProcessedIndex;
+      while (lastProcessedIndex + 1 < state.rawData.length &&
+        getTimeframeBucketStart(state.rawData[lastProcessedIndex + 1].time, Number(state.timeframe) || 1) === bucketStart) {
+        lastProcessedIndex++;
       }
-      firstProcessedIndex = state.currentIndex;
-      lastProcessedIndex = bucketEnd - 1;
-      nextIndex = bucketEnd < state.rawData.length ? bucketEnd : state.rawData.length - 1;
+      nextIndex = lastProcessedIndex;
     }
 
     nextIndex = Math.min(nextIndex, state.rawData.length - 1);
@@ -1043,11 +1032,9 @@ export const useStore = create((set, get) => ({
         !['market', 'limit', 'stop'].includes(type)) return state;
     // Only one live position OR one pending order is allowed at a time.
     if (state.positions.length > 0 || state.pendingOrders.length > 0) return state;
-    const executionCandle = getExecutionCandle(
-      state.rawData, state.displayData, state.currentIndex, state.timeframe
-    );
-    if (!executionCandle) return state;
-
+    // Market orders execute at the latest replayed 1m close. A chart's
+    // display timeframe must never change the simulated execution price.
+    const executionCandle = candle;
     const marketPrice = Number(executionCandle.close);
     const actualEntry = type === 'market' ? marketPrice : Number(entryPrice);
     const stop = Number(slPrice);
