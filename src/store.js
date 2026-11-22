@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { aggregateData, getExecutionCandle, getTimeframeBucketStart } from './utils/timeframe.js';
+import { aggregateData, getTimeframeBucketStart } from './utils/timeframe.js';
 import { getPnlMultiplier, calculateIntrabarUnrealizedPnl, calculateUnrealizedPnlAtPrice, calculateFavorableIntrabarPnl } from './utils/instrument.js';
 import { getPendingOrderFillPrice, getStopLossFillPrice, getTakeProfitFillPrice } from './utils/orderExecution.js';
 export { getContractSize, getPnlMultiplier } from './utils/instrument.js';
@@ -747,7 +747,7 @@ export const useStore = create((set, get) => ({
   closePosition: (id) => set((state) => {
     const pos = state.positions.find(p => p.id === id);
     if (!pos || !state.rawData[state.currentIndex]) return state;
-    const currentCandle = getExecutionCandle(state.rawData, state.displayData, state.currentIndex, state.timeframe) || state.rawData[state.currentIndex];
+    const currentCandle = state.rawData[state.currentIndex];
     const exitPrice = currentCandle.close;
     const isBuy = pos.type === 'buy';
     const priceDiff = isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice;
