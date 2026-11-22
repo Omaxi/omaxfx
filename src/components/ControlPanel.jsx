@@ -194,7 +194,7 @@ export default function ControlPanel() {
   const TimeframeDropdown = () => (
     <>
       <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
-      <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[140px] overflow-hidden" style={{ zIndex: 9999, left: tfLeft, bottom: 52 }}>
+      <div className="theme-menu-surface fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[140px] overflow-hidden" style={{ zIndex: 9999, left: tfLeft, bottom: 52 }}>
         <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">Timeframe</div>
         {TIMEFRAMES.map(tf => {
           const isSelected = timeframe === tf.value;
@@ -234,7 +234,7 @@ export default function ControlPanel() {
   const ChartTypeDropdown = () => (
     <>
       <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
-      <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[130px] overflow-hidden" style={{ zIndex: 9999, left: ctLeft, bottom: 52 }}>
+      <div className="theme-menu-surface fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[130px] overflow-hidden" style={{ zIndex: 9999, left: ctLeft, bottom: 52 }}>
         <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">Chart</div>
         {CHART_TYPES.map(ct => {
           const isSelected = chartType === ct.value;
@@ -258,7 +258,7 @@ export default function ControlPanel() {
   const JumpDropdown = () => (
     <>
       <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
-      <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[260px]" style={{ zIndex: 9999, left: jumpLeft, bottom: 52 }}>
+      <div className="theme-menu-surface fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[260px]" style={{ zIndex: 9999, left: jumpLeft, bottom: 52 }}>
         <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide flex justify-between items-center">
           <span>Jump to Session</span>
           <span className="text-[8px] text-gray-600 normal-case">UTC+3</span>
@@ -283,7 +283,7 @@ export default function ControlPanel() {
               <div className="flex-1" />
               <button
                 onClick={() => { jumpToSession(s.key); closeAll(); }}
-                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded"
+                className="theme-action-contrast px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded"
               >
                 Jump
               </button>
@@ -356,8 +356,8 @@ export default function ControlPanel() {
           )}
 
           <div className="flex items-center gap-1 flex-shrink-0">
-            <button onClick={() => openOrderModal('buy')} className="h-9 px-3 bg-green-600 active:bg-green-700 rounded font-bold text-xs text-white">BUY</button>
-            <button onClick={() => openOrderModal('sell')} className="h-9 px-3 bg-red-600 active:bg-red-700 rounded font-bold text-xs text-white">SELL</button>
+            <button onClick={() => openOrderModal('buy')} className="theme-action-contrast h-9 px-3 bg-green-600 active:bg-green-700 rounded font-bold text-xs text-white">BUY</button>
+            <button onClick={() => openOrderModal('sell')} className="theme-action-contrast h-9 px-3 bg-red-600 active:bg-red-700 rounded font-bold text-xs text-white">SELL</button>
           </div>
         </div>
 
