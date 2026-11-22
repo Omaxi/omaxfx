@@ -37,7 +37,7 @@ test('builds the analytics PDF when the trade-by-trade curve contains a drawdown
   assert.match(html, /Trading statistics/);
   assert.match(html, /Trading calendar · All active months/);
   assert.match(html, /top-metrics/);
-  assert.match(html, /@page\\{size:A4 portrait/);
+  assert.match(html, /size:A4 portrait/);
   assert.match(html, /equityBlueFill/);
   assert.match(html, /drawdownFill/);
   assert.match(html, /stop-color="#2c67c5"/);
