@@ -286,7 +286,7 @@ export default function Chart() {
         attributionLogo: false,
         panes: {
           separatorColor: '#2a2e39',
-          separatorHoverColor: '#3b82f6',
+          separatorHoverColor: '#2a2e39',
           enableResize: true,
         },
       },
