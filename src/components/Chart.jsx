@@ -711,8 +711,10 @@ export default function Chart() {
             if (sel.lineType === 'sl') {
               const trade = sel.target === 'position'
                 ? state.positions.find(item => item.id === sel.positionId)
-                : state.pendingOrders.find(item => item.id === sel.orderId);
-              const entry = Number(trade?.entryPrice);
+                : sel.target === 'pending'
+                  ? state.pendingOrders.find(item => item.id === sel.orderId)
+                  : state.draftPosition;
+              const entry = Number(trade?.entryPrice ?? trade?.entry);
               if (Number.isFinite(entry)) {
                 const direction = trade?.type === 'buy' ? 1 : -1;
                 const directionalDistance = (entry - Number(livePrice)) * direction;
