@@ -31,9 +31,9 @@ const DEFAULT_CONFIG = {
 const average = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
 
 function calculateIndicators(candles, config, active, timeframe, sessionCandles = candles) {
-  // At 1-minute resolution the final replay candle is still forming. Higher
-  // timeframes already omit their forming aggregate candle in Chart.jsx.
-  const completed = timeframe === 1 ? candles.slice(0, -1) : candles;
+  // The last displayed candle is developing at every chart timeframe.
+  // Keep indicator calculations on completed candles for consistent behavior.
+  const completed = candles.slice(0, -1);
   const result = {};
   const closes = completed.map(c => c.close);
   const period = (key) => Math.max(2, Math.min(500, Number(config[key]?.period) || DEFAULT_CONFIG[key]?.period || 14));
@@ -194,11 +194,13 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
     if (!liveCandle || !Number.isFinite(Number(liveCandle.time))) return candles;
     const interval = Math.max(1, Number(timeframe) || 1) * 60;
     const bucketTime = Math.floor(Number(liveCandle.time) / interval) * interval;
-    const live = { ...liveCandle, time: bucketTime };
-    const existing = candles.findIndex(candle => Number(candle.time) === bucketTime);
-    if (existing >= 0) candles[existing] = { ...candles[existing], ...live };
-    else candles.push(live);
-    return candles.sort((a, b) => Number(a.time) - Number(b.time));
+    // Chart.jsx already supplies the replay-aggregated developing candle.
+    // Never overwrite its accumulated HTF high/low with the latest 1m OHLC.
+    if (!candles.some(candle => Number(candle.time) === bucketTime)) {
+      candles.push({ ...liveCandle, time: bucketTime });
+      candles.sort((a, b) => Number(a.time) - Number(b.time));
+    }
+    return candles;
   }, [visibleData, liveCandle, timeframe]);
 
   const higherTimeframe = Number(config.fvg?.higherTimeframe) || 15;
@@ -206,13 +208,16 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
   // Build the selected HTF candle strictly from replay-visible raw candles.
   // The last aggregate remains incomplete and therefore updates on every replay step.
   const htfViewerCandle = useMemo(() => {
-    if (!Array.isArray(rawData) || !rawData[currentIndex]) return null;
-    const replayCandles = rawData.slice(0, currentIndex + 1);
-    const candles = aggregateData(replayCandles, htfViewerTimeframe);
-    return candles.length ? candles[candles.length - 1] : null;
+    const current = rawData?.[currentIndex];
+    if (!current) return null;
+    const bucket = Math.floor(Number(current.time) / (htfViewerTimeframe * 60)) * htfViewerTimeframe * 60;
+    let first = currentIndex;
+    while (first > 0 && Number(rawData[first - 1].time) >= bucket) first--;
+    const candles = aggregateData(rawData.slice(first, currentIndex + 1), htfViewerTimeframe);
+    return candles[0] || null;
   }, [rawData, currentIndex, htfViewerTimeframe]);
   const replayCutoff = rawData?.[currentIndex]
-    ? Number(rawData[currentIndex].time) + (Number(timeframe) > 1 ? 60 : 0)
+    ? Number(rawData[currentIndex].time) + 60
     : 0;
 
   // Precompute complete history only when the dataset or timeframe changes.
@@ -286,7 +291,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
   useEffect(() => {
     if (!readyRef.current) return;
     const chart = chartRef.current;
-    const completed = timeframe === 1 ? visibleData.slice(0, -1) : visibleData;
+    const completed = visibleData.slice(0, -1);
     if (!chart || completed.length < 2) {
       Object.values(seriesRef.current).forEach(series => { try { series.setData([]); } catch (e) {} });
       return;
