@@ -217,6 +217,7 @@ export default function Chart() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [chartReady, setChartReady] = useState(false);
   const [textInput, setTextInput] = useState(null);
+  const [htfDashboard, setHtfDashboard] = useState(null);
   const cancelTextEditRef = useRef(false);
 
   const { 
@@ -1526,12 +1527,12 @@ export default function Chart() {
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
       <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 25 }} aria-hidden="true" />
 
-      <div className="absolute top-2 right-12 z-30 min-w-[166px] bg-[#131722]/85 px-2.5 py-2 text-[10px] leading-4 text-gray-300 pointer-events-none font-mono">
-        <div className="mb-1 flex items-center justify-between gap-3 pb-1">
-          <span className="font-sans font-bold tracking-wide text-gray-200">LIVE INFORMATION</span>
-          <span className="font-sans text-[9px] text-blue-400">{timeframe}m</span>
+      <div className="absolute top-2 right-12 z-30 w-[min(260px,calc(100%-3.5rem))] rounded-xl border border-[#2a2e39] bg-[#131722]/95 p-3 text-[10px] leading-4 text-gray-300 shadow-xl pointer-events-none font-mono">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <span className="font-sans text-[11px] font-bold tracking-wide text-gray-100">LIVE INFORMATION</span>
+          <span className="font-sans text-[10px] text-blue-400">{timeframe}m</span>
         </div>
-        <div className="grid grid-cols-[48px_1fr] gap-x-2">
+        <div className="grid grid-cols-[56px_1fr] gap-x-2 gap-y-0.5">
           <span className="text-gray-500">Open</span><span className="text-right text-white">{candlePrice(currentCandle?.open)}</span>
           <span className="text-gray-500">High</span><span className="text-right text-white">{candlePrice(currentCandle?.high)}</span>
           <span className="text-gray-500">Low</span><span className="text-right text-white">{candlePrice(currentCandle?.low)}</span>
@@ -1539,6 +1540,14 @@ export default function Chart() {
           <span className="text-gray-500">Datetime</span><span className="text-right text-white">{candleDate}</span>
           <span className="text-gray-500">Session</span><span className="text-right text-white">{candleSession}</span>
         </div>
+        {htfDashboard && <div className="mt-3 border-t border-[#2a2e39] pt-2.5">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="font-sans text-[11px] font-bold tracking-wide text-gray-100">{htfDashboard.label} CANDLE</span>
+            <span className="font-sans text-[10px] text-blue-400">{htfDashboard.timeframe}</span>
+          </div>
+          <div className="flex items-center justify-between"><span className="text-gray-500">Range</span><span className="text-white">{htfDashboard.range}</span></div>
+          <div className="mt-1 font-sans text-[11px] font-semibold text-green-400">{htfDashboard.countdown} left</div>
+        </div>}
       </div>
 
       {isPencilMode && (
@@ -1612,7 +1621,7 @@ export default function Chart() {
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 20 }}>
         <div className="pointer-events-auto">
           <DrawingToolbar />
-          <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={visibleData} displayData={displayData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={rawData[currentIndex] || null} rawData={rawData} currentIndex={currentIndex} />
+          <IndicatorsPanel onHtfDashboard={setHtfDashboard} chartRef={chartRef} chartReady={chartReady} visibleData={visibleData} displayData={displayData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={rawData[currentIndex] || null} rawData={rawData} currentIndex={currentIndex} />
         </div>
 
         {pendingBtnPos.map(p => (
