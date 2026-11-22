@@ -218,6 +218,7 @@ export default function Chart() {
   const [chartReady, setChartReady] = useState(false);
   const [textInput, setTextInput] = useState(null);
   const [htfDashboard, setHtfDashboard] = useState(null);
+  const [indicatorDashboard, setIndicatorDashboard] = useState([]);
   const cancelTextEditRef = useRef(false);
 
   const { 
@@ -283,6 +284,11 @@ export default function Chart() {
         textColor: '#d1d4dc',
         fontSize: 9,
         attributionLogo: false,
+        panes: {
+          separatorColor: '#2a2e39',
+          separatorHoverColor: '#3b82f6',
+          enableResize: true,
+        },
       },
       // Lightweight Charts formats Unix timestamps as UTC by default. The CSV
       // is broker wall-clock time UTC+3, stored internally as UTC-3 for replay.
@@ -1551,6 +1557,17 @@ export default function Chart() {
           <div className="flex items-center justify-between"><span className="text-gray-500">Range</span><span className="text-white">{htfDashboard.range}</span></div>
           <div className="mt-1 font-sans text-[11px] font-semibold text-green-400">{htfDashboard.countdown} left</div>
         </div>}
+        {indicatorDashboard.length > 0 && <div className="mt-3 border-t border-[#2a2e39] pt-2.5">
+          <div className="mb-2 font-sans text-[11px] font-bold tracking-wide text-gray-100">INDICATORS</div>
+          <div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-0.5">
+            {indicatorDashboard.map(item => (
+              <div key={item.key} className="contents">
+                <span style={{ color: item.color }}>{item.label}</span>
+                <span className="text-right text-white">{Number(item.value).toFixed(item.price ? getPricePrecision(symbol, contractSpecs) : 2)}</span>
+              </div>
+            ))}
+          </div>
+        </div>}
       </div>
 
       {isPencilMode && (
@@ -1624,7 +1641,7 @@ export default function Chart() {
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 20 }}>
         <div className="pointer-events-auto">
           <DrawingToolbar />
-          <IndicatorsPanel onHtfDashboard={setHtfDashboard} chartRef={chartRef} chartReady={chartReady} visibleData={visibleData} displayData={displayData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={rawData[currentIndex] || null} rawData={rawData} currentIndex={currentIndex} />
+          <IndicatorsPanel onHtfDashboard={setHtfDashboard} onIndicatorDashboard={setIndicatorDashboard} chartRef={chartRef} chartReady={chartReady} visibleData={visibleData} displayData={displayData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={rawData[currentIndex] || null} rawData={rawData} currentIndex={currentIndex} />
         </div>
 
         {pendingBtnPos.map(p => (
