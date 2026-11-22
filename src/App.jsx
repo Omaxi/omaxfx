@@ -19,7 +19,7 @@ import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
 import { fetchDataCatalog, loadBundledCsvFiles } from './utils/dataCatalog';
 import { getPnlMultiplier } from './utils/instrument';
-import { RotateCcw, Info, Sparkles, AlertTriangle, ChevronDown, LogOut, Sun, Moon } from 'lucide-react';
+import { RotateCcw, Info, Sparkles, AlertTriangle, ChevronDown, LogOut } from 'lucide-react';
 
 function App() {
   const { 
@@ -35,16 +35,12 @@ function App() {
   const [sessionMenuOpen, setSessionMenuOpen] = useState(false);
   const [savedSessions, setSavedSessions] = useState([]);
   const [sessionLoadingId, setSessionLoadingId] = useState(null);
-  const [uiTheme, setUiTheme] = useState(() => {
-    try { return localStorage.getItem('omaxfx-ui-theme') === 'light' ? 'light' : 'dark'; }
-    catch { return 'dark'; }
-  });
-
+  // OmaxFX uses a single, consistent dark application theme.
   useEffect(() => {
-    document.documentElement.dataset.uiTheme = uiTheme;
-    window.dispatchEvent(new CustomEvent('omaxfx-ui-theme-change', { detail: uiTheme }));
-    try { localStorage.setItem('omaxfx-ui-theme', uiTheme); } catch {}
-  }, [uiTheme]);
+    document.documentElement.dataset.uiTheme = 'dark';
+    window.dispatchEvent(new CustomEvent('omaxfx-ui-theme-change', { detail: 'dark' }));
+    try { localStorage.setItem('omaxfx-ui-theme', 'dark'); } catch {}
+  }, []);
 
   useEffect(() => {
     if (!symbolWarning) return;
@@ -278,7 +274,7 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col h-dvh overflow-hidden" style={{ backgroundColor: uiTheme === 'light' ? '#f4f6fa' : theme.background, color: uiTheme === 'light' ? '#172033' : '#ffffff' }}>
+    <div className="flex flex-col h-dvh overflow-hidden" style={{ backgroundColor: theme.background, color: '#ffffff' }}>
       {/* Hidden audio element — preloaded by the browser at page load. */}
       <audio
         id="sfx-tphit"
@@ -379,10 +375,6 @@ function App() {
             title={enableFireworks ? 'Disable Fireworks' : 'Enable Fireworks'}
           >
             <Sparkles size={13} />
-          </button>
-
-          <button onClick={() => setUiTheme(value => value === 'dark' ? 'light' : 'dark')} className="w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-[#2a2e39] text-gray-300 rounded flex items-center justify-center" title={uiTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'} aria-label="Toggle light and dark theme">
-            {uiTheme === 'dark' ? <Sun size={13}/> : <Moon size={13}/>}
           </button>
 
           <button onClick={handleExitPlatform} className="w-7 h-7 bg-[#1e222d] border border-red-900/50 hover:bg-red-900/40 text-red-400 rounded flex items-center justify-center" title="Save and exit OmaxFX">
