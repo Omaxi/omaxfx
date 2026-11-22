@@ -1039,6 +1039,15 @@ export default function Chart() {
       if (tradeHit) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         dragRef.current = { type: 'trade', data: tradeHit };
+        setSelectedItem({
+          type: 'trade',
+          key: tradeKey(tradeHit),
+          target: tradeHit.target,
+          positionId: tradeHit.positionId,
+          orderId: tradeHit.orderId,
+          lineType: tradeHit.type,
+        });
+        lockChart(true);
         try { container.setPointerCapture(e.pointerId); } catch (error) {}
         return;
       }
@@ -1261,7 +1270,12 @@ export default function Chart() {
         return;
       }
 
+      const completedTradeDrag = dragRef.current?.type === 'trade';
       dragRef.current = null;
+      if (completedTradeDrag) {
+        setSelectedItem(null);
+        lockChart(false);
+      }
 
       if (dragDrawRef.current && draftRef.current) {
         const pts = draftRef.current.points;
