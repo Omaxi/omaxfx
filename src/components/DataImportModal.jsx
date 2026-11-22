@@ -212,10 +212,10 @@ export default function DataImportModal() {
                   ]}/>
                 </label>
                 <label className="block text-xs text-gray-400">Month
-                  <select className={inputClass} value={selectedMonth} onChange={event => setSelectedMonth(event.target.value)}>
-                    <option value="__ALL__">Full dataset (all months)</option>
-                    {availableMonths.map(month => <option key={month} value={month}>{new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1, 1).toLocaleString('en', { month: 'long', year: 'numeric' })}</option>)}
-                  </select>
+                  <StyledSelect value={selectedMonth} onChange={setSelectedMonth} options={[
+                    { value: '__ALL__', label: 'Full dataset (all months)' },
+                    ...availableMonths.map(month => ({ value: month, label: new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)) - 1, 1).toLocaleString('en', { month: 'long', year: 'numeric' }) })),
+                  ]}/>
                 </label>
                 <p className="text-[11px] text-gray-500">Choose a month to download and parse only that month. Full dataset loads every available year.</p>
                 <button className={buttonClass} disabled={status.loading || !selectedFiles.length} onClick={loadFolderData}>
@@ -242,10 +242,10 @@ export default function DataImportModal() {
                 <input type="file" accept=".csv,text/csv" className="hidden" onChange={event => { handleCustomFile(event.target.files?.[0] || null); }}/>
               </label>
               {file && customParsed && <label className="block text-xs text-gray-400">Month to import
-                <select className={inputClass} value={customMonth} onChange={event => setCustomMonth(event.target.value)}>
-                  <option value="__ALL__">Full dataset (all months)</option>
-                  {customMonths.map(month => <option key={month} value={month}>{new Date(Number(month.slice(0,4)), Number(month.slice(5,7)) - 1, 1).toLocaleString('en', { month: 'long', year: 'numeric' })}</option>)}
-                </select>
+                <StyledSelect value={customMonth} onChange={setCustomMonth} options={[
+                  { value: '__ALL__', label: 'Full dataset (all months)' },
+                  ...customMonths.map(month => ({ value: month, label: new Date(Number(month.slice(0,4)), Number(month.slice(5,7)) - 1, 1).toLocaleString('en', { month: 'long', year: 'numeric' }) })),
+                ]}/>
               </label>}
               {file && status.loading && <p className="text-[10px] text-gray-500">Scanning CSV dates to find available months…</p>}
               <label className="block text-xs text-gray-400">Symbol (e.g. XAUUSD, EURUSD, NAS100)
