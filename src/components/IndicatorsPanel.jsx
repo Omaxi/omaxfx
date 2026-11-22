@@ -3,7 +3,7 @@ import { LineSeries } from 'lightweight-charts';
 import { ChevronDown, Settings2, X } from 'lucide-react';
 import { useStore } from '../store';
 import { aggregateData } from '../utils/timeframe';
-import { detectFairValueGaps, formatFvgTimeframe, latestFairValueGap } from '../utils/fvg';
+import { detectFairValueGaps, formatFvgTimeframe, latestFairValueGapPair } from '../utils/fvg';
 
 const INDICATORS = [
   { key: 'ma', label: 'Moving Average', color: '#f59e0b', pane: 'price' },
@@ -213,19 +213,19 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
     () => detectFairValueGaps(aggregateData(rawData || [], higherTimeframe), higherTimeframe),
     [rawData, higherTimeframe]
   );
+  // Keep the newest active FVG and the newest mitigated FVG (iFVG)
+  // independently for each source timeframe.
   const currentFvgZones = useMemo(() => {
     const completed = currentFvgHistory.filter(zone =>
       zone.startTime + Number(timeframe) * 60 <= replayCutoff
     );
-    const latest = latestFairValueGap(completed, replayCutoff);
-    return latest ? [latest] : [];
+    return latestFairValueGapPair(completed, replayCutoff);
   }, [currentFvgHistory, replayCutoff, timeframe]);
   const higherFvgZones = useMemo(() => {
     const completed = higherFvgHistory.filter(zone =>
       zone.startTime + higherTimeframe * 60 <= replayCutoff
     );
-    const latest = latestFairValueGap(completed, replayCutoff);
-    return latest ? [latest] : [];
+    return latestFairValueGapPair(completed, replayCutoff);
   }, [higherFvgHistory, replayCutoff, higherTimeframe]);
 
   useEffect(() => {
@@ -460,22 +460,24 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
           const top = Math.min(topY, bottomY);
           const bottom = Math.max(topY, bottomY);
           if (right - left < 2 || bottom < 0 || top > paneHeight) return;
-          // Color identifies the source timeframe: higher TF green, chart TF red.
-          const color = zone.source === 'higher' ? '34,197,94' : '239,68,68';
-          const alpha = zone.source === 'higher' ? 0.20 : 0.18;
+          // Active zones retain source colors: higher TF green, chart TF red.
+          // Once mitigated, the zone becomes a neutral grey iFVG.
+          const isIFVG = zone.isIFVG === true;
+          const color = isIFVG ? '148,163,184' : (zone.source === 'higher' ? '34,197,94' : '239,68,68');
+          const alpha = isIFVG ? 0.16 : (zone.source === 'higher' ? 0.20 : 0.18);
           ctx.fillStyle = 'rgba(' + color + ',' + alpha + ')';
           ctx.fillRect(left, top, right - left, Math.max(2, bottom - top));
-          ctx.strokeStyle = 'rgba(' + color + ',0.72)';
+          ctx.strokeStyle = 'rgba(' + color + ',' + (isIFVG ? '0.58' : '0.72') + ')';
           ctx.lineWidth = zone.source === 'higher' ? 1.2 : 1;
           ctx.strokeRect(left, top, right - left, Math.max(2, bottom - top));
-          const label = formatFvgTimeframe(zone.timeframe) + ' FVG';
+          const label = formatFvgTimeframe(zone.timeframe) + (isIFVG ? ' iFVG' : ' FVG');
           ctx.font = '600 9px Arial';
           const labelWidth = ctx.measureText(label).width + 8;
           const labelX = Math.max(left + 3, Math.min(right - labelWidth - 3, left + 5));
           const labelY = Math.max(2, Math.min(paneHeight - 15, top + 3));
           ctx.fillStyle = 'rgba(19,23,34,0.88)';
           ctx.fillRect(labelX, labelY, labelWidth, 13);
-          ctx.fillStyle = zone.source === 'higher' ? '#4ade80' : '#f87171';
+          ctx.fillStyle = isIFVG ? '#cbd5e1' : (zone.source === 'higher' ? '#4ade80' : '#f87171');
           ctx.textAlign = 'left';
           ctx.textBaseline = 'middle';
           ctx.fillText(label, labelX + 4, labelY + 6.5);
