@@ -930,41 +930,43 @@ export default function Chart() {
       const state = useStore.getState();
       const PIXEL_TOL = 28;
       const candidates = [];
+      const addToolLevel = (tool, target, id, type, price) => {
+        if (price == null || tool.openTime == null) return;
+        const lineY = seriesRef.current.priceToCoordinate(Number(price));
+        const anchorX = timeToX(Number(tool.openTime));
+        if (lineY == null || !Number.isFinite(lineY) || anchorX == null) return;
+        const width = Math.max(130, Math.min(260, paneW * 0.22));
+        candidates.push({
+          target, ...(target === 'position' ? { positionId: id } : { orderId: id }),
+          type, price: Number(price), lineY, xMin: anchorX - 8, xMax: anchorX + width + 8,
+        });
+      };
       state.positions.forEach(pos => {
-        if (pos.sl != null) {
-          const lineY = seriesRef.current.priceToCoordinate(pos.sl);
-          if (lineY != null && Number.isFinite(lineY)) candidates.push({ target: 'position', positionId: pos.id, type: 'sl', price: pos.sl, lineY });
-        }
-        if (pos.tp != null) {
-          const lineY = seriesRef.current.priceToCoordinate(pos.tp);
-          if (lineY != null && Number.isFinite(lineY)) candidates.push({ target: 'position', positionId: pos.id, type: 'tp', price: pos.tp, lineY });
-        }
+        addToolLevel(pos, 'position', pos.id, 'sl', pos.sl);
+        addToolLevel(pos, 'position', pos.id, 'tp', pos.tp);
       });
       state.pendingOrders.forEach(order => {
-        if (order.entryPrice != null) {
-          const lineY = seriesRef.current.priceToCoordinate(order.entryPrice);
-          if (lineY != null && Number.isFinite(lineY)) candidates.push({ target: 'pending', orderId: order.id, type: 'entry', price: order.entryPrice, lineY });
-        }
-        if (order.sl != null) {
-          const lineY = seriesRef.current.priceToCoordinate(order.sl);
-          if (lineY != null && Number.isFinite(lineY)) candidates.push({ target: 'pending', orderId: order.id, type: 'sl', price: order.sl, lineY });
-        }
-        if (order.tp != null) {
-          const lineY = seriesRef.current.priceToCoordinate(order.tp);
-          if (lineY != null && Number.isFinite(lineY)) candidates.push({ target: 'pending', orderId: order.id, type: 'tp', price: order.tp, lineY });
-        }
+        addToolLevel(order, 'pending', order.id, 'entry', order.entryPrice);
+        addToolLevel(order, 'pending', order.id, 'sl', order.sl);
+        addToolLevel(order, 'pending', order.id, 'tp', order.tp);
       });
       if (state.draftPosition) {
         const draft = state.draftPosition;
+        const anchorX = draft.entryTime != null ? timeToX(Number(draft.entryTime)) : paneW * 0.48;
+        const width = Math.max(130, Math.min(260, paneW * 0.22));
         [['entry', draft.entry], ['sl', draft.sl], ['tp', draft.tp]].forEach(([type, price]) => {
           if (price == null) return;
           const lineY = seriesRef.current.priceToCoordinate(Number(price));
-          if (lineY != null && Number.isFinite(lineY)) candidates.push({ target: 'draft', type, price: Number(price), lineY });
+          if (lineY != null && Number.isFinite(lineY)) {
+            candidates.push({ target: 'draft', type, price: Number(price), lineY, xMin: anchorX - 8, xMax: anchorX + width + 8 });
+          }
         });
       }
-      if (candidates.length === 0) return null;
+      // Only the short grab area belonging to a visible position tool is interactive.
+      const visibleCandidates = candidates.filter(c => x >= c.xMin && x <= c.xMax);
+      if (visibleCandidates.length === 0) return null;
       let closest = null, closestDist = Infinity;
-      for (const c of candidates) {
+      for (const c of visibleCandidates) {
         const d = Math.abs(y - c.lineY);
         if (d < closestDist) { closestDist = d; closest = c; }
       }
