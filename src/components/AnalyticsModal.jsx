@@ -285,7 +285,7 @@ export default function AnalyticsModal() {
         <div className="h-8 shrink-0 flex items-center justify-between px-3 border-b border-[#2a2e39]">
           <div className="flex items-center gap-2 text-xs font-bold"><BarChart3 size={14} className="text-blue-400"/> OmaxFX <span className="text-gray-400 font-medium">Performance analytics</span>{reviewName && <span className="text-blue-300 font-medium">· {reviewName} · Read-only review</span>}</div>
           <div className="flex items-center gap-2">
-            <button onClick={exportAnalyticsPdf} disabled={isExportingPdf} className="inline-flex items-center gap-1.5 rounded bg-blue-600 px-2.5 py-1 text-[10px] font-semibold text-white hover:bg-blue-500 disabled:cursor-wait disabled:opacity-60"><Download size={12}/>{isExportingPdf ? 'Preparing PDF…' : 'Export PDF'}</button>
+            <button onClick={exportAnalyticsPdf} disabled={isExportingPdf} className="theme-action-contrast inline-flex items-center gap-1.5 rounded bg-blue-600 px-2.5 py-1 text-[10px] font-semibold text-white hover:bg-blue-500 disabled:cursor-wait disabled:opacity-60"><Download size={12}/>{isExportingPdf ? 'Preparing PDF…' : 'Export PDF'}</button>
             <button onClick={closeAnalytics} className="rounded p-1 text-gray-400 hover:bg-[#2a2e39] hover:text-white" aria-label="Close analytics"><X size={15}/></button>
           </div>
         </div>
@@ -403,12 +403,12 @@ function Stat({ label, value, color = 'text-gray-200' }) {
   return <div className="flex items-center justify-between gap-1 text-[9px] border-b border-[#2a2e39]/70 py-0.5"><span className="text-gray-500 truncate">{label}</span><b className={`font-mono ${color}`}>{value}</b></div>;
 }
 function CalendarDay({ day, selected, onClick }) {
-  if (!day) return <div className="rounded bg-[#131722] border border-[#1e2225]"/>;
+  if (!day) return <div className="analytics-calendar-empty rounded bg-[#131722] border border-[#1e2225]"/>;
   const positive = day.pnl > 0, negative = day.pnl < 0;
   const active = day.trades > 0;
   const background = !active ? '#1e222d' : positive ? '#003a2b' : negative ? '#551b1b' : '#1d2d4b';
   const border = selected ? '#60a5fa' : !active ? '#2a2e39' : positive ? '#087b5a' : negative ? '#a33b3b' : '#4268ad';
-  return <button type="button" onClick={onClick} title={day.trades + ' trades · click to open day journal'} className="rounded border min-w-0 p-1 flex flex-col items-end overflow-hidden text-left hover:brightness-125 focus:outline-none focus:ring-1 focus:ring-blue-400" style={{ background, borderColor: border }}>
+  return <button type="button" onClick={onClick} title={day.trades + ' trades · click to open day journal'} className="analytics-calendar-day rounded border min-w-0 p-1 flex flex-col items-end overflow-hidden text-left hover:brightness-125 focus:outline-none focus:ring-1 focus:ring-blue-400" style={{ background, borderColor: border }}>
     <span className="text-[8px] text-gray-400">{day.day}</span>
     {active && <div className="mt-auto mb-auto w-full text-center min-w-0">
       <b className={`block text-[10px] leading-3 truncate ${positive ? 'text-emerald-300' : negative ? 'text-red-300' : 'text-blue-200'}`}>{day.pnl >= 0 ? '' : '-'}{money(day.pnl)}</b>
