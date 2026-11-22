@@ -234,7 +234,7 @@ function calculateIndicators(candles, config, active, timeframe, sessionCandles 
   }
   return result;
 }
-export default function IndicatorsPanel({ onHtfDashboard, chartRef, chartReady, visibleData, displayData, timeframe, priceSeriesRef, liveCandle, rawData, currentIndex }) {
+export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, chartRef, chartReady, visibleData, displayData, timeframe, priceSeriesRef, liveCandle, rawData, currentIndex }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState({});
   const [config, setConfig] = useState(DEFAULT_CONFIG);
@@ -352,7 +352,8 @@ export default function IndicatorsPanel({ onHtfDashboard, chartRef, chartReady, 
         crosshairMarkerVisible: false, title: key.toUpperCase(),
       }, paneIndex);
       if (paneIndex > 0) {
-        try { chart.panes()[paneIndex].setHeight(88); } catch (e) {}
+        // Give every oscillator its own independently resizable pane.
+        try { chart.panes()[paneIndex].setHeight(112); } catch (e) {}
       }
     };
 
@@ -389,13 +390,55 @@ export default function IndicatorsPanel({ onHtfDashboard, chartRef, chartReady, 
     const completed = visibleData.slice(0, -1);
     if (!chart || completed.length < 2) {
       Object.values(seriesRef.current).forEach(series => { try { series.setData([]); } catch (e) {} });
+      onIndicatorDashboard?.([]);
       return;
     }
     const calculated = calculateIndicators(visibleData, config, active, timeframe, sessionCandles);
     Object.entries(seriesRef.current).forEach(([key, series]) => {
       try { series.setData(calculated[key] || []); } catch (e) {}
     });
-  }, [chartRef, visibleData, sessionCandles, config, active, chartReady, timeframe]);
+
+    const latest = data => {
+      if (!Array.isArray(data)) return null;
+      for (let index = data.length - 1; index >= 0; index--) {
+        if (Number.isFinite(Number(data[index]?.value))) return Number(data[index].value);
+      }
+      return null;
+    };
+    const dashboard = [];
+    if (active.ma) {
+      (config.ma.instances || []).forEach(instance => {
+        const value = latest(calculated['ma_' + instance.id]);
+        if (value != null) dashboard.push({
+          key: 'ma_' + instance.id,
+          label: (instance.method || 'MA') + ' ' + instance.period,
+          color: instance.color || '#f59e0b', value, price: true,
+        });
+      });
+    }
+    if (active.bb) {
+      (config.bb.instances || []).forEach(instance => {
+        ['upper', 'middle', 'lower'].forEach(level => {
+          const value = latest(calculated['bb_' + instance.id + '_' + level]);
+          if (value != null) dashboard.push({
+            key: 'bb_' + instance.id + '_' + level,
+            label: 'BB ' + instance.period + ' ' + level,
+            color: instance.color || '#a78bfa', value, price: true,
+          });
+        });
+      });
+    }
+    if (active.vwap) {
+      const value = latest(calculated.vwap);
+      if (value != null) dashboard.push({ key: 'vwap', label: 'VWAP', color: '#22c55e', value, price: true });
+    }
+    [['rsi', 'RSI', '#38bdf8'], ['atr', 'ATR', '#fb923c'], ['adx', 'ADX', '#c084fc']].forEach(([key, label, color]) => {
+      if (!active[key]) return;
+      const value = latest(calculated[key]);
+      if (value != null) dashboard.push({ key, label, color, value, price: key === 'atr' });
+    });
+    onIndicatorDashboard?.(dashboard);
+  }, [chartRef, visibleData, sessionCandles, config, active, chartReady, timeframe, onIndicatorDashboard]);
 
   // LuxAlgo-inspired session boxes: translucent range rectangles with dashed
   // borders and session labels. Times use the simulator's fixed UTC+3 clock.
