@@ -6,26 +6,35 @@ import { fetchDataCatalog, loadBundledCsvFiles } from '../utils/dataCatalog';
 function SavedSessionDropdown({ sessions, value, onChange }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
+  const menuRef = useRef(null);
+  const [position, setPosition] = useState({ left: 8, top: 8, width: 220 });
   const selected = sessions.find(session => session.sessionId === value);
   useEffect(() => {
     if (!open) return undefined;
     const close = event => {
       if (event.type === 'keydown' && event.key === 'Escape') setOpen(false);
-      if (event.type === 'pointerdown' && rootRef.current && !rootRef.current.contains(event.target)) setOpen(false);
+      if (event.type === 'pointerdown' && !rootRef.current?.contains(event.target) && !menuRef.current?.contains(event.target)) setOpen(false);
     };
     document.addEventListener('pointerdown', close);
     document.addEventListener('keydown', close);
     return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', close); };
   }, [open]);
   const label = session => (session.sessionName || 'Untitled session') + ' · ' + (session.symbol || 'Unknown');
+  const toggle = () => {
+    if (!open && rootRef.current) {
+      const rect = rootRef.current.getBoundingClientRect();
+      setPosition({ left: Math.max(8, rect.left), top: rect.bottom + 4, width: Math.max(220, rect.width) });
+    }
+    setOpen(current => !current);
+  };
   return (
     <div ref={rootRef} className="relative min-w-0 flex-1">
-      <button type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(current => !current)}
+      <button type="button" aria-haspopup="listbox" aria-expanded={open} onClick={toggle}
         className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-[#2a2e39] bg-[#1e222d] px-3 py-2 text-left text-[11px] text-white transition-colors hover:border-[#46536a] focus:border-blue-500 focus:outline-none">
         <span className="truncate font-semibold">{selected ? label(selected) : 'Select a saved session'}</span>
         <ChevronDown size={13} className={'shrink-0 text-gray-400 transition-transform ' + (open ? 'rotate-180' : '')} />
       </button>
-      {open && <div role="listbox" className="absolute left-0 top-[calc(100%+5px)] z-[100] max-h-56 w-full min-w-[220px] overflow-y-auto rounded-lg border border-[#2a2e39] bg-[#1e222d] p-1 shadow-2xl">
+      {open && <div ref={menuRef} role="listbox" className="fixed max-h-56 overflow-y-auto rounded-lg border border-[#2a2e39] bg-[#1e222d] p-1 shadow-2xl" style={{ zIndex: 9999, left: position.left, top: position.top, width: position.width }}>
         <div className="border-b border-[#2a2e39] px-2 py-1.5 text-[9px] font-bold uppercase tracking-wide text-gray-500">Saved sessions</div>
         {sessions.map(session => {
           const active = session.sessionId === value;
