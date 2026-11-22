@@ -519,7 +519,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
         const badgeY = 8;
         const rowHeight = 19;
         const nextBoundary = Number(htfViewerCandle.time) + htfViewerTimeframe * 60;
-        const replayBoundary = Number(last.time) + Math.max(1, Number(timeframe) || 1) * 60;
+        const replayBoundary = Number(rawData?.[currentIndex]?.time) + 60;
         const remaining = Math.max(0, nextBoundary - replayBoundary);
         const hoursLeft = Math.floor(remaining / 3600);
         const minutesLeft = Math.floor((remaining % 3600) / 60);
