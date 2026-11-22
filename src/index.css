@@ -139,12 +139,6 @@ html[data-ui-theme="dark"] select option {
 }
 
 
-/* The chart canvas uses its own Lightweight Charts surface; keep its wrapper
-   in sync with the application theme instead of leaving a dark strip behind. */
-html[data-ui-theme="light"] .chart-root { background-color: #ffffff !important; }
-html[data-ui-theme="dark"] .chart-root { background-color: var(--omax-chart-background, #131722); }
-
-
 /* Complete light-theme treatment for native controls, custom dropdowns and scrollbars. */
 html[data-ui-theme="light"] {
   color-scheme: light;
