@@ -620,6 +620,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
     const draw = () => {
       if (frame !== 0) return;
       frame = requestAnimationFrame(() => {
+        frame = 0;
         const rect = canvas.getBoundingClientRect();
         const dpr = Math.max(1, window.devicePixelRatio || 1);
         canvas.width = Math.round(rect.width * dpr);
@@ -764,6 +765,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
     const draw = () => {
       if (frame !== 0) return;
       frame = requestAnimationFrame(() => {
+        frame = 0;
         const rect = canvas.getBoundingClientRect();
         const dpr = Math.max(1, window.devicePixelRatio || 1);
         canvas.width = Math.round(rect.width * dpr);
