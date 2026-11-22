@@ -646,11 +646,13 @@ export default function Chart() {
         const long = draft.type === 'buy';
         if (entryY != null && Number.isFinite(entryY) && right > left) {
           if (tpY != null && Number.isFinite(tpY)) {
-            ctx.fillStyle = long ? 'rgba(38,166,154,0.34)' : 'rgba(239,83,80,0.34)';
+            // Take-profit is always green, for both long and short setups.
+            ctx.fillStyle = 'rgba(38,166,154,0.34)';
             ctx.fillRect(left, Math.min(entryY, tpY), right - left, Math.max(1, Math.abs(entryY - tpY)));
           }
           if (slY != null && Number.isFinite(slY)) {
-            ctx.fillStyle = long ? 'rgba(239,83,80,0.34)' : 'rgba(38,166,154,0.34)';
+            // Stop-loss is always red, for both long and short setups.
+            ctx.fillStyle = 'rgba(239,83,80,0.34)';
             ctx.fillRect(left, Math.min(entryY, slY), right - left, Math.max(1, Math.abs(entryY - slY)));
           }
           ctx.strokeStyle = long ? '#26a69a' : '#ef5350';
@@ -1511,21 +1513,21 @@ export default function Chart() {
       const rrr = calcRRR(pos.entryPrice, pos.sl, pos.tp);
       const dirLabel = pos.type === 'buy' ? 'BUY' : 'SELL';
       addLine(pos.entryPrice, pos.type === 'buy' ? '#4ade80' : '#f87171', `${dirLabel} · RRR ${rrr || '-'}`, 0, 1);
-      addLine(pos.sl, '#ef5350', 'SL', 1, 1);
-      addLine(pos.tp, '#26a69a', 'TP', 1, 1);
+      addLine(pos.sl, '#ef5350', 'SL', 0, 1);
+      addLine(pos.tp, '#26a69a', 'TP', 0, 1);
     });
     pendingOrders.forEach(order => {
       const rrr = calcRRR(order.entryPrice, order.sl, order.tp);
       const label = `${order.type === 'buy' ? 'Buy' : 'Sell'} ${order.orderType}${rrr ? ` · RRR ${rrr}` : ''}`;
       addLine(order.entryPrice, '#facc15', label, 3, 1);
-      addLine(order.sl, '#ef5350', 'SL', 1, 1);
-      addLine(order.tp, '#26a69a', 'TP', 1, 1);
+      addLine(order.sl, '#ef5350', 'SL', 0, 1);
+      addLine(order.tp, '#26a69a', 'TP', 0, 1);
     });
     if (draftPosition) {
       const rrr = calcRRR(draftPosition.entry, draftPosition.sl, draftPosition.tp);
-      addLine(draftPosition.entry, '#3b82f6', `DRAFT${rrr ? ` · RRR ${rrr}` : ''}`, 1, 2);
-      addLine(draftPosition.sl, '#ef5350', 'DRAFT SL', 1, 2);
-      addLine(draftPosition.tp, '#26a69a', 'DRAFT TP', 1, 2);
+      addLine(draftPosition.entry, '#3b82f6', `DRAFT${rrr ? ` · RRR ${rrr}` : ''}`, 0, 2);
+      addLine(draftPosition.sl, '#ef5350', 'DRAFT SL', 0, 2);
+      addLine(draftPosition.tp, '#26a69a', 'DRAFT TP', 0, 2);
     }
   }, [positions, pendingOrders, draftPosition]);
 
