@@ -53,18 +53,21 @@ export default function ControlPanel() {
   const [tfOpen, setTfOpen] = useState(false);
   const [jumpOpen, setJumpOpen] = useState(false);
   const [ctOpen, setCtOpen] = useState(false);
+  const [speedOpen, setSpeedOpen] = useState(false);
 
   const tfButtonRef = useRef(null);
   const jumpButtonRef = useRef(null);
   const ctButtonRef = useRef(null);
+  const speedButtonRef = useRef(null);
   const [tfLeft, setTfLeft] = useState(0);
   const [jumpLeft, setJumpLeft] = useState(0);
   const [ctLeft, setCtLeft] = useState(0);
+  const [speedLeft, setSpeedLeft] = useState(0);
 
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') {
-        setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false);
+        setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false); setSpeedOpen(false);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -105,6 +108,16 @@ export default function ControlPanel() {
     }
     closeAll();
     setCtOpen(o);
+  };
+
+  const toggleSpeed = () => {
+    const o = !speedOpen;
+    if (o && speedButtonRef.current) {
+      const rect = speedButtonRef.current.getBoundingClientRect();
+      setSpeedLeft(Math.max(8, rect.left));
+    }
+    closeAll();
+    setSpeedOpen(o);
   };
 
   const tfLabel = TIMEFRAMES.find(t => t.value === timeframe)?.label || '1 min';
@@ -202,6 +215,22 @@ export default function ControlPanel() {
     </>
   );
 
+  const SpeedDropdown = () => (
+    <>
+      <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
+      <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[140px] overflow-hidden" style={{ zIndex: 9999, left: speedLeft, bottom: 52 }}>
+        <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">Replay speed</div>
+        {[1, 5, 10, 50, 100, 500].map(speed => (
+          <button key={speed} onClick={() => { setReplaySpeed(speed); closeAll(); }}
+            className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left text-white hover:bg-[#2a2e39] cursor-pointer ${replaySpeed === speed ? 'bg-blue-600/15' : ''}`}>
+            <span className={replaySpeed === speed ? 'font-bold' : ''}>{speed} bar/s</span>
+            {replaySpeed === speed && <Check size={10} className="text-blue-400" />}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+
   const ChartTypeDropdown = () => (
     <>
       <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
@@ -284,17 +313,13 @@ export default function ControlPanel() {
             <ChevronDown size={10} className={`transition-transform ${tfOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          <label className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold flex-shrink-0" title="Auto-play speed in underlying 1-minute candles per second">
+          <button ref={speedButtonRef} onClick={toggleSpeed}
+            className="flex h-9 items-center gap-1.5 px-2.5 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
+            title="Auto-play speed in underlying 1-minute candles per second">
             <span className="text-gray-400">Speed</span>
-            <select value={replaySpeed} onChange={event => setReplaySpeed(Number(event.target.value))} className="bg-transparent text-white outline-none">
-              <option value={1}>1 bar/s</option>
-              <option value={5}>5 bars/s</option>
-              <option value={10}>10 bars/s</option>
-              <option value={50}>50 bars/s</option>
-              <option value={100}>100 bars/s</option>
-              <option value={500}>500 bars/s</option>
-            </select>
-          </label>
+            <span>{replaySpeed} bar/s</span>
+            <ChevronDown size={10} className={`transition-transform ${speedOpen ? 'rotate-180' : ''}`} />
+          </button>
 
           <button ref={ctButtonRef} onClick={toggleCt}
             className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
@@ -348,6 +373,7 @@ export default function ControlPanel() {
       {tfOpen && <TimeframeDropdown />}
       {ctOpen && <ChartTypeDropdown />}
       {jumpOpen && <JumpDropdown />}
+      {speedOpen && <SpeedDropdown />}
     </div>
   );
 }
