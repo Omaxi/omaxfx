@@ -583,8 +583,8 @@ export default function Chart() {
         const precision = getPricePrecision(state.symbol, state.contractSpecs);
         const levels = [
           { type: 'entry', price: entry, color: '#3b82f6', label: 'ENTRY' },
-          { type: 'sl', price: Number(tool.sl), color: '#ef5350', label: 'SL' },
-          { type: 'tp', price: Number(tool.tp), color: '#26a69a', label: 'TP' },
+          { type: 'sl', price: tool.sl == null ? NaN : Number(tool.sl), color: '#ef5350', label: 'SL' },
+          { type: 'tp', price: tool.tp == null ? NaN : Number(tool.tp), color: '#26a69a', label: 'TP' },
         ];
         levels.forEach(level => {
           if (!Number.isFinite(level.price)) return;
@@ -884,48 +884,6 @@ export default function Chart() {
       return closestDist <= PIXEL_TOL ? closest : null;
     };
 
-    // A double-click anywhere inside a position box selects the complete tool.
-    // Its individual price levels can then be dragged; active positions expose
-    // only SL/TP handles, while drafts and pending orders also expose Entry.
-    const detectTradeBodyHit = (x, y) => {
-      if (!seriesRef.current) return null;
-      const state = useStore.getState();
-      const rect = canvas.getBoundingClientRect();
-      let paneW = rect.width;
-      try {
-        const axisWidth = chartRef.current?.priceScale('right').width();
-        if (axisWidth > 0) paneW -= axisWidth;
-      } catch (e) {}
-      const candidates = [];
-      const addBody = (tool, target, id) => {
-        const entry = Number(target === 'draft' ? tool.entry : tool.entryPrice);
-        const sl = Number(tool.sl);
-        const tp = Number(tool.tp);
-        if (!Number.isFinite(entry) || !Number.isFinite(sl) || !Number.isFinite(tp)) return;
-        const entryY = seriesRef.current.priceToCoordinate(entry);
-        const slY = seriesRef.current.priceToCoordinate(sl);
-        const tpY = seriesRef.current.priceToCoordinate(tp);
-        const anchorTime = target === 'draft' ? tool.entryTime : tool.openTime;
-        const anchorX = anchorTime != null ? timeToX(Number(anchorTime)) : paneW * 0.48;
-        if (![entryY, slY, tpY, anchorX].every(Number.isFinite)) return;
-        // Match the exact horizontal footprint used by drawPositionTool/draft rendering.
-        const width = Math.max(130, Math.min(260, paneW * 0.22));
-        const left = Math.max(0, Math.min(paneW - 24, anchorX));
-        const right = Math.min(paneW, left + width);
-        const top = Math.min(entryY, slY, tpY);
-        const bottom = Math.max(entryY, slY, tpY);
-        const bodyPadding = 10;
-        if (x >= left - bodyPadding && x <= right + bodyPadding &&
-            y >= top - bodyPadding && y <= bottom + bodyPadding) {
-          candidates.push({ target, ...(target === 'position' ? { positionId: id } : target === 'pending' ? { orderId: id } : {}), id });
-        }
-      };
-      (state.positions || []).forEach(p => addBody(p, 'position', p.id));
-      (state.pendingOrders || []).forEach(o => addBody(o, 'pending', o.id));
-      if (state.draftPosition) addBody(state.draftPosition, 'draft', null);
-      return candidates[candidates.length - 1] || null;
-    };
-
     const getLocalXY = (e) => {
       const rect = container.getBoundingClientRect();
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -1032,7 +990,7 @@ export default function Chart() {
 
       const drawingHit = hitTestDrawings(x, y);
       const tradeHit = !drawingHit ? detectTradeHit(x, y) : null;
-      const tradeBodyHit = !drawingHit && !tradeHit ? detectTradeBodyHit(x, y) : null;
+      const tradeBodyHit = null;
       const sel = selectedItemRef.current;
       const tradeTargetMatches = (item, hit) => !!item && item.type === 'trade' &&
         item.target === hit.target &&
