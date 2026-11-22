@@ -467,20 +467,15 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
           const alpha = isIFVG ? 0.16 : (zone.source === 'higher' ? 0.20 : 0.18);
           ctx.fillStyle = 'rgba(' + color + ',' + alpha + ')';
           ctx.fillRect(left, top, right - left, Math.max(2, bottom - top));
-          ctx.strokeStyle = 'rgba(' + color + ',' + (isIFVG ? '0.58' : '0.72') + ')';
-          ctx.lineWidth = zone.source === 'higher' ? 1.2 : 1;
-          ctx.strokeRect(left, top, right - left, Math.max(2, bottom - top));
+          // Borderless FVG fill; keep the timeframe label as plain text.
           const label = formatFvgTimeframe(zone.timeframe) + (isIFVG ? ' iFVG' : ' FVG');
           ctx.font = '600 9px Arial';
-          const labelWidth = ctx.measureText(label).width + 8;
-          const labelX = Math.max(left + 3, Math.min(right - labelWidth - 3, left + 5));
-          const labelY = Math.max(2, Math.min(paneHeight - 15, top + 3));
-          ctx.fillStyle = 'rgba(19,23,34,0.88)';
-          ctx.fillRect(labelX, labelY, labelWidth, 13);
+          const labelX = Math.max(left + 4, Math.min(right - ctx.measureText(label).width - 4, left + 5));
+          const labelY = Math.max(10, Math.min(paneHeight - 5, top + 11));
           ctx.fillStyle = isIFVG ? '#cbd5e1' : (zone.source === 'higher' ? '#4ade80' : '#f87171');
           ctx.textAlign = 'left';
           ctx.textBaseline = 'middle';
-          ctx.fillText(label, labelX + 4, labelY + 6.5);
+          ctx.fillText(label, labelX, labelY);
         });
         ctx.restore();
       });
