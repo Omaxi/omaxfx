@@ -686,6 +686,10 @@ export const useStore = create((set, get) => ({
     return state;
   }),
 
+  updateDraftPosition: (patch) => set((state) => state.draftPosition
+    ? { draftPosition: { ...state.draftPosition, ...patch } }
+    : state),
+
   clearDraft: () => set({ draftPosition: null, isDrawingMode: false, drawingStep: null }),
 
   openOrderModal: (side) => set({ isOrderModalOpen: true, orderSide: side }),
