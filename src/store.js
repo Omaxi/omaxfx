@@ -256,7 +256,7 @@ export const useStore = create((set, get) => ({
     try {
       const sessionId = s.sessionId || (globalThis.crypto?.randomUUID?.() ?? `session-${Date.now()}-${Math.random().toString(36).slice(2,8)}`);
       const payload = {
-        version: 2, sessionId, savedAt: Date.now(),
+        version: 3, sessionId, savedAt: Date.now(),
         sessionName: s.sessionName, playerName: s.playerName,
         gamePeriod: s.gamePeriod, rules: { ...s.rules },
         currentIndex: s.currentIndex, timeframe: s.timeframe,
@@ -346,9 +346,13 @@ export const useStore = create((set, get) => ({
     // Guard against a saved session that was already at the last candle:
     // rewind one step so stepForward has room to advance.
     const savedIndex = Math.min(saved.currentIndex || 0, filtered.length - 1);
-    const safeIndex = filtered.length > 1 ? Math.min(savedIndex, filtered.length - 2) : 0;
-
     const tf = saved.timeframe || 1;
+    // Version 2 and earlier stored a boundary index on higher-timeframe charts.
+    // Convert those sessions to the new "last processed 1m candle" cursor.
+    const migratedIndex = (Number(saved.version) || 1) < 3 && Number(tf) > 1
+      ? Math.max(0, savedIndex - 1)
+      : savedIndex;
+    const safeIndex = filtered.length > 1 ? Math.min(migratedIndex, filtered.length - 2) : 0;
     set({
       symbol: savedSymbol,
       allRawDataBySymbol: restoredCache,
@@ -772,7 +776,7 @@ export const useStore = create((set, get) => ({
 
   closeAllPositions: () => set((state) => {
     if (state.positions.length === 0 || !state.rawData[state.currentIndex]) return state;
-    const currentCandle = getExecutionCandle(state.rawData, state.displayData, state.currentIndex, state.timeframe) || state.rawData[state.currentIndex];
+    const currentCandle = state.rawData[state.currentIndex];
     const exitPrice = currentCandle.close;
     let newBalance = state.balance;
     const newHistory = [...state.tradeHistory];
