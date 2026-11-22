@@ -177,7 +177,7 @@ function calculateIndicators(candles, config, active, timeframe, sessionCandles 
   }
   return result;
 }
-export default function IndicatorsPanel({ chartRef, chartReady, visibleData, displayData, timeframe, priceSeriesRef, liveCandle, rawData, currentIndex }) {
+export default function IndicatorsPanel({ onHtfDashboard, chartRef, chartReady, visibleData, displayData, timeframe, priceSeriesRef, liveCandle, rawData, currentIndex }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState({});
   const [config, setConfig] = useState(DEFAULT_CONFIG);
@@ -230,6 +230,30 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
     }
     return { openIndex: firstIndex, highIndex, lowIndex, closeIndex: currentIndex };
   }, [rawData, currentIndex, htfViewerTimeframe]);
+  useEffect(() => {
+    if (!active.htfCandleViewer || !htfViewerCandle || !rawData?.[currentIndex]) {
+      onHtfDashboard?.(null);
+      return;
+    }
+    const nextBoundary = Number(htfViewerCandle.time) + htfViewerTimeframe * 60;
+    const replayBoundary = Number(rawData[currentIndex].time) + 60;
+    const remaining = Math.max(0, nextBoundary - replayBoundary);
+    const hours = Math.floor(remaining / 3600);
+    const minutes = Math.floor((remaining % 3600) / 60);
+    const seconds = Math.floor(remaining % 60);
+    const countdown = hours > 0
+      ? hours + 'h ' + String(minutes).padStart(2, '0') + 'm ' + String(seconds).padStart(2, '0') + 's'
+      : minutes + 'm ' + String(seconds).padStart(2, '0') + 's';
+    const precision = getPricePrecision(useStore.getState().symbol, useStore.getState().contractSpecs);
+    const label = htfViewerTimeframe === 5 ? '5M' : htfViewerTimeframe === 15 ? '15M' : htfViewerTimeframe === 60 ? '1H' : '4H';
+    onHtfDashboard?.({
+      label,
+      timeframe: label,
+      range: (Number(htfViewerCandle.high) - Number(htfViewerCandle.low)).toFixed(precision),
+      countdown,
+    });
+  }, [active.htfCandleViewer, htfViewerCandle, htfViewerTimeframe, rawData, currentIndex, onHtfDashboard]);
+
   const replayCutoff = rawData?.[currentIndex]
     ? Number(rawData[currentIndex].time) + 60
     : 0;
@@ -553,41 +577,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
           ctx.fillText(fmt(level.value), labelX + 7, level.y);
         });
 
-        const tfLabel = htfViewerTimeframe === 5 ? '5M' : htfViewerTimeframe === 15 ? '15M' : htfViewerTimeframe === 60 ? '1H' : '4H';
-        const range = Number(htfViewerCandle.high) - Number(htfViewerCandle.low);
-        const badgeWidth = 176;
-        const badgeHeight = 76;
-        const badgeX = Math.max(8, paneWidth - badgeWidth - 12);
-        // Keep this panel below the Live Information card, with its own
-        // background and border so it remains legible on every chart theme.
-        const badgeY = 196;
-        const nextBoundary = Number(htfViewerCandle.time) + htfViewerTimeframe * 60;
-        const replayBoundary = Number(rawData?.[currentIndex]?.time) + 60;
-        const remaining = Math.max(0, nextBoundary - replayBoundary);
-        const hoursLeft = Math.floor(remaining / 3600);
-        const minutesLeft = Math.floor((remaining % 3600) / 60);
-        const secondsLeft = Math.floor(remaining % 60);
-        const countdown = hoursLeft > 0
-          ? hoursLeft + 'h ' + String(minutesLeft).padStart(2, '0') + 'm ' + String(secondsLeft).padStart(2, '0') + 's left'
-          : minutesLeft + 'm ' + String(secondsLeft).padStart(2, '0') + 's left';
-        // Indicators-style compact card, aligned beneath Live Information.
-        ctx.fillStyle = 'rgba(19, 23, 34, 0.96)';
-        ctx.strokeStyle = '#2a2e39';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 7);
-        ctx.fill();
-        ctx.stroke();
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        ctx.font = '600 10px Arial';
-        ctx.fillStyle = '#e5e7eb';
-        ctx.fillText(tfLabel + ' CANDLE', badgeX + 10, badgeY + 16);
-        ctx.font = '10px Arial';
-        ctx.fillStyle = '#9ca3af';
-        ctx.fillText('Range: ' + fmt(range), badgeX + 10, badgeY + 39);
-        ctx.fillStyle = '#4ade80';
-        ctx.fillText(countdown, badgeX + 10, badgeY + 60);
+        // Dashboard details are rendered in the unified HTML Live Information card.
         ctx.restore();
       });
     };
