@@ -67,7 +67,7 @@ export default function ControlPanel() {
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') {
-        setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false); setSpeedOpen(false);
+        setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false); setSpeedOpen(false); setSpeedOpen(false);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -75,7 +75,7 @@ export default function ControlPanel() {
   }, []);
 
   const closeAll = () => { 
-    setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false); setSpeedOpen(false);
+    setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false); setSpeedOpen(false); setSpeedOpen(false);
   };
   const toggleSymbol = () => { const o = !symbolOpen; closeAll(); setSymbolOpen(o); };
   const toggleTz = () => { const o = !tzOpen; closeAll(); setTzOpen(o); };
