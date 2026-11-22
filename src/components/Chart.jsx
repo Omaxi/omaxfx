@@ -2,7 +2,7 @@ import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { createChart, CandlestickSeries, LineSeries } from 'lightweight-charts';
 import { useStore } from '../store';
 import { getPricePrecision, getPriceTickSize } from '../utils/instrument';
-import { getExecutionCandle } from '../utils/timeframe';
+import { aggregateData, getTimeframeBucketStart } from '../utils/timeframe';
 import { toMarketDate, formatMarketDateTime, formatMarketTick } from '../utils/marketClock';
 import { X, Play, Pause, SkipForward, Trash2, Lock } from 'lucide-react';
 import IndicatorsPanel from './IndicatorsPanel';
@@ -1240,18 +1240,28 @@ export default function Chart() {
   useEffect(() => { draftRef.current = null; dragDrawRef.current = null; }, [activeDrawingTool]);
 
   const visibleData = useMemo(() => {
-    if (!rawData[currentIndex] || displayData.length === 0) return [];
-    const currentRawTime = rawData[currentIndex].time + (timeframe > 1 ? 60 : 0);
-    let filtered = displayData.filter(c => c.time <= currentRawTime);
+    if (!rawData[currentIndex]) return [];
+    if (Number(timeframe) <= 1) return rawData.slice(0, currentIndex + 1);
 
-    if (timeframe > 1 && filtered.length > 0) {
-      const last = filtered[filtered.length - 1];
-      const blockEnd = last.time + timeframe * 60;
-      if (currentRawTime < blockEnd) {
-        filtered = filtered.slice(0, -1);
-      }
+    // Show all completed chart-timeframe candles plus the currently forming
+    // candle aggregated only from 1m bars reached by the replay cursor.
+    const currentBucket = getTimeframeBucketStart(rawData[currentIndex].time, timeframe);
+    let lo = 0, hi = displayData.length;
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (Number(displayData[mid].time) < currentBucket) lo = mid + 1;
+      else hi = mid;
     }
-    return filtered;
+    const completed = displayData.slice(0, lo);
+
+    let firstInBucket = currentIndex;
+    while (firstInBucket > 0 &&
+      getTimeframeBucketStart(rawData[firstInBucket - 1].time, timeframe) === currentBucket) {
+      firstInBucket--;
+    }
+    const forming = aggregateData(rawData.slice(firstInBucket, currentIndex + 1), timeframe);
+    if (forming.length) completed.push(forming[forming.length - 1]);
+    return completed;
   }, [displayData, rawData, currentIndex, timeframe]);
 
   useEffect(() => {
@@ -1602,7 +1612,7 @@ export default function Chart() {
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 20 }}>
         <div className="pointer-events-auto">
           <DrawingToolbar />
-          <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={visibleData} displayData={displayData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={getExecutionCandle(rawData, displayData, currentIndex, timeframe)} rawData={rawData} currentIndex={currentIndex} />
+          <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={visibleData} displayData={displayData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={rawData[currentIndex] || null} rawData={rawData} currentIndex={currentIndex} />
         </div>
 
         {pendingBtnPos.map(p => (
