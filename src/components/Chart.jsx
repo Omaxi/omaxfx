@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import { getPricePrecision, getPriceTickSize } from '../utils/instrument';
 import { aggregateData, getTimeframeBucketStart } from '../utils/timeframe';
 import { toMarketDate, formatMarketDateTime, formatMarketTick } from '../utils/marketClock';
-import { X, Play, Pause, SkipForward, Trash2, Lock } from 'lucide-react';
+import { X, Play, Pause, SkipForward, Trash2, Lock, ChevronDown } from 'lucide-react';
 import IndicatorsPanel from './IndicatorsPanel';
 import DrawingToolbar from './DrawingToolbar';
 import StylePanel from './StylePanel';
