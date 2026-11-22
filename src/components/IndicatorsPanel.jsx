@@ -3,7 +3,7 @@ import { LineSeries } from 'lightweight-charts';
 import { ChevronDown, Settings2, X } from 'lucide-react';
 import { useStore } from '../store';
 import { aggregateData } from '../utils/timeframe';
-import { detectFairValueGaps, formatFvgTimeframe, limitFairValueGaps } from '../utils/fvg';
+import { detectFairValueGaps, formatFvgTimeframe, latestFairValueGap } from '../utils/fvg';
 
 const INDICATORS = [
   { key: 'ma', label: 'Moving Average', color: '#f59e0b', pane: 'price' },
@@ -22,7 +22,7 @@ const DEFAULT_CONFIG = {
   rsi: { period: 14 },
   atr: { period: 14 },
   adx: { period: 14 },
-  fvg: { showCurrent: true, showHigher: true, higherTimeframe: 15, currentCount: 3, higherCount: 3 },
+  fvg: { showCurrent: true, showHigher: true, higherTimeframe: 15 },
 };
 
 const average = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -213,20 +213,20 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
     () => detectFairValueGaps(aggregateData(rawData || [], higherTimeframe), higherTimeframe),
     [rawData, higherTimeframe]
   );
-  const currentFvgZones = useMemo(() => limitFairValueGaps(currentFvgHistory
-    .filter(zone => zone.startTime + Number(timeframe) * 60 <= replayCutoff)
-    .map(zone => ({
-      ...zone,
-      mitigatedAt: zone.mitigatedAt != null && zone.mitigatedAt + Number(timeframe) * 60 <= replayCutoff
-        ? zone.mitigatedAt : null,
-    })), config.fvg?.currentCount), [currentFvgHistory, replayCutoff, timeframe, config.fvg?.currentCount]);
-  const higherFvgZones = useMemo(() => limitFairValueGaps(higherFvgHistory
-    .filter(zone => zone.startTime + higherTimeframe * 60 <= replayCutoff)
-    .map(zone => ({
-      ...zone,
-      mitigatedAt: zone.mitigatedAt != null && zone.mitigatedAt + higherTimeframe * 60 <= replayCutoff
-        ? zone.mitigatedAt : null,
-    })), config.fvg?.higherCount), [higherFvgHistory, replayCutoff, higherTimeframe, config.fvg?.higherCount]);
+  const currentFvgZones = useMemo(() => {
+    const completed = currentFvgHistory.filter(zone =>
+      zone.startTime + Number(timeframe) * 60 <= replayCutoff
+    );
+    const latest = latestFairValueGap(completed, replayCutoff);
+    return latest ? [latest] : [];
+  }, [currentFvgHistory, replayCutoff, timeframe]);
+  const higherFvgZones = useMemo(() => {
+    const completed = higherFvgHistory.filter(zone =>
+      zone.startTime + higherTimeframe * 60 <= replayCutoff
+    );
+    const latest = latestFairValueGap(completed, replayCutoff);
+    return latest ? [latest] : [];
+  }, [higherFvgHistory, replayCutoff, higherTimeframe]);
 
   useEffect(() => {
     const chart = chartReady ? chartRef.current : null;
@@ -460,9 +460,9 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
           const top = Math.min(topY, bottomY);
           const bottom = Math.max(topY, bottomY);
           if (right - left < 2 || bottom < 0 || top > paneHeight) return;
-          const bullish = zone.direction === 'bullish';
-          const color = bullish ? '38,166,154' : '239,83,80';
-          const alpha = zone.source === 'higher' ? 0.19 : 0.12;
+          // Color identifies the source timeframe: higher TF green, chart TF red.
+          const color = zone.source === 'higher' ? '34,197,94' : '239,68,68';
+          const alpha = zone.source === 'higher' ? 0.20 : 0.18;
           ctx.fillStyle = 'rgba(' + color + ',' + alpha + ')';
           ctx.fillRect(left, top, right - left, Math.max(2, bottom - top));
           ctx.strokeStyle = 'rgba(' + color + ',0.72)';
@@ -475,7 +475,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
           const labelY = Math.max(2, Math.min(paneHeight - 15, top + 3));
           ctx.fillStyle = 'rgba(19,23,34,0.88)';
           ctx.fillRect(labelX, labelY, labelWidth, 13);
-          ctx.fillStyle = bullish ? '#5eead4' : '#fca5a5';
+          ctx.fillStyle = zone.source === 'higher' ? '#4ade80' : '#f87171';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'middle';
           ctx.fillText(label, labelX + 4, labelY + 6.5);
@@ -557,21 +557,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
                     <option value={60}>1h</option><option value={240}>4h</option><option value={1440}>1D</option><option value={10080}>1W</option>
                   </select>
                 </label>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <label className="flex flex-col gap-1 text-[10px] text-gray-300">
-                    Current TF · max gaps
-                    <input type="number" min="1" max="50" step="1" value={config.fvg.currentCount}
-                      onChange={event => updateConfig('fvg', 'currentCount', Math.max(1, Math.min(50, Math.floor(Number(event.target.value) || 1))))}
-                      className="w-full rounded border border-[#343b49] bg-[#0b0e11] px-2 py-1 text-white"/>
-                  </label>
-                  <label className="flex flex-col gap-1 text-[10px] text-gray-300">
-                    Higher TF · max gaps
-                    <input type="number" min="1" max="50" step="1" value={config.fvg.higherCount}
-                      onChange={event => updateConfig('fvg', 'higherCount', Math.max(1, Math.min(50, Math.floor(Number(event.target.value) || 1))))}
-                      className="w-full rounded border border-[#343b49] bg-[#0b0e11] px-2 py-1 text-white"/>
-                  </label>
-                </div>
-                <p className="mt-1 text-[9px] leading-4 text-gray-500">Each timeframe displays its newest selected number of gaps. Higher-timeframe zones remain anchored to their original market times when you switch chart timeframes.</p>
+                <p className="mt-2 text-[9px] leading-4 text-gray-500">Only the latest unmitigated FVG is shown per timeframe. A newly formed gap replaces the previous one. Higher-timeframe zones remain anchored to their original market times when you switch chart timeframes.</p>
               </div>}
               {selected.some(item => item.key === 'ma') && <div className="mb-2 rounded bg-[#1e222d] p-2">
                 <div className="mb-1 flex items-center justify-between text-[10px] font-semibold text-white">Moving averages <button onClick={() => addInstance('ma')} className="text-blue-400">+ Add</button></div>
