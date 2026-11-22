@@ -396,6 +396,29 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
     };
   }, [active.sessions, chartRef, chartReady, sessionCandles, timeframe, sessionColors]);
 
+  // Include the developing HTF candle's full range in the chart autoscale.
+  // The transparent one-point series contributes only the requested price range.
+  useEffect(() => {
+    const chart = chartReady ? chartRef.current : null;
+    if (!chart || !active.htfCandleViewer || !htfViewerCandle || !visibleData?.length) return undefined;
+    const low = Number(htfViewerCandle.low);
+    const high = Number(htfViewerCandle.high);
+    if (!Number.isFinite(low) || !Number.isFinite(high)) return undefined;
+    let scaleSeries;
+    try {
+      scaleSeries = chart.addSeries(LineSeries, {
+        color: 'rgba(0,0,0,0)', lineWidth: 1,
+        priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+        autoscaleInfoProvider: () => ({ priceRange: { minValue: low, maxValue: high } }),
+      }, 0);
+      scaleSeries.setData([{ time: visibleData[visibleData.length - 1].time, value: htfViewerCandle.close }]);
+    } catch (error) {
+      if (scaleSeries) { try { chart.removeSeries(scaleSeries); } catch {} }
+      return undefined;
+    }
+    return () => { try { chart.removeSeries(scaleSeries); } catch {} };
+  }, [active.htfCandleViewer, htfViewerCandle, visibleData, chartRef, chartReady]);
+
   // Draw the live-forming higher-timeframe candle in the chart's right-side space.
   useEffect(() => {
     const canvas = htfCandleCanvasRef.current;
