@@ -28,6 +28,62 @@ const DEFAULT_CONFIG = {
   htfCandleViewer: { timeframe: 240 },
 };
 
+function IndicatorSelect({ value, onChange, options }) {
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef(null);
+  const menuRef = useRef(null);
+  const [position, setPosition] = useState({ left: 0, top: 0, width: 112 });
+  const selected = options.find(option => Number(option.value) === Number(value));
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = event => {
+      if (event.type === 'keydown' && event.key === 'Escape') setOpen(false);
+      if (event.type === 'pointerdown' && !buttonRef.current?.contains(event.target) && !menuRef.current?.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('keydown', close);
+    return () => {
+      document.removeEventListener('pointerdown', close);
+      document.removeEventListener('keydown', close);
+    };
+  }, [open]);
+
+  const toggle = () => {
+    if (!open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setPosition({ left: Math.max(8, rect.left), top: rect.bottom + 4, width: Math.max(112, rect.width) });
+    }
+    setOpen(current => !current);
+  };
+
+  return (
+    <>
+      <button ref={buttonRef} type="button" onClick={toggle} aria-haspopup="listbox" aria-expanded={open}
+        className="flex h-8 min-w-[112px] items-center justify-between gap-2 rounded border border-[#2a2e39] bg-[#1e222d] px-3 text-xs font-bold text-white transition-colors hover:bg-[#2a2e39]">
+        <span>{selected?.label ?? value}</span>
+        <ChevronDown size={11} className={'text-gray-400 transition-transform ' + (open ? 'rotate-180' : '')}/>
+      </button>
+      {open && <>
+        <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setOpen(false)}/>
+        <div ref={menuRef} role="listbox" className="fixed min-w-[112px] overflow-hidden rounded-lg border border-[#2a2e39] bg-[#1e222d] shadow-2xl"
+          style={{ zIndex: 9999, left: position.left, top: position.top, width: position.width }}>
+          <div className="border-b border-[#2a2e39] px-3 py-1.5 text-[9px] font-bold uppercase tracking-wide text-gray-500">Timeframe</div>
+          {options.map(option => {
+            const active = Number(option.value) === Number(value);
+            return <button key={option.value} type="button" role="option" aria-selected={active}
+              onClick={() => { onChange(option.value); setOpen(false); }}
+              className={'flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs text-white hover:bg-[#2a2e39] ' + (active ? 'bg-blue-600/15' : '')}>
+              <span className={active ? 'font-bold' : ''}>{option.label}</span>
+              {active && <span className="text-blue-400">✓</span>}
+            </button>;
+          })}
+        </div>
+      </>}
+    </>
+  );
+}
+
 const average = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
 
 function calculateIndicators(candles, config, active, timeframe, sessionCandles = candles) {
@@ -764,9 +820,7 @@ export default function IndicatorsPanel({ onHtfDashboard, chartRef, chartReady, 
                 <div className="mb-2 text-[10px] font-semibold text-white">HTF Candle Viewer</div>
                 <label className="flex items-center justify-between gap-2 text-[10px] text-gray-300">
                   Higher timeframe candle
-                  <select value={config.htfCandleViewer.timeframe} onChange={event => updateConfig('htfCandleViewer', 'timeframe', Number(event.target.value))} className="rounded border border-[#343b49] bg-[#0b0e11] px-2 py-1 text-white">
-                    <option value={5}>5m</option><option value={15}>15m</option><option value={60}>1h</option><option value={240}>4h</option>
-                  </select>
+                  <IndicatorSelect value={config.htfCandleViewer.timeframe} onChange={value => updateConfig('htfCandleViewer', 'timeframe', Number(value))} options={[{ value: 5, label: '5m' }, { value: 15, label: '15m' }, { value: 60, label: '1h' }, { value: 240, label: '4h' }]}/>
                 </label>
                 <p className="mt-2 text-[9px] leading-4 text-gray-500">The candle is built only from candles reached by the replay cursor. Its OHLC, body, and wicks update live with each replay step.</p>
               </div>}
@@ -782,10 +836,7 @@ export default function IndicatorsPanel({ onHtfDashboard, chartRef, chartReady, 
                 </label>
                 <label className="flex items-center justify-between gap-2 text-[10px] text-gray-300">
                   Higher timeframe
-                  <select value={config.fvg.higherTimeframe} onChange={event => updateConfig('fvg', 'higherTimeframe', Number(event.target.value))} className="rounded border border-[#343b49] bg-[#0b0e11] px-2 py-1 text-white">
-                    <option value={5}>5m</option><option value={15}>15m</option><option value={30}>30m</option>
-                    <option value={60}>1h</option><option value={240}>4h</option><option value={1440}>1D</option><option value={10080}>1W</option>
-                  </select>
+                  <IndicatorSelect value={config.fvg.higherTimeframe} onChange={value => updateConfig('fvg', 'higherTimeframe', Number(value))} options={[{ value: 5, label: '5m' }, { value: 15, label: '15m' }, { value: 30, label: '30m' }, { value: 60, label: '1h' }, { value: 240, label: '4h' }, { value: 1440, label: '1D' }, { value: 10080, label: '1W' }]}/>
                 </label>
                 <p className="mt-2 text-[9px] leading-4 text-gray-500">Only the latest unmitigated FVG is shown per timeframe. A newly formed gap replaces the previous one. Higher-timeframe zones remain anchored to their original market times when you switch chart timeframes.</p>
               </div>}
