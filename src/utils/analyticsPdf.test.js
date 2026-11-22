@@ -86,14 +86,14 @@ test('builds the analytics PDF when no drawdown exists', () => {
 });
 
 
-test('exports a light report regardless of the application theme', () => {
+test('exports a dark report to match the fixed application theme', () => {
   const html = buildAnalyticsPrintHtml({
     ...base,
     curve: [{ timestamp: 1793600400, label: '11-02 02:00', pnl: 0, benchmarkPnl: 0 }],
   });
 
-  assert.match(html, /background:#ffffff/);
-  assert.match(html, /color:#172033/);
-  assert.match(html, /background:#f1f5f9/);
-  assert.doesNotMatch(html, /#0b0e11|#131722|#1e222d/);
+  assert.match(html, /background:#131722/);
+  assert.match(html, /color:#f3f4f6/);
+  assert.match(html, /background:#1e222d/);
+  assert.doesNotMatch(html, /background:#ffffff|color:#172033|background:#f1f5f9/);
 });
