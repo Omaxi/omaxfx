@@ -100,3 +100,36 @@ html[data-ui-theme="dark"] select option {
   background: #1e222d;
   color: #f3f4f6;
 }
+
+
+/* Pane resize separator: keep the full-width divider subdued and show only
+   a compact centered grip, rather than a bright blue bar while hovering. */
+.chart-no-touch [class*="pane-separator"],
+.chart-no-touch .pane-separator {
+  position: relative !important;
+  background: #2a2e39 !important;
+  transition: background-color 120ms ease;
+}
+.chart-no-touch [class*="pane-separator"]:hover,
+.chart-no-touch .pane-separator:hover {
+  background: #2a2e39 !important;
+}
+.chart-no-touch [class*="pane-separator"]::after,
+.chart-no-touch .pane-separator::after {
+  content: "";
+  position: absolute;
+  width: 34px;
+  height: 4px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: #596273;
+  pointer-events: none;
+  transition: background-color 120ms ease, width 120ms ease;
+}
+.chart-no-touch [class*="pane-separator"]:hover::after,
+.chart-no-touch .pane-separator:hover::after {
+  width: 38px;
+  background: #8b98aa;
+}
