@@ -167,7 +167,7 @@ export default function PeriodModal() {
         <div className="p-3 border-b border-[#2a2e39] flex justify-between items-start">
           <div>
             <div className="flex items-center gap-2 mb-0.5">
-              <div className="bg-blue-600 rounded p-1.5">
+              <div className="theme-action-contrast bg-blue-600 rounded p-1.5">
                 <Calendar size={14} />
               </div>
               <h1 className="text-base font-bold tracking-wider">
@@ -200,7 +200,7 @@ export default function PeriodModal() {
                 <select value={selectedSessionId} onChange={event => setSelectedSessionId(event.target.value)} className="theme-native-select min-w-0 flex-1 rounded border border-[#343b49] bg-[#1e222d] px-2 py-2 text-[11px] text-white">
                   {savedSessions.map(saved => <option key={saved.sessionId} value={saved.sessionId}>{saved.sessionName || 'Untitled session'} · {saved.symbol || 'Unknown'}</option>)}
                 </select>
-                <button disabled={!selectedSessionId} onClick={() => { const saved = savedSessions.find(item => item.sessionId === selectedSessionId); if (saved) handleLoadSaved(saved); }} className="rounded bg-emerald-700 px-3 py-2 text-[10px] font-bold text-white hover:bg-emerald-600 disabled:opacity-40">RESUME</button>
+                <button disabled={!selectedSessionId} onClick={() => { const saved = savedSessions.find(item => item.sessionId === selectedSessionId); if (saved) handleLoadSaved(saved); }} className="theme-action-contrast rounded bg-emerald-700 px-3 py-2 text-[10px] font-bold text-white hover:bg-emerald-600 disabled:opacity-40">RESUME</button>
                 <button disabled={!selectedSessionId} onClick={() => handleDeleteSaved(selectedSessionId)} className="rounded p-2 text-gray-500 hover:bg-red-900/40 hover:text-red-400 disabled:opacity-40" title="Delete selected session"><Trash2 size={13}/></button>
               </div>
               {(() => { const saved = savedSessions.find(item => item.sessionId === selectedSessionId); return saved ? <p className="text-[9px] text-gray-400">{saved.tradeHistory?.length || 0} trades · {new Date(saved.savedAt).toLocaleString()} · {saved.balance?.toLocaleString?.() ?? '—'} balance</p> : null; })()}
