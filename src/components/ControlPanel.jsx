@@ -45,7 +45,7 @@ export default function ControlPanel() {
     pendingOrders, startDrawing, isDrawingMode, drawingStep, clearDraft,
     symbol, setSymbol, timezone, setTimezone,
     sessionTimes, setSessionTime, jumpToSession,
-    chartType, setChartType, allRawDataBySymbol
+    chartType, setChartType, allRawDataBySymbol, replaySpeed, setReplaySpeed
   } = useStore();
 
   const [symbolOpen, setSymbolOpen] = useState(false);
