@@ -854,7 +854,8 @@ export default function Chart() {
     const detectTradeHit = (x, y) => {
       if (!seriesRef.current) return null;
       const state = useStore.getState();
-      const PIXEL_TOL = 28;
+      // Generous grab tolerance: the tool is a filled box, not a visible line.
+      const PIXEL_TOL = 42;
       const candidates = [];
       const canvasRect = canvas.getBoundingClientRect();
       let toolPaneWidth = canvasRect.width;
@@ -930,12 +931,17 @@ export default function Chart() {
         const anchorTime = target === 'draft' ? tool.entryTime : tool.openTime;
         const anchorX = anchorTime != null ? timeToX(Number(anchorTime)) : paneW * 0.48;
         if (![entryY, slY, tpY, anchorX].every(Number.isFinite)) return;
+        // Match the exact horizontal footprint used by drawPositionTool/draft rendering.
         const width = Math.max(130, Math.min(260, paneW * 0.22));
-        const left = Math.max(0, Math.min(paneW - 24, anchorX));
+        const left = target === 'draft'
+          ? Math.max(0, Math.min(paneW - 24, anchorX))
+          : anchorX;
         const right = Math.min(paneW, left + width);
         const top = Math.min(entryY, slY, tpY);
         const bottom = Math.max(entryY, slY, tpY);
-        if (x >= left && x <= right && y >= top && y <= bottom) {
+        const bodyPadding = 10;
+        if (x >= left - bodyPadding && x <= right + bodyPadding &&
+            y >= top - bodyPadding && y <= bottom + bodyPadding) {
           candidates.push({ target, ...(target === 'position' ? { positionId: id } : target === 'pending' ? { orderId: id } : {}), id });
         }
       };
@@ -1061,28 +1067,41 @@ export default function Chart() {
       // Once the position box has been selected with a double-click, a single
       // click-drag on one of its levels edits that level. Entry is intentionally
       // absent from live-position hit testing, so it cannot move after trigger.
-      if (tradeHit && tradeTargetMatches(sel, tradeHit)) {
+      if (tradeHit) {
+        // A level grab always starts a drag, even if the user has not selected
+        // the tool first. This avoids a dead first click and makes the colored
+        // entry/SL/TP boundaries reliably editable.
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        const toolSelection = {
+          type: 'trade',
+          key: `${tradeHit.target}:${tradeHit.positionId ?? tradeHit.orderId ?? 'draft'}:tool`,
+          target: tradeHit.target,
+          positionId: tradeHit.positionId,
+          orderId: tradeHit.orderId,
+          lineType: tradeHit.type,
+        };
+        selectedItemRef.current = toolSelection;
+        setSelectedItem(toolSelection);
         dragRef.current = { type: 'trade', data: tradeHit };
-        setSelectedItem({ ...sel, lineType: tradeHit.type });
         lockChart(true);
         try { container.setPointerCapture(e.pointerId); } catch (error) {}
         return;
       }
 
-      const toolHit = tradeHit || tradeBodyHit;
-      if (toolHit) {
+      if (tradeBodyHit) {
         if (isDoubleTap) {
           e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
           resetTapTimer();
-          setSelectedItem({
+          const toolSelection = {
             type: 'trade',
-            key: `${toolHit.target}:${toolHit.positionId ?? toolHit.orderId ?? 'draft'}:tool`,
-            target: toolHit.target,
-            positionId: toolHit.positionId,
-            orderId: toolHit.orderId,
+            key: `${tradeBodyHit.target}:${tradeBodyHit.positionId ?? tradeBodyHit.orderId ?? 'draft'}:tool`,
+            target: tradeBodyHit.target,
+            positionId: tradeBodyHit.positionId,
+            orderId: tradeBodyHit.orderId,
             lineType: 'tool',
-          });
+          };
+          selectedItemRef.current = toolSelection;
+          setSelectedItem(toolSelection);
           lockChart(true);
         } else {
           lastTapRef.current = { time: now, x, y };
