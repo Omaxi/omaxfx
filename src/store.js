@@ -89,7 +89,9 @@ export const useStore = create((set, get) => ({
   displayData: [],    
   timeframe: 1,
   currentIndex: 0,    
-  isPlaying: false,   
+  isPlaying: false,
+  replaySpeed: 1,
+  setReplaySpeed: (speed) => set({ replaySpeed: [1, 5, 10, 50, 100, 500].includes(Number(speed)) ? Number(speed) : 1 }),
   recenterToken: 0,
 
   symbol: 'XAUUSD',
