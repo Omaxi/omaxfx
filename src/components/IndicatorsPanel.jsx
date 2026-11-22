@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { LineSeries } from 'lightweight-charts';
 import { ChevronDown, Settings2, X } from 'lucide-react';
 import { useStore } from '../store';
+import { aggregateData } from '../utils/timeframe';
+import { detectFairValueGaps, formatFvgTimeframe } from '../utils/fvg';
 
 const INDICATORS = [
   { key: 'ma', label: 'Moving Average', color: '#f59e0b', pane: 'price' },
@@ -11,6 +13,7 @@ const INDICATORS = [
   { key: 'adx', label: 'ADX', color: '#c084fc', pane: 'lower' },
   { key: 'vwap', label: 'VWAP', color: '#22c55e', pane: 'price' },
   { key: 'sessions', label: 'Sessions', color: '#64748b', pane: 'price' },
+  { key: 'fvg', label: 'Fair Value Gaps', color: '#38bdf8', pane: 'price' },
 ];
 
 const DEFAULT_CONFIG = {
@@ -19,6 +22,7 @@ const DEFAULT_CONFIG = {
   rsi: { period: 14 },
   atr: { period: 14 },
   adx: { period: 14 },
+  fvg: { showCurrent: true, showHigher: true, higherTimeframe: 15 },
 };
 
 const average = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -170,13 +174,14 @@ function calculateIndicators(candles, config, active, timeframe, sessionCandles 
   }
   return result;
 }
-export default function IndicatorsPanel({ chartRef, chartReady, visibleData, timeframe, priceSeriesRef, liveCandle }) {
+export default function IndicatorsPanel({ chartRef, chartReady, visibleData, timeframe, priceSeriesRef, liveCandle, rawData, currentIndex }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState({});
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const seriesRef = useRef({});
   const readyRef = useRef(false);
   const sessionCanvasRef = useRef(null);
+  const fvgCanvasRef = useRef(null);
   const sessionColors = useStore(state => state.sessionColors);
 
   const selected = useMemo(() => INDICATORS.filter(item => active[item.key]), [active]);
@@ -191,6 +196,23 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
     else candles.push(live);
     return candles.sort((a, b) => Number(a.time) - Number(b.time));
   }, [visibleData, liveCandle, timeframe]);
+
+  const currentFvgZones = useMemo(() => {
+    const completed = Number(timeframe) === 1 ? (visibleData || []).slice(0, -1) : (visibleData || []);
+    return detectFairValueGaps(completed, timeframe);
+  }, [visibleData, timeframe]);
+
+  const higherFvgZones = useMemo(() => {
+    const higherTimeframe = Number(config.fvg?.higherTimeframe) || 15;
+    const cursor = rawData?.[currentIndex];
+    if (!cursor || !Array.isArray(rawData) || rawData.length < 3) return [];
+    const cutoff = Number(cursor.time) + (Number(timeframe) > 1 ? 60 : 0);
+    const source = rawData.filter(candle => Number(candle.time) < cutoff);
+    const completedHigher = aggregateData(source, higherTimeframe).filter(
+      candle => Number(candle.time) + higherTimeframe * 60 <= cutoff
+    );
+    return detectFairValueGaps(completedHigher, higherTimeframe);
+  }, [rawData, currentIndex, timeframe, config.fvg?.higherTimeframe]);
 
   useEffect(() => {
     const chart = chartReady ? chartRef.current : null;
@@ -347,6 +369,109 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
     };
   }, [active.sessions, chartRef, chartReady, sessionCandles, timeframe, sessionColors]);
 
+  // Draw chart-timeframe and configured higher-timeframe FVGs on a dedicated
+  // canvas so both remain anchored to market timestamps after timeframe changes.
+  useEffect(() => {
+    const canvas = fvgCanvasRef.current;
+    const chart = chartReady ? chartRef.current : null;
+    const priceSeries = priceSeriesRef?.current;
+    if (!canvas || !chart || !priceSeries) return undefined;
+    let frame = 0;
+    const draw = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        canvas.width = Math.round(rect.width * dpr);
+        canvas.height = Math.round(rect.height * dpr);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        if (!active.fvg) return;
+
+        let paneWidth = rect.width, paneHeight = rect.height;
+        try {
+          const axisWidth = chart.priceScale('right').width();
+          const timeAxisHeight = chart.timeScale().height();
+          if (axisWidth > 0) paneWidth -= axisWidth;
+          if (timeAxisHeight > 0) paneHeight -= timeAxisHeight;
+        } catch {}
+        const data = visibleData || [];
+        if (data.length < 2) return;
+        const timeScale = chart.timeScale();
+        const timeToX = (time) => {
+          let lo = 0, hi = data.length - 1;
+          if (time <= Number(data[0].time)) hi = 1;
+          else if (time >= Number(data[hi].time)) lo = hi - 1;
+          else {
+            while (hi - lo > 1) {
+              const mid = Math.floor((lo + hi) / 2);
+              if (Number(data[mid].time) < time) lo = mid;
+              else hi = mid;
+            }
+          }
+          const t1 = Number(data[lo].time), t2 = Number(data[hi].time);
+          const x1 = timeScale.timeToCoordinate(t1), x2 = timeScale.timeToCoordinate(t2);
+          if ([x1, x2].some(value => value == null || !Number.isFinite(value)) || t2 === t1) return null;
+          return x1 + (x2 - x1) * ((Number(time) - t1) / (t2 - t1));
+        };
+        const zones = [
+          ...(config.fvg?.showHigher && Number(config.fvg?.higherTimeframe) !== Number(timeframe) ? higherFvgZones.map(zone => ({ ...zone, source: 'higher' })) : []),
+          ...(config.fvg?.showCurrent ? currentFvgZones.map(zone => ({ ...zone, source: 'current' })) : []),
+        ];
+        if (!zones.length) return;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, paneWidth, paneHeight);
+        ctx.clip();
+        zones.forEach(zone => {
+          const startX = timeToX(zone.startTime);
+          const endX = zone.mitigatedAt == null ? paneWidth : timeToX(zone.mitigatedAt);
+          const topY = priceSeries.priceToCoordinate(zone.top);
+          const bottomY = priceSeries.priceToCoordinate(zone.bottom);
+          if ([startX, endX, topY, bottomY].some(value => value == null || !Number.isFinite(value))) return;
+          const left = Math.max(0, Math.min(startX, endX));
+          const right = Math.min(paneWidth, Math.max(startX, endX));
+          const top = Math.min(topY, bottomY);
+          const bottom = Math.max(topY, bottomY);
+          if (right - left < 2 || bottom < 0 || top > paneHeight) return;
+          const bullish = zone.direction === 'bullish';
+          const color = bullish ? '38,166,154' : '239,83,80';
+          const alpha = zone.source === 'higher' ? 0.19 : 0.12;
+          ctx.fillStyle = 'rgba(' + color + ',' + alpha + ')';
+          ctx.fillRect(left, top, right - left, Math.max(2, bottom - top));
+          ctx.strokeStyle = 'rgba(' + color + ',0.72)';
+          ctx.lineWidth = zone.source === 'higher' ? 1.2 : 1;
+          ctx.strokeRect(left, top, right - left, Math.max(2, bottom - top));
+          const label = formatFvgTimeframe(zone.timeframe) + ' FVG';
+          ctx.font = '600 9px Arial';
+          const labelWidth = ctx.measureText(label).width + 8;
+          const labelX = Math.max(left + 3, Math.min(right - labelWidth - 3, left + 5));
+          const labelY = Math.max(2, Math.min(paneHeight - 15, top + 3));
+          ctx.fillStyle = 'rgba(19,23,34,0.88)';
+          ctx.fillRect(labelX, labelY, labelWidth, 13);
+          ctx.fillStyle = bullish ? '#5eead4' : '#fca5a5';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(label, labelX + 4, labelY + 6.5);
+        });
+        ctx.restore();
+      });
+    };
+    draw();
+    const timeScale = chart.timeScale();
+    timeScale.subscribeVisibleLogicalRangeChange(draw);
+    const observer = new ResizeObserver(draw);
+    observer.observe(canvas);
+    return () => {
+      cancelAnimationFrame(frame);
+      timeScale.unsubscribeVisibleLogicalRangeChange(draw);
+      observer.disconnect();
+    };
+  }, [active.fvg, config.fvg, currentFvgZones, higherFvgZones, visibleData, timeframe, chartRef, chartReady, priceSeriesRef]);
+
   const toggle = (key) => setActive(current => ({ ...current, [key]: !current[key] }));
   const updateConfig = (key, field, value) => setConfig(current => ({
     ...current,
@@ -369,6 +494,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
 
   return (
     <div className="absolute inset-0 z-10 pointer-events-none">
+      <canvas ref={fvgCanvasRef} className="absolute inset-0 h-full w-full pointer-events-none" aria-hidden="true"/>
       <canvas ref={sessionCanvasRef} className="absolute inset-0 h-full w-full pointer-events-none" aria-hidden="true"/>
       <div className="absolute top-2 left-12 z-40 pointer-events-auto" onPointerDown={event => event.stopPropagation()}>
       <button onClick={() => setOpen(value => !value)} className="flex items-center gap-1 rounded-md border border-[#2a2e39] bg-[#131722]/95 px-2 py-1 text-[10px] font-bold text-gray-200 shadow-lg hover:bg-[#1e222d]">
@@ -388,9 +514,28 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
               </button>
             ))}
           </div>
-          {selected.some(item => ['ma', 'bb', 'rsi', 'atr', 'adx'].includes(item.key)) && (
+          {selected.some(item => ['ma', 'bb', 'rsi', 'atr', 'adx', 'fvg'].includes(item.key)) && (
             <div className="mt-2 border-t border-[#2a2e39] pt-2">
               <div className="mb-1 flex items-center gap-1 text-[10px] font-bold text-gray-400"><Settings2 size={11}/> Indicator instances</div>
+              {selected.some(item => item.key === 'fvg') && <div className="mb-2 rounded bg-[#1e222d] p-2">
+                <div className="mb-2 text-[10px] font-semibold text-white">Fair Value Gaps</div>
+                <label className="mb-1 flex items-center gap-2 text-[10px] text-gray-300">
+                  <input type="checkbox" checked={config.fvg.showCurrent} onChange={event => updateConfig('fvg', 'showCurrent', event.target.checked)} className="accent-blue-500"/>
+                  Current chart timeframe ({formatFvgTimeframe(timeframe)})
+                </label>
+                <label className="mb-1 flex items-center gap-2 text-[10px] text-gray-300">
+                  <input type="checkbox" checked={config.fvg.showHigher} onChange={event => updateConfig('fvg', 'showHigher', event.target.checked)} className="accent-blue-500"/>
+                  Higher timeframe FVG
+                </label>
+                <label className="flex items-center justify-between gap-2 text-[10px] text-gray-300">
+                  Higher timeframe
+                  <select value={config.fvg.higherTimeframe} onChange={event => updateConfig('fvg', 'higherTimeframe', Number(event.target.value))} className="rounded border border-[#343b49] bg-[#0b0e11] px-2 py-1 text-white">
+                    <option value={5}>5m</option><option value={15}>15m</option><option value={30}>30m</option>
+                    <option value={60}>1h</option><option value={240}>4h</option><option value={1440}>1D</option><option value={10080}>1W</option>
+                  </select>
+                </label>
+                <p className="mt-1 text-[9px] leading-4 text-gray-500">Higher-timeframe zones stay anchored to their original market times when you switch chart timeframes.</p>
+              </div>}
               {selected.some(item => item.key === 'ma') && <div className="mb-2 rounded bg-[#1e222d] p-2">
                 <div className="mb-1 flex items-center justify-between text-[10px] font-semibold text-white">Moving averages <button onClick={() => addInstance('ma')} className="text-blue-400">+ Add</button></div>
                 {(config.ma.instances || []).map(instance => <div key={instance.id} className="mb-1 flex items-center gap-1">
