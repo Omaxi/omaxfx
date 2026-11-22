@@ -208,3 +208,11 @@ html[data-ui-theme="light"] .theme-action-contrast,
 html[data-ui-theme="light"] .theme-action-contrast * {
   color: #ffffff !important;
 }
+
+
+/* Light-theme contrast for indicator count badges and the blue Jump actions. */
+html[data-ui-theme="light"] .indicator-count-badge,
+html[data-ui-theme="light"] .jump-session-action,
+html[data-ui-theme="light"] .jump-session-action * {
+  color: #ffffff !important;
+}
