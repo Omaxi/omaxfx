@@ -219,6 +219,7 @@ export default function Chart() {
   const [textInput, setTextInput] = useState(null);
   const [htfDashboard, setHtfDashboard] = useState(null);
   const [indicatorDashboard, setIndicatorDashboard] = useState([]);
+  const [dashboardCollapsed, setDashboardCollapsed] = useState(false);
   const cancelTextEditRef = useRef(false);
 
   const { 
@@ -1536,38 +1537,45 @@ export default function Chart() {
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
       <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 25 }} aria-hidden="true" />
 
-      <div className="absolute top-2 right-12 z-30 w-[min(260px,calc(100%-3.5rem))] rounded-xl border border-[#2a2e39] bg-[#131722]/95 p-3 text-[10px] leading-4 text-gray-300 shadow-xl pointer-events-none font-mono">
-        <div className="mb-2 flex items-center justify-between gap-3">
+      <div className="absolute top-2 right-12 z-30 w-[min(220px,calc(100%-3.5rem))] rounded-xl border border-[#2a2e39] bg-[#131722]/95 p-2.5 text-[10px] leading-4 text-gray-300 shadow-xl pointer-events-auto font-mono">
+        <button type="button" onClick={() => setDashboardCollapsed(value => !value)}
+          aria-expanded={!dashboardCollapsed}
+          className="mb-1 flex w-full items-center justify-between gap-2 rounded text-left hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500">
           <span className="font-sans text-[11px] font-bold tracking-wide text-gray-100">LIVE INFORMATION</span>
-          <span className="font-sans text-[10px] text-blue-400">{timeframe}m</span>
-        </div>
-        <div className="grid grid-cols-[56px_1fr] gap-x-2 gap-y-0.5">
-          <span className="text-gray-500">Open</span><span className="text-right text-white">{candlePrice(currentCandle?.open)}</span>
-          <span className="text-gray-500">High</span><span className="text-right text-white">{candlePrice(currentCandle?.high)}</span>
-          <span className="text-gray-500">Low</span><span className="text-right text-white">{candlePrice(currentCandle?.low)}</span>
-          <span className="text-gray-500">Close</span><span className="text-right text-white">{candlePrice(currentCandle?.close)}</span>
-          <span className="text-gray-500">Datetime</span><span className="text-right text-white">{candleDate}</span>
-          <span className="text-gray-500">Session</span><span className="text-right text-white">{candleSession}</span>
-        </div>
-        {htfDashboard && <div className="mt-3 border-t border-[#2a2e39] pt-2.5">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="font-sans text-[11px] font-bold tracking-wide text-gray-100">{htfDashboard.label} CANDLE</span>
-            <span className="font-sans text-[10px] text-blue-400">{htfDashboard.timeframe}</span>
+          <span className="flex items-center gap-2">
+            <span className="font-sans text-[10px] text-blue-400">{timeframe}m</span>
+            <ChevronDown size={12} className={dashboardCollapsed ? '' : 'rotate-180'} />
+          </span>
+        </button>
+        {!dashboardCollapsed && <>
+          <div className="grid grid-cols-[48px_1fr] gap-x-2 gap-y-0.5">
+            <span className="text-gray-500">Open</span><span className="text-right text-white">{candlePrice(currentCandle?.open)}</span>
+            <span className="text-gray-500">High</span><span className="text-right text-white">{candlePrice(currentCandle?.high)}</span>
+            <span className="text-gray-500">Low</span><span className="text-right text-white">{candlePrice(currentCandle?.low)}</span>
+            <span className="text-gray-500">Close</span><span className="text-right text-white">{candlePrice(currentCandle?.close)}</span>
+            <span className="text-gray-500">Datetime</span><span className="text-right text-white">{candleDate}</span>
+            <span className="text-gray-500">Session</span><span className="text-right text-white">{candleSession}</span>
           </div>
-          <div className="flex items-center justify-between"><span className="text-gray-500">Range</span><span className="text-white">{htfDashboard.range}</span></div>
-          <div className="mt-1 font-sans text-[11px] font-semibold text-green-400">{htfDashboard.countdown} left</div>
-        </div>}
-        {indicatorDashboard.length > 0 && <div className="mt-3 border-t border-[#2a2e39] pt-2.5">
-          <div className="mb-2 font-sans text-[11px] font-bold tracking-wide text-gray-100">INDICATORS</div>
-          <div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-0.5">
-            {indicatorDashboard.map(item => (
-              <div key={item.key} className="contents">
-                <span style={{ color: item.color }}>{item.label}</span>
-                <span className="text-right text-white">{Number(item.value).toFixed(item.price ? getPricePrecision(symbol, contractSpecs) : 2)}</span>
-              </div>
-            ))}
-          </div>
-        </div>}
+          {htfDashboard && <div className="mt-2 border-t border-[#2a2e39] pt-2">
+            <div className="mb-1 flex items-center justify-between">
+              <span className="font-sans text-[11px] font-bold tracking-wide text-gray-100">{htfDashboard.label} CANDLE</span>
+              <span className="font-sans text-[10px] text-blue-400">{htfDashboard.timeframe}</span>
+            </div>
+            <div className="flex items-center justify-between"><span className="text-gray-500">Range</span><span className="text-white">{htfDashboard.range}</span></div>
+            <div className="mt-1 font-sans text-[11px] font-semibold text-green-400">{htfDashboard.countdown} left</div>
+          </div>}
+          {indicatorDashboard.length > 0 && <div className="mt-2 border-t border-[#2a2e39] pt-2">
+            <div className="mb-1 font-sans text-[11px] font-bold tracking-wide text-gray-100">INDICATORS</div>
+            <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5">
+              {indicatorDashboard.map(item => (
+                <div key={item.key} className="contents">
+                  <span className="truncate" style={{ color: item.color }}>{item.label}</span>
+                  <span className="text-right text-white tabular-nums">{Number(item.value).toFixed(item.price ? getPricePrecision(symbol, contractSpecs) : 2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>}
+        </>}
       </div>
 
       {isPencilMode && (
