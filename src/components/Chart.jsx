@@ -572,43 +572,57 @@ export default function Chart() {
       ctx.clip();
       const state = useStore.getState();
 
-      // Live and pending TradingView-style position tools are drawn as compact
-      // risk/reward boxes. Their levels never extend across the chart.
-      const drawPositionTool = (tool, prefix) => {
-        if (!seriesRef.current || tool.entryPrice == null) return;
-        const entryY = seriesRef.current.priceToCoordinate(Number(tool.entryPrice));
-        const slY = tool.sl == null ? null : seriesRef.current.priceToCoordinate(Number(tool.sl));
-        const tpY = tool.tp == null ? null : seriesRef.current.priceToCoordinate(Number(tool.tp));
-        const anchorX = tool.openTime != null ? timeToX(Number(tool.openTime)) : null;
-        if (entryY == null || !Number.isFinite(entryY) || anchorX == null) return;
-        const left = anchorX;
-        const right = left + Math.max(130, Math.min(260, paneW * 0.22));
-        if (right < 0 || left > paneW) return;
+      // Draw Entry / SL / TP as full-width, directly draggable horizontal levels.
+      // This is the classic chart-level interaction: users grab the price line
+      // anywhere in the chart instead of trying to drag the filled risk box.
+      const drawPositionLevels = (tool, target, prefix) => {
+        if (!seriesRef.current) return;
+        const entry = Number(target === 'draft' ? tool.entry : tool.entryPrice);
+        if (!Number.isFinite(entry)) return;
         const long = tool.type === 'buy';
-        if (tpY != null && Number.isFinite(tpY)) {
-          ctx.fillStyle = 'rgba(38,166,154,0.18)';
-          ctx.fillRect(left, Math.min(entryY, tpY), right - left, Math.max(1, Math.abs(entryY - tpY)));
+        const precision = getPricePrecision(state.symbol, state.contractSpecs);
+        const levels = [
+          { type: 'entry', price: entry, color: '#3b82f6', label: 'ENTRY' },
+          { type: 'sl', price: Number(tool.sl), color: '#ef5350', label: 'SL' },
+          { type: 'tp', price: Number(tool.tp), color: '#26a69a', label: 'TP' },
+        ];
+        levels.forEach(level => {
+          if (!Number.isFinite(level.price)) return;
+          const y = seriesRef.current.priceToCoordinate(level.price);
+          if (y == null || !Number.isFinite(y) || y < -2 || y > paneH + 2) return;
+          ctx.save();
+          ctx.strokeStyle = level.color;
+          ctx.lineWidth = level.type === 'entry' ? 1.5 : 1.25;
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(paneW, y);
+          ctx.stroke();
+          const tag = (prefix || '') + level.label;
+          ctx.font = '600 9px Arial';
+          const tagWidth = ctx.measureText(tag).width + 12;
+          ctx.fillStyle = level.color;
+          ctx.fillRect(Math.max(0, paneW - tagWidth), y - 8, tagWidth, 16);
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(tag, Math.max(0, paneW - tagWidth / 2), y);
+          ctx.restore();
+        });
+        const entryY = seriesRef.current.priceToCoordinate(entry);
+        if (entryY != null && Number.isFinite(entryY)) {
+          ctx.save();
+          ctx.font = '600 10px Arial';
+          ctx.fillStyle = '#e5e7eb';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          const rrr = calcRRR(entry, tool.sl, tool.tp);
+          ctx.fillText((long ? 'Long' : 'Short') + ' · RRR ' + (rrr || '—'), 8, Math.max(10, Math.min(paneH - 10, entryY + (long ? 12 : -12))));
+          ctx.restore();
         }
-        if (slY != null && Number.isFinite(slY)) {
-          ctx.fillStyle = 'rgba(239,83,80,0.18)';
-          ctx.fillRect(left, Math.min(entryY, slY), right - left, Math.max(1, Math.abs(entryY - slY)));
-        }
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(Math.max(0, left), 0, Math.max(0, Math.min(paneW, right) - Math.max(0, left)), paneH);
-        ctx.clip();
-        ctx.fillStyle = '#e5e7eb';
-        ctx.font = '600 10px Arial';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        const rrr = calcRRR(tool.entryPrice, tool.sl, tool.tp);
-        ctx.fillText(prefix + (long ? 'Long' : 'Short') + ' · RRR ' + (rrr || '—'), Math.max(4, left + 5), entryY + (long ? 12 : -12));
-        ctx.restore();
       };
-      (state.pendingOrders || []).forEach(order => drawPositionTool(order, ''));
-      (state.positions || []).forEach(position => drawPositionTool(position, ''));
-
-
+      (state.pendingOrders || []).forEach(order => drawPositionLevels(order, 'pending', ''));
+      (state.positions || []).forEach(position => drawPositionLevels(position, 'position', ''));
       // 1. Draw trade history (Entry/Exit boxes + SL area + TP area)
       const tradeHistory = state.tradeHistory || [];
       tradeHistory.forEach(trade => {
@@ -667,35 +681,9 @@ export default function Chart() {
         }
       });
 
-      // 2. Draw the unsubmitted TradingView-style long/short position preview.
-      // Profit and risk zones share the entry line and extend to the right.
-      if (state.draftPosition?.entry != null && seriesRef.current) {
-        const draft = state.draftPosition;
-        const entryY = seriesRef.current.priceToCoordinate(Number(draft.entry));
-        const slY = draft.sl == null ? null : seriesRef.current.priceToCoordinate(Number(draft.sl));
-        const tpY = draft.tp == null ? null : seriesRef.current.priceToCoordinate(Number(draft.tp));
-        const anchorX = draft.entryTime != null ? timeToX(Number(draft.entryTime)) : null;
-        const left = Math.max(0, Math.min(paneW - 24, anchorX == null ? paneW * 0.48 : anchorX));
-        const right = Math.min(paneW, left + Math.max(130, Math.min(260, paneW * 0.22)));
-        const long = draft.type === 'buy';
-        if (entryY != null && Number.isFinite(entryY) && right > left) {
-          if (tpY != null && Number.isFinite(tpY)) {
-            // Take-profit is always green, for both long and short setups.
-            ctx.fillStyle = 'rgba(38,166,154,0.34)';
-            ctx.fillRect(left, Math.min(entryY, tpY), right - left, Math.max(1, Math.abs(entryY - tpY)));
-          }
-          if (slY != null && Number.isFinite(slY)) {
-            // Stop-loss is always red, for both long and short setups.
-            ctx.fillStyle = 'rgba(239,83,80,0.34)';
-            ctx.fillRect(left, Math.min(entryY, slY), right - left, Math.max(1, Math.abs(entryY - slY)));
-          }
-          ctx.fillStyle = '#e5e7eb';
-          ctx.font = '600 10px Arial';
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'middle';
-          const rrr = calcRRR(draft.entry, draft.sl, draft.tp);
-          ctx.fillText((long ? 'Long' : 'Short') + ' · RRR ' + (rrr || '—'), left + 5, entryY + (long ? 12 : -12));
-        }
+      // Draw draft Entry / SL / TP as full-width horizontal draggable levels.
+      if (state.draftPosition?.entry != null) {
+        drawPositionLevels(state.draftPosition, 'draft', 'DRAFT ');
       }
 
       // 3. Draw user drawings
@@ -711,7 +699,7 @@ export default function Chart() {
       state.pencilStrokes.forEach(s => drawPencilStroke(ctx, s, pointToXY));
       if (currentPencilRef.current) drawPencilStroke(ctx, currentPencilRef.current, pointToXY);
 
-      // Position tools stay self-contained; do not draw full-width entry/SL/TP guides.
+      // Position levels are rendered as full-width horizontal draggable guides.
 
       ctx.restore();
 
@@ -854,60 +842,46 @@ export default function Chart() {
     const detectTradeHit = (x, y) => {
       if (!seriesRef.current) return null;
       const state = useStore.getState();
-      // Generous grab tolerance: the tool is a filled box, not a visible line.
-      const PIXEL_TOL = 42;
+      const PIXEL_TOL = 14;
       const candidates = [];
-      const canvasRect = canvas.getBoundingClientRect();
-      let toolPaneWidth = canvasRect.width;
-      try {
-        const axisWidth = chartRef.current?.priceScale('right').width();
-        if (axisWidth > 0) toolPaneWidth -= axisWidth;
-      } catch (e) {}
-      const addToolLevel = (tool, target, id, type, price) => {
-        if (price == null || tool.openTime == null) return;
-        const lineY = seriesRef.current.priceToCoordinate(Number(price));
-        const anchorX = timeToX(Number(tool.openTime));
-        if (lineY == null || !Number.isFinite(lineY) || anchorX == null) return;
-        const width = Math.max(130, Math.min(260, toolPaneWidth * 0.22));
+      const addLevel = (tool, target, id, type, rawPrice) => {
+        if (rawPrice == null) return;
+        // Active position entries are fixed after triggering; only SL/TP move.
+        const price = Number(rawPrice);
+        const lineY = seriesRef.current.priceToCoordinate(price);
+        if (!Number.isFinite(price) || lineY == null || !Number.isFinite(lineY)) return;
         candidates.push({
-          target, ...(target === 'position' ? { positionId: id } : { orderId: id }),
-          type, price: Number(price), lineY,
-          // Test the price level across the pane. The rendered box can be
-          // offset by the right price scale; narrow x hit zones missed it.
-          xMin: 0, xMax: toolPaneWidth,
+          target,
+          ...(target === 'position' ? { positionId: id } : target === 'pending' ? { orderId: id } : {}),
+          type, price, lineY,
         });
       };
-      state.positions.forEach(pos => {
-        addToolLevel(pos, 'position', pos.id, 'sl', pos.sl);
-        addToolLevel(pos, 'position', pos.id, 'tp', pos.tp);
+      (state.positions || []).forEach(pos => {
+        addLevel(pos, 'position', pos.id, 'sl', pos.sl);
+        addLevel(pos, 'position', pos.id, 'tp', pos.tp);
       });
-      state.pendingOrders.forEach(order => {
-        addToolLevel(order, 'pending', order.id, 'entry', order.entryPrice);
-        addToolLevel(order, 'pending', order.id, 'sl', order.sl);
-        addToolLevel(order, 'pending', order.id, 'tp', order.tp);
+      (state.pendingOrders || []).forEach(order => {
+        addLevel(order, 'pending', order.id, 'entry', order.entryPrice);
+        addLevel(order, 'pending', order.id, 'sl', order.sl);
+        addLevel(order, 'pending', order.id, 'tp', order.tp);
       });
       if (state.draftPosition) {
         const draft = state.draftPosition;
-        const anchorX = draft.entryTime != null ? timeToX(Number(draft.entryTime)) : toolPaneWidth * 0.48;
-        const width = Math.max(130, Math.min(260, toolPaneWidth * 0.22));
-        [['entry', draft.entry], ['sl', draft.sl], ['tp', draft.tp]].forEach(([type, price]) => {
-          if (price == null) return;
-          const lineY = seriesRef.current.priceToCoordinate(Number(price));
-          if (lineY != null && Number.isFinite(lineY)) {
-            candidates.push({ target: 'draft', type, price: Number(price), lineY, xMin: anchorX - 8, xMax: anchorX + width + 8 });
-          }
-        });
+        addLevel(draft, 'draft', null, 'entry', draft.entry);
+        addLevel(draft, 'draft', null, 'sl', draft.sl);
+        addLevel(draft, 'draft', null, 'tp', draft.tp);
       }
-      // Only the short grab area belonging to a visible position tool is interactive.
-      const visibleCandidates = candidates.filter(c => x >= c.xMin && x <= c.xMax);
-      if (visibleCandidates.length === 0) return null;
-      let closest = null, closestDist = Infinity;
-      for (const c of visibleCandidates) {
-        const d = Math.abs(y - c.lineY);
-        if (d < closestDist) { closestDist = d; closest = c; }
+      if (!candidates.length) return null;
+      let closest = null;
+      let closestDist = Infinity;
+      for (const candidate of candidates) {
+        const distance = Math.abs(y - candidate.lineY);
+        if (distance < closestDist) {
+          closestDist = distance;
+          closest = candidate;
+        }
       }
-      if (closestDist > PIXEL_TOL) return null;
-      return closest;
+      return closestDist <= PIXEL_TOL ? closest : null;
     };
 
     // A double-click anywhere inside a position box selects the complete tool.
