@@ -1602,7 +1602,7 @@ export default function Chart() {
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 20 }}>
         <div className="pointer-events-auto">
           <DrawingToolbar />
-          <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={visibleData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={getExecutionCandle(rawData, displayData, currentIndex, timeframe)} />
+          <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={visibleData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={getExecutionCandle(rawData, displayData, currentIndex, timeframe)} rawData={rawData} currentIndex={currentIndex} />
         </div>
 
         {pendingBtnPos.map(p => (
