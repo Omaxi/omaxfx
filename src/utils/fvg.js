@@ -7,6 +7,16 @@ export const formatFvgTimeframe = (minutes) => {
   return value % 60 === 0 ? `${value / 60}h` : `${value}m`;
 };
 
+// Keep the newest zones while preserving their chronological draw order.
+// Each timeframe is capped independently by the indicator settings.
+export const limitFairValueGaps = (gaps, limit = 3) => {
+  if (!Array.isArray(gaps)) return [];
+  const count = Math.max(1, Math.min(50, Math.floor(Number(limit) || 3)));
+  return [...gaps]
+    .sort((a, b) => Number(a.startTime) - Number(b.startTime))
+    .slice(-count);
+};
+
 // Three-candle Fair Value Gap detection. A gap remains extended to the right
 // until price trades through its far boundary (full mitigation).
 export const detectFairValueGaps = (candles, timeframe) => {
