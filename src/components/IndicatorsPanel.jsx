@@ -5,6 +5,7 @@ import { useStore } from '../store';
 import { aggregateData } from '../utils/timeframe';
 import { detectFairValueGaps, formatFvgTimeframe, latestFairValueGapPair } from '../utils/fvg';
 import { getPricePrecision } from '../utils/instrument';
+import { getMarketSession } from '../utils/marketClock';
 
 const INDICATORS = [
   { key: 'ma', label: 'Moving Average', color: '#f59e0b', pane: 'price' },
@@ -208,24 +209,24 @@ function calculateIndicators(candles, config, active, timeframe, sessionCandles 
   }
 
   if (active.sessions) {
-    const sessionDefs = [
-      { key: 'asia', start: 1, end: 10 },
-      { key: 'london', start: 10, end: 15 },
-      { key: 'newyork', start: 15, end: 23 },
-    ];
+    const sessionDefs = [{ key: 'asia' }, { key: 'london' }, { key: 'newyork' }];
     sessionDefs.forEach(session => {
-      let day = null, sessionHigh = null, sessionLow = null;
+      let sessionId = null, sessionHigh = null, sessionLow = null;
       const highs = [], lows = [];
       sessionCandles.forEach(c => {
-        const d = new Date((c.time + 3 * 3600) * 1000);
-        const dateKey = d.toISOString().slice(0, 10), hour = d.getUTCHours();
-        if (dateKey !== day) { day = dateKey; sessionHigh = null; sessionLow = null; }
-        if (hour >= session.start && hour < session.end) {
-          sessionHigh = sessionHigh == null ? c.high : Math.max(sessionHigh, c.high);
-          sessionLow = sessionLow == null ? c.low : Math.min(sessionLow, c.low);
-          highs.push({ time: c.time, value: sessionHigh });
-          lows.push({ time: c.time, value: sessionLow });
-        } else { highs.push({ time: c.time }); lows.push({ time: c.time }); }
+        const info = getMarketSession(c.time);
+        const nextId = info?.sessionDate + ':' + info?.key;
+        if (!info || info.key !== session.key) {
+          highs.push({ time: c.time }); lows.push({ time: c.time });
+          return;
+        }
+        if (nextId !== sessionId) {
+          sessionId = nextId; sessionHigh = null; sessionLow = null;
+        }
+        sessionHigh = sessionHigh == null ? c.high : Math.max(sessionHigh, c.high);
+        sessionLow = sessionLow == null ? c.low : Math.min(sessionLow, c.low);
+        highs.push({ time: c.time, value: sessionHigh });
+        lows.push({ time: c.time, value: sessionLow });
       });
       result['session_' + session.key + '_high'] = highs;
       result['session_' + session.key + '_low'] = lows;
@@ -420,18 +421,17 @@ export default function IndicatorsPanel({ onHtfDashboard, chartRef, chartReady, 
         const data = sessionCandles;
         if (!data?.length) return;
         const defs = [
-          { key: 'asia', label: 'Sydney / Asia', start: 1, end: 10, color: sessionColors?.asia || '#f59e0b' },
-          { key: 'london', label: 'London', start: 10, end: 15, color: sessionColors?.london || '#38bdf8' },
-          { key: 'newyork', label: 'New York', start: 15, end: 23, color: sessionColors?.newyork || '#fb7185' },
+          { key: 'asia', label: 'Asian', color: sessionColors?.asia || '#f59e0b' },
+          { key: 'london', label: 'London', color: sessionColors?.london || '#38bdf8' },
+          { key: 'newyork', label: 'New York', color: sessionColors?.newyork || '#fb7185' },
         ];
+        const defsByKey = Object.fromEntries(defs.map(def => [def.key, def]));
         const groups = new Map();
         data.forEach(candle => {
-          const local = new Date((Number(candle.time) + 3 * 3600) * 1000);
-          const day = local.toISOString().slice(0, 10);
-          const hour = local.getUTCHours();
-          defs.forEach(def => {
-            if (hour < def.start || hour >= def.end) return;
-            const id = day + ':' + def.key;
+          const session = getMarketSession(Number(candle.time));
+          const def = session && defsByKey[session.key];
+          if (def) {
+            const id = session.sessionDate + ':' + def.key;
             let item = groups.get(id);
             if (!item) {
               item = { ...def, startTime: Number(candle.time), endTime: Number(candle.time), high: Number(candle.high), low: Number(candle.low) };
