@@ -23,7 +23,7 @@ import { RotateCcw, Info, Sparkles, AlertTriangle, ChevronDown, LogOut, Sun, Moo
 
 function App() {
   const { 
-    isPlaying, stepForward, currentIndex, rawData, balance, positions, 
+    isPlaying, stepForward, currentIndex, rawData, replaySpeed, balance, positions, 
     musicEnabled, gameStarted,
     gameState, restartGame,
     loadingState, openInfo, openHistory, openAnalytics, openTheme, theme,
@@ -139,10 +139,19 @@ function App() {
   useEffect(() => {
     let interval;
     if (isPlaying && currentIndex < rawData.length - 1 && !gameState.isOver) {
-      interval = setInterval(() => { stepForward(); }, 250);
+      const speed = Number(replaySpeed) || 1;
+      // Up to 10 bars/s, advance one source minute at each interval.
+      // Faster modes batch several 1m bars per 20ms tick to avoid hundreds
+      // of React renders per second while preserving every source candle.
+      if (speed <= 10) {
+        interval = setInterval(() => { stepForward('minute', 1); }, 1000 / speed);
+      } else {
+        const batchSize = Math.max(1, Math.round(speed / 50));
+        interval = setInterval(() => { stepForward('minute', batchSize); }, 20);
+      }
     }
     return () => clearInterval(interval);
-  }, [isPlaying, currentIndex, rawData, stepForward, gameState.isOver]);
+  }, [isPlaying, currentIndex, rawData, replaySpeed, stepForward, gameState.isOver]);
 
 
 
