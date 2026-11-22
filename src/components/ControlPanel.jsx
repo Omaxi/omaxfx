@@ -283,7 +283,7 @@ export default function ControlPanel() {
               <div className="flex-1" />
               <button
                 onClick={() => { jumpToSession(s.key); closeAll(); }}
-                className="theme-action-contrast px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded"
+                className="jump-session-action px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded"
               >
                 Jump
               </button>
@@ -329,7 +329,7 @@ export default function ControlPanel() {
           </button>
 
           <button ref={jumpButtonRef} onClick={toggleJump}
-            className="theme-action-contrast flex h-9 items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
+            className="theme-menu-item flex h-9 items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
             title="Jump to trading session">
             <ArrowUpDown size={10} />
             <span>Jump</span>
