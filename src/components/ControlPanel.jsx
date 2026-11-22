@@ -42,7 +42,7 @@ const SESSIONS = [
 export default function ControlPanel() {
   const { 
     positions, setTimeframe, timeframe, closeAllPositions, openOrderModal,
-    pendingOrders, startDrawing, isDrawingMode, drawingStep, clearDraft,
+    pendingOrders, startDrawing, isDrawingMode, drawingStep, draftPosition, clearDraft,
     symbol, setSymbol, timezone, setTimezone,
     sessionTimes, setSessionTime, jumpToSession,
     chartType, setChartType, allRawDataBySymbol, replaySpeed, setReplaySpeed
@@ -336,15 +336,15 @@ export default function ControlPanel() {
             <ChevronDown size={10} className={`transition-transform ${jumpOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          {!isDrawingMode ? (
+          {!isDrawingMode && !draftPosition ? (
             <div className="flex items-center gap-1 flex-shrink-0">
               <button onClick={() => startDrawing('buy')} className="h-9 px-2 py-1 bg-blue-600/30 text-blue-400 rounded font-bold text-[10px] whitespace-nowrap">Long position</button>
               <button onClick={() => startDrawing('sell')} className="h-9 px-2 py-1 bg-red-600/30 text-red-400 rounded font-bold text-[10px] whitespace-nowrap">Short position</button>
             </div>
           ) : (
             <div className="flex items-center gap-2 bg-yellow-900/30 px-2 py-1 rounded flex-shrink-0">
-              <span className="text-yellow-400 text-[10px] font-bold animate-pulse whitespace-nowrap">{drawingStep?.toUpperCase()}</span>
-              <button onClick={clearDraft} className="text-red-400"><X size={11}/></button>
+              <span className="text-yellow-400 text-[10px] font-bold whitespace-nowrap">{isDrawingMode ? drawingStep?.toUpperCase() : 'POSITION READY'}</span>
+              <button onClick={clearDraft} className="text-red-400" title="Cancel position tool"><X size={11}/></button>
             </div>
           )}
 
