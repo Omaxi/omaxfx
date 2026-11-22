@@ -216,6 +216,20 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
     const candles = aggregateData(rawData.slice(first, currentIndex + 1), htfViewerTimeframe);
     return candles[0] || null;
   }, [rawData, currentIndex, htfViewerTimeframe]);
+  const htfLevelOrigins = useMemo(() => {
+    const current = rawData?.[currentIndex];
+    if (!current) return null;
+    const bucketStart = Math.floor(Number(current.time) / (htfViewerTimeframe * 60)) * htfViewerTimeframe * 60;
+    let firstIndex = currentIndex;
+    while (firstIndex > 0 && Number(rawData[firstIndex - 1].time) >= bucketStart) firstIndex--;
+    let highIndex = firstIndex;
+    let lowIndex = firstIndex;
+    for (let index = firstIndex + 1; index <= currentIndex; index++) {
+      if (Number(rawData[index].high) > Number(rawData[highIndex].high)) highIndex = index;
+      if (Number(rawData[index].low) < Number(rawData[lowIndex].low)) lowIndex = index;
+    }
+    return { openIndex: firstIndex, highIndex, lowIndex, closeIndex: currentIndex };
+  }, [rawData, currentIndex, htfViewerTimeframe]);
   const replayCutoff = rawData?.[currentIndex]
     ? Number(rawData[currentIndex].time) + 60
     : 0;
@@ -456,8 +470,11 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
         const lastX = timeScale.timeToCoordinate(last.time);
         if (lastX == null || !Number.isFinite(lastX)) return;
         const spacing = Math.max(3, Number(timeScale.options().barSpacing) || 6);
-        const candleX = Math.min(paneWidth - 92, Math.max(lastX + spacing * 4, paneWidth * 0.55));
-        if (candleX < 12) return;
+        // Keep a constant gap from the latest lower-timeframe candle. The chart
+        // already reserves rightOffset space, so panning moves both together
+        // without pinning the HTF drawing over historical candles.
+        const candleX = lastX + spacing * 10;
+        if (candleX < 12 || candleX > paneWidth - 18) return;
         const yHigh = priceSeries.priceToCoordinate(htfViewerCandle.high);
         const yLow = priceSeries.priceToCoordinate(htfViewerCandle.low);
         const yOpen = priceSeries.priceToCoordinate(htfViewerCandle.open);
@@ -480,11 +497,16 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
         const guideEndX = candleX - bodyWidth / 2 - 2;
         const precision = getPricePrecision(useStore.getState().symbol, useStore.getState().contractSpecs);
         const fmt = value => Number(value).toFixed(precision);
+        const originX = index => {
+          const time = rawData?.[htfLevelOrigins?.[index]]?.time;
+          const x = time == null ? lastX : timeScale.timeToCoordinate(time);
+          return x == null || !Number.isFinite(x) ? lastX + spacing / 2 : x + spacing / 2;
+        };
         const levels = [
-          { value: Number(htfViewerCandle.high), y: yHigh, color: '#94a3b8', label: 'H' },
-          { value: Number(htfViewerCandle.open), y: yOpen, color: '#f59e0b', label: 'O' },
-          { value: Number(htfViewerCandle.close), y: yClose, color, label: 'C' },
-          { value: Number(htfViewerCandle.low), y: yLow, color: '#94a3b8', label: 'L' },
+          { value: Number(htfViewerCandle.high), y: yHigh, x: originX('highIndex'), color: '#94a3b8', label: 'H' },
+          { value: Number(htfViewerCandle.open), y: yOpen, x: originX('openIndex'), color: '#f59e0b', label: 'O' },
+          { value: Number(htfViewerCandle.close), y: yClose, x: originX('closeIndex'), color, label: 'C' },
+          { value: Number(htfViewerCandle.low), y: yLow, x: originX('lowIndex'), color: '#94a3b8', label: 'L' },
         ];
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);
@@ -492,7 +514,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
           ctx.strokeStyle = level.color;
           ctx.globalAlpha = 0.72;
           ctx.beginPath();
-          ctx.moveTo(guideStartX, level.y);
+          ctx.moveTo(Math.min(guideEndX, level.x), level.y);
           ctx.lineTo(guideEndX, level.y);
           ctx.stroke();
         });
@@ -519,10 +541,8 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
 
         const tfLabel = htfViewerTimeframe === 5 ? '5M' : htfViewerTimeframe === 15 ? '15M' : htfViewerTimeframe === 60 ? '1H' : '4H';
         const range = Number(htfViewerCandle.high) - Number(htfViewerCandle.low);
-        const badgeWidth = 154;
-        const badgeX = Math.max(6, paneWidth - badgeWidth - 8);
-        const badgeY = 8;
-        const rowHeight = 19;
+        const badgeX = Math.max(8, paneWidth - 166);
+        const badgeY = 132;
         const nextBoundary = Number(htfViewerCandle.time) + htfViewerTimeframe * 60;
         const replayBoundary = Number(rawData?.[currentIndex]?.time) + 60;
         const remaining = Math.max(0, nextBoundary - replayBoundary);
@@ -532,31 +552,43 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
         const countdown = hoursLeft > 0
           ? hoursLeft + 'h ' + String(minutesLeft).padStart(2, '0') + 'm ' + String(secondsLeft).padStart(2, '0') + 's left'
           : minutesLeft + 'm ' + String(secondsLeft).padStart(2, '0') + 's left';
-        ctx.fillStyle = 'rgba(30,34,45,0.92)';
-        ctx.fillRect(badgeX, badgeY, badgeWidth, rowHeight * 3 + 2);
-        ctx.strokeStyle = '#6b7280';
-        ctx.lineWidth = 0.7;
-        ctx.strokeRect(badgeX, badgeY, badgeWidth, rowHeight * 3 + 2);
-        ctx.fillStyle = '#f3f4f6';
-        ctx.textAlign = 'center';
-        ctx.fillText(tfLabel + ' CANDLE', badgeX + badgeWidth / 2, badgeY + 10);
-        ctx.fillText('Range: ' + fmt(range), badgeX + badgeWidth / 2, badgeY + 29);
+        // Borderless text-only dashboard, positioned below LIVE INFORMATION.
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = '600 10px Arial';
+        ctx.fillStyle = '#e5e7eb';
+        ctx.fillText(tfLabel + ' CANDLE', badgeX, badgeY + 8);
+        ctx.font = '10px Arial';
+        ctx.fillStyle = '#9ca3af';
+        ctx.fillText('Range: ' + fmt(range), badgeX, badgeY + 28);
         ctx.fillStyle = '#4ade80';
-        ctx.fillText(countdown, badgeX + badgeWidth / 2, badgeY + 48);
+        ctx.fillText(countdown, badgeX, badgeY + 48);
         ctx.restore();
       });
     };
     draw();
     const timeScale = chart.timeScale();
+    const priceScale = chart.priceScale('right');
     timeScale.subscribeVisibleLogicalRangeChange(draw);
+    priceScale.subscribeVisiblePriceRangeChange?.(draw);
+    chart.subscribeSizeChange?.(draw);
+    // lightweight-charts v5 does not expose a stable axis-drag callback across
+    // all interactions; pointer/wheel redraws keep the overlay in sync while
+    // traders scale the price axis or zoom the chart.
+    window.addEventListener('pointermove', draw, { passive: true });
+    window.addEventListener('wheel', draw, { passive: true });
     const observer = new ResizeObserver(draw);
     observer.observe(canvas);
     return () => {
       cancelAnimationFrame(frame);
       timeScale.unsubscribeVisibleLogicalRangeChange(draw);
+      priceScale.unsubscribeVisiblePriceRangeChange?.(draw);
+      chart.unsubscribeSizeChange?.(draw);
+      window.removeEventListener('pointermove', draw);
+      window.removeEventListener('wheel', draw);
       observer.disconnect();
     };
-  }, [active.htfCandleViewer, htfViewerCandle, htfViewerTimeframe, visibleData, chartRef, chartReady, priceSeriesRef]);
+  }, [active.htfCandleViewer, htfViewerCandle, htfViewerTimeframe, htfLevelOrigins, rawData, currentIndex, visibleData, chartRef, chartReady, priceSeriesRef]);
 
   // Draw chart-timeframe and configured higher-timeframe FVGs on a dedicated
   // canvas so both remain anchored to market timestamps after timeframe changes.
