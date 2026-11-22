@@ -138,18 +138,30 @@ export default function AnalyticsModal() {
     ? Number(benchmarkCandles[benchmarkStartIndex].close)
     : 0;
   let benchmarkCandleIndex = Math.max(0, benchmarkStartIndex);
-  const curveWithBenchmark = curve.map(point => {
-    if (!(benchmarkStartPrice > 0) || benchmarkStartIndex < 0) return point;
-    while (
-      benchmarkCandleIndex + 1 < benchmarkCandles.length &&
-      Number(benchmarkCandles[benchmarkCandleIndex + 1].time) <= Number(point.timestamp)
-    ) benchmarkCandleIndex++;
-    const marketPrice = Number(benchmarkCandles[benchmarkCandleIndex]?.close);
-    const benchmarkPnl = Number.isFinite(marketPrice)
-      ? Number((startBalance * (marketPrice / benchmarkStartPrice - 1)).toFixed(2))
-      : 0;
-    return { ...point, benchmarkPnl };
-  });
+  // Shared origin: strategy and buy-and-hold both start at zero P&L
+  // (the same initial account equity) at the first trade's opening time.
+  const curveWithBenchmark = [
+    ...(curve.length ? [{
+      date: dateKey(firstTradeOpen),
+      timestamp: firstTradeOpen,
+      tradeNumber: 0,
+      pnl: 0,
+      ...(benchmarkStartPrice > 0 && benchmarkStartIndex >= 0 ? { benchmarkPnl: 0 } : {}),
+      label: 'Start',
+    }] : []),
+    ...curve.map(point => {
+      if (!(benchmarkStartPrice > 0) || benchmarkStartIndex < 0) return point;
+      while (
+        benchmarkCandleIndex + 1 < benchmarkCandles.length &&
+        Number(benchmarkCandles[benchmarkCandleIndex + 1].time) <= Number(point.timestamp)
+      ) benchmarkCandleIndex++;
+      const marketPrice = Number(benchmarkCandles[benchmarkCandleIndex]?.close);
+      const benchmarkPnl = Number.isFinite(marketPrice)
+        ? Number((startBalance * (marketPrice / benchmarkStartPrice - 1)).toFixed(2))
+        : 0;
+      return { ...point, benchmarkPnl };
+    }),
+  ];
 
   const year = monthCursor.getFullYear();
   const month = monthCursor.getMonth();
