@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { detectFairValueGaps, formatFvgTimeframe } from './fvg.js';
+import { detectFairValueGaps, formatFvgTimeframe, limitFairValueGaps } from './fvg.js';
 
 const candle = (time, high, low) => ({ time, open: (high + low) / 2, high, low, close: (high + low) / 2 });
 
@@ -54,8 +54,7 @@ test('ignores overlapping candles and formats timeframe labels', () => {
 });
 
 
-test('limits displayed FVGs to the newest requested count in chronological order', async () => {
-  const { limitFairValueGaps } = await import('./fvg.js');
+test('limits displayed FVGs to the newest requested count in chronological order', () => {
   const gaps = [
     { id: 'a', startTime: 10 },
     { id: 'b', startTime: 20 },
