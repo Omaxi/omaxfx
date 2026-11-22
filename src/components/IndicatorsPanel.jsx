@@ -493,7 +493,6 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
 
         // Dashed OHLC guides run from the latest lower-timeframe candle to
         // the corresponding level on the developing HTF candle.
-        const guideStartX = Math.max(0, lastX + spacing / 2);
         const guideEndX = candleX - bodyWidth / 2 - 2;
         const precision = getPricePrecision(useStore.getState().symbol, useStore.getState().contractSpecs);
         const fmt = value => Number(value).toFixed(precision);
