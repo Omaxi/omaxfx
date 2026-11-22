@@ -572,8 +572,49 @@ export default function Chart() {
       ctx.clip();
       const state = useStore.getState();
 
-      // SL/TP are rendered by the chart's native horizontal price lines.
-      // Do not paint a second dashed segment for each replay candle.
+      // Live and pending TradingView-style position tools are drawn as compact
+      // risk/reward boxes. Their levels never extend across the chart.
+      const drawPositionTool = (tool, prefix) => {
+        if (!seriesRef.current || tool.entryPrice == null) return;
+        const entryY = seriesRef.current.priceToCoordinate(Number(tool.entryPrice));
+        const slY = tool.sl == null ? null : seriesRef.current.priceToCoordinate(Number(tool.sl));
+        const tpY = tool.tp == null ? null : seriesRef.current.priceToCoordinate(Number(tool.tp));
+        const anchorX = tool.openTime != null ? timeToX(Number(tool.openTime)) : null;
+        if (entryY == null || !Number.isFinite(entryY) || anchorX == null) return;
+        const left = anchorX;
+        const right = left + Math.max(130, Math.min(260, paneW * 0.22));
+        if (right < 0 || left > paneW) return;
+        const long = tool.type === 'buy';
+        if (tpY != null && Number.isFinite(tpY)) {
+          ctx.fillStyle = 'rgba(38,166,154,0.34)';
+          ctx.fillRect(left, Math.min(entryY, tpY), right - left, Math.max(1, Math.abs(entryY - tpY)));
+        }
+        if (slY != null && Number.isFinite(slY)) {
+          ctx.fillStyle = 'rgba(239,83,80,0.34)';
+          ctx.fillRect(left, Math.min(entryY, slY), right - left, Math.max(1, Math.abs(entryY - slY)));
+        }
+        ctx.strokeStyle = long ? '#26a69a' : '#ef5350';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(left, entryY);
+        ctx.lineTo(right, entryY);
+        ctx.stroke();
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(Math.max(0, left), 0, Math.max(0, Math.min(paneW, right) - Math.max(0, left)), paneH);
+        ctx.clip();
+        ctx.fillStyle = '#e5e7eb';
+        ctx.font = '600 10px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        const rrr = calcRRR(tool.entryPrice, tool.sl, tool.tp);
+        ctx.fillText(prefix + (long ? 'Long' : 'Short') + ' · RRR ' + (rrr || '—'), Math.max(4, left + 5), entryY + (long ? 12 : -12));
+        ctx.restore();
+      };
+      (state.pendingOrders || []).forEach(order => drawPositionTool(order, ''));
+      (state.positions || []).forEach(position => drawPositionTool(position, ''));
+
 
       // 1. Draw trade history (Entry/Exit boxes + SL area + TP area)
       const tradeHistory = state.tradeHistory || [];
@@ -1498,37 +1539,12 @@ export default function Chart() {
     return () => cancelAnimationFrame(rafId);
   }, [pendingOrders, positions]);
 
+  // Entry, SL and TP are displayed only inside the position-tool box.
+  // Do not create native price lines: they stretch across the entire chart.
   useEffect(() => {
     if (!seriesRef.current) return;
     linesRef.current.forEach(line => seriesRef.current.removePriceLine(line));
     linesRef.current = [];
-    const addLine = (price, color, title, lineStyle = 2, lineWidth = 2) => {
-      if (price == null) return;
-      const line = seriesRef.current.createPriceLine({
-        price: Number(price), color, lineWidth, lineStyle, lineVisible: true, axisLabelVisible: true, title,
-      });
-      linesRef.current.push(line);
-    };
-    positions.forEach(pos => {
-      const rrr = calcRRR(pos.entryPrice, pos.sl, pos.tp);
-      const dirLabel = pos.type === 'buy' ? 'BUY' : 'SELL';
-      addLine(pos.entryPrice, pos.type === 'buy' ? '#4ade80' : '#f87171', `${dirLabel} · RRR ${rrr || '-'}`, 0, 1);
-      addLine(pos.sl, '#ef5350', 'SL', 0, 1);
-      addLine(pos.tp, '#26a69a', 'TP', 0, 1);
-    });
-    pendingOrders.forEach(order => {
-      const rrr = calcRRR(order.entryPrice, order.sl, order.tp);
-      const label = `${order.type === 'buy' ? 'Buy' : 'Sell'} ${order.orderType}${rrr ? ` · RRR ${rrr}` : ''}`;
-      addLine(order.entryPrice, '#facc15', label, 3, 1);
-      addLine(order.sl, '#ef5350', 'SL', 0, 1);
-      addLine(order.tp, '#26a69a', 'TP', 0, 1);
-    });
-    if (draftPosition) {
-      const rrr = calcRRR(draftPosition.entry, draftPosition.sl, draftPosition.tp);
-      addLine(draftPosition.entry, '#3b82f6', `DRAFT${rrr ? ` · RRR ${rrr}` : ''}`, 0, 2);
-      addLine(draftPosition.sl, '#ef5350', 'DRAFT SL', 0, 2);
-      addLine(draftPosition.tp, '#26a69a', 'DRAFT TP', 0, 2);
-    }
   }, [positions, pendingOrders, draftPosition]);
 
   const commitText = () => {
