@@ -496,10 +496,21 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
         const guideEndX = candleX - bodyWidth / 2 - 2;
         const precision = getPricePrecision(useStore.getState().symbol, useStore.getState().contractSpecs);
         const fmt = value => Number(value).toFixed(precision);
+        // Resolve each 1-minute source event to the actual displayed candle
+        // that contains it. This keeps the guide attached to the visible wick
+        // when the chart is switched to 5m/15m/1h rather than using an
+        // off-grid 1-minute timestamp on the higher-timeframe chart.
+        const chartInterval = Math.max(1, Number(timeframe) || 1) * 60;
         const originX = index => {
-          const time = rawData?.[htfLevelOrigins?.[index]]?.time;
-          const x = time == null ? lastX : timeScale.timeToCoordinate(time);
-          return x == null || !Number.isFinite(x) ? lastX + spacing / 2 : x + spacing / 2;
+          const sourceTime = rawData?.[htfLevelOrigins?.[index]]?.time;
+          if (sourceTime == null) return null;
+          const sourceBucket = Math.floor(Number(sourceTime) / chartInterval) * chartInterval;
+          const sourceBar = visibleData.find(bar => Number(bar.time) === sourceBucket)
+            || visibleData.find(bar => Number(bar.time) <= Number(sourceTime)
+              && Number(sourceTime) < Number(bar.time) + chartInterval);
+          if (!sourceBar) return null;
+          const x = timeScale.timeToCoordinate(sourceBar.time);
+          return x == null || !Number.isFinite(x) ? null : x + spacing / 2;
         };
         const levels = [
           { value: Number(htfViewerCandle.high), y: yHigh, x: originX('highIndex'), color: '#94a3b8', label: 'H' },
@@ -510,10 +521,14 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 4]);
         levels.forEach(level => {
+          // Start exactly at the source candle's right wick/body edge and
+          // finish at the HTF candle's left body edge. Do not draw a detached
+          // stub if the originating candle is outside the visible viewport.
+          if (level.x == null || level.x >= guideEndX) return;
           ctx.strokeStyle = level.color;
-          ctx.globalAlpha = 0.72;
+          ctx.globalAlpha = 0.82;
           ctx.beginPath();
-          ctx.moveTo(Math.min(guideEndX, level.x), level.y);
+          ctx.moveTo(level.x, level.y);
           ctx.lineTo(guideEndX, level.y);
           ctx.stroke();
         });
@@ -540,8 +555,12 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
 
         const tfLabel = htfViewerTimeframe === 5 ? '5M' : htfViewerTimeframe === 15 ? '15M' : htfViewerTimeframe === 60 ? '1H' : '4H';
         const range = Number(htfViewerCandle.high) - Number(htfViewerCandle.low);
-        const badgeX = Math.max(8, paneWidth - 166);
-        const badgeY = 132;
+        const badgeWidth = 176;
+        const badgeHeight = 76;
+        const badgeX = Math.max(8, paneWidth - badgeWidth - 12);
+        // Keep this panel below the Live Information card, with its own
+        // background and border so it remains legible on every chart theme.
+        const badgeY = 176;
         const nextBoundary = Number(htfViewerCandle.time) + htfViewerTimeframe * 60;
         const replayBoundary = Number(rawData?.[currentIndex]?.time) + 60;
         const remaining = Math.max(0, nextBoundary - replayBoundary);
@@ -551,17 +570,24 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
         const countdown = hoursLeft > 0
           ? hoursLeft + 'h ' + String(minutesLeft).padStart(2, '0') + 'm ' + String(secondsLeft).padStart(2, '0') + 's left'
           : minutesLeft + 'm ' + String(secondsLeft).padStart(2, '0') + 's left';
-        // Borderless text-only dashboard, positioned below LIVE INFORMATION.
+        // Indicators-style compact card, aligned beneath Live Information.
+        ctx.fillStyle = 'rgba(19, 23, 34, 0.96)';
+        ctx.strokeStyle = '#2a2e39';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, 7);
+        ctx.fill();
+        ctx.stroke();
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.font = '600 10px Arial';
         ctx.fillStyle = '#e5e7eb';
-        ctx.fillText(tfLabel + ' CANDLE', badgeX, badgeY + 8);
+        ctx.fillText(tfLabel + ' CANDLE', badgeX + 10, badgeY + 16);
         ctx.font = '10px Arial';
         ctx.fillStyle = '#9ca3af';
-        ctx.fillText('Range: ' + fmt(range), badgeX, badgeY + 28);
+        ctx.fillText('Range: ' + fmt(range), badgeX + 10, badgeY + 39);
         ctx.fillStyle = '#4ade80';
-        ctx.fillText(countdown, badgeX, badgeY + 48);
+        ctx.fillText(countdown, badgeX + 10, badgeY + 60);
         ctx.restore();
       });
     };
@@ -587,7 +613,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
       window.removeEventListener('wheel', draw);
       observer.disconnect();
     };
-  }, [active.htfCandleViewer, htfViewerCandle, htfViewerTimeframe, htfLevelOrigins, rawData, currentIndex, visibleData, chartRef, chartReady, priceSeriesRef]);
+  }, [active.htfCandleViewer, htfViewerCandle, htfViewerTimeframe, htfLevelOrigins, rawData, currentIndex, visibleData, timeframe, chartRef, chartReady, priceSeriesRef]);
 
   // Draw chart-timeframe and configured higher-timeframe FVGs on a dedicated
   // canvas so both remain anchored to market timestamps after timeframe changes.
