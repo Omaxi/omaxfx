@@ -930,12 +930,18 @@ export default function Chart() {
       const state = useStore.getState();
       const PIXEL_TOL = 28;
       const candidates = [];
+      const canvasRect = canvas.getBoundingClientRect();
+      let toolPaneWidth = canvasRect.width;
+      try {
+        const axisWidth = chartRef.current?.priceScale('right').width();
+        if (axisWidth > 0) toolPaneWidth -= axisWidth;
+      } catch (e) {}
       const addToolLevel = (tool, target, id, type, price) => {
         if (price == null || tool.openTime == null) return;
         const lineY = seriesRef.current.priceToCoordinate(Number(price));
         const anchorX = timeToX(Number(tool.openTime));
         if (lineY == null || !Number.isFinite(lineY) || anchorX == null) return;
-        const width = Math.max(130, Math.min(260, paneW * 0.22));
+        const width = Math.max(130, Math.min(260, toolPaneWidth * 0.22));
         candidates.push({
           target, ...(target === 'position' ? { positionId: id } : { orderId: id }),
           type, price: Number(price), lineY, xMin: anchorX - 8, xMax: anchorX + width + 8,
@@ -952,8 +958,8 @@ export default function Chart() {
       });
       if (state.draftPosition) {
         const draft = state.draftPosition;
-        const anchorX = draft.entryTime != null ? timeToX(Number(draft.entryTime)) : paneW * 0.48;
-        const width = Math.max(130, Math.min(260, paneW * 0.22));
+        const anchorX = draft.entryTime != null ? timeToX(Number(draft.entryTime)) : toolPaneWidth * 0.48;
+        const width = Math.max(130, Math.min(260, toolPaneWidth * 0.22));
         [['entry', draft.entry], ['sl', draft.sl], ['tp', draft.tp]].forEach(([type, price]) => {
           if (price == null) return;
           const lineY = seriesRef.current.priceToCoordinate(Number(price));
