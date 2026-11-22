@@ -75,7 +75,7 @@ export default function ControlPanel() {
   }, []);
 
   const closeAll = () => { 
-    setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false);
+    setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false); setSpeedOpen(false);
   };
   const toggleSymbol = () => { const o = !symbolOpen; closeAll(); setSymbolOpen(o); };
   const toggleTz = () => { const o = !tzOpen; closeAll(); setTzOpen(o); };
@@ -299,7 +299,7 @@ export default function ControlPanel() {
       <div className="flex items-center justify-between gap-1 px-1.5 py-1.5 overflow-x-auto">
 
         <button onClick={toggleSymbol}
-          className="flex items-center gap-1.5 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
+          className="flex h-9 items-center gap-1.5 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
           <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.9)]" />
           <span>{symbol}</span>
           <ChevronDown size={10} className={`transition-transform ${symbolOpen ? 'rotate-180' : ''}`} />
@@ -308,7 +308,7 @@ export default function ControlPanel() {
         <div className="flex items-center justify-center gap-1 flex-1 min-w-0 flex-wrap">
 
           <button ref={tfButtonRef} onClick={toggleTf}
-            className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
+            className="flex h-9 items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
             <span>{tfLabel}</span>
             <ChevronDown size={10} className={`transition-transform ${tfOpen ? 'rotate-180' : ''}`} />
           </button>
@@ -338,8 +338,8 @@ export default function ControlPanel() {
 
           {!isDrawingMode ? (
             <div className="flex items-center gap-1 flex-shrink-0">
-              <button onClick={() => startDrawing('buy')} className="px-2 py-1 bg-blue-600/30 text-blue-400 rounded font-bold text-[10px] whitespace-nowrap">Long position</button>
-              <button onClick={() => startDrawing('sell')} className="px-2 py-1 bg-red-600/30 text-red-400 rounded font-bold text-[10px] whitespace-nowrap">Short position</button>
+              <button onClick={() => startDrawing('buy')} className="h-9 px-2 py-1 bg-blue-600/30 text-blue-400 rounded font-bold text-[10px] whitespace-nowrap">Long position</button>
+              <button onClick={() => startDrawing('sell')} className="h-9 px-2 py-1 bg-red-600/30 text-red-400 rounded font-bold text-[10px] whitespace-nowrap">Short position</button>
             </div>
           ) : (
             <div className="flex items-center gap-2 bg-yellow-900/30 px-2 py-1 rounded flex-shrink-0">
@@ -356,8 +356,8 @@ export default function ControlPanel() {
           )}
 
           <div className="flex items-center gap-1 flex-shrink-0">
-            <button onClick={() => openOrderModal('buy')} className="px-3 py-1.5 bg-green-600 active:bg-green-700 rounded font-bold text-xs text-white">BUY</button>
-            <button onClick={() => openOrderModal('sell')} className="px-3 py-1.5 bg-red-600 active:bg-red-700 rounded font-bold text-xs text-white">SELL</button>
+            <button onClick={() => openOrderModal('buy')} className="h-9 px-3 bg-green-600 active:bg-green-700 rounded font-bold text-xs text-white">BUY</button>
+            <button onClick={() => openOrderModal('sell')} className="h-9 px-3 bg-red-600 active:bg-red-700 rounded font-bold text-xs text-white">SELL</button>
           </div>
         </div>
 
