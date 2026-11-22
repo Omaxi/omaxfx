@@ -1,7 +1,48 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import { Calendar, Play, Shield, Target, TrendingDown, User, Sparkles, X, History as HistoryIcon, Trash2 } from 'lucide-react';
+import { Calendar, Play, Shield, Target, TrendingDown, User, Sparkles, X, History as HistoryIcon, Trash2, ChevronDown, Check } from 'lucide-react';
 import { fetchDataCatalog, loadBundledCsvFiles } from '../utils/dataCatalog';
+
+function SavedSessionDropdown({ sessions, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+  const selected = sessions.find(session => session.sessionId === value);
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = event => {
+      if (event.type === 'keydown' && event.key === 'Escape') setOpen(false);
+      if (event.type === 'pointerdown' && rootRef.current && !rootRef.current.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('keydown', close);
+    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', close); };
+  }, [open]);
+  const label = session => (session.sessionName || 'Untitled session') + ' · ' + (session.symbol || 'Unknown');
+  return (
+    <div ref={rootRef} className="relative min-w-0 flex-1">
+      <button type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(current => !current)}
+        className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-[#2a2e39] bg-[#1e222d] px-3 py-2 text-left text-[11px] text-white transition-colors hover:border-[#46536a] focus:border-blue-500 focus:outline-none">
+        <span className="truncate font-semibold">{selected ? label(selected) : 'Select a saved session'}</span>
+        <ChevronDown size={13} className={'shrink-0 text-gray-400 transition-transform ' + (open ? 'rotate-180' : '')} />
+      </button>
+      {open && <div role="listbox" className="absolute left-0 top-[calc(100%+5px)] z-[100] max-h-56 w-full min-w-[220px] overflow-y-auto rounded-lg border border-[#2a2e39] bg-[#1e222d] p-1 shadow-2xl">
+        <div className="border-b border-[#2a2e39] px-2 py-1.5 text-[9px] font-bold uppercase tracking-wide text-gray-500">Saved sessions</div>
+        {sessions.map(session => {
+          const active = session.sessionId === value;
+          return <button key={session.sessionId} type="button" role="option" aria-selected={active}
+            onClick={() => { onChange(session.sessionId); setOpen(false); }}
+            className={'flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-[11px] transition-colors ' + (active ? 'bg-blue-600/15 text-white' : 'text-gray-300 hover:bg-[#2a2e39] hover:text-white')}>
+            <span className="min-w-0 flex-1">
+              <span className={'block truncate ' + (active ? 'font-bold' : 'font-medium')}>{label(session)}</span>
+              <span className="mt-0.5 block truncate text-[9px] text-gray-500">{session.tradeHistory?.length || 0} trades · {new Date(session.savedAt).toLocaleString()}</span>
+            </span>
+            {active && <Check size={12} className="shrink-0 text-blue-400"/>}
+          </button>;
+        })}
+      </div>}
+    </div>
+  );
+}
 
 const toInputDate = (unixSeconds) => {
   const d = new Date((unixSeconds + 3 * 3600) * 1000);
@@ -197,9 +238,7 @@ export default function PeriodModal() {
             </div>
             {savedSessions.length ? <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <select value={selectedSessionId} onChange={event => setSelectedSessionId(event.target.value)} className="theme-native-select min-w-0 flex-1 rounded border border-[#343b49] bg-[#1e222d] px-2 py-2 text-[11px] text-white">
-                  {savedSessions.map(saved => <option key={saved.sessionId} value={saved.sessionId}>{saved.sessionName || 'Untitled session'} · {saved.symbol || 'Unknown'}</option>)}
-                </select>
+                <SavedSessionDropdown sessions={savedSessions} value={selectedSessionId} onChange={setSelectedSessionId}/>
                 <button disabled={!selectedSessionId} onClick={() => { const saved = savedSessions.find(item => item.sessionId === selectedSessionId); if (saved) handleLoadSaved(saved); }} className="theme-action-contrast rounded bg-emerald-700 px-3 py-2 text-[10px] font-bold text-white hover:bg-emerald-600 disabled:opacity-40">RESUME</button>
                 <button disabled={!selectedSessionId} onClick={() => handleDeleteSaved(selectedSessionId)} className="rounded p-2 text-gray-500 hover:bg-red-900/40 hover:text-red-400 disabled:opacity-40" title="Delete selected session"><Trash2 size={13}/></button>
               </div>
