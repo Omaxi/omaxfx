@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { detectFairValueGaps, formatFvgTimeframe, latestFairValueGap } from './fvg.js';
+import { detectFairValueGaps, formatFvgTimeframe, latestFairValueGap, latestFairValueGapPair } from './fvg.js';
 
 const candle = (time, high, low, close = (high + low) / 2) => ({ time, open: close, high, low, close });
 
@@ -76,4 +76,46 @@ test('formats timeframes', () => {
   assert.equal(formatFvgTimeframe(60), '1h');
   assert.equal(formatFvgTimeframe(240), '4h');
   assert.equal(formatFvgTimeframe(1440), '1D');
+});
+
+
+test('keeps the newest active FVG and newest mitigated FVG as an iFVG', () => {
+  const gaps = [
+    { id: 'old-active', startTime: 10, mitigatedAt: null },
+    { id: 'old-dead', startTime: 20, mitigatedAt: 30 },
+    { id: 'new-active', startTime: 40, mitigatedAt: null },
+    { id: 'new-dead', startTime: 50, mitigatedAt: 60 },
+  ];
+
+  const zones = latestFairValueGapPair(gaps, 70);
+  assert.equal(zones.length, 2);
+  assert.deepEqual(zones.map(zone => [zone.id, zone.isIFVG]), [
+    ['new-active', false],
+    ['new-dead', true],
+  ]);
+});
+
+test('keeps a mitigated FVG grey only after its mitigation candle is reached in replay', () => {
+  const gaps = [
+    { id: 'still-active', startTime: 10, mitigatedAt: 50 },
+  ];
+
+  assert.deepEqual(latestFairValueGapPair(gaps, 40).map(zone => [zone.id, zone.isIFVG]), [
+    ['still-active', false],
+  ]);
+  assert.deepEqual(latestFairValueGapPair(gaps, 50).map(zone => [zone.id, zone.isIFVG]), [
+    ['still-active', true],
+  ]);
+});
+
+test('does not resurrect an older active FVG when a newer FVG is mitigated', () => {
+  const gaps = [
+    { id: 'old-active', startTime: 10, mitigatedAt: null },
+    { id: 'latest-dead', startTime: 20, mitigatedAt: 30 },
+  ];
+
+  assert.deepEqual(latestFairValueGapPair(gaps, 40).map(zone => [zone.id, zone.isIFVG]), [
+    ['old-active', false],
+    ['latest-dead', true],
+  ]);
 });
