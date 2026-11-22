@@ -672,6 +672,33 @@ export default function Chart() {
             ctx.lineTo(paneW, y);
             ctx.stroke();
             ctx.setLineDash([]);
+
+            if (sel.lineType === 'sl') {
+              const trade = sel.target === 'position'
+                ? state.positions.find(item => item.id === sel.positionId)
+                : state.pendingOrders.find(item => item.id === sel.orderId);
+              const entry = Number(trade?.entryPrice);
+              if (Number.isFinite(entry)) {
+                const distance = Math.abs(Number(livePrice) - entry);
+                const pipSize = state.symbol === 'XAUUSD' ? 0.01
+                  : state.symbol?.includes('JPY') ? 0.01
+                    : /^[A-Z]{6}$/.test(state.symbol || '') ? 0.0001
+                      : getPriceTickSize(state.symbol, state.contractSpecs) * 10;
+                const pips = pipSize > 0 ? distance / pipSize : 0;
+                const precision = getPricePrecision(state.symbol, state.contractSpecs);
+                const label = `SL distance  ${distance.toFixed(precision)}  |  ${pips.toFixed(1)} pips`;
+                ctx.font = '600 11px Arial';
+                const labelWidth = Math.ceil(ctx.measureText(label).width) + 14;
+                const labelX = Math.max(6, Math.min(paneW - labelWidth - 6, 12));
+                const labelY = Math.max(14, Math.min(paneH - 14, y - 18));
+                ctx.fillStyle = 'rgba(19,23,34,0.94)';
+                ctx.fillRect(labelX, labelY - 10, labelWidth, 20);
+                ctx.fillStyle = '#fca5a5';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(label, labelX + 7, labelY);
+              }
+            }
           }
         }
       }
@@ -733,7 +760,12 @@ export default function Chart() {
           state.currentIndex !== previous.currentIndex) scheduleDraw();
     });
     const timeScale = chartRef.current?.timeScale();
+    const priceScale = chartRef.current?.priceScale('right');
     timeScale?.subscribeVisibleLogicalRangeChange(scheduleDraw);
+    priceScale?.subscribeVisiblePriceRangeChange?.(scheduleDraw);
+    chartRef.current?.subscribeSizeChange?.(scheduleDraw);
+    window.addEventListener('pointermove', scheduleDraw, { passive: true });
+    window.addEventListener('wheel', scheduleDraw, { passive: true });
     draw();
     return () => {
       disposed = true;
@@ -741,6 +773,10 @@ export default function Chart() {
       if (rafId !== null) cancelAnimationFrame(rafId);
       unsubscribeStore();
       timeScale?.unsubscribeVisibleLogicalRangeChange(scheduleDraw);
+      priceScale?.unsubscribeVisiblePriceRangeChange?.(scheduleDraw);
+      chartRef.current?.unsubscribeSizeChange?.(scheduleDraw);
+      window.removeEventListener('pointermove', scheduleDraw);
+      window.removeEventListener('wheel', scheduleDraw);
       ro?.disconnect();
     };
   }, [pointToXY, timeToX, selectedItem]);
