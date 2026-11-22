@@ -3,7 +3,7 @@ import { LineSeries } from 'lightweight-charts';
 import { ChevronDown, Settings2, X } from 'lucide-react';
 import { useStore } from '../store';
 import { aggregateData } from '../utils/timeframe';
-import { detectFairValueGaps, formatFvgTimeframe } from '../utils/fvg';
+import { detectFairValueGaps, formatFvgTimeframe, limitFairValueGaps } from '../utils/fvg';
 
 const INDICATORS = [
   { key: 'ma', label: 'Moving Average', color: '#f59e0b', pane: 'price' },
@@ -22,7 +22,7 @@ const DEFAULT_CONFIG = {
   rsi: { period: 14 },
   atr: { period: 14 },
   adx: { period: 14 },
-  fvg: { showCurrent: true, showHigher: true, higherTimeframe: 15 },
+  fvg: { showCurrent: true, showHigher: true, higherTimeframe: 15, currentCount: 3, higherCount: 3 },
 };
 
 const average = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -213,20 +213,20 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
     () => detectFairValueGaps(aggregateData(rawData || [], higherTimeframe), higherTimeframe),
     [rawData, higherTimeframe]
   );
-  const currentFvgZones = useMemo(() => currentFvgHistory
+  const currentFvgZones = useMemo(() => limitFairValueGaps(currentFvgHistory
     .filter(zone => zone.startTime + Number(timeframe) * 60 <= replayCutoff)
     .map(zone => ({
       ...zone,
       mitigatedAt: zone.mitigatedAt != null && zone.mitigatedAt + Number(timeframe) * 60 <= replayCutoff
         ? zone.mitigatedAt : null,
-    })), [currentFvgHistory, replayCutoff, timeframe]);
-  const higherFvgZones = useMemo(() => higherFvgHistory
+    })), config.fvg?.currentCount), [currentFvgHistory, replayCutoff, timeframe, config.fvg?.currentCount]);
+  const higherFvgZones = useMemo(() => limitFairValueGaps(higherFvgHistory
     .filter(zone => zone.startTime + higherTimeframe * 60 <= replayCutoff)
     .map(zone => ({
       ...zone,
       mitigatedAt: zone.mitigatedAt != null && zone.mitigatedAt + higherTimeframe * 60 <= replayCutoff
         ? zone.mitigatedAt : null,
-    })), [higherFvgHistory, replayCutoff, higherTimeframe]);
+    })), config.fvg?.higherCount), [higherFvgHistory, replayCutoff, higherTimeframe, config.fvg?.higherCount]);
 
   useEffect(() => {
     const chart = chartReady ? chartRef.current : null;
@@ -557,7 +557,21 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
                     <option value={60}>1h</option><option value={240}>4h</option><option value={1440}>1D</option><option value={10080}>1W</option>
                   </select>
                 </label>
-                <p className="mt-1 text-[9px] leading-4 text-gray-500">Higher-timeframe zones stay anchored to their original market times when you switch chart timeframes.</p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <label className="flex flex-col gap-1 text-[10px] text-gray-300">
+                    Current TF · max gaps
+                    <input type="number" min="1" max="50" step="1" value={config.fvg.currentCount}
+                      onChange={event => updateConfig('fvg', 'currentCount', Math.max(1, Math.min(50, Math.floor(Number(event.target.value) || 1))))}
+                      className="w-full rounded border border-[#343b49] bg-[#0b0e11] px-2 py-1 text-white"/>
+                  </label>
+                  <label className="flex flex-col gap-1 text-[10px] text-gray-300">
+                    Higher TF · max gaps
+                    <input type="number" min="1" max="50" step="1" value={config.fvg.higherCount}
+                      onChange={event => updateConfig('fvg', 'higherCount', Math.max(1, Math.min(50, Math.floor(Number(event.target.value) || 1))))}
+                      className="w-full rounded border border-[#343b49] bg-[#0b0e11] px-2 py-1 text-white"/>
+                  </label>
+                </div>
+                <p className="mt-1 text-[9px] leading-4 text-gray-500">Each timeframe displays its newest selected number of gaps. Higher-timeframe zones remain anchored to their original market times when you switch chart timeframes.</p>
               </div>}
               {selected.some(item => item.key === 'ma') && <div className="mb-2 rounded bg-[#1e222d] p-2">
                 <div className="mb-1 flex items-center justify-between text-[10px] font-semibold text-white">Moving averages <button onClick={() => addInstance('ma')} className="text-blue-400">+ Add</button></div>
