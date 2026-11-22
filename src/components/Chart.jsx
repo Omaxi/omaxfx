@@ -1606,7 +1606,7 @@ export default function Chart() {
               {indicatorDashboard.map(item => (
                 <div key={item.key} className="contents">
                   <span className="truncate" style={{ color: item.color }}>{item.label}</span>
-                  <span className="text-right text-white tabular-nums">{item.unit === 'pips' ? `${Number(item.value).toFixed(1)} pips` : Number(item.value).toFixed(Number.isInteger(item.decimals) ? item.decimals : 2)}</span>
+                  <span className="text-right text-white tabular-nums">{item.unit === 'pips' ? `${Number(item.value).toFixed(2)} pips` : Number(item.value).toFixed(Number.isInteger(item.decimals) ? item.decimals : 2)}</span>
                 </div>
               ))}
             </div>
