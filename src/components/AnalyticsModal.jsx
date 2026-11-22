@@ -141,7 +141,7 @@ export default function AnalyticsModal() {
   // Shared origin: strategy and buy-and-hold both start at zero P&L
   // (the same initial account equity) at the first trade's opening time.
   const curveWithBenchmark = [
-    ...(curve.length ? [{
+    ...(curve.length && Number.isFinite(firstTradeOpen) ? [{
       date: dateKey(firstTradeOpen),
       timestamp: firstTradeOpen,
       tradeNumber: 0,
