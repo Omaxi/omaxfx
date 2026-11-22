@@ -3,7 +3,6 @@ import ControlPanel from './components/ControlPanel';
 import OrderModal from './components/OrderModal';
 import HistoryModal from './components/HistoryModal';
 import AnalyticsModal from './components/AnalyticsModal';
-import ChartThemeModal from './components/ChartThemeModal';
 import InfoModal from './components/InfoModal';
 import SoundToggle from './components/SoundToggle';
 import PeriodModal from './components/PeriodModal';
@@ -26,7 +25,7 @@ function App() {
     isPlaying, stepForward, currentIndex, rawData, replaySpeed, balance, positions, 
     musicEnabled, gameStarted,
     gameState, restartGame,
-    loadingState, openInfo, openHistory, openAnalytics, openTheme, theme,
+    loadingState, openInfo, openHistory, openAnalytics, theme,
     sessionName, setSessionName, saveSession,
     enableFireworks, toggleFireworks,
     symbolWarning, clearSymbolWarning,
@@ -339,7 +338,6 @@ function App() {
         {gameStarted && <div className="hidden lg:flex items-center gap-1.5 flex-shrink-0">
           <button onClick={openHistory} className="px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">History</button>
           <button onClick={openAnalytics} className="px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Analytics</button>
-          <button onClick={openTheme} className="px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Theme</button>
           <button onClick={() => window.dispatchEvent(new Event('omaxfx:reset-chart'))} className="px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Reset Chart</button>
         </div>}
 
@@ -402,7 +400,6 @@ function App() {
       <OrderModal />
       <HistoryModal />
       <AnalyticsModal />
-      <ChartThemeModal />
       <InfoModal />
       <PeriodModal />
       <GameOverModal />
