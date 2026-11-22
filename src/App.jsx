@@ -319,7 +319,7 @@ function App() {
               </button>
               {sessionMenuOpen && <>
                 <button aria-label="Close sessions menu" className="fixed inset-0 z-[90] cursor-default" onClick={() => setSessionMenuOpen(false)}/>
-                <div className="absolute right-0 top-9 z-[100] w-64 max-h-[60vh] overflow-y-auto rounded-lg border border-[#2a2e39] bg-[#1e222d] p-1 shadow-2xl">
+                <div className="theme-menu-surface absolute right-0 top-9 z-[100] w-64 max-h-[60vh] overflow-y-auto rounded-lg border border-[#2a2e39] bg-[#1e222d] p-1 shadow-2xl">
                   <div className="px-2 py-1.5 text-[9px] uppercase tracking-wide text-gray-500">Saved sessions</div>
                   {savedSessions.length === 0 ? <div className="px-2 py-3 text-xs text-gray-500">No saved sessions yet</div> : savedSessions.map(item => {
                     const isActive = item.sessionId === useStore.getState().sessionId;
