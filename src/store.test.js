@@ -205,7 +205,7 @@ test('rejects a new position while a pending order already exists', () => {
   } finally { restore(); }
 });
 
-test('market execution on 15m uses the completed 15m close, not the next 1m candle', () => {
+test('market execution on a 15m chart uses the latest replayed 1m close', () => {
   const rawData = Array.from({ length: 31 }, (_, i) => ({
     time: i * 60, open: 1 + i / 10000, high: 1.01 + i / 10000,
     low: 0.99 + i / 10000, close: 1 + i / 10000,
@@ -213,7 +213,7 @@ test('market execution on 15m uses the completed 15m close, not the next 1m cand
   const restore = configureStore({
     rawData,
     displayData: [],
-    currentIndex: 15,
+    currentIndex: 14,
     timeframe: 15,
     contractSpecs: { EURUSD: { contractSize: 100000, quoteToAccountRate: 1 } },
   });
@@ -237,7 +237,7 @@ test('market execution on 15m uses the completed 15m close, not the next 1m cand
 });
 
 
-test('15m replay evaluates the first minute after the prior completed 15m candle', () => {
+test('15m Next Bar processes the next 15m bucket from its first 1m candle', () => {
   const rawData = Array.from({ length: 31 }, (_, i) => ({
     time: i * 60,
     open: 100,
@@ -248,7 +248,7 @@ test('15m replay evaluates the first minute after the prior completed 15m candle
   const restore = configureStore({
     gameStarted: true,
     timeframe: 15,
-    currentIndex: 15,
+    currentIndex: 14,
     rawData,
     positions: [{
       id: '15m-position', type: 'buy', entryPrice: 100, sl: 99, tp: 105,
@@ -261,18 +261,18 @@ test('15m replay evaluates the first minute after the prior completed 15m candle
     assert.equal(state.tradeHistory.length, 1);
     assert.equal(state.tradeHistory[0].reason, 'SL');
     assert.equal(state.tradeHistory[0].closeTime, rawData[15].time);
-    assert.equal(state.currentIndex, 30);
+    assert.equal(state.currentIndex, 29);
   } finally { restore(); }
 });
 
-test('switching between 1m and 15m preserves the last closed-bar boundary', () => {
+test('switching between 1m and 15m preserves the exact 1m replay cursor', () => {
   const rawData = Array.from({ length: 46 }, (_, i) => ({
     time: i * 60, open: 1, high: 2, low: 0.5, close: 1.5,
   }));
   const restore = configureStore({ rawData, currentIndex: 14, timeframe: 1 });
   try {
     useStore.getState().setTimeframe(15);
-    assert.equal(useStore.getState().currentIndex, 15);
+    assert.equal(useStore.getState().currentIndex, 14);
     useStore.getState().setTimeframe(1);
     assert.equal(useStore.getState().currentIndex, 14);
   } finally { restore(); }
@@ -305,8 +305,23 @@ test('5m replay advances one timestamp-aligned candle bucket across missing-minu
   const restore = configureStore({ gameStarted: true, timeframe: 5, currentIndex: 0, rawData });
   try {
     useStore.getState().stepForward();
-    assert.equal(useStore.getState().currentIndex, 3);
+    assert.equal(useStore.getState().currentIndex, 2);
     useStore.getState().stepForward();
-    assert.equal(useStore.getState().currentIndex, 4);
+    assert.equal(useStore.getState().currentIndex, 3);
+  } finally { restore(); }
+});
+
+
+test('autoplay minute mode advances one source candle while the chart is set to 15m', () => {
+  const rawData = Array.from({ length: 40 }, (_, i) => ({
+    time: i * 60, open: 100 + i, high: 101 + i, low: 99 + i, close: 100.5 + i,
+  }));
+  const restore = configureStore({ gameStarted: true, timeframe: 15, currentIndex: 14, rawData });
+  try {
+    useStore.getState().stepForward('minute', 1);
+    assert.equal(useStore.getState().currentIndex, 15);
+    assert.equal(useStore.getState().rawData[15].close, 115.5);
+    useStore.getState().stepForward('minute', 5);
+    assert.equal(useStore.getState().currentIndex, 20);
   } finally { restore(); }
 });
