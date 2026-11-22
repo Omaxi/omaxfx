@@ -174,7 +174,7 @@ function calculateIndicators(candles, config, active, timeframe, sessionCandles 
   }
   return result;
 }
-export default function IndicatorsPanel({ chartRef, chartReady, visibleData, timeframe, priceSeriesRef, liveCandle, rawData, currentIndex }) {
+export default function IndicatorsPanel({ chartRef, chartReady, visibleData, displayData, timeframe, priceSeriesRef, liveCandle, rawData, currentIndex }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState({});
   const [config, setConfig] = useState(DEFAULT_CONFIG);
@@ -197,22 +197,36 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
     return candles.sort((a, b) => Number(a.time) - Number(b.time));
   }, [visibleData, liveCandle, timeframe]);
 
-  const currentFvgZones = useMemo(() => {
-    const completed = Number(timeframe) === 1 ? (visibleData || []).slice(0, -1) : (visibleData || []);
-    return detectFairValueGaps(completed, timeframe);
-  }, [visibleData, timeframe]);
+  const higherTimeframe = Number(config.fvg?.higherTimeframe) || 15;
+  const replayCutoff = rawData?.[currentIndex]
+    ? Number(rawData[currentIndex].time) + (Number(timeframe) > 1 ? 60 : 0)
+    : 0;
 
-  const higherFvgZones = useMemo(() => {
-    const higherTimeframe = Number(config.fvg?.higherTimeframe) || 15;
-    const cursor = rawData?.[currentIndex];
-    if (!cursor || !Array.isArray(rawData) || rawData.length < 3) return [];
-    const cutoff = Number(cursor.time) + (Number(timeframe) > 1 ? 60 : 0);
-    const source = rawData.filter(candle => Number(candle.time) < cutoff);
-    const completedHigher = aggregateData(source, higherTimeframe).filter(
-      candle => Number(candle.time) + higherTimeframe * 60 <= cutoff
-    );
-    return detectFairValueGaps(completedHigher, higherTimeframe);
-  }, [rawData, currentIndex, timeframe, config.fvg?.higherTimeframe]);
+  // Precompute complete history only when the dataset or timeframe changes.
+  // The replay cursor then reveals only zones that have actually formed, and
+  // does not recalculate the entire history on every replay step.
+  const currentFvgHistory = useMemo(
+    () => detectFairValueGaps(displayData || [], timeframe),
+    [displayData, timeframe]
+  );
+  const higherFvgHistory = useMemo(
+    () => detectFairValueGaps(aggregateData(rawData || [], higherTimeframe), higherTimeframe),
+    [rawData, higherTimeframe]
+  );
+  const currentFvgZones = useMemo(() => currentFvgHistory
+    .filter(zone => zone.startTime + Number(timeframe) * 60 <= replayCutoff)
+    .map(zone => ({
+      ...zone,
+      mitigatedAt: zone.mitigatedAt != null && zone.mitigatedAt + Number(timeframe) * 60 <= replayCutoff
+        ? zone.mitigatedAt : null,
+    })), [currentFvgHistory, replayCutoff, timeframe]);
+  const higherFvgZones = useMemo(() => higherFvgHistory
+    .filter(zone => zone.startTime + higherTimeframe * 60 <= replayCutoff)
+    .map(zone => ({
+      ...zone,
+      mitigatedAt: zone.mitigatedAt != null && zone.mitigatedAt + higherTimeframe * 60 <= replayCutoff
+        ? zone.mitigatedAt : null,
+    })), [higherFvgHistory, replayCutoff, higherTimeframe]);
 
   useEffect(() => {
     const chart = chartReady ? chartRef.current : null;
@@ -420,13 +434,22 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, tim
           ...(config.fvg?.showHigher && Number(config.fvg?.higherTimeframe) !== Number(timeframe) ? higherFvgZones.map(zone => ({ ...zone, source: 'higher' })) : []),
           ...(config.fvg?.showCurrent ? currentFvgZones.map(zone => ({ ...zone, source: 'current' })) : []),
         ];
-        if (!zones.length) return;
+        let visibleFrom = -Infinity, visibleTo = Infinity;
+        try {
+          const range = timeScale.getVisibleRange();
+          if (typeof range?.from === 'number') visibleFrom = range.from;
+          if (typeof range?.to === 'number') visibleTo = range.to;
+        } catch {}
+        const visibleZones = zones.filter(zone =>
+          zone.startTime <= visibleTo && (zone.mitigatedAt == null || zone.mitigatedAt >= visibleFrom)
+        );
+        if (!visibleZones.length) return;
 
         ctx.save();
         ctx.beginPath();
         ctx.rect(0, 0, paneWidth, paneHeight);
         ctx.clip();
-        zones.forEach(zone => {
+        visibleZones.forEach(zone => {
           const startX = timeToX(zone.startTime);
           const endX = zone.mitigatedAt == null ? paneWidth : timeToX(zone.mitigatedAt);
           const topY = priceSeries.priceToCoordinate(zone.top);
