@@ -32,9 +32,9 @@ test('marks a bullish FVG mitigated when price reaches its far boundary', () => 
 test('detects bearish FVGs and full mitigation', () => {
   const gaps = detectFairValueGaps([
     candle(0, 12, 10),
-    candle(60, 9, 7),
+    candle(60, 11, 8),
     candle(120, 9, 6),
-    candle(180, 11, 10),
+    candle(180, 11, 8),
   ], 60);
   assert.equal(gaps.length, 1);
   assert.equal(gaps[0].direction, 'bearish');
