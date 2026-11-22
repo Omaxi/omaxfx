@@ -56,5 +56,5 @@ export const detectFairValueGaps = (candles, timeframe) => {
     });
   }
 
-  return gaps.slice(-250);
+  return gaps;
 };
