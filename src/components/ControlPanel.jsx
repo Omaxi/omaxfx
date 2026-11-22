@@ -67,7 +67,7 @@ export default function ControlPanel() {
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') {
-        setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false); setSpeedOpen(false); setSpeedOpen(false);
+        setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false); setSpeedOpen(false);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -75,7 +75,7 @@ export default function ControlPanel() {
   }, []);
 
   const closeAll = () => { 
-    setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false); setSpeedOpen(false); setSpeedOpen(false);
+    setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false); setSpeedOpen(false);
   };
   const toggleSymbol = () => { const o = !symbolOpen; closeAll(); setSymbolOpen(o); };
   const toggleTz = () => { const o = !tzOpen; closeAll(); setTzOpen(o); };
@@ -322,14 +322,14 @@ export default function ControlPanel() {
           </button>
 
           <button ref={ctButtonRef} onClick={toggleCt}
-            className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
+            className="flex h-9 items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
             title="Chart type">
             <CandlestickChart size={11} />
             <ChevronDown size={10} className={`transition-transform ${ctOpen ? 'rotate-180' : ''}`} />
           </button>
 
           <button ref={jumpButtonRef} onClick={toggleJump}
-            className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
+            className="flex h-9 items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
             title="Jump to trading session">
             <ArrowUpDown size={10} />
             <span>Jump</span>
@@ -362,7 +362,7 @@ export default function ControlPanel() {
         </div>
 
         <button onClick={toggleTz}
-          className="flex items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
+          className="flex h-9 items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
           <span>{timezone}</span>
           <ChevronDown size={10} className={`transition-transform ${tzOpen ? 'rotate-180' : ''}`} />
         </button>
