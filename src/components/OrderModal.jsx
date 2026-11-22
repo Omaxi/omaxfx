@@ -48,7 +48,13 @@ export default function OrderModal() {
     if (propFirmEnabled && riskPercent > maxRisk) setRiskPercent(maxRisk);
   }, [propFirmEnabled, maxRisk, riskPercent]);
 
-  useEffect(() => { if (isOrderModalOpen) setRiskReward('2'); }, [isOrderModalOpen]);
+  useEffect(() => {
+    if (!isOrderModalOpen) return;
+    const draft = useStore.getState().draftPosition;
+    const risk = draft?.entry != null && draft?.sl != null ? Math.abs(Number(draft.entry) - Number(draft.sl)) : 0;
+    const reward = draft?.entry != null && draft?.tp != null ? Math.abs(Number(draft.tp) - Number(draft.entry)) : 0;
+    setRiskReward(risk > 0 && reward > 0 ? (reward / risk).toFixed(1) : '2');
+  }, [isOrderModalOpen]);
 
   // Whenever the modal opens (or the side / symbol / current price changes
   // while it's open), recompute the default entry / SL / TP.
@@ -61,7 +67,7 @@ export default function OrderModal() {
       setSlPrice(roundTo(draftPosition.sl || (orderSide === 'buy'
         ? currentPrice - DEFAULT_SL_POINTS * pointSize
         : currentPrice + DEFAULT_SL_POINTS * pointSize), precision));
-      setTpPrice(0);
+      setTpPrice(draftPosition.tp ? roundTo(draftPosition.tp, precision) : 0);
       setOrderType(draftPosition.orderType || 'limit');
     } else {
       // Market order default: SL = 100 points away, TP = 200 points away
@@ -274,6 +280,7 @@ export default function OrderModal() {
                   <option value="3">1:3</option>
                   <option value="4">1:4</option>
                   <option value="5">1:5</option>
+                  {riskReward !== 'none' && !['1', '2', '3', '4', '5'].includes(riskReward) && <option value={riskReward}>1:{riskReward}</option>}
                   <option value="none">NONE</option>
                 </select>
                 <div className="mt-1 rounded bg-[#1e222d] px-2 py-1.5 text-xs text-gray-300">
