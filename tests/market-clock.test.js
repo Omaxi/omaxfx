@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { parseMarketCsvText } from '../src/utils/marketData.js';
-import { formatMarketDateTime, formatMarketTick } from '../src/utils/marketClock.js';
+import { formatMarketDateTime, formatMarketTick, getMarketSession } from '../src/utils/marketClock.js';
 
 const csvUrl = new URL('../public/data/XAUUSD_2026.csv', import.meta.url);
 const epoch = (value) => Math.floor(Date.parse(`${value}Z`) / 1000);
@@ -74,4 +74,19 @@ test('XAUUSD CSV contains the full 20:45-to-close sequence and does not jump to 
   assert.ok(at2359, '23:59 candle must be present');
   assert.ok(nextDay0000, 'next-day 00:00 candle must be present');
   assert.equal(nextDay0000.time - at2359.time, 60);
+});
+
+
+test('UTC+3 session boundaries are exact and New York crosses midnight', () => {
+  const at = (value) => epoch(value) - 3 * 60 * 60;
+  assert.deepEqual(getMarketSession(at('2026-01-02T00:59:00')), {
+    key: 'newyork', label: 'New York', sessionDate: '2026-01-01',
+  });
+  assert.equal(getMarketSession(at('2026-01-02T01:00:00')).key, 'asia');
+  assert.equal(getMarketSession(at('2026-01-02T10:59:00')).key, 'asia');
+  assert.equal(getMarketSession(at('2026-01-02T11:00:00')).key, 'london');
+  assert.equal(getMarketSession(at('2026-01-02T15:59:00')).key, 'london');
+  assert.deepEqual(getMarketSession(at('2026-01-02T16:00:00')), {
+    key: 'newyork', label: 'New York', sessionDate: '2026-01-02',
+  });
 });
