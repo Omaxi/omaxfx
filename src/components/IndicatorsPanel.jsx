@@ -491,12 +491,20 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
           }
         });
 
+        // Session boxes belong only to the main price pane. Using the full
+        // chart height here lets the session fill bleed into RSI/ATR/ADX panes.
         let paneWidth = rect.width, paneHeight = rect.height;
         try {
           const axisWidth = chart.priceScale('right').width();
+          const mainPane = chart.panes?.()?.[0];
+          const mainPaneHeight = mainPane?.getHeight?.();
           const timeAxisHeight = chart.timeScale().height();
           if (axisWidth > 0) paneWidth -= axisWidth;
-          if (timeAxisHeight > 0) paneHeight -= timeAxisHeight;
+          if (Number.isFinite(mainPaneHeight) && mainPaneHeight > 0) {
+            paneHeight = mainPaneHeight;
+          } else if (timeAxisHeight > 0) {
+            paneHeight -= timeAxisHeight;
+          }
         } catch {}
         ctx.save();
         ctx.beginPath();
@@ -856,12 +864,12 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
       <canvas ref={htfCandleCanvasRef} className="absolute inset-0 h-full w-full pointer-events-none" aria-hidden="true"/>
       <canvas ref={sessionCanvasRef} className="absolute inset-0 h-full w-full pointer-events-none" aria-hidden="true"/>
       <div className="absolute top-2 left-12 z-40 pointer-events-auto" onPointerDown={event => event.stopPropagation()}>
-      <button onClick={() => setOpen(value => !value)} className="flex items-center gap-1 rounded-md border border-[#2a2e39] bg-[#131722]/95 px-2 py-1 text-[10px] font-bold text-gray-200 shadow-lg hover:bg-[#1e222d]">
+      <button onClick={() => setOpen(value => !value)} className="flex items-center gap-1 rounded-md border border-[#2a2e39] bg-[#131722] px-2 py-1 text-[10px] font-bold text-gray-200 shadow-lg hover:bg-[#1e222d]">
         Indicators <ChevronDown size={11} className={open ? 'rotate-180' : ''}/>
         {selected.length > 0 && <span className="indicator-count-badge rounded bg-blue-600 px-1 text-white">{selected.length}</span>}
       </button>
       {open && (
-        <div className="mt-1 w-64 rounded-lg border border-[#2a2e39] bg-[#131722]/98 p-2 shadow-2xl">
+        <div className="mt-1 w-64 rounded-lg border border-[#2a2e39] bg-[#131722] p-2 shadow-2xl">
           <div className="mb-1 flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Chart indicators</span>
             <button onClick={() => setOpen(false)} className="rounded p-1 text-gray-500 hover:text-white"><X size={12}/></button>
