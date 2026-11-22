@@ -468,6 +468,32 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
         ctx.beginPath();
         ctx.rect(0, 0, paneWidth, paneHeight);
         ctx.clip();
+
+        // Dashed OHLC guides run from the latest lower-timeframe candle to
+        // the corresponding level on the developing HTF candle.
+        const guideStartX = Math.max(0, lastX + spacing / 2);
+        const guideEndX = candleX - bodyWidth / 2 - 2;
+        const precision = getPricePrecision(useStore.getState().symbol, useStore.getState().contractSpecs);
+        const fmt = value => Number(value).toFixed(precision);
+        const levels = [
+          { value: Number(htfViewerCandle.high), y: yHigh, color: '#94a3b8', label: 'H' },
+          { value: Number(htfViewerCandle.open), y: yOpen, color: '#f59e0b', label: 'O' },
+          { value: Number(htfViewerCandle.close), y: yClose, color, label: 'C' },
+          { value: Number(htfViewerCandle.low), y: yLow, color: '#94a3b8', label: 'L' },
+        ];
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        levels.forEach(level => {
+          ctx.strokeStyle = level.color;
+          ctx.globalAlpha = 0.72;
+          ctx.beginPath();
+          ctx.moveTo(guideStartX, level.y);
+          ctx.lineTo(guideEndX, level.y);
+          ctx.stroke();
+        });
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+
         ctx.strokeStyle = color;
         ctx.lineWidth = 1.2;
         ctx.beginPath();
@@ -477,34 +503,41 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
         ctx.fillStyle = color;
         ctx.fillRect(candleX - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
 
-        const precision = getPricePrecision(useStore.getState().symbol, useStore.getState().contractSpecs);
-        const fmt = value => Number(value).toFixed(precision);
         const labelX = candleX + 16;
         ctx.font = '10px Arial';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#e5e7eb';
-        ctx.fillText(fmt(htfViewerCandle.high), labelX + 7, yHigh);
-        ctx.fillText(fmt(htfViewerCandle.open), labelX + 7, yOpen);
-        ctx.fillText(fmt(htfViewerCandle.close), labelX + 7, yClose);
-        ctx.fillText(fmt(htfViewerCandle.low), labelX + 7, yLow);
+        levels.forEach(level => {
+          ctx.fillStyle = level.color;
+          ctx.fillText(fmt(level.value), labelX + 7, level.y);
+        });
 
         const tfLabel = htfViewerTimeframe === 5 ? '5M' : htfViewerTimeframe === 15 ? '15M' : htfViewerTimeframe === 60 ? '1H' : '4H';
         const range = Number(htfViewerCandle.high) - Number(htfViewerCandle.low);
-        const badgeWidth = 104;
-        const badgeX = Math.min(paneWidth - badgeWidth - 5, Math.max(5, candleX - badgeWidth / 2));
-        const badgeY = Math.max(8, Math.min(paneHeight - 42, yHigh - 36));
+        const badgeWidth = 154;
+        const badgeX = Math.max(6, paneWidth - badgeWidth - 8);
+        const badgeY = 8;
+        const rowHeight = 19;
+        const nextBoundary = Number(htfViewerCandle.time) + htfViewerTimeframe * 60;
+        const replayBoundary = Number(last.time) + Math.max(1, Number(timeframe) || 1) * 60;
+        const remaining = Math.max(0, nextBoundary - replayBoundary);
+        const hoursLeft = Math.floor(remaining / 3600);
+        const minutesLeft = Math.floor((remaining % 3600) / 60);
+        const secondsLeft = Math.floor(remaining % 60);
+        const countdown = hoursLeft > 0
+          ? hoursLeft + 'h ' + String(minutesLeft).padStart(2, '0') + 'm ' + String(secondsLeft).padStart(2, '0') + 's left'
+          : minutesLeft + 'm ' + String(secondsLeft).padStart(2, '0') + 's left';
         ctx.fillStyle = 'rgba(30,34,45,0.92)';
-        ctx.fillRect(badgeX, badgeY, badgeWidth, 19);
-        ctx.fillRect(badgeX, badgeY + 20, badgeWidth, 19);
-        ctx.strokeStyle = '#9ca3af';
+        ctx.fillRect(badgeX, badgeY, badgeWidth, rowHeight * 3 + 2);
+        ctx.strokeStyle = '#6b7280';
         ctx.lineWidth = 0.7;
-        ctx.strokeRect(badgeX, badgeY, badgeWidth, 19);
-        ctx.strokeRect(badgeX, badgeY + 20, badgeWidth, 19);
+        ctx.strokeRect(badgeX, badgeY, badgeWidth, rowHeight * 3 + 2);
         ctx.fillStyle = '#f3f4f6';
         ctx.textAlign = 'center';
         ctx.fillText(tfLabel + ' CANDLE', badgeX + badgeWidth / 2, badgeY + 10);
-        ctx.fillText('Range: ' + fmt(range), badgeX + badgeWidth / 2, badgeY + 30);
+        ctx.fillText('Range: ' + fmt(range), badgeX + badgeWidth / 2, badgeY + 29);
+        ctx.fillStyle = '#4ade80';
+        ctx.fillText(countdown, badgeX + badgeWidth / 2, badgeY + 48);
         ctx.restore();
       });
     };
