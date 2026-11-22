@@ -593,13 +593,6 @@ export default function Chart() {
           ctx.fillStyle = 'rgba(239,83,80,0.34)';
           ctx.fillRect(left, Math.min(entryY, slY), right - left, Math.max(1, Math.abs(entryY - slY)));
         }
-        ctx.strokeStyle = long ? '#26a69a' : '#ef5350';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([]);
-        ctx.beginPath();
-        ctx.moveTo(left, entryY);
-        ctx.lineTo(right, entryY);
-        ctx.stroke();
         ctx.save();
         ctx.beginPath();
         ctx.rect(Math.max(0, left), 0, Math.max(0, Math.min(paneW, right) - Math.max(0, left)), paneH);
@@ -696,10 +689,6 @@ export default function Chart() {
             ctx.fillStyle = 'rgba(239,83,80,0.34)';
             ctx.fillRect(left, Math.min(entryY, slY), right - left, Math.max(1, Math.abs(entryY - slY)));
           }
-          ctx.strokeStyle = long ? '#26a69a' : '#ef5350';
-          ctx.lineWidth = 1;
-          ctx.setLineDash([]);
-          ctx.beginPath(); ctx.moveTo(left, entryY); ctx.lineTo(right, entryY); ctx.stroke();
           ctx.fillStyle = '#e5e7eb';
           ctx.font = '600 10px Arial';
           ctx.textAlign = 'left';
@@ -722,70 +711,7 @@ export default function Chart() {
       state.pencilStrokes.forEach(s => drawPencilStroke(ctx, s, pointToXY));
       if (currentPencilRef.current) drawPencilStroke(ctx, currentPencilRef.current, pointToXY);
 
-      // 4. Draw selected trade line indicator
-      if (sel?.type === 'trade' && seriesRef.current) {
-        let livePrice = null;
-        if (sel.target === 'position') {
-          const pos = state.positions.find(p => p.id === sel.positionId);
-          if (pos) {
-            if (sel.lineType === 'sl') livePrice = pos.sl;
-            else if (sel.lineType === 'tp') livePrice = pos.tp;
-          }
-        } else if (sel.target === 'pending') {
-          const order = state.pendingOrders.find(o => o.id === sel.orderId);
-          if (order) {
-            if (sel.lineType === 'entry') livePrice = order.entryPrice;
-            else if (sel.lineType === 'sl') livePrice = order.sl;
-            else if (sel.lineType === 'tp') livePrice = order.tp;
-          }
-        }
-        if (livePrice != null) {
-          const y = seriesRef.current.priceToCoordinate(livePrice);
-          if (y != null && Number.isFinite(y)) {
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([3, 3]);
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(paneW, y);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            if (sel.lineType === 'sl') {
-              const trade = sel.target === 'position'
-                ? state.positions.find(item => item.id === sel.positionId)
-                : sel.target === 'pending'
-                  ? state.pendingOrders.find(item => item.id === sel.orderId)
-                  : state.draftPosition;
-              const entry = Number(trade?.entryPrice ?? trade?.entry);
-              if (Number.isFinite(entry)) {
-                const direction = trade?.type === 'buy' ? 1 : -1;
-                const directionalDistance = (entry - Number(livePrice)) * direction;
-                const distance = Math.abs(directionalDistance);
-                const code = String(state.symbol || '').toUpperCase();
-                const configuredPip = Number(state.contractSpecs?.[state.symbol]?.pipSize);
-                const pipSize = configuredPip > 0 ? configuredPip
-                  : code.startsWith('XAU') || code.endsWith('JPY') ? 0.01
-                    : /^[A-Z]{6}$/.test(code) ? 0.0001
-                      : getPriceTickSize(state.symbol, state.contractSpecs) * 10;
-                const pips = pipSize > 0 ? distance / pipSize : 0;
-                const precision = getPricePrecision(state.symbol, state.contractSpecs);
-                const label = `SL distance  ${distance.toFixed(precision)}  |  ${pips.toFixed(1)} pips`;
-                ctx.font = '600 11px Arial';
-                const labelWidth = Math.ceil(ctx.measureText(label).width) + 14;
-                const labelX = Math.max(6, Math.min(paneW - labelWidth - 6, 12));
-                const labelY = Math.max(14, Math.min(paneH - 14, y - 18));
-                ctx.fillStyle = 'rgba(19,23,34,0.94)';
-                ctx.fillRect(labelX, labelY - 10, labelWidth, 20);
-                ctx.fillStyle = '#fca5a5';
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(label, labelX + 7, labelY);
-              }
-            }
-          }
-        }
-      }
+      // Position tools stay self-contained; do not draw full-width entry/SL/TP guides.
 
       ctx.restore();
 
@@ -980,6 +906,45 @@ export default function Chart() {
       return closest;
     };
 
+    // A double-click anywhere inside a position box selects the complete tool.
+    // Its individual price levels can then be dragged; active positions expose
+    // only SL/TP handles, while drafts and pending orders also expose Entry.
+    const detectTradeBodyHit = (x, y) => {
+      if (!seriesRef.current) return null;
+      const state = useStore.getState();
+      const rect = canvas.getBoundingClientRect();
+      let paneW = rect.width;
+      try {
+        const axisWidth = chartRef.current?.priceScale('right').width();
+        if (axisWidth > 0) paneW -= axisWidth;
+      } catch (e) {}
+      const candidates = [];
+      const addBody = (tool, target, id) => {
+        const entry = Number(target === 'draft' ? tool.entry : tool.entryPrice);
+        const sl = Number(tool.sl);
+        const tp = Number(tool.tp);
+        if (!Number.isFinite(entry) || !Number.isFinite(sl) || !Number.isFinite(tp)) return;
+        const entryY = seriesRef.current.priceToCoordinate(entry);
+        const slY = seriesRef.current.priceToCoordinate(sl);
+        const tpY = seriesRef.current.priceToCoordinate(tp);
+        const anchorTime = target === 'draft' ? tool.entryTime : tool.openTime;
+        const anchorX = anchorTime != null ? timeToX(Number(anchorTime)) : paneW * 0.48;
+        if (![entryY, slY, tpY, anchorX].every(Number.isFinite)) return;
+        const width = Math.max(130, Math.min(260, paneW * 0.22));
+        const left = Math.max(0, Math.min(paneW - 24, anchorX));
+        const right = Math.min(paneW, left + width);
+        const top = Math.min(entryY, slY, tpY);
+        const bottom = Math.max(entryY, slY, tpY);
+        if (x >= left && x <= right && y >= top && y <= bottom) {
+          candidates.push({ target, ...(target === 'position' ? { positionId: id } : target === 'pending' ? { orderId: id } : {}), id });
+        }
+      };
+      (state.positions || []).forEach(p => addBody(p, 'position', p.id));
+      (state.pendingOrders || []).forEach(o => addBody(o, 'pending', o.id));
+      if (state.draftPosition) addBody(state.draftPosition, 'draft', null);
+      return candidates[candidates.length - 1] || null;
+    };
+
     const getLocalXY = (e) => {
       const rect = container.getBoundingClientRect();
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -1086,26 +1051,44 @@ export default function Chart() {
 
       const drawingHit = hitTestDrawings(x, y);
       const tradeHit = !drawingHit ? detectTradeHit(x, y) : null;
+      const tradeBodyHit = !drawingHit && !tradeHit ? detectTradeBodyHit(x, y) : null;
+      const sel = selectedItemRef.current;
+      const tradeTargetMatches = (item, hit) => !!item && item.type === 'trade' &&
+        item.target === hit.target &&
+        (hit.target === 'position' ? item.positionId === hit.positionId :
+          hit.target === 'pending' ? item.orderId === hit.orderId : true);
 
-      // Trade levels are directly draggable with one press, just like TradingView.
-      // This includes the unsubmitted draft position's entry, SL and TP.
-      if (tradeHit) {
+      // Once the position box has been selected with a double-click, a single
+      // click-drag on one of its levels edits that level. Entry is intentionally
+      // absent from live-position hit testing, so it cannot move after trigger.
+      if (tradeHit && tradeTargetMatches(sel, tradeHit)) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         dragRef.current = { type: 'trade', data: tradeHit };
-        setSelectedItem({
-          type: 'trade',
-          key: tradeKey(tradeHit),
-          target: tradeHit.target,
-          positionId: tradeHit.positionId,
-          orderId: tradeHit.orderId,
-          lineType: tradeHit.type,
-        });
+        setSelectedItem({ ...sel, lineType: tradeHit.type });
         lockChart(true);
         try { container.setPointerCapture(e.pointerId); } catch (error) {}
         return;
       }
 
-      const sel = selectedItemRef.current;
+      const toolHit = tradeHit || tradeBodyHit;
+      if (toolHit) {
+        if (isDoubleTap) {
+          e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+          resetTapTimer();
+          setSelectedItem({
+            type: 'trade',
+            key: `${toolHit.target}:${toolHit.positionId ?? toolHit.orderId ?? 'draft'}:tool`,
+            target: toolHit.target,
+            positionId: toolHit.positionId,
+            orderId: toolHit.orderId,
+            lineType: 'tool',
+          });
+          lockChart(true);
+        } else {
+          lastTapRef.current = { time: now, x, y };
+        }
+        return;
+      }
 
       if (sel) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
