@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Upload, FileText, AlertTriangle, FolderOpen, RefreshCw, ChevronDown } from 'lucide-react';
 import { parseMarketCsv } from '../utils/marketData';
 import { fetchDataCatalog, loadBundledCsvFiles } from '../utils/dataCatalog';
@@ -14,6 +14,34 @@ function defaultSpecs(symbol) {
   return { contractSize: 1, tickSize: 0.01, precision: 2 };
 }
 
+function StyledSelect({ value, onChange, options }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef(null);
+  const selected = options.find(option => String(option.value) === String(value));
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = event => {
+      if (event.type === 'keydown' && event.key === 'Escape') setOpen(false);
+      if (event.type === 'pointerdown' && rootRef.current && !rootRef.current.contains(event.target)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('keydown', close);
+    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', close); };
+  }, [open]);
+  return (
+    <div ref={rootRef} className="relative mt-1 w-full">
+      <button type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(current => !current)} className="flex h-11 w-full items-center justify-between rounded-lg border border-[#303846] bg-[#1e222d] px-3 text-left text-sm font-semibold text-white transition-colors hover:border-[#46536a] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15">
+        <span className="truncate">{selected?.label ?? value}</span>
+        <ChevronDown size={16} className={'ml-3 shrink-0 text-gray-400 transition-transform ' + (open ? 'rotate-180' : '')} />
+      </button>
+      {open && <div role="listbox" className="absolute left-0 top-[calc(100%+6px)] z-[180] max-h-60 w-full overflow-y-auto rounded-lg border border-[#343b49] bg-[#1e222d] p-1 shadow-2xl">
+        {options.map(option => <button key={String(option.value)} type="button" role="option" aria-selected={String(option.value) === String(value)} onClick={() => { onChange(option.value); setOpen(false); }} className={'flex min-h-9 w-full items-center rounded-md px-3 py-2 text-left text-sm transition-colors ' + (String(option.value) === String(value) ? 'bg-[#273449] font-semibold text-white' : 'text-gray-300 hover:bg-[#2a2e39] hover:text-white')}>
+          {option.label}
+        </button>)}
+      </div>}
+    </div>
+  );
+}
 export default function DataImportModal() {
   const [open, setOpen] = useState(true);
   const [file, setFile] = useState(null);
