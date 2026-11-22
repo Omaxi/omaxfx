@@ -586,11 +586,11 @@ export default function Chart() {
         if (right < 0 || left > paneW) return;
         const long = tool.type === 'buy';
         if (tpY != null && Number.isFinite(tpY)) {
-          ctx.fillStyle = 'rgba(38,166,154,0.34)';
+          ctx.fillStyle = 'rgba(38,166,154,0.18)';
           ctx.fillRect(left, Math.min(entryY, tpY), right - left, Math.max(1, Math.abs(entryY - tpY)));
         }
         if (slY != null && Number.isFinite(slY)) {
-          ctx.fillStyle = 'rgba(239,83,80,0.34)';
+          ctx.fillStyle = 'rgba(239,83,80,0.18)';
           ctx.fillRect(left, Math.min(entryY, slY), right - left, Math.max(1, Math.abs(entryY - slY)));
         }
         ctx.save();
@@ -871,7 +871,10 @@ export default function Chart() {
         const width = Math.max(130, Math.min(260, toolPaneWidth * 0.22));
         candidates.push({
           target, ...(target === 'position' ? { positionId: id } : { orderId: id }),
-          type, price: Number(price), lineY, xMin: anchorX - 8, xMax: anchorX + width + 8,
+          type, price: Number(price), lineY,
+          // Test the price level across the pane. The rendered box can be
+          // offset by the right price scale; narrow x hit zones missed it.
+          xMin: 0, xMax: toolPaneWidth,
         });
       };
       state.positions.forEach(pos => {
@@ -933,9 +936,7 @@ export default function Chart() {
         if (![entryY, slY, tpY, anchorX].every(Number.isFinite)) return;
         // Match the exact horizontal footprint used by drawPositionTool/draft rendering.
         const width = Math.max(130, Math.min(260, paneW * 0.22));
-        const left = target === 'draft'
-          ? Math.max(0, Math.min(paneW - 24, anchorX))
-          : anchorX;
+        const left = Math.max(0, Math.min(paneW - 24, anchorX));
         const right = Math.min(paneW, left + width);
         const top = Math.min(entryY, slY, tpY);
         const bottom = Math.max(entryY, slY, tpY);
