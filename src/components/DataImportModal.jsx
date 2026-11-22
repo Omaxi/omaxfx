@@ -34,7 +34,7 @@ function StyledSelect({ value, onChange, options }) {
         <span className="truncate">{selected?.label ?? value}</span>
         <ChevronDown size={16} className={'ml-3 shrink-0 text-gray-400 transition-transform ' + (open ? 'rotate-180' : '')} />
       </button>
-      {open && <div role="listbox" className="absolute left-0 top-[calc(100%+6px)] z-[180] max-h-60 w-full overflow-y-auto rounded-lg border border-[#343b49] bg-[#1e222d] p-1 shadow-2xl">
+      {open && <div role="listbox" className="absolute left-0 top-[calc(100%+6px)] z-[9999] max-h-60 w-full overflow-y-auto rounded-lg border border-[#343b49] bg-[#1e222d] p-1 shadow-2xl">
         {options.map(option => <button key={String(option.value)} type="button" role="option" aria-selected={String(option.value) === String(value)} onClick={() => { onChange(option.value); setOpen(false); }} className={'flex min-h-9 w-full items-center rounded-md px-3 py-2 text-left text-sm transition-colors ' + (String(option.value) === String(value) ? 'bg-[#273449] font-semibold text-white' : 'text-gray-300 hover:bg-[#2a2e39] hover:text-white')}>
           {option.label}
         </button>)}
@@ -180,7 +180,7 @@ export default function DataImportModal() {
 
   return (
     <div className="fixed inset-0 z-[150] bg-black/85 backdrop-blur-sm flex items-center justify-center p-3">
-      <div className="w-full max-w-lg bg-[#131722] border border-[#2a2e39] rounded-2xl shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-lg bg-[#131722] border border-[#2a2e39] rounded-2xl shadow-2xl overflow-visible">
         <div className="flex items-center gap-3 border-b border-[#2a2e39] p-4">
           <div className="rounded-xl bg-blue-500/15 p-2"><Upload size={20} className="text-blue-400"/></div>
           <div><h2 className="font-bold text-white">Load market data</h2><p className="text-xs text-gray-400">Choose a dataset to open the backtest setup · timestamps UTC+3</p></div>
