@@ -197,7 +197,7 @@ export default function PeriodModal() {
             </div>
             {savedSessions.length ? <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <select value={selectedSessionId} onChange={event => setSelectedSessionId(event.target.value)} className="min-w-0 flex-1 rounded border border-[#343b49] bg-[#1e222d] px-2 py-2 text-[11px] text-white">
+                <select value={selectedSessionId} onChange={event => setSelectedSessionId(event.target.value)} className="theme-native-select min-w-0 flex-1 rounded border border-[#343b49] bg-[#1e222d] px-2 py-2 text-[11px] text-white">
                   {savedSessions.map(saved => <option key={saved.sessionId} value={saved.sessionId}>{saved.sessionName || 'Untitled session'} · {saved.symbol || 'Unknown'}</option>)}
                 </select>
                 <button disabled={!selectedSessionId} onClick={() => { const saved = savedSessions.find(item => item.sessionId === selectedSessionId); if (saved) handleLoadSaved(saved); }} className="rounded bg-emerald-700 px-3 py-2 text-[10px] font-bold text-white hover:bg-emerald-600 disabled:opacity-40">RESUME</button>
@@ -358,7 +358,7 @@ export default function PeriodModal() {
           )}
           <button
             onClick={handleStart}
-            className="flex-[2] py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-sm flex items-center justify-center gap-1.5 transition-colors"
+            className="theme-action-contrast flex-[2] py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-sm text-white flex items-center justify-center gap-1.5 transition-colors"
           >
             <Play size={14} fill="currentColor" />
             Start {activePreset?.name} Session
