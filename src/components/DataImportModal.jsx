@@ -176,7 +176,7 @@ export default function DataImportModal() {
   if (!open) return null;
 
   const inputClass = 'mt-1 w-full rounded-lg border border-[#303846] bg-[#0b0e11] px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500';
-  const buttonClass = 'w-full rounded-lg bg-blue-600 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 px-4 py-3 text-sm font-bold text-white';
+  const buttonClass = 'theme-action-contrast w-full rounded-lg bg-blue-600 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 px-4 py-3 text-sm font-bold text-white';
 
   return (
     <div className="fixed inset-0 z-[150] bg-black/85 backdrop-blur-sm flex items-center justify-center p-3">
@@ -188,8 +188,8 @@ export default function DataImportModal() {
 
         <div className="p-4 space-y-4">
           <div className="grid grid-cols-2 rounded-lg bg-[#0b0e11] p-1">
-            <button onClick={() => { setSource('folder'); setStatus({ loading: false, error: '' }); }} className={`rounded-md px-3 py-2 text-sm font-semibold ${source === 'folder' ? 'bg-[#273449] text-white' : 'text-gray-400'}`}>Existing data</button>
-            <button onClick={() => { setSource('custom'); setStatus({ loading: false, error: '' }); }} className={`rounded-md px-3 py-2 text-sm font-semibold ${source === 'custom' ? 'bg-[#273449] text-white' : 'text-gray-400'}`}>Import CSV</button>
+            <button onClick={() => { setSource('folder'); setStatus({ loading: false, error: '' }); }} data-active={source === 'folder'} className={`data-source-tab rounded-md px-3 py-2 text-sm font-semibold ${source === 'folder' ? 'bg-[#273449] text-white' : 'text-gray-400'}`}>Existing data</button>
+            <button onClick={() => { setSource('custom'); setStatus({ loading: false, error: '' }); }} data-active={source === 'custom'} className={`data-source-tab rounded-md px-3 py-2 text-sm font-semibold ${source === 'custom' ? 'bg-[#273449] text-white' : 'text-gray-400'}`}>Import CSV</button>
           </div>
 
           {source === 'folder' ? (
