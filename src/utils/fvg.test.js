@@ -52,3 +52,17 @@ test('ignores overlapping candles and formats timeframe labels', () => {
   assert.equal(formatFvgTimeframe(240), '4h');
   assert.equal(formatFvgTimeframe(1440), '1D');
 });
+
+
+test('limits displayed FVGs to the newest requested count in chronological order', async () => {
+  const { limitFairValueGaps } = await import('./fvg.js');
+  const gaps = [
+    { id: 'a', startTime: 10 },
+    { id: 'b', startTime: 20 },
+    { id: 'c', startTime: 30 },
+    { id: 'd', startTime: 40 },
+  ];
+  assert.deepEqual(limitFairValueGaps(gaps, 2).map(gap => gap.id), ['c', 'd']);
+  assert.deepEqual(limitFairValueGaps(gaps, 1).map(gap => gap.id), ['d']);
+  assert.equal(limitFairValueGaps(gaps, 0).length, 3);
+});
