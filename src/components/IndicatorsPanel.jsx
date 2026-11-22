@@ -4,6 +4,7 @@ import { ChevronDown, Settings2, X } from 'lucide-react';
 import { useStore } from '../store';
 import { aggregateData } from '../utils/timeframe';
 import { detectFairValueGaps, formatFvgTimeframe, latestFairValueGapPair } from '../utils/fvg';
+import { getPricePrecision } from '../utils/instrument';
 
 const INDICATORS = [
   { key: 'ma', label: 'Moving Average', color: '#f59e0b', pane: 'price' },
@@ -14,6 +15,7 @@ const INDICATORS = [
   { key: 'vwap', label: 'VWAP', color: '#22c55e', pane: 'price' },
   { key: 'sessions', label: 'Sessions', color: '#64748b', pane: 'price' },
   { key: 'fvg', label: 'Fair Value Gaps', color: '#38bdf8', pane: 'price' },
+  { key: 'htfCandleViewer', label: 'HTF Candle Viewer', color: '#22c55e', pane: 'price' },
 ];
 
 const DEFAULT_CONFIG = {
@@ -23,6 +25,7 @@ const DEFAULT_CONFIG = {
   atr: { period: 14 },
   adx: { period: 14 },
   fvg: { showCurrent: true, showHigher: true, higherTimeframe: 15 },
+  htfCandleViewer: { timeframe: 240 },
 };
 
 const average = (values) => values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -182,6 +185,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
   const readyRef = useRef(false);
   const sessionCanvasRef = useRef(null);
   const fvgCanvasRef = useRef(null);
+  const htfCandleCanvasRef = useRef(null);
   const sessionColors = useStore(state => state.sessionColors);
 
   const selected = useMemo(() => INDICATORS.filter(item => active[item.key]), [active]);
@@ -198,6 +202,15 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
   }, [visibleData, liveCandle, timeframe]);
 
   const higherTimeframe = Number(config.fvg?.higherTimeframe) || 15;
+  const htfViewerTimeframe = Number(config.htfCandleViewer?.timeframe) || 240;
+  // Build the selected HTF candle strictly from replay-visible raw candles.
+  // The last aggregate remains incomplete and therefore updates on every replay step.
+  const htfViewerCandle = useMemo(() => {
+    if (!Array.isArray(rawData) || !rawData[currentIndex]) return null;
+    const replayCandles = rawData.slice(0, currentIndex + 1);
+    const candles = aggregateData(replayCandles, htfViewerTimeframe);
+    return candles.length ? candles[candles.length - 1] : null;
+  }, [rawData, currentIndex, htfViewerTimeframe]);
   const replayCutoff = rawData?.[currentIndex]
     ? Number(rawData[currentIndex].time) + (Number(timeframe) > 1 ? 60 : 0)
     : 0;
@@ -383,6 +396,107 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
     };
   }, [active.sessions, chartRef, chartReady, sessionCandles, timeframe, sessionColors]);
 
+  // Draw the live-forming higher-timeframe candle in the chart's right-side space.
+  useEffect(() => {
+    const canvas = htfCandleCanvasRef.current;
+    const chart = chartReady ? chartRef.current : null;
+    const priceSeries = priceSeriesRef?.current;
+    if (!canvas || !chart || !priceSeries) return undefined;
+    let frame = 0;
+    const draw = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        canvas.width = Math.round(rect.width * dpr);
+        canvas.height = Math.round(rect.height * dpr);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        if (!active.htfCandleViewer || !htfViewerCandle || !visibleData?.length) return;
+
+        let paneWidth = rect.width, paneHeight = rect.height;
+        try {
+          const axisWidth = chart.priceScale('right').width();
+          const timeAxisHeight = chart.timeScale().height();
+          if (axisWidth > 0) paneWidth -= axisWidth;
+          if (timeAxisHeight > 0) paneHeight -= timeAxisHeight;
+        } catch {}
+        const timeScale = chart.timeScale();
+        const last = visibleData[visibleData.length - 1];
+        const lastX = timeScale.timeToCoordinate(last.time);
+        if (lastX == null || !Number.isFinite(lastX)) return;
+        const spacing = Math.max(3, Number(timeScale.options().barSpacing) || 6);
+        const candleX = Math.min(paneWidth - 92, Math.max(lastX + spacing * 4, paneWidth * 0.55));
+        if (candleX < 12) return;
+        const yHigh = priceSeries.priceToCoordinate(htfViewerCandle.high);
+        const yLow = priceSeries.priceToCoordinate(htfViewerCandle.low);
+        const yOpen = priceSeries.priceToCoordinate(htfViewerCandle.open);
+        const yClose = priceSeries.priceToCoordinate(htfViewerCandle.close);
+        if ([yHigh, yLow, yOpen, yClose].some(value => value == null || !Number.isFinite(value))) return;
+
+        const bullish = Number(htfViewerCandle.close) >= Number(htfViewerCandle.open);
+        const color = bullish ? '#26a69a' : '#ef4444';
+        const bodyTop = Math.min(yOpen, yClose);
+        const bodyHeight = Math.max(1.5, Math.abs(yClose - yOpen));
+        const bodyWidth = 18;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, paneWidth, paneHeight);
+        ctx.clip();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(candleX, yHigh);
+        ctx.lineTo(candleX, yLow);
+        ctx.stroke();
+        ctx.fillStyle = color;
+        ctx.fillRect(candleX - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
+
+        const precision = getPricePrecision(useStore.getState().symbol, useStore.getState().contractSpecs);
+        const fmt = value => Number(value).toFixed(precision);
+        const labelX = candleX + 16;
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#e5e7eb';
+        ctx.fillText(fmt(htfViewerCandle.high), labelX + 7, yHigh);
+        ctx.fillText(fmt(htfViewerCandle.open), labelX + 7, yOpen);
+        ctx.fillText(fmt(htfViewerCandle.close), labelX + 7, yClose);
+        ctx.fillText(fmt(htfViewerCandle.low), labelX + 7, yLow);
+
+        const tfLabel = htfViewerTimeframe === 5 ? '5M' : htfViewerTimeframe === 15 ? '15M' : htfViewerTimeframe === 60 ? '1H' : '4H';
+        const range = Number(htfViewerCandle.high) - Number(htfViewerCandle.low);
+        const badgeWidth = 104;
+        const badgeX = Math.min(paneWidth - badgeWidth - 5, Math.max(5, candleX - badgeWidth / 2));
+        const badgeY = Math.max(8, Math.min(paneHeight - 42, yHigh - 36));
+        ctx.fillStyle = 'rgba(30,34,45,0.92)';
+        ctx.fillRect(badgeX, badgeY, badgeWidth, 19);
+        ctx.fillRect(badgeX, badgeY + 20, badgeWidth, 19);
+        ctx.strokeStyle = '#9ca3af';
+        ctx.lineWidth = 0.7;
+        ctx.strokeRect(badgeX, badgeY, badgeWidth, 19);
+        ctx.strokeRect(badgeX, badgeY + 20, badgeWidth, 19);
+        ctx.fillStyle = '#f3f4f6';
+        ctx.textAlign = 'center';
+        ctx.fillText(tfLabel + ' CANDLE', badgeX + badgeWidth / 2, badgeY + 10);
+        ctx.fillText('Range: ' + fmt(range), badgeX + badgeWidth / 2, badgeY + 30);
+        ctx.restore();
+      });
+    };
+    draw();
+    const timeScale = chart.timeScale();
+    timeScale.subscribeVisibleLogicalRangeChange(draw);
+    const observer = new ResizeObserver(draw);
+    observer.observe(canvas);
+    return () => {
+      cancelAnimationFrame(frame);
+      timeScale.unsubscribeVisibleLogicalRangeChange(draw);
+      observer.disconnect();
+    };
+  }, [active.htfCandleViewer, htfViewerCandle, htfViewerTimeframe, visibleData, chartRef, chartReady, priceSeriesRef]);
+
   // Draw chart-timeframe and configured higher-timeframe FVGs on a dedicated
   // canvas so both remain anchored to market timestamps after timeframe changes.
   useEffect(() => {
@@ -515,6 +629,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
   return (
     <div className="absolute inset-0 z-10 pointer-events-none">
       <canvas ref={fvgCanvasRef} className="absolute inset-0 h-full w-full pointer-events-none" aria-hidden="true"/>
+      <canvas ref={htfCandleCanvasRef} className="absolute inset-0 h-full w-full pointer-events-none" aria-hidden="true"/>
       <canvas ref={sessionCanvasRef} className="absolute inset-0 h-full w-full pointer-events-none" aria-hidden="true"/>
       <div className="absolute top-2 left-12 z-40 pointer-events-auto" onPointerDown={event => event.stopPropagation()}>
       <button onClick={() => setOpen(value => !value)} className="flex items-center gap-1 rounded-md border border-[#2a2e39] bg-[#131722]/95 px-2 py-1 text-[10px] font-bold text-gray-200 shadow-lg hover:bg-[#1e222d]">
@@ -534,9 +649,19 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
               </button>
             ))}
           </div>
-          {selected.some(item => ['ma', 'bb', 'rsi', 'atr', 'adx', 'fvg'].includes(item.key)) && (
+          {selected.some(item => ['ma', 'bb', 'rsi', 'atr', 'adx', 'fvg', 'htfCandleViewer'].includes(item.key)) && (
             <div className="mt-2 border-t border-[#2a2e39] pt-2">
               <div className="mb-1 flex items-center gap-1 text-[10px] font-bold text-gray-400"><Settings2 size={11}/> Indicator instances</div>
+              {selected.some(item => item.key === 'htfCandleViewer') && <div className="mb-2 rounded bg-[#1e222d] p-2">
+                <div className="mb-2 text-[10px] font-semibold text-white">HTF Candle Viewer</div>
+                <label className="flex items-center justify-between gap-2 text-[10px] text-gray-300">
+                  Higher timeframe candle
+                  <select value={config.htfCandleViewer.timeframe} onChange={event => updateConfig('htfCandleViewer', 'timeframe', Number(event.target.value))} className="rounded border border-[#343b49] bg-[#0b0e11] px-2 py-1 text-white">
+                    <option value={5}>5m</option><option value={15}>15m</option><option value={60}>1h</option><option value={240}>4h</option>
+                  </select>
+                </label>
+                <p className="mt-2 text-[9px] leading-4 text-gray-500">The candle is built only from candles reached by the replay cursor. Its OHLC, body, and wicks update live with each replay step.</p>
+              </div>}
               {selected.some(item => item.key === 'fvg') && <div className="mb-2 rounded bg-[#1e222d] p-2">
                 <div className="mb-2 text-[10px] font-semibold text-white">Fair Value Gaps</div>
                 <label className="mb-1 flex items-center gap-2 text-[10px] text-gray-300">
