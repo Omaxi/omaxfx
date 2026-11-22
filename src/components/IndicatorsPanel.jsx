@@ -4,7 +4,7 @@ import { ChevronDown, Settings2, X } from 'lucide-react';
 import { useStore } from '../store';
 import { aggregateData } from '../utils/timeframe';
 import { detectFairValueGaps, formatFvgTimeframe, latestFairValueGapPair } from '../utils/fvg';
-import { getPricePrecision } from '../utils/instrument';
+import { getPricePrecision, getPriceTickSize } from '../utils/instrument';
 import { getMarketSession } from '../utils/marketClock';
 
 const INDICATORS = [
@@ -244,6 +244,8 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
   const fvgCanvasRef = useRef(null);
   const htfCandleCanvasRef = useRef(null);
   const sessionColors = useStore(state => state.sessionColors);
+  const symbol = useStore(state => state.symbol);
+  const contractSpecs = useStore(state => state.contractSpecs);
 
   const selected = useMemo(() => INDICATORS.filter(item => active[item.key]), [active]);
   const sessionCandles = useMemo(() => {
@@ -260,6 +262,10 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
     return candles;
   }, [visibleData, liveCandle, timeframe]);
 
+  const hourlyCandles = useMemo(() => {
+    const replayCandles = (rawData || []).slice(0, Math.max(0, Number(currentIndex) + 1));
+    return replayCandles.length ? aggregateData(replayCandles, 60) : [];
+  }, [rawData, currentIndex]);
   const higherTimeframe = Number(config.fvg?.higherTimeframe) || 15;
   const htfViewerTimeframe = Number(config.htfCandleViewer?.timeframe) || 240;
   // Build the selected HTF candle strictly from replay-visible raw candles.
@@ -393,9 +399,9 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
       onIndicatorDashboard?.([]);
       return;
     }
-    // Calculate dashboard values for every numeric indicator, even when its
-    // chart plot is switched off. Only the active series are actually rendered.
-    const dashboardActive = { ...active, ma: true, bb: true, vwap: true, rsi: true, atr: true, adx: true };
+    // The dashboard always shows RSI and ADX, independent of whether their
+    // chart plots are enabled. ATR is calculated only from completed 1-hour bars.
+    const dashboardActive = { ...active, rsi: true, adx: true, atr: false };
     const calculated = calculateIndicators(visibleData, config, dashboardActive, timeframe, sessionCandles);
     Object.entries(seriesRef.current).forEach(([key, series]) => {
       try { series.setData(calculated[key] || []); } catch (e) {}
@@ -409,38 +415,28 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
       return null;
     };
     const dashboard = [];
-    {
-      (config.ma.instances || []).forEach(instance => {
-        const value = latest(calculated['ma_' + instance.id]);
-        if (value != null) dashboard.push({
-          key: 'ma_' + instance.id,
-          label: (instance.method || 'MA') + ' ' + instance.period,
-          color: instance.color || '#f59e0b', value, price: true,
-        });
-      });
+    const rsiValue = latest(calculated.rsi);
+    if (rsiValue != null) dashboard.push({ key: 'rsi', label: 'RSI', color: '#38bdf8', value: rsiValue });
+    const hourlyAtrSeries = hourlyCandles.length > 1
+      ? calculateIndicators(hourlyCandles, config, { atr: true }, 60).atr
+      : [];
+    const hourlyAtr = latest(hourlyAtrSeries);
+    if (hourlyAtr != null) {
+      const pipSize = symbol === 'XAUUSD'
+        ? 0.01
+        : symbol?.includes('JPY')
+          ? 0.01
+          : /^[A-Z]{6}$/.test(symbol || '')
+            ? 0.0001
+            : getPriceTickSize(symbol, contractSpecs) * 10;
+      const atrPips = hourlyAtr / pipSize;
+      dashboard.push({ key: 'atr-1h', label: '1H ATR', color: '#fb923c', value: atrPips, unit: 'pips' });
+      dashboard.push({ key: 'atr-stop', label: 'Stop Loss (0.9×)', color: '#f97316', value: atrPips * 0.9, unit: 'pips' });
     }
-    {
-      (config.bb.instances || []).forEach(instance => {
-        ['upper', 'middle', 'lower'].forEach(level => {
-          const value = latest(calculated['bb_' + instance.id + '_' + level]);
-          if (value != null) dashboard.push({
-            key: 'bb_' + instance.id + '_' + level,
-            label: 'BB ' + instance.period + ' ' + level,
-            color: instance.color || '#a78bfa', value, price: true,
-          });
-        });
-      });
-    }
-    {
-      const value = latest(calculated.vwap);
-      if (value != null) dashboard.push({ key: 'vwap', label: 'VWAP', color: '#22c55e', value, price: true });
-    }
-    [['rsi', 'RSI', '#38bdf8'], ['atr', 'ATR', '#fb923c'], ['adx', 'ADX', '#c084fc']].forEach(([key, label, color]) => {
-      const value = latest(calculated[key]);
-      if (value != null) dashboard.push({ key, label, color, value, price: key === 'atr' });
-    });
+    const adxValue = latest(calculated.adx);
+    if (adxValue != null) dashboard.push({ key: 'adx', label: 'ADX', color: '#c084fc', value: adxValue });
     onIndicatorDashboard?.(dashboard);
-  }, [chartRef, visibleData, sessionCandles, config, active, chartReady, timeframe, onIndicatorDashboard]);
+  }, [chartRef, visibleData, sessionCandles, hourlyCandles, config, active, chartReady, timeframe, onIndicatorDashboard, symbol, contractSpecs]);
 
   // LuxAlgo-inspired session boxes: translucent range rectangles with dashed
   // borders and session labels. Times use the simulator's fixed UTC+3 clock.
