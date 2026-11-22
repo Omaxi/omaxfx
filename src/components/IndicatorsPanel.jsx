@@ -388,11 +388,11 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
         });
       }
       if (item.key === 'vwap') {
-        add('vwap', item.color, 0, 1.7);
-        add('vwapUpper1', '#4ade80', 0, 1);
-        add('vwapLower1', '#4ade80', 0, 1);
-        add('vwapUpper2', '#86efac', 0, 1, 2);
-        add('vwapLower2', '#86efac', 0, 1, 2);
+        add('vwap', item.color, 0, 1.8);
+        add('vwapUpper1', '#f59e0b', 0, 1.2, 2);
+        add('vwapLower1', '#f59e0b', 0, 1.2, 2);
+        add('vwapUpper2', '#c084fc', 0, 1.2, 2);
+        add('vwapLower2', '#c084fc', 0, 1.2, 2);
       }
       if (item.key === 'rsi') add('rsi', item.color, lowerPane++);
       if (item.key === 'atr') add('atr', item.color, lowerPane++);
