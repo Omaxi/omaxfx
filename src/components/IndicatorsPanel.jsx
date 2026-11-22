@@ -429,9 +429,23 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
           : /^[A-Z]{6}$/.test(symbol || '')
             ? 0.0001
             : getPriceTickSize(symbol, contractSpecs) * 10;
-      const atrPips = hourlyAtr / pipSize;
-      dashboard.push({ key: 'atr-1h', label: '1H ATR', color: '#fb923c', value: atrPips, unit: 'pips' });
-      dashboard.push({ key: 'atr-stop', label: 'Stop Loss (0.9×)', color: '#f97316', value: atrPips * 0.9, unit: 'pips' });
+      // Keep ATR in the instrument's native price units. Only the stop-loss
+      // distance is converted to pips for the dashboard.
+      const stopLossPips = (hourlyAtr * 0.9) / pipSize;
+      dashboard.push({
+        key: 'atr-1h',
+        label: '1H ATR',
+        color: '#fb923c',
+        value: hourlyAtr,
+        decimals: getPricePrecision(symbol, contractSpecs),
+      });
+      dashboard.push({
+        key: 'atr-stop',
+        label: 'Stop Loss (0.9×)',
+        color: '#f97316',
+        value: stopLossPips,
+        unit: 'pips',
+      });
     }
     const adxValue = latest(calculated.adx);
     if (adxValue != null) dashboard.push({ key: 'adx', label: 'ADX', color: '#c084fc', value: adxValue });
