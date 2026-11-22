@@ -197,22 +197,19 @@ export default function DataImportModal() {
               <div className="flex items-center gap-2 text-sm font-semibold text-white"><FolderOpen size={16} className="text-emerald-400"/> Project data folder </div>
               {symbols.length ? <>
                 <label className="block text-xs text-gray-400">Symbol
-                  <select className={inputClass} value={selectedSymbol} onChange={event => {
-                    const code = event.target.value;
+                  <StyledSelect value={selectedSymbol} onChange={code => {
                     setSelectedSymbol(code);
                     const group = catalog.filter(item => item.symbol === code);
                     setSelectedFileName(group.length > 1 ? '__ALL__' : group[0]?.name || '');
                     const latestMonth = group.flatMap(item => (item.monthlyFiles || []).map(month => `${month.year}-${month.month}`)).sort().at(-1);
                     setSelectedMonth(latestMonth || '__ALL__');
-                  }}>
-                    {symbols.map(code => <option key={code} value={code}>{code}</option>)}
-                  </select>
+                  }} options={symbols.map(code => ({ value: code, label: code }))}/>
                 </label>
                 <label className="block text-xs text-gray-400">CSV dataset
-                  <select className={inputClass} value={selectedFileName} onChange={event => setSelectedFileName(event.target.value)}>
-                    {symbolFiles.length > 1 && <option value="__ALL__">All available years (combined)</option>}
-                    {symbolFiles.map(item => <option key={item.name} value={item.name}>{item.name}</option>)}
-                  </select>
+                  <StyledSelect value={selectedFileName} onChange={setSelectedFileName} options={[
+                    ...(symbolFiles.length > 1 ? [{ value: '__ALL__', label: 'All available years (combined)' }] : []),
+                    ...symbolFiles.map(item => ({ value: item.name, label: item.name })),
+                  ]}/>
                 </label>
                 <label className="block text-xs text-gray-400">Month
                   <select className={inputClass} value={selectedMonth} onChange={event => setSelectedMonth(event.target.value)}>
