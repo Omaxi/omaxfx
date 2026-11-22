@@ -1670,7 +1670,7 @@ export default function Chart() {
           {isPlaying ? <Pause size={20} /> : <Play size={20} />}
         </button>
         <button onClick={stepForward}
-          className="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-2xl shadow-blue-900/60 active:scale-95 transition-transform border-2 border-blue-500">
+          className="theme-action-contrast w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-2xl shadow-blue-900/60 active:scale-95 transition-transform border-2 border-blue-500">
           <SkipForward size={30} />
         </button>
       </div>
