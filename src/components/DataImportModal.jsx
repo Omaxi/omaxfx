@@ -30,12 +30,12 @@ function StyledSelect({ value, onChange, options }) {
   }, [open]);
   return (
     <div ref={rootRef} className="relative mt-1 w-full">
-      <button type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(current => !current)} className="flex h-11 w-full items-center justify-between rounded-lg border border-[#303846] bg-[#1e222d] px-3 text-left text-sm font-semibold text-white transition-colors hover:border-[#46536a] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15">
+      <button type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(current => !current)} className="theme-select-trigger flex h-11 w-full items-center justify-between rounded-lg border border-[#303846] bg-[#1e222d] px-3 text-left text-sm font-semibold text-white transition-colors hover:border-[#46536a] focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15">
         <span className="truncate">{selected?.label ?? value}</span>
         <ChevronDown size={16} className={'ml-3 shrink-0 text-gray-400 transition-transform ' + (open ? 'rotate-180' : '')} />
       </button>
-      {open && <div role="listbox" className="absolute left-0 top-[calc(100%+6px)] z-[9999] max-h-60 w-full overflow-y-auto rounded-lg border border-[#343b49] bg-[#1e222d] p-1 shadow-2xl">
-        {options.map(option => <button key={String(option.value)} type="button" role="option" aria-selected={String(option.value) === String(value)} onClick={() => { onChange(option.value); setOpen(false); }} className={'flex min-h-9 w-full items-center rounded-md px-3 py-2 text-left text-sm transition-colors ' + (String(option.value) === String(value) ? 'bg-[#273449] font-semibold text-white' : 'text-gray-300 hover:bg-[#2a2e39] hover:text-white')}>
+      {open && <div role="listbox" className="theme-select-menu absolute left-0 top-[calc(100%+6px)] z-[9999] max-h-60 w-full overflow-y-auto rounded-lg border border-[#343b49] bg-[#1e222d] p-1 shadow-2xl">
+        {options.map(option => <button key={String(option.value)} type="button" role="option" aria-selected={String(option.value) === String(value)} onClick={() => { onChange(option.value); setOpen(false); }} className={'theme-select-option flex min-h-9 w-full items-center rounded-md px-3 py-2 text-left text-sm transition-colors ' + (String(option.value) === String(value) ? 'bg-[#273449] font-semibold text-white' : 'text-gray-300 hover:bg-[#2a2e39] hover:text-white')}>
           {option.label}
         </button>)}
       </div>}
