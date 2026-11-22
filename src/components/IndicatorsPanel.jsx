@@ -137,15 +137,28 @@ function calculateIndicators(candles, config, active, timeframe, sessionCandles 
   }
 
   if (active.vwap) {
-    let day = null, cumulativePV = 0, cumulativeVolume = 0;
+    let day = null, cumulativePV = 0, cumulativeVolume = 0, cumulativeP2V = 0;
+    const bands = { upper1: [], lower1: [], upper2: [], lower2: [] };
     result.vwap = completed.map(c => {
       const key = new Date((c.time + 3 * 3600) * 1000).toISOString().slice(0, 10);
-      if (key !== day) { day = key; cumulativePV = 0; cumulativeVolume = 0; }
+      if (key !== day) { day = key; cumulativePV = 0; cumulativeVolume = 0; cumulativeP2V = 0; }
       const volume = Number(c.volume) > 0 ? Number(c.volume) : 1;
-      cumulativePV += ((c.high + c.low + c.close) / 3) * volume;
+      const typicalPrice = (c.high + c.low + c.close) / 3;
+      cumulativePV += typicalPrice * volume;
+      cumulativeP2V += typicalPrice * typicalPrice * volume;
       cumulativeVolume += volume;
-      return { time: c.time, value: cumulativePV / cumulativeVolume };
+      const vwap = cumulativePV / cumulativeVolume;
+      const deviation = Math.sqrt(Math.max(0, cumulativeP2V / cumulativeVolume - vwap * vwap));
+      bands.upper1.push({ time: c.time, value: vwap + deviation });
+      bands.lower1.push({ time: c.time, value: vwap - deviation });
+      bands.upper2.push({ time: c.time, value: vwap + deviation * 2 });
+      bands.lower2.push({ time: c.time, value: vwap - deviation * 2 });
+      return { time: c.time, value: vwap };
     });
+    result.vwapUpper1 = bands.upper1;
+    result.vwapLower1 = bands.lower1;
+    result.vwapUpper2 = bands.upper2;
+    result.vwapLower2 = bands.lower2;
   }
 
   if (active.rsi || active.atr || active.adx) {
@@ -374,7 +387,13 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
           add('bb_' + instance.id + '_lower', instance.color || '#a78bfa', 0, 1);
         });
       }
-      if (item.key === 'vwap') add('vwap', item.color, 0, 1.5);
+      if (item.key === 'vwap') {
+        add('vwap', item.color, 0, 1.7);
+        add('vwapUpper1', '#4ade80', 0, 1);
+        add('vwapLower1', '#4ade80', 0, 1);
+        add('vwapUpper2', '#86efac', 0, 1, 2);
+        add('vwapLower2', '#86efac', 0, 1, 2);
+      }
       if (item.key === 'rsi') add('rsi', item.color, lowerPane++);
       if (item.key === 'atr') add('atr', item.color, lowerPane++);
       if (item.key === 'adx') add('adx', item.color, lowerPane++);
@@ -422,16 +441,9 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
       : [];
     const hourlyAtr = latest(hourlyAtrSeries);
     if (hourlyAtr != null) {
-      const pipSize = symbol === 'XAUUSD'
-        ? 0.01
-        : symbol?.includes('JPY')
-          ? 0.01
-          : /^[A-Z]{6}$/.test(symbol || '')
-            ? 0.0001
-            : getPriceTickSize(symbol, contractSpecs) * 10;
-      // Keep ATR in the instrument's native price units. Only the stop-loss
-      // distance is converted to pips for the dashboard.
-      const stopLossPips = (hourlyAtr * 0.9) / pipSize;
+      // Stop distance is exactly 0.9 × 1H ATR, in the same native units.
+      // Do not divide by pip size: that conversion inflated the displayed value.
+      const stopLossPips = hourlyAtr * 0.9;
       dashboard.push({
         key: 'atr-1h',
         label: '1H ATR',
@@ -606,7 +618,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
     if (!canvas || !chart || !priceSeries) return undefined;
     let frame = 0;
     const draw = () => {
-      cancelAnimationFrame(frame);
+      if (frame !== 0) return;
       frame = requestAnimationFrame(() => {
         const rect = canvas.getBoundingClientRect();
         const dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -750,7 +762,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
     if (!canvas || !chart || !priceSeries) return undefined;
     let frame = 0;
     const draw = () => {
-      cancelAnimationFrame(frame);
+      if (frame !== 0) return;
       frame = requestAnimationFrame(() => {
         const rect = canvas.getBoundingClientRect();
         const dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -840,12 +852,21 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
     };
     draw();
     const timeScale = chart.timeScale();
+    const priceScale = chart.priceScale('right');
     timeScale.subscribeVisibleLogicalRangeChange(draw);
+    priceScale.subscribeVisiblePriceRangeChange?.(draw);
+    chart.subscribeSizeChange?.(draw);
+    window.addEventListener('pointermove', draw, { passive: true });
+    window.addEventListener('wheel', draw, { passive: true });
     const observer = new ResizeObserver(draw);
     observer.observe(canvas);
     return () => {
-      cancelAnimationFrame(frame);
+      if (frame !== 0) cancelAnimationFrame(frame);
       timeScale.unsubscribeVisibleLogicalRangeChange(draw);
+      priceScale.unsubscribeVisiblePriceRangeChange?.(draw);
+      chart.unsubscribeSizeChange?.(draw);
+      window.removeEventListener('pointermove', draw);
+      window.removeEventListener('wheel', draw);
       observer.disconnect();
     };
   }, [active.fvg, config.fvg, currentFvgZones, higherFvgZones, visibleData, timeframe, chartRef, chartReady, priceSeriesRef]);
