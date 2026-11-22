@@ -257,6 +257,8 @@ export default function Chart() {
         exists = state.positions.some(p => p.id === selectedItem.positionId);
       } else if (selectedItem.target === 'pending') {
         exists = state.pendingOrders.some(o => o.id === selectedItem.orderId);
+      } else if (selectedItem.target === 'draft') {
+        exists = !!state.draftPosition;
       }
       if (!exists) { setSelectedItem(null); lockChart(false); }
     }
@@ -631,7 +633,40 @@ export default function Chart() {
         }
       });
 
-      // 2. Draw user drawings
+      // 2. Draw the unsubmitted TradingView-style long/short position preview.
+      // Profit and risk zones share the entry line and extend to the right.
+      if (state.draftPosition?.entry != null && seriesRef.current) {
+        const draft = state.draftPosition;
+        const entryY = seriesRef.current.priceToCoordinate(Number(draft.entry));
+        const slY = draft.sl == null ? null : seriesRef.current.priceToCoordinate(Number(draft.sl));
+        const tpY = draft.tp == null ? null : seriesRef.current.priceToCoordinate(Number(draft.tp));
+        const anchorX = draft.entryTime != null ? timeToX(Number(draft.entryTime)) : null;
+        const left = Math.max(0, Math.min(paneW - 24, anchorX == null ? paneW * 0.48 : anchorX));
+        const right = Math.min(paneW, left + Math.max(130, Math.min(260, paneW * 0.22)));
+        const long = draft.type === 'buy';
+        if (entryY != null && Number.isFinite(entryY) && right > left) {
+          if (tpY != null && Number.isFinite(tpY)) {
+            ctx.fillStyle = long ? 'rgba(38,166,154,0.34)' : 'rgba(239,83,80,0.34)';
+            ctx.fillRect(left, Math.min(entryY, tpY), right - left, Math.max(1, Math.abs(entryY - tpY)));
+          }
+          if (slY != null && Number.isFinite(slY)) {
+            ctx.fillStyle = long ? 'rgba(239,83,80,0.34)' : 'rgba(38,166,154,0.34)';
+            ctx.fillRect(left, Math.min(entryY, slY), right - left, Math.max(1, Math.abs(entryY - slY)));
+          }
+          ctx.strokeStyle = long ? '#26a69a' : '#ef5350';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([]);
+          ctx.beginPath(); ctx.moveTo(left, entryY); ctx.lineTo(right, entryY); ctx.stroke();
+          ctx.fillStyle = '#e5e7eb';
+          ctx.font = '600 10px Arial';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          const rrr = calcRRR(draft.entry, draft.sl, draft.tp);
+          ctx.fillText((long ? 'Long' : 'Short') + ' · RRR ' + (rrr || '—'), left + 5, entryY + (long ? 12 : -12));
+        }
+      }
+
+      // 3. Draw user drawings
       const sel = selectedItemRef.current;
       const selectedId = sel?.type === 'drawing' ? sel.id : null;
       state.drawings.forEach(d => {
@@ -679,10 +714,14 @@ export default function Chart() {
                 : state.pendingOrders.find(item => item.id === sel.orderId);
               const entry = Number(trade?.entryPrice);
               if (Number.isFinite(entry)) {
-                const distance = Math.abs(Number(livePrice) - entry);
-                const pipSize = state.symbol === 'XAUUSD' ? 0.01
-                  : state.symbol?.includes('JPY') ? 0.01
-                    : /^[A-Z]{6}$/.test(state.symbol || '') ? 0.0001
+                const direction = trade?.type === 'buy' ? 1 : -1;
+                const directionalDistance = (entry - Number(livePrice)) * direction;
+                const distance = Math.abs(directionalDistance);
+                const code = String(state.symbol || '').toUpperCase();
+                const configuredPip = Number(state.contractSpecs?.[state.symbol]?.pipSize);
+                const pipSize = configuredPip > 0 ? configuredPip
+                  : code.startsWith('XAU') || code.endsWith('JPY') ? 0.01
+                    : /^[A-Z]{6}$/.test(code) ? 0.0001
                       : getPriceTickSize(state.symbol, state.contractSpecs) * 10;
                 const pips = pipSize > 0 ? distance / pipSize : 0;
                 const precision = getPricePrecision(state.symbol, state.contractSpecs);
@@ -755,6 +794,7 @@ export default function Chart() {
           state.tradeHistory !== previous.tradeHistory ||
           state.positions !== previous.positions ||
           state.pendingOrders !== previous.pendingOrders ||
+          state.draftPosition !== previous.draftPosition ||
           state.timeframe !== previous.timeframe ||
           state.symbol !== previous.symbol ||
           state.currentIndex !== previous.currentIndex) scheduleDraw();
@@ -869,6 +909,14 @@ export default function Chart() {
           if (lineY != null && Number.isFinite(lineY)) candidates.push({ target: 'pending', orderId: order.id, type: 'tp', price: order.tp, lineY });
         }
       });
+      if (state.draftPosition) {
+        const draft = state.draftPosition;
+        [['entry', draft.entry], ['sl', draft.sl], ['tp', draft.tp]].forEach(([type, price]) => {
+          if (price == null) return;
+          const lineY = seriesRef.current.priceToCoordinate(Number(price));
+          if (lineY != null && Number.isFinite(lineY)) candidates.push({ target: 'draft', type, price: Number(price), lineY });
+        });
+      }
       if (candidates.length === 0) return null;
       let closest = null, closestDist = Infinity;
       for (const c of candidates) {
@@ -956,18 +1004,21 @@ export default function Chart() {
         if (price != null) {
           const placingStop = state.drawingStep === 'sl';
           state.setDraftPrice(price);
-          if (placingStop) {
+          if (!placingStop) {
+            state.updateDraftPosition({ entryTime: xyToPoint(x, y)?.time ?? null });
+          } else {
             const updated = useStore.getState();
             const side = updated.drawingSide || updated.draftPosition?.type || 'buy';
             const entry = Number(updated.draftPosition?.entry);
+            const stop = Number(updated.draftPosition?.sl);
             const market = Number(getExecutionCandle(updated.rawData, updated.displayData, updated.currentIndex, updated.timeframe)?.close);
             const isStop = Number.isFinite(entry) && Number.isFinite(market) && (side === 'buy' ? entry > market : entry < market);
+            const risk = Math.abs(entry - stop);
+            const target = side === 'buy' ? entry + risk * 2 : entry - risk * 2;
             useStore.setState({
               isDrawingMode: false,
               drawingStep: null,
-              draftPosition: updated.draftPosition ? { ...updated.draftPosition, tp: null, orderType: isStop ? 'stop' : 'limit' } : null,
-              isOrderModalOpen: true,
-              orderSide: side,
+              draftPosition: updated.draftPosition ? { ...updated.draftPosition, tp: target, orderType: isStop ? 'stop' : 'limit' } : null,
             });
           }
           e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
@@ -982,6 +1033,15 @@ export default function Chart() {
 
       const drawingHit = hitTestDrawings(x, y);
       const tradeHit = !drawingHit ? detectTradeHit(x, y) : null;
+
+      // Trade levels are directly draggable with one press, just like TradingView.
+      // This includes the unsubmitted draft position's entry, SL and TP.
+      if (tradeHit) {
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        dragRef.current = { type: 'trade', data: tradeHit };
+        try { container.setPointerCapture(e.pointerId); } catch (error) {}
+        return;
+      }
 
       const sel = selectedItemRef.current;
 
@@ -1130,6 +1190,17 @@ export default function Chart() {
               else if (d.type === 'tp') state.updatePositionTp(d.positionId, price);
             } else if (d.target === 'pending') {
               state.updatePendingOrder(d.orderId, d.type, price);
+            } else if (d.target === 'draft' && state.draftPosition) {
+              if (d.type === 'entry') {
+                const delta = price - Number(state.draftPosition.entry);
+                state.updateDraftPosition({
+                  entry: price,
+                  sl: state.draftPosition.sl == null ? null : Number(state.draftPosition.sl) + delta,
+                  tp: state.draftPosition.tp == null ? null : Number(state.draftPosition.tp) + delta,
+                });
+              } else {
+                state.updateDraftPosition({ [d.type]: price });
+              }
             }
           }
         } else if (drag.type === 'drawing') {
