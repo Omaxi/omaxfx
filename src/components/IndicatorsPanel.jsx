@@ -441,7 +441,7 @@ export default function IndicatorsPanel({ onHtfDashboard, chartRef, chartReady, 
               item.high = Math.max(item.high, Number(candle.high));
               item.low = Math.min(item.low, Number(candle.low));
             }
-          });
+          }
         });
 
         let paneWidth = rect.width, paneHeight = rect.height;
