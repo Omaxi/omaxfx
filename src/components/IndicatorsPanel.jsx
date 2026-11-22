@@ -393,7 +393,10 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
       onIndicatorDashboard?.([]);
       return;
     }
-    const calculated = calculateIndicators(visibleData, config, active, timeframe, sessionCandles);
+    // Calculate dashboard values for every numeric indicator, even when its
+    // chart plot is switched off. Only the active series are actually rendered.
+    const dashboardActive = { ...active, ma: true, bb: true, vwap: true, rsi: true, atr: true, adx: true };
+    const calculated = calculateIndicators(visibleData, config, dashboardActive, timeframe, sessionCandles);
     Object.entries(seriesRef.current).forEach(([key, series]) => {
       try { series.setData(calculated[key] || []); } catch (e) {}
     });
@@ -406,7 +409,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
       return null;
     };
     const dashboard = [];
-    if (active.ma) {
+    {
       (config.ma.instances || []).forEach(instance => {
         const value = latest(calculated['ma_' + instance.id]);
         if (value != null) dashboard.push({
@@ -416,7 +419,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
         });
       });
     }
-    if (active.bb) {
+    {
       (config.bb.instances || []).forEach(instance => {
         ['upper', 'middle', 'lower'].forEach(level => {
           const value = latest(calculated['bb_' + instance.id + '_' + level]);
@@ -428,12 +431,11 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
         });
       });
     }
-    if (active.vwap) {
+    {
       const value = latest(calculated.vwap);
       if (value != null) dashboard.push({ key: 'vwap', label: 'VWAP', color: '#22c55e', value, price: true });
     }
     [['rsi', 'RSI', '#38bdf8'], ['atr', 'ATR', '#fb923c'], ['adx', 'ADX', '#c084fc']].forEach(([key, label, color]) => {
-      if (!active[key]) return;
       const value = latest(calculated[key]);
       if (value != null) dashboard.push({ key, label, color, value, price: key === 'atr' });
     });
