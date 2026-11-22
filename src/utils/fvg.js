@@ -95,3 +95,28 @@ export const latestFairValueGap = (gaps, cutoff = Infinity) => {
   if (!latest || (latest.mitigatedAt != null && Number(latest.mitigatedAt) <= Number(cutoff))) return null;
   return latest;
 };
+
+
+// Return at most two zones: the newest still-active FVG and the newest
+// FVG that has been mitigated by the replay cutoff. The latter is retained
+// as an inverse FVG (iFVG) instead of disappearing from the chart.
+export const latestFairValueGapPair = (gaps, cutoff = Infinity) => {
+  if (!Array.isArray(gaps)) return [];
+  const formed = gaps
+    .filter(zone => Number(zone.startTime) <= Number(cutoff))
+    .sort((a, b) => Number(a.startTime) - Number(b.startTime)
+      || String(a.id).localeCompare(String(b.id)));
+
+  let active = null;
+  let mitigated = null;
+  for (const zone of formed) {
+    const mitigationTime = zone.mitigatedAt == null ? null : Number(zone.mitigatedAt);
+    if (mitigationTime != null && Number.isFinite(mitigationTime) && mitigationTime <= Number(cutoff)) {
+      mitigated = { ...zone, isIFVG: true };
+    } else {
+      active = { ...zone, isIFVG: false };
+    }
+  }
+
+  return [active, mitigated].filter(Boolean);
+};
