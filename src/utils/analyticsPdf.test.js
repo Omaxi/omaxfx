@@ -34,6 +34,10 @@ test('builds the analytics PDF when the trade-by-trade curve contains a drawdown
 
   assert.match(html, /Max DD/);
   assert.match(html, /OmaxFX Simulator · Performance report/);
+  assert.match(html, /Trading statistics/);
+  assert.match(html, /Trading calendar · All active months/);
+  assert.match(html, /top-metrics/);
+  assert.match(html, /@page\\{size:A4 portrait/);
   assert.match(html, /equityBlueFill/);
   assert.match(html, /drawdownFill/);
   assert.match(html, /stop-color="#2c67c5"/);
@@ -42,7 +46,7 @@ test('builds the analytics PDF when the trade-by-trade curve contains a drawdown
   assert.match(html, /<rect x="491" y="147" width="170" height="22" rx="5"/);
   assert.match(html, /Buy &amp; Hold/);
   assert.doesNotMatch(html, /Use your browser's Print dialog/);
-  assert.match(html, /Trade-by-trade cumulative realized P&amp;L/);
+  assert.match(html, /Equity curve · Strategy vs Buy &amp; Hold/);
 });
 
 
@@ -78,5 +82,5 @@ test('builds the analytics PDF when no drawdown exists', () => {
     ],
   });
 
-  assert.match(html, /Trade-by-trade cumulative realized P&amp;L/);
+  assert.match(html, /Equity curve · Strategy vs Buy &amp; Hold/);
 });
