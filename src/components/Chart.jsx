@@ -380,7 +380,10 @@ export default function Chart() {
       const light = (event?.detail || document.documentElement.dataset.uiTheme) === 'light';
       try {
         chartRef.current?.applyOptions({
-          layout: { textColor: light ? '#475467' : '#d1d4dc' },
+          layout: {
+            background: { type: 'solid', color: light ? '#ffffff' : (useStore.getState().theme?.background || '#131722') },
+            textColor: light ? '#475467' : '#d1d4dc',
+          },
           grid: {
             vertLines: { visible: false },
             horzLines: { visible: false },
@@ -1522,7 +1525,7 @@ export default function Chart() {
   }, [chartReady, timeframe, symbol]);
 
   return (
-    <div className="relative w-full h-full" style={{ backgroundColor: theme.background }}>
+    <div className="chart-root relative w-full h-full" style={{ backgroundColor: theme.background }}>
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none', cursor: isPencilMode ? 'crosshair' : 'default' }} />
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
       <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 25 }} aria-hidden="true" />
