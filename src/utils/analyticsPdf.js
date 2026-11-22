@@ -173,7 +173,7 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
       }).join('')}
     </section>`).join('');
   return `<!doctype html><html><head><meta charset="utf-8"><title>OmaxFX Analytics - ${escapeHtml(sessionName)}</title><style>
-    @page{size:A4 landscape;margin:9mm 9mm 10mm;background:#0b0e11}
+    @page{size:A4 portrait;margin:9mm 9mm 10mm;background:#0b0e11}
     *{box-sizing:border-box}
     body{font:9px/1.4 Arial,sans-serif;color:#f4f4f5;margin:0;background:#0b0e11}
     h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;margin:0}h3{font-size:11px;margin:0}
