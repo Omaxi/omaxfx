@@ -560,7 +560,7 @@ export default function IndicatorsPanel({ chartRef, chartReady, visibleData, dis
         const badgeX = Math.max(8, paneWidth - badgeWidth - 12);
         // Keep this panel below the Live Information card, with its own
         // background and border so it remains legible on every chart theme.
-        const badgeY = 176;
+        const badgeY = 196;
         const nextBoundary = Number(htfViewerCandle.time) + htfViewerTimeframe * 60;
         const replayBoundary = Number(rawData?.[currentIndex]?.time) + 60;
         const remaining = Math.max(0, nextBoundary - replayBoundary);
