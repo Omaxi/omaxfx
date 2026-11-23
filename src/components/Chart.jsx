@@ -220,6 +220,7 @@ export default function Chart({ chartId = 'main' }) {
   const [htfDashboard, setHtfDashboard] = useState(null);
   const [indicatorDashboard, setIndicatorDashboard] = useState([]);
   const [dashboardCollapsed, setDashboardCollapsed] = useState(false);
+  const [chartUiPanelsHidden, setChartUiPanelsHidden] = useState(false);
   const cancelTextEditRef = useRef(false);
 
   const { 
@@ -243,6 +244,17 @@ export default function Chart({ chartId = 'main' }) {
     } catch (e) {}
   }, []);
 
+  useEffect(() => {
+    const handlePanelShortcut = (event) => {
+      if (event.key?.toLowerCase() !== 'h' || event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target;
+      if (target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(target?.tagName)) return;
+      event.preventDefault();
+      setChartUiPanelsHidden(hidden => !hidden);
+    };
+    window.addEventListener('keydown', handlePanelShortcut);
+    return () => window.removeEventListener('keydown', handlePanelShortcut);
+  }, []);
   useEffect(() => { selectedItemRef.current = selectedItem; }, [selectedItem]);
 
   useEffect(() => {
@@ -1643,7 +1655,7 @@ export default function Chart({ chartId = 'main' }) {
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
       <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 25 }} aria-hidden="true" />
 
-      {gameStarted && <div className="live-information-panel absolute top-11 right-2 z-[80] w-[min(260px,calc(100%-3.5rem))] rounded-xl border border-[#2a2e39] bg-[#131722]/95 p-2.5 text-[10px] leading-4 text-gray-300 shadow-xl pointer-events-auto font-mono">
+      {gameStarted && !chartUiPanelsHidden && <div className="live-information-panel absolute top-2 left-1/2 -translate-x-1/2 z-[80] w-[min(260px,calc(100%-3.5rem))] rounded-xl border border-[#2a2e39] bg-[#131722]/95 p-2.5 text-[10px] leading-4 text-gray-300 shadow-xl pointer-events-auto font-mono">
         <button type="button" onClick={() => setDashboardCollapsed(value => !value)}
           aria-expanded={!dashboardCollapsed}
           className="mb-1 flex w-full items-center justify-between gap-2 rounded text-left hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500">
@@ -1755,7 +1767,7 @@ export default function Chart({ chartId = 'main' }) {
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 20 }}>
         <div className="pointer-events-auto">
           <DrawingToolbar />
-          <IndicatorsPanel onHtfDashboard={setHtfDashboard} onIndicatorDashboard={setIndicatorDashboard} chartRef={chartRef} chartReady={chartReady} visibleData={visibleData} displayData={displayData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={rawData[currentIndex] || null} rawData={rawData} currentIndex={currentIndex} />
+          {!chartUiPanelsHidden && <IndicatorsPanel onHtfDashboard={setHtfDashboard} onIndicatorDashboard={setIndicatorDashboard} chartRef={chartRef} chartReady={chartReady} visibleData={visibleData} displayData={displayData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={rawData[currentIndex] || null} rawData={rawData} currentIndex={currentIndex} />}
         </div>
 
         {pendingBtnPos.map(p => (
