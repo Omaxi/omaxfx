@@ -28,7 +28,7 @@ export default function StylePanel({ selectedId, onClose }) {
 
   return (
     <div 
-      className="absolute top-14 right-2 z-40 w-56 bg-[#131722]/98 backdrop-blur border border-[#2a2e39] rounded-lg shadow-2xl overflow-hidden"
+      className="absolute top-14 right-2 z-[10000] w-56 bg-[#131722]/98 backdrop-blur border border-[#2a2e39] rounded-lg shadow-none overflow-hidden"
       onPointerDown={(e) => e.stopPropagation()}
     >
       {/* Header */}
