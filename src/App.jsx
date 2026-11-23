@@ -1,4 +1,4 @@
-import Chart from './components/Chart';
+import ChartWorkspace from './components/ChartWorkspace';
 import ControlPanel from './components/ControlPanel';
 import OrderModal from './components/OrderModal';
 import HistoryModal from './components/HistoryModal';
@@ -390,7 +390,7 @@ function App() {
       </header>
       
       <main className="flex-1 relative min-h-0">
-        <Chart />
+        <ChartWorkspace />
       </main>
       <TradeScreenshotCapture />
       
