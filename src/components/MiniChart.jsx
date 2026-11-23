@@ -136,7 +136,7 @@ export default function MiniChart({ timeframe, onTimeframeChange }) {
       <div ref={containerRef} className="absolute inset-0" />
       <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={candles} displayData={aggregatedData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={rawData[currentIndex] || null} rawData={rawData} currentIndex={currentIndex} />
       {/* Keep each pane's timeframe control beside its own Indicators button. */}
-      <div className="absolute left-[176px] top-2 z-30 pointer-events-auto">
+      <div className="absolute left-[192px] top-2 z-30 pointer-events-auto">
         <button ref={timeframeButtonRef} type="button" onClick={toggleTimeframeMenu}
           aria-label="Chart timeframe" aria-haspopup="listbox" aria-expanded={timeframeMenuOpen}
           className="flex h-8 items-center gap-2 rounded-lg border border-[#2a2e39] bg-[#1e222d] px-3 text-[11px] font-bold text-white shadow-lg transition-colors hover:bg-[#2a2e39] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
