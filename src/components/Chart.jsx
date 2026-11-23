@@ -227,7 +227,7 @@ export default function Chart({ chartId = 'main' }) {
     rawData, displayData, currentIndex, positions, pendingOrders, 
     draftPosition, timeframe, cancelPendingOrder, closePosition, activeDrawingTool,
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
-    theme, snapshotDrawings, recenterToken,
+    theme, uiTheme, snapshotDrawings, recenterToken,
     isPencilMode, pencilColor, setPencilColor,
     chartType, symbol, contractSpecs
   } = useStore();
@@ -409,7 +409,7 @@ export default function Chart({ chartId = 'main' }) {
       try {
         chartRef.current?.applyOptions({
           layout: {
-            background: { type: 'solid', color: light ? '#ffffff' : (useStore.getState().theme?.background || '#131722') },
+            background: { type: 'solid', color: light ? '#f8fafc' : (useStore.getState().theme?.background || '#131722') },
             textColor: light ? '#475467' : '#d1d4dc',
             panes: { separatorColor: light ? '#d0d5dd' : '#2a2e39', separatorHoverColor: '#3b82f6', enableResize: true },
           },
@@ -1650,7 +1650,7 @@ export default function Chart({ chartId = 'main' }) {
   }, [chartReady, timeframe, symbol]);
 
   return (
-    <div className="chart-root relative w-full h-full" style={{ backgroundColor: theme.background }}>
+    <div className="chart-root relative w-full h-full" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : theme.background }}>
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none', cursor: isPencilMode ? 'crosshair' : 'default' }} />
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
       <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 25 }} aria-hidden="true" />
