@@ -4,7 +4,7 @@ export const getTimeframeBucketStart = (time, timeframeMinutes) => {
   if (!Number.isFinite(minutes) || minutes <= 1) return Number(time);
   const interval = Math.round(minutes * 60);
   // Source timestamps are stored three hours behind the UTC+3 market clock.
-  // Align daily and weekly candles to the broker's local calendar, not UTC.
+  // Align daily candles to the broker's UTC+3 market calendar; keep weekly candles UTC-aligned.
   const marketOffset = (minutes === 1440 || minutes === 10080) ? 3 * 3600 : 0;
   const weekOffset = minutes === 10080 ? 4 * 86400 : 0;
   return Math.floor((Number(time) + marketOffset - weekOffset) / interval) * interval + weekOffset - marketOffset;
@@ -23,7 +23,7 @@ export const aggregateData = (data, timeframeMinutes) => {
 
   for (const candle of data) {
     if (!candle || !Number.isFinite(candle.time)) continue;
-    // Daily/weekly boundaries follow the UTC+3 market calendar used by the CSV.
+    // Daily boundaries follow the UTC+3 market calendar used by the CSV.
     const marketOffset = (minutes === 1440 || minutes === 10080) ? 3 * 3600 : 0;
     const weekOffset = minutes === 10080 ? 4 * 86400 : 0;
     const bucketTime = Math.floor((candle.time + marketOffset - weekOffset) / interval) * interval + weekOffset - marketOffset;
