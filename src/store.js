@@ -556,7 +556,7 @@ export const useStore = create((set, get) => ({
   resetTheme: () => set({ theme: { ...DEFAULT_THEME } }),
 
   soundEnabled: true,
-  musicEnabled: true,
+  musicEnabled: false,
   toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
   toggleMusic: () => set((state) => ({ musicEnabled: !state.musicEnabled })),
 
