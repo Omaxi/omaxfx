@@ -84,10 +84,14 @@ export function getTradeCandleWindow(trade, candles, timeframe = 1) {
 
 // Render a deterministic historical chart for exactly one trade. The live chart
 // canvas is never reused, so a batch of closures cannot receive one shared image.
-export function renderTradeScreenshot(trade, candles, timeframe = 1) {
+export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = 'dark') {
   const windowData = getTradeCandleWindow(trade, candles, timeframe);
   if (!windowData || typeof document === 'undefined') return null;
   const { data, entryIndex, exitIndex } = windowData;
+  const light = uiTheme === 'light';
+  const palette = light
+    ? { background: '#ffffff', grid: '#e4e7ec', text: '#667085' }
+    : { background: '#0d1117', grid: '#273244', text: '#9aa4b2' };
 
   const width = 1280, height = 640;
   const canvas = document.createElement('canvas');
@@ -112,8 +116,8 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1) {
   const candleW = Math.max(1, Math.min(9, step * 0.68));
   const x = index => left + (index + 0.5) * step;
 
-  ctx.fillStyle = '#0d1117'; ctx.fillRect(0, 0, width, height);
-  ctx.strokeStyle = '#273244'; ctx.lineWidth = 1; ctx.font = '11px Arial'; ctx.fillStyle = '#9aa4b2';
+  ctx.fillStyle = palette.background; ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = palette.grid; ctx.lineWidth = 1; ctx.font = '11px Arial'; ctx.fillStyle = palette.text;
   for (let i = 0; i <= 6; i++) {
     const yy = top + (plotH * i / 6), value = max - (max - min) * i / 6;
     ctx.beginPath(); ctx.moveTo(left, yy); ctx.lineTo(width - right, yy); ctx.stroke();
@@ -140,7 +144,7 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1) {
     ctx.fillRect(cx - candleW / 2, Math.min(yo, yc), candleW, Math.max(1, Math.abs(yc - yo)));
   });
 
-  ctx.fillStyle = '#9aa4b2'; ctx.font = '11px Arial'; ctx.textAlign = 'center';
+  ctx.fillStyle = palette.text; ctx.font = '11px Arial'; ctx.textAlign = 'center';
   const labelCount = Math.min(7, data.length);
   for (let i = 0; i < labelCount; i++) {
     const idx = Math.round(i * (data.length - 1) / Math.max(1, labelCount - 1));
