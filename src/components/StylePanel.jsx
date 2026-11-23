@@ -1,4 +1,5 @@
 import { useStore } from '../store';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 const PRESET_COLORS = [
@@ -26,9 +27,9 @@ export default function StylePanel({ selectedId, onClose }) {
     updateDrawing(selectedId, patch);
   };
 
-  return (
+  return createPortal(
     <div 
-      className="absolute top-14 right-2 z-[10000] w-56 bg-[#131722]/98 backdrop-blur border border-[#2a2e39] rounded-lg shadow-none overflow-hidden"
+      className="fixed top-[132px] left-[max(8px,calc(50vw-320px))] z-[10000] w-56 max-h-[calc(100vh-148px)] bg-[#131722]/98 border border-[#2a2e39] rounded-lg shadow-none overflow-y-auto"
       onPointerDown={(e) => e.stopPropagation()}
     >
       {/* Header */}
@@ -246,6 +247,6 @@ export default function StylePanel({ selectedId, onClose }) {
           </>
         )}
       </div>
-    </div>
+    </div>, document.body);
   );
 }
