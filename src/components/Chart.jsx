@@ -189,7 +189,7 @@ const PENCIL_COLORS = [
 
 const X_BUTTON_OFFSET_FROM_RIGHT = 200;
 
-export default function Chart() {
+export default function Chart({ chartId = 'main' }) {
   const chartContainerRef = useRef();
   const canvasRef = useRef();
   const crosshairCanvasRef = useRef();
@@ -1534,18 +1534,31 @@ export default function Chart() {
     const timeScale = chart.timeScale();
     const width = chartContainerRef.current?.clientWidth || 800;
     const axisWidth = chart.priceScale('right').width();
-    const halfBars = Math.max(25, Math.floor(Math.max(100, width - axisWidth) / 12));
+    const paneWidth = Math.max(120, width - axisWidth);
+    const halfBars = Math.max(20, Math.floor(paneWidth / 12));
     const last = visibleData.length - 1;
-    timeScale.applyOptions({ barSpacing: 6, rightOffset: 60 });
-    timeScale.setVisibleLogicalRange({ from: Math.max(0, last - halfBars), to: last + halfBars });
-    chart.priceScale('right').applyOptions({ autoScale: true });
+    const lastCandle = visibleData[last];
+    const visiblePrices = visibleData.slice(Math.max(0, last - halfBars), last + 1);
+    const high = Math.max(...visiblePrices.map(c => Number(c.high)));
+    const low = Math.min(...visiblePrices.map(c => Number(c.low)));
+    const center = Number(lastCandle.close);
+    const span = Math.max(high - low, Math.abs(center) * 0.0005, 0.0001) * 1.25;
+    timeScale.applyOptions({ barSpacing: 6, rightOffset: halfBars, fixLeftEdge: false, fixRightEdge: false });
+    timeScale.setVisibleLogicalRange({ from: last - halfBars, to: last + halfBars });
+    chart.priceScale('right').applyOptions({ autoScale: false });
+    chart.priceScale('right').setVisibleRange({ from: center - span / 2, to: center + span / 2 });
     scheduleDrawRef.current?.();
   }, [visibleData]);
 
   useEffect(() => {
-    window.addEventListener('omaxfx:reset-chart', resetChartView);
-    return () => window.removeEventListener('omaxfx:reset-chart', resetChartView);
-  }, [resetChartView]);
+    const reset = () => resetChartView();
+    window.addEventListener('omaxfx:reset-chart', reset);
+    window.addEventListener(`omaxfx:reset-chart:${chartId}`, reset);
+    return () => {
+      window.removeEventListener('omaxfx:reset-chart', reset);
+      window.removeEventListener(`omaxfx:reset-chart:${chartId}`, reset);
+    };
+  }, [resetChartView, chartId]);
 
   useEffect(() => {
     const chart = chartReady ? chartRef.current : null;
@@ -1630,7 +1643,7 @@ export default function Chart() {
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
       <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 25 }} aria-hidden="true" />
 
-      <div className="live-information-panel absolute top-2 right-12 z-[80] w-[min(260px,calc(100%-3.5rem))] rounded-xl border border-[#2a2e39] bg-[#131722]/95 p-2.5 text-[10px] leading-4 text-gray-300 shadow-xl pointer-events-auto font-mono">
+      {gameStarted && <div className="live-information-panel absolute top-11 right-2 z-[80] w-[min(260px,calc(100%-3.5rem))] rounded-xl border border-[#2a2e39] bg-[#131722]/95 p-2.5 text-[10px] leading-4 text-gray-300 shadow-xl pointer-events-auto font-mono">
         <button type="button" onClick={() => setDashboardCollapsed(value => !value)}
           aria-expanded={!dashboardCollapsed}
           className="mb-1 flex w-full items-center justify-between gap-2 rounded text-left hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500">
@@ -1669,7 +1682,7 @@ export default function Chart() {
             </div>
           </div>}
         </>}
-      </div>
+      </div>}
 
       {isPencilMode && (
         <div 
