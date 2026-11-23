@@ -459,7 +459,7 @@ html[data-ui-theme="light"] .drawing-style-panel input:not([type="color"]):not([
   color: #172033 !important;
   border-color: #d0d5dd !important;
 }
-html[data-ui-theme="light"] .drawing-style-panel .bg-\\[\\#1e222d\\] {
+html[data-ui-theme="light"] .drawing-style-panel [class~="bg-[#1e222d]"] {
   background: #eef2f6 !important;
   color: #344054 !important;
 }
