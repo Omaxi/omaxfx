@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { LineSeries } from 'lightweight-charts';
 import { ChevronDown, Settings2, X } from 'lucide-react';
 import { useStore } from '../store';
@@ -931,6 +932,38 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
     };
   }, [active.fvg, config.fvg, currentFvgZones, higherFvgZones, visibleData, timeframe, chartRef, chartReady, priceSeriesRef]);
 
+  const panelButtonRef = useRef(null);
+  const panelRef = useRef(null);
+  const [panelPosition, setPanelPosition] = useState({ left: 48, top: 48, maxHeight: 500 });
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = event => {
+      if (event.type === 'keydown' && event.key === 'Escape') setOpen(false);
+      if (event.type === 'pointerdown' && !panelButtonRef.current?.contains(event.target) && !panelRef.current?.contains(event.target)) setOpen(false);
+    };
+    const reposition = () => {
+      const rect = panelButtonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const width = Math.min(320, window.innerWidth - 16);
+      const below = window.innerHeight - rect.bottom - 12;
+      const above = rect.top - 12;
+      const useBelow = below >= Math.min(420, window.innerHeight - 24) || below >= above;
+      const maxHeight = Math.max(180, Math.min(window.innerHeight - 24, useBelow ? below : above));
+      const top = useBelow ? rect.bottom + 6 : Math.max(8, rect.top - maxHeight - 6);
+      setPanelPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)), top, maxHeight });
+    };
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('keydown', close);
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
+    reposition();
+    return () => {
+      document.removeEventListener('pointerdown', close);
+      document.removeEventListener('keydown', close);
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', reposition, true);
+    };
+  }, [open]);
   const toggle = (key) => setActive(current => ({ ...current, [key]: !current[key] }));
   const updateConfig = (key, field, value) => setConfig(current => ({
     ...current,
@@ -957,12 +990,13 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
       <canvas ref={htfCandleCanvasRef} className="absolute inset-0 h-full w-full pointer-events-none" aria-hidden="true"/>
       <canvas ref={sessionCanvasRef} className="absolute inset-0 h-full w-full pointer-events-none" aria-hidden="true"/>
       <div className="absolute top-2 left-12 z-40 pointer-events-auto" onPointerDown={event => event.stopPropagation()}>
-      <button onClick={() => setOpen(value => !value)} className="flex items-center gap-1 rounded-md border border-[#2a2e39] bg-[#131722] px-2 py-1 text-[10px] font-bold text-gray-200 shadow-lg hover:bg-[#1e222d]">
+      <button ref={panelButtonRef} onClick={() => setOpen(value => !value)} aria-expanded={open} aria-haspopup="dialog" className="flex items-center gap-1 rounded-md border border-[#2a2e39] bg-[#131722] px-2 py-1 text-[10px] font-bold text-gray-200 shadow-lg hover:bg-[#1e222d]">
         Indicators <ChevronDown size={11} className={open ? 'rotate-180' : ''}/>
         {selected.length > 0 && <span className="indicator-count-badge rounded bg-blue-600 px-1 text-white">{selected.length}</span>}
       </button>
-      {open && (
-        <div className="mt-1 w-64 rounded-lg border border-[#2a2e39] bg-[#131722] p-2 shadow-2xl">
+      {open && createPortal(
+        <div ref={panelRef} role="dialog" aria-label="Chart indicators" className="fixed w-80 max-w-[calc(100vw-16px)] overflow-y-auto overscroll-contain rounded-lg border border-[#2a2e39] bg-[#131722] p-2 shadow-2xl"
+          style={{ zIndex: 100000, left: panelPosition.left, top: panelPosition.top, maxHeight: panelPosition.maxHeight }}>
           <div className="mb-1 flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Chart indicators</span>
             <button onClick={() => setOpen(false)} className="rounded p-1 text-gray-500 hover:text-white"><X size={12}/></button>
@@ -1043,6 +1077,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
             </div>
           )}
         </div>
+      , document.body
       )}
       </div>
     </div>
