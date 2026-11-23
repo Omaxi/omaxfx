@@ -87,7 +87,7 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
     const chart = createChart(container, {
       width: container.clientWidth,
       height: container.clientHeight,
-      layout: { background: { type: 'solid', color: uiTheme === 'light' ? '#f8fafc' : (theme?.background || '#131722') }, textColor: uiTheme === 'light' ? '#475467' : '#858b98', fontSize: 10, attributionLogo: false },
+      layout: { background: { type: 'solid', color: uiTheme === 'light' ? '#f8fafc' : (theme?.background || '#131722') }, textColor: uiTheme === 'light' ? '#475467' : '#6b7280', fontSize: 10, attributionLogo: false },
       grid: { vertLines: { visible: false }, horzLines: { visible: false } },
       rightPriceScale: { borderVisible: false },
       timeScale: { timeVisible: true, secondsVisible: false, borderVisible: false, rightOffset: 3, tickMarkFormatter: (time, type) => formatMarketTick(time, type) },
