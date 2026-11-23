@@ -4,7 +4,7 @@ import { fmtMoney } from '../utils/format';
 import { X, TrendingUp, TrendingDown, CalendarDays, ChevronLeft, ChevronRight, BarChart3, Target, Activity, Award, Download } from 'lucide-react';
 import TradeDayModal from './TradeDayModal';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { getTradeScreenshot, renderTradeScreenshot, saveTradeScreenshot } from '../utils/tradeScreenshots';
+import { renderTradeScreenshot, saveTradeScreenshot } from '../utils/tradeScreenshots';
 import { buildAnalyticsPrintHtml, writeAnalyticsPrintWindow } from '../utils/analyticsPdf';
 
 const money = (value) => `$${fmtMoney(Math.abs(value), 0)}`;
@@ -235,15 +235,14 @@ export default function AnalyticsModal() {
       window.alert('Please allow pop-ups for OmaxFX to export the analytics PDF.');
       return;
     }
-    printWindow.document.write('<!doctype html><title>Preparing OmaxFX report</title><body style="font:14px Arial;padding:32px;background:#0b0e11;color:#f4f4f5">Preparing your analytics report and loading trade screenshots…</body>');
+    printWindow.document.write('<!doctype html><title>Preparing OmaxFX report</title><body style="font:14px Arial;padding:32px;background:#ffffff;color:#172033">Preparing your analytics report and loading trade screenshots…</body>');
     setIsExportingPdf(true);
     try {
       const screenshots = {};
       await Promise.all(trades.map(async trade => {
         const key = String(trade.id);
         // The exported report is intentionally always light, regardless of the app theme.
-        let image = renderTradeScreenshot(trade, screenshotCandles, timeframe, 'light');
-        if (!image) image = await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
+        const image = renderTradeScreenshot(trade, screenshotCandles, timeframe, 'light');
         if (image) {
           await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
         }
