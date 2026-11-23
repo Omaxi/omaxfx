@@ -410,7 +410,8 @@ function App() {
           {gameStarted && (
             <button 
               onClick={handleNewSession}
-              className="app-header-action w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 hover:text-blue-400 rounded flex items-center justify-center"
+              className="app-header-action header-action-new-session w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 rounded flex items-center justify-center"
+              style={{ color: "#22d3ee" }}
               title="New session"
             >
               <RotateCcw size={13} />
@@ -435,7 +436,8 @@ function App() {
           </button>
 
           <button type="button" onClick={toggleUiTheme}
-            className="w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 hover:text-blue-400 rounded flex items-center justify-center"
+            className="app-header-action header-action-theme w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 rounded flex items-center justify-center"
+            style={{ color: "#f59e0b" }}
             title={uiTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
             aria-label={uiTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
             {uiTheme === 'dark' ? <Sun size={13}/> : <Moon size={13}/>}
@@ -443,7 +445,8 @@ function App() {
 
           <button 
             onClick={openInfo}
-            className="w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 hover:text-blue-400 rounded flex items-center justify-center"
+            className="app-header-action header-action-guide w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 rounded flex items-center justify-center"
+            style={{ color: "#3b82f6" }}
             title="Quick guide"
           >
             <Info size={13} />
