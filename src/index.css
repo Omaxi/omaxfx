@@ -155,7 +155,51 @@ html[data-ui-theme="light"] select { color-scheme: light; }
 html[data-ui-theme="light"] input:not([type="checkbox"]):not([type="color"]),
 html[data-ui-theme="light"] textarea { background-color: #ffffff !important; color: #172033 !important; border-color: #d0d5dd !important; }
 html[data-ui-theme="light"] select {
-  background-color: #ffffff !important; color: #172033 !important; border-color: #d0d5dd !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  color-scheme: light;
+  background-color: #ffffff !important;
+  color: #172033 !important;
+  border-color: #d0d5dd !important;
+  padding-right: 34px !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 11px center !important;
+  background-size: 14px 14px !important;
 }
 html[data-ui-theme="light"] select option { background: #ffffff; color: #172033; }
+
+/* Light-theme finishing pass: keep semantic action colors and their icons
+   legible while converting only neutral surfaces to the light palette. */
+html[data-ui-theme="light"] button.theme-action-contrast,
+html[data-ui-theme="light"] button.replay-next-button,
+html[data-ui-theme="light"] button[class*="bg-blue-"],
+html[data-ui-theme="light"] button[class*="bg-green-"],
+html[data-ui-theme="light"] button[class*="bg-red-"],
+html[data-ui-theme="light"] button[class*="bg-emerald-"] {
+  color: #ffffff !important;
+}
+html[data-ui-theme="light"] button.replay-next-button svg,
+html[data-ui-theme="light"] button.theme-action-contrast svg,
+html[data-ui-theme="light"] .indicator-count-badge {
+  color: #ffffff !important;
+}
+html[data-ui-theme="light"] .chart-workspace-grid { background-color: #d0d5dd !important; }
+html[data-ui-theme="light"] .chart-workspace-pane { background-color: #f8fafc !important; }
+.chart-root { border: 0 !important; outline: 0 !important; box-shadow: none !important; }
+.chart-root:focus, .chart-root:focus-visible { outline: 0 !important; }
+html[data-ui-theme="light"] .chart-root { background-color: #f8fafc !important; }
+html[data-ui-theme="light"] .chart-root * { outline-color: transparent; }
+
+/* Calendar day cells use no black outlines in either light-mode calendar. */
+html[data-ui-theme="light"] .analytics-calendar-day { border-color: #e4e7ec !important; color: #172033 !important; }
+html[data-ui-theme="light"] .analytics-calendar-empty { background: #f8fafc !important; border: 0 !important; }
+html[data-ui-theme="light"] .analytics-calendar-day span,
+html[data-ui-theme="light"] .analytics-calendar-day b { color: #344054 !important; }
+html[data-ui-theme="light"] .analytics-calendar-day .text-emerald-300 { color: #047857 !important; }
+html[data-ui-theme="light"] .analytics-calendar-day .text-red-300 { color: #b42318 !important; }
+html[data-ui-theme="light"] .analytics-calendar-day .text-blue-200 { color: #175cd3 !important; }
+
+/* Chart and modal surfaces should never retain the previous dark-pane outline. */
+html[data-ui-theme="light"] .chart-workspace-grid,
+html[data-ui-theme="light"] .chart-workspace-pane { border-color: #d0d5dd !important; }
