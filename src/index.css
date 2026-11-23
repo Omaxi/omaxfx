@@ -401,3 +401,9 @@ html[data-ui-theme="light"] .analytics-statistics-track {
 html[data-ui-theme="light"] .analytics-statistics-neutral {
   background: #cbd5e1 !important;
 }
+
+/* Keep the dashboard heading readable in both UI themes. */
+.live-information-indicators-title { color: #f3f4f6; }
+html[data-ui-theme="light"] .live-information-indicators-title {
+  color: #344054 !important;
+}
