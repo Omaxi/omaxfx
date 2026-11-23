@@ -6,7 +6,7 @@ import MiniChart from './MiniChart';
 
 const PRESETS = {
   2: [15],
-  4: [5, 15, 60],
+  3: [5, 60],
 };
 
 export default function ChartWorkspace() {
@@ -29,7 +29,7 @@ export default function ChartWorkspace() {
   return (
     <section className="relative h-full min-h-0 w-full overflow-hidden bg-[#0b0e14]">
       <div className={layout === 1 ? 'absolute inset-0' : layout === 2 ? 'chart-workspace-grid grid h-full min-h-0 grid-cols-2 grid-rows-1 gap-px bg-[#2a2e39]' : 'chart-workspace-grid grid h-full min-h-0 grid-cols-2 grid-rows-2 gap-px bg-[#2a2e39]'}>
-        <div className="chart-workspace-pane relative h-full min-h-0 min-w-0 overflow-hidden bg-[#131722]">
+        <div className={`chart-workspace-pane relative h-full min-h-0 min-w-0 overflow-hidden bg-[#131722] ${layout === 3 ? 'row-span-2' : ''}`}>
           <Chart chartId="main" />
         </div>
         {layout >= 2 && PRESETS[layout].map(slot => (
