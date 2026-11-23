@@ -281,7 +281,7 @@ function App() {
         style={{ display: 'none' }}
       />
 
-      <header className="px-2 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-2">
+      <header className="app-header px-2 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-2">
         <div className="flex items-center gap-2 flex-shrink-0">
           <h1 className="text-sm font-bold tracking-wider whitespace-nowrap">
             <span className="text-blue-500">Omax</span>
@@ -364,7 +364,7 @@ function App() {
           {gameStarted && (
             <button 
               onClick={handleNewSession}
-              className="w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 hover:text-blue-400 rounded flex items-center justify-center"
+              className="app-header-action w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 hover:text-blue-400 rounded flex items-center justify-center"
               title="New session"
             >
               <RotateCcw size={13} />
@@ -374,7 +374,7 @@ function App() {
           
           <button
             onClick={toggleFireworks}
-            className={`w-7 h-7 border rounded flex items-center justify-center transition-colors ${
+            className={`app-header-action w-7 h-7 border rounded flex items-center justify-center transition-colors ${
               enableFireworks
                 ? 'bg-yellow-900/30 border-yellow-600/50 text-yellow-400 hover:bg-yellow-900/50'
                 : 'bg-[#1e222d] border-[#2a2e39] text-gray-500 hover:text-gray-300'
@@ -384,7 +384,7 @@ function App() {
             <Sparkles size={13} />
           </button>
 
-          <button onClick={handleExitPlatform} className="w-7 h-7 bg-[#1e222d] border border-red-900/50 hover:bg-red-900/40 text-red-400 rounded flex items-center justify-center" title="Save and exit OmaxFX">
+          <button onClick={handleExitPlatform} className="app-header-action w-7 h-7 bg-[#1e222d] border border-red-900/50 hover:bg-red-900/40 text-red-400 rounded flex items-center justify-center" title="Save and exit OmaxFX">
             <LogOut size={13}/>
           </button>
 
