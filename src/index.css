@@ -440,3 +440,26 @@ html[data-ui-theme="light"] .live-information-indicators-title {
 .app-header button[title="Play music"],
 .app-header button[title="Stop music"] svg,
 .app-header button[title="Play music"] svg { color: #3b82f6 !important; }
+
+
+/* Drawing configuration follows the active UI theme instead of inheriting
+   the chart's dark-only palette in light mode. */
+html[data-ui-theme="light"] .drawing-style-panel {
+  background: #f8fafc !important;
+  color: #172033 !important;
+  border-color: #d0d5dd !important;
+}
+html[data-ui-theme="light"] .drawing-style-panel .text-white,
+html[data-ui-theme="light"] .drawing-style-panel .text-gray-300,
+html[data-ui-theme="light"] .drawing-style-panel .text-gray-400 {
+  color: #344054 !important;
+}
+html[data-ui-theme="light"] .drawing-style-panel input:not([type="color"]):not([type="range"]) {
+  background: #ffffff !important;
+  color: #172033 !important;
+  border-color: #d0d5dd !important;
+}
+html[data-ui-theme="light"] .drawing-style-panel .bg-\\[\\#1e222d\\] {
+  background: #eef2f6 !important;
+  color: #344054 !important;
+}
