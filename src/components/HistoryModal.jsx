@@ -44,8 +44,8 @@ export default function HistoryModal() {
   const totalPnl = tradeHistory.reduce((sum, t) => sum + t.pnl, 0);
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
-      <div className="bg-[#131722] rounded-2xl w-full max-w-7xl border border-[#2a2e39] overflow-hidden flex flex-col h-[min(92dvh,850px)]">
+    <div className="history-modal-overlay fixed inset-0 bg-black/80 flex items-center justify-center z-[130] p-4">
+      <div className="history-modal-shell bg-[#131722] rounded-2xl w-full max-w-7xl border border-[#2a2e39] overflow-hidden flex flex-col h-[min(92dvh,850px)]">
         <div className="flex justify-between items-center p-3 border-b border-[#2a2e39]">
           <h2 className="text-lg font-bold">Trade History</h2>
           <button onClick={closeHistory} className="p-1 hover:bg-[#2a2e39] rounded"><X size={18}/></button>
@@ -123,8 +123,8 @@ export default function HistoryModal() {
                       </td>
                       <td className="p-2">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                          t.reason === 'TP' ? 'bg-green-900/50 text-green-400' :
-                          t.reason === 'SL' ? 'bg-red-900/50 text-red-400' :
+                          t.reason === 'TP' ? 'history-exit-tp bg-green-900/50 text-green-400' :
+                          t.reason === 'SL' ? 'history-exit-sl bg-red-900/50 text-red-400' :
                           'bg-gray-700 text-gray-300'
                         }`}>
                           {t.reason}
@@ -143,8 +143,8 @@ export default function HistoryModal() {
         <div className="flex items-center justify-between px-3 py-2 border-t border-[#2a2e39] shrink-0">
           <span className="text-[10px] text-gray-500">Page {Math.min(page + 1, pageCount)} of {pageCount} · {totalTrades} trades</span>
           <div className="flex gap-2">
-            <button disabled={page === 0} onClick={() => setPage(value => Math.max(0, value - 1))} className="px-3 py-1 rounded bg-[#2a2e39] text-xs disabled:opacity-40">Previous</button>
-            <button disabled={page + 1 >= pageCount} onClick={() => setPage(value => Math.min(pageCount - 1, value + 1))} className="px-3 py-1 rounded bg-[#2a2e39] text-xs disabled:opacity-40">Next</button>
+            <button disabled={page === 0} onClick={() => setPage(value => Math.max(0, value - 1))} className="history-page-button px-3 py-1 rounded bg-[#2a2e39] text-xs disabled:opacity-40">Previous</button>
+            <button disabled={page + 1 >= pageCount} onClick={() => setPage(value => Math.min(pageCount - 1, value + 1))} className="history-page-button px-3 py-1 rounded bg-[#2a2e39] text-xs disabled:opacity-40">Next</button>
           </div>
         </div>
       </div>
