@@ -203,3 +203,37 @@ html[data-ui-theme="light"] .analytics-calendar-day .text-blue-200 { color: #175
 /* Chart and modal surfaces should never retain the previous dark-pane outline. */
 html[data-ui-theme="light"] .chart-workspace-grid,
 html[data-ui-theme="light"] .chart-workspace-pane { border-color: #d0d5dd !important; }
+
+
+/* Light-theme journal: replace dark hard-coded surfaces inside trade cards
+   and chart previews, not just the outer modal shell. */
+html[data-ui-theme="light"] .trade-journal-modal {
+  background: #ffffff !important;
+  color: #172033 !important;
+  border-color: #d0d5dd !important;
+}
+html[data-ui-theme="light"] .trade-journal-card {
+  background: #f8fafc !important;
+  border-color: #e4e7ec !important;
+  color: #172033 !important;
+}
+html[data-ui-theme="light"] .trade-journal-chart {
+  background: #ffffff !important;
+  border-color: #e4e7ec !important;
+}
+html[data-ui-theme="light"] [class*="bg-[#191e29]"],
+html[data-ui-theme="light"] [class*="bg-[#202633]"],
+html[data-ui-theme="light"] [class*="bg-[#0d1117]"] {
+  background-color: #ffffff !important;
+}
+html[data-ui-theme="light"] [class*="border-[#303744]"],
+html[data-ui-theme="light"] [class*="border-[#343a40]"] {
+  border-color: #e4e7ec !important;
+}
+html[data-ui-theme="light"] [class*="bg-emerald-900/"],
+html[data-ui-theme="light"] [class*="bg-red-900/"] {
+  background-color: #eef2f7 !important;
+}
+html[data-ui-theme="light"] .trade-journal-modal [class~="text-emerald-300"] { color: #047857 !important; }
+html[data-ui-theme="light"] .trade-journal-modal [class~="text-red-300"] { color: #b42318 !important; }
+html[data-ui-theme="light"] .trade-journal-modal [class~="text-blue-300"] { color: #175cd3 !important; }
