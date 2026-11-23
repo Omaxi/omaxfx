@@ -18,14 +18,14 @@ import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
 import { fetchDataCatalog, loadBundledCsvFiles } from './utils/dataCatalog';
 import { getPnlMultiplier } from './utils/instrument';
-import { RotateCcw, Info, Sparkles, AlertTriangle, ChevronDown, LogOut, Square, Columns2, LayoutGrid } from 'lucide-react';
+import { RotateCcw, Info, Sparkles, AlertTriangle, ChevronDown, LogOut, Square, Columns2, LayoutGrid, Sun, Moon } from 'lucide-react';
 
 function App() {
   const { 
     isPlaying, stepForward, currentIndex, rawData, replaySpeed, balance, positions, 
     musicEnabled, gameStarted,
     gameState, restartGame,
-    loadingState, openInfo, openHistory, openAnalytics, theme,
+    loadingState, openInfo, openHistory, openAnalytics, theme, uiTheme, toggleUiTheme,
     sessionName, setSessionName, saveSession,
     enableFireworks, toggleFireworks,
     symbolWarning, clearSymbolWarning,
@@ -34,12 +34,11 @@ function App() {
   const [sessionMenuOpen, setSessionMenuOpen] = useState(false);
   const [savedSessions, setSavedSessions] = useState([]);
   const [sessionLoadingId, setSessionLoadingId] = useState(null);
-  // OmaxFX uses a single, consistent dark application theme.
   useEffect(() => {
-    document.documentElement.dataset.uiTheme = 'dark';
-    window.dispatchEvent(new CustomEvent('omaxfx-ui-theme-change', { detail: 'dark' }));
-    try { localStorage.setItem('omaxfx-ui-theme', 'dark'); } catch {}
-  }, []);
+    document.documentElement.dataset.uiTheme = uiTheme;
+    window.dispatchEvent(new CustomEvent('omaxfx-ui-theme-change', { detail: uiTheme }));
+    try { localStorage.setItem('omaxfx-ui-theme', uiTheme); } catch {}
+  }, [uiTheme]);
 
   useEffect(() => {
     if (!symbolWarning) return;
@@ -273,7 +272,7 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col h-dvh overflow-hidden" style={{ backgroundColor: theme.background, color: '#ffffff' }}>
+    <div className="flex flex-col h-dvh overflow-hidden" style={{ backgroundColor: theme.background, color: uiTheme === 'light' ? '#172033' : '#ffffff' }}>
       {/* Hidden audio element — preloaded by the browser at page load. */}
       <audio
         id="sfx-tphit"
@@ -387,6 +386,13 @@ function App() {
 
           <button onClick={handleExitPlatform} className="w-7 h-7 bg-[#1e222d] border border-red-900/50 hover:bg-red-900/40 text-red-400 rounded flex items-center justify-center" title="Save and exit OmaxFX">
             <LogOut size={13}/>
+          </button>
+
+          <button type="button" onClick={toggleUiTheme}
+            className="w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 hover:text-blue-400 rounded flex items-center justify-center"
+            title={uiTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            aria-label={uiTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
+            {uiTheme === 'dark' ? <Sun size={13}/> : <Moon size={13}/>}
           </button>
 
           <button 
