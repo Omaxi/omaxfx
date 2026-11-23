@@ -237,3 +237,153 @@ html[data-ui-theme="light"] [class*="bg-red-900/"] {
 html[data-ui-theme="light"] .trade-journal-modal [class~="text-emerald-300"] { color: #047857 !important; }
 html[data-ui-theme="light"] .trade-journal-modal [class~="text-red-300"] { color: #b42318 !important; }
 html[data-ui-theme="light"] .trade-journal-modal [class~="text-blue-300"] { color: #175cd3 !important; }
+
+
+/* ============================================================
+   Targeted light-theme repair: chart dashboard, session setup,
+   order ticket, trade history and header action controls.
+   ============================================================ */
+html[data-ui-theme="light"] .live-information-panel {
+  background: rgb(255 255 255 / 97%) !important;
+  color: #344054 !important;
+  border-color: #d0d5dd !important;
+  box-shadow: 0 8px 24px rgb(16 24 40 / 12%) !important;
+  opacity: 1 !important;
+  z-index: 80 !important;
+}
+html[data-ui-theme="light"] .live-information-panel span.text-gray-100,
+html[data-ui-theme="light"] .live-information-panel span.text-white {
+  color: #172033 !important;
+}
+html[data-ui-theme="light"] .live-information-panel span.text-gray-500 {
+  color: #667085 !important;
+}
+html[data-ui-theme="light"] .live-information-panel .border-t {
+  border-color: #e4e7ec !important;
+}
+
+html[data-ui-theme="light"] .app-header {
+  background: #ffffff !important;
+  border-color: #d0d5dd !important;
+}
+html[data-ui-theme="light"] .app-header-action {
+  color: #344054 !important;
+  opacity: 1 !important;
+  background-color: #f2f4f7 !important;
+  border-color: #d0d5dd !important;
+}
+html[data-ui-theme="light"] .app-header-action:hover {
+  background-color: #e4e7ec !important;
+}
+html[data-ui-theme="light"] .app-header-action[title*="exit"],
+html[data-ui-theme="light"] .app-header-action[title*="Exit"] {
+  color: #b42318 !important;
+}
+html[data-ui-theme="light"] .app-header-action[title*="Fireworks"] {
+  color: #b54708 !important;
+}
+html[data-ui-theme="light"] .app-header button:disabled {
+  opacity: 1 !important;
+}
+
+html[data-ui-theme="light"] .order-modal-overlay,
+html[data-ui-theme="light"] .history-modal-overlay {
+  background: rgb(16 24 40 / 55%) !important;
+}
+html[data-ui-theme="light"] .order-modal-shell,
+html[data-ui-theme="light"] .history-modal-shell {
+  background: #ffffff !important;
+  color: #172033 !important;
+  border-color: #d0d5dd !important;
+  box-shadow: 0 24px 64px rgb(16 24 40 / 22%) !important;
+}
+html[data-ui-theme="light"] .order-modal-shell [class*="bg-[#1e222d]"],
+html[data-ui-theme="light"] .history-modal-shell [class*="bg-[#1e222d]"] {
+  background: #eef2f7 !important;
+}
+html[data-ui-theme="light"] .order-modal-shell [class*="border-[#2a2e39]"],
+html[data-ui-theme="light"] .history-modal-shell [class*="border-[#2a2e39]"] {
+  border-color: #d0d5dd !important;
+}
+html[data-ui-theme="light"] .order-modal-shell .order-side-label {
+  background: #d1fae5 !important;
+  color: #047857 !important;
+}
+html[data-ui-theme="light"] .order-modal-shell .order-tp-value {
+  color: #047857 !important;
+}
+html[data-ui-theme="light"] .order-modal-shell button[class*="bg-green-"],
+html[data-ui-theme="light"] .order-modal-shell button[class*="bg-red-"],
+html[data-ui-theme="light"] .order-modal-shell button[class*="bg-blue-"] {
+  color: #ffffff !important;
+}
+html[data-ui-theme="light"] .order-modal-shell button[class*="bg-[#2a2e39]"] {
+  background: #e4e7ec !important;
+  color: #344054 !important;
+}
+html[data-ui-theme="light"] .order-modal-shell label {
+  color: #475467;
+}
+html[data-ui-theme="light"] .order-modal-shell h2,
+html[data-ui-theme="light"] .history-modal-shell h2 {
+  color: #172033 !important;
+}
+
+html[data-ui-theme="light"] .history-modal-shell .history-exit-tp {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  font-weight: 700 !important;
+}
+html[data-ui-theme="light"] .history-modal-shell .history-exit-sl {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  font-weight: 700 !important;
+}
+html[data-ui-theme="light"] .history-modal-shell .history-page-button {
+  background: #e4e7ec !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #344054 !important;
+  opacity: 1 !important;
+  min-width: 82px;
+  min-height: 32px;
+  font-weight: 600;
+}
+html[data-ui-theme="light"] .history-modal-shell .history-page-button:disabled {
+  color: #667085 !important;
+  background: #f2f4f7 !important;
+  border-color: #e4e7ec !important;
+  opacity: 1 !important;
+  cursor: not-allowed;
+}
+html[data-ui-theme="light"] .history-modal-shell table th,
+html[data-ui-theme="light"] .history-modal-shell table td {
+  border-color: #d0d5dd !important;
+}
+html[data-ui-theme="light"] .history-modal-shell table thead {
+  background: #eef2f7 !important;
+  color: #475467 !important;
+}
+html[data-ui-theme="light"] .history-modal-shell table tbody tr:hover {
+  background: #f2f4f7 !important;
+}
+
+html[data-ui-theme="light"] .period-brand-icon {
+  color: #ffffff !important;
+}
+html[data-ui-theme="light"] .period-brand-icon svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+html[data-ui-theme="light"] .period-preset-selected {
+  color: #175cd3 !important;
+  background: #dbeafe !important;
+  border-color: #3b82f6 !important;
+}
+html[data-ui-theme="light"] .period-delete-session,
+html[data-ui-theme="light"] .period-delete-session svg {
+  color: #dc2626 !important;
+}
+html[data-ui-theme="light"] .period-delete-session:hover {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+}
