@@ -217,12 +217,11 @@ export default function PeriodModal() {
         <div className="p-3 border-b border-[#2a2e39] flex justify-between items-start">
           <div>
             <div className="flex items-center gap-2 mb-0.5">
-              <div className="theme-action-contrast bg-blue-600 rounded p-1.5">
-                <Calendar size={14} />
+              <div className="period-brand-icon theme-action-contrast bg-blue-600 rounded p-1.5">
+                <Calendar size={14} className="text-white" />
               </div>
               <h1 className="text-base font-bold tracking-wider">
-                <span className="text-blue-500">Omax</span>
-                <span className="text-white">FX Simulator</span>
+                <span className="text-white">OmaxFX Simulator</span>
               </h1>
             </div>
             <p className="text-[10px] text-gray-400">Configure your session</p>
@@ -249,7 +248,7 @@ export default function PeriodModal() {
               <div className="flex items-center gap-2">
                 <SavedSessionDropdown sessions={savedSessions} value={selectedSessionId} onChange={setSelectedSessionId}/>
                 <button disabled={!selectedSessionId} onClick={() => { const saved = savedSessions.find(item => item.sessionId === selectedSessionId); if (saved) handleLoadSaved(saved); }} className="theme-action-contrast rounded bg-emerald-700 px-3 py-2 text-[10px] font-bold text-white hover:bg-emerald-600 disabled:opacity-40">RESUME</button>
-                <button disabled={!selectedSessionId} onClick={() => handleDeleteSaved(selectedSessionId)} className="rounded p-2 text-gray-500 hover:bg-red-900/40 hover:text-red-400 disabled:opacity-40" title="Delete selected session"><Trash2 size={13}/></button>
+                <button disabled={!selectedSessionId} onClick={() => handleDeleteSaved(selectedSessionId)} className="period-delete-session rounded p-2 text-red-500 hover:bg-red-100 hover:text-red-700 disabled:opacity-60" title="Delete selected session"><Trash2 size={13} className="text-red-500"/></button>
               </div>
               {(() => { const saved = savedSessions.find(item => item.sessionId === selectedSessionId); return saved ? <p className="text-[9px] text-gray-400">{saved.tradeHistory?.length || 0} trades · {new Date(saved.savedAt).toLocaleString()} · {saved.balance?.toLocaleString?.() ?? '—'} balance</p> : null; })()}
             </div> : <p className="text-[9px] text-gray-500">Your sessions will appear here automatically as you trade.</p>}
@@ -291,7 +290,7 @@ export default function PeriodModal() {
                   onClick={() => setPresetKey(key)}
                   className={`flex flex-col items-center gap-0.5 p-1.5 rounded border transition-all text-center ${
                     presetKey === key 
-                      ? 'bg-blue-600/20 border-blue-500 text-white' 
+                      ? 'period-preset-selected bg-blue-600/20 border-blue-500 text-blue-600' 
                       : 'bg-[#1e222d] border-[#2a2e39] text-gray-400 hover:border-[#3a3e49] hover:text-gray-200'
                   }`}
                 >
