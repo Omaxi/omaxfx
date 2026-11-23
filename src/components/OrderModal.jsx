@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { fmtMoney } from '../utils/format';
 import { getExecutionCandle } from '../utils/timeframe.js';
 import { getPricePrecision, getPriceTickSize } from '../utils/instrument.js';
-import { X, AlertTriangle, ChevronDown } from 'lucide-react';
+import { X, AlertTriangle, ChevronDown, Check } from 'lucide-react';
 
 // =========================================================================
 // Per-symbol price configuration
@@ -247,23 +247,28 @@ export default function OrderModal() {
                     <ChevronDown size={15} className={`text-gray-400 transition-transform ${orderTypeOpen ? 'rotate-180' : ''}`}/>
                   </button>
                   {orderTypeOpen && (
-                    <div role="listbox" aria-label="Order type" className="absolute left-0 right-0 top-full z-[150] mt-1 overflow-hidden rounded-lg border border-[#343b4b] bg-[#1e222d] p-1 shadow-xl">
+                    <div role="listbox" aria-label="Order type" className="theme-menu-surface absolute left-0 right-0 top-full z-[150] mt-1 overflow-hidden rounded-lg border border-[#2a2e39] bg-[#1e222d] shadow-2xl">
+                      <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">Order type</div>
                       {[
                         { value: 'market', label: 'Market' },
                         { value: 'limit', label: 'Limit' },
                         { value: 'stop', label: 'Stop' },
-                      ].map(option => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          role="option"
-                          aria-selected={orderType === option.value}
-                          onClick={() => { setOrderType(option.value); setOrderTypeOpen(false); }}
-                          className={`flex w-full items-center rounded-md px-3 py-2 text-left text-sm capitalize transition-colors ${orderType === option.value ? 'bg-[#1d2d4b] text-blue-300' : 'text-gray-300 hover:bg-[#2a2e39] hover:text-white'}`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
+                      ].map(option => {
+                        const isSelected = orderType === option.value;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => { setOrderType(option.value); setOrderTypeOpen(false); }}
+                            className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left text-white hover:bg-[#2a2e39] cursor-pointer ${isSelected ? 'bg-blue-600/15' : ''}`}
+                          >
+                            <span className={isSelected ? 'font-bold' : ''}>{option.label}</span>
+                            {isSelected && <Check size={10} className="text-blue-400" />}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
