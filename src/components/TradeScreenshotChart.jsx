@@ -1,12 +1,15 @@
 import { useEffect, useRef } from 'react';
 import { createChart, CandlestickSeries } from 'lightweight-charts';
 import { getTradeCandleWindow } from '../utils/tradeScreenshots';
+import { useStore } from '../store';
 
 // Interactive journal preview: the saved JPEG remains available for download,
 // while this chart supports normal Lightweight Charts zoom, pan and axis scaling.
 export default function TradeScreenshotChart({ trade, candles, timeframe = 1 }) {
   const hostRef = useRef(null);
   const overlayRef = useRef(null);
+  const uiTheme = useStore(state => state.uiTheme);
+  const light = uiTheme === 'light';
 
   useEffect(() => {
     const host = hostRef.current;
@@ -18,13 +21,13 @@ export default function TradeScreenshotChart({ trade, candles, timeframe = 1 }) 
       width: host.clientWidth || 600,
       height: host.clientHeight || 260,
       layout: {
-        background: { type: 'solid', color: '#0d1117' },
-        textColor: '#9aa4b2',
+        background: { type: 'solid', color: light ? '#ffffff' : '#0d1117' },
+        textColor: light ? '#667085' : '#9aa4b2',
         fontSize: 10,
       },
       grid: {
-        vertLines: { color: 'rgba(148,163,184,0.06)' },
-        horzLines: { color: 'rgba(148,163,184,0.10)' },
+        vertLines: { color: light ? 'rgba(148,163,184,0.10)' : 'rgba(148,163,184,0.06)' },
+        horzLines: { color: light ? 'rgba(148,163,184,0.14)' : 'rgba(148,163,184,0.10)' },
       },
       rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.12, bottom: 0.12 } },
       timeScale: { timeVisible: true, secondsVisible: false, borderVisible: false, rightOffset: 3 },
@@ -111,7 +114,7 @@ export default function TradeScreenshotChart({ trade, candles, timeframe = 1 }) 
       host.removeEventListener('pointermove', schedule);
       chart.remove();
     };
-  }, [trade, candles, timeframe]);
+  }, [trade, candles, timeframe, light]);
 
   return (
     <div ref={hostRef} className="relative h-full min-h-[220px] w-full">
