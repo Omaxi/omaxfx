@@ -3,8 +3,11 @@ export const getTimeframeBucketStart = (time, timeframeMinutes) => {
   const minutes = Number(timeframeMinutes);
   if (!Number.isFinite(minutes) || minutes <= 1) return Number(time);
   const interval = Math.round(minutes * 60);
+  // Source timestamps are stored three hours behind the UTC+3 market clock.
+  // Align daily and weekly candles to the broker's local calendar, not UTC.
+  const marketOffset = (minutes === 1440 || minutes === 10080) ? 3 * 3600 : 0;
   const weekOffset = minutes === 10080 ? 4 * 86400 : 0;
-  return Math.floor((Number(time) - weekOffset) / interval) * interval + weekOffset;
+  return Math.floor((Number(time) + marketOffset - weekOffset) / interval) * interval + weekOffset - marketOffset;
 };
 
 // Aggregate sorted OHLC candles into UTC-aligned timeframe buckets.
@@ -20,8 +23,10 @@ export const aggregateData = (data, timeframeMinutes) => {
 
   for (const candle of data) {
     if (!candle || !Number.isFinite(candle.time)) continue;
+    // Daily/weekly boundaries follow the UTC+3 market calendar used by the CSV.
+    const marketOffset = (minutes === 1440 || minutes === 10080) ? 3 * 3600 : 0;
     const weekOffset = minutes === 10080 ? 4 * 86400 : 0;
-    const bucketTime = Math.floor((candle.time - weekOffset) / interval) * interval + weekOffset;
+    const bucketTime = Math.floor((candle.time + marketOffset - weekOffset) / interval) * interval + weekOffset - marketOffset;
     if (!current || current.time !== bucketTime) {
       if (current) aggregated.push(current);
       current = {
