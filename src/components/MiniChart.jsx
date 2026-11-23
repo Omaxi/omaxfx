@@ -151,8 +151,12 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
 
   useEffect(() => {
     const reset = () => resetChartView();
+    window.addEventListener('omaxfx:reset-chart', reset);
     window.addEventListener(`omaxfx:reset-chart:${chartId}`, reset);
-    return () => window.removeEventListener(`omaxfx:reset-chart:${chartId}`, reset);
+    return () => {
+      window.removeEventListener('omaxfx:reset-chart', reset);
+      window.removeEventListener(`omaxfx:reset-chart:${chartId}`, reset);
+    };
   }, [chartId, candles]);
 
   return (
