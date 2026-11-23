@@ -1629,7 +1629,7 @@ export default function Chart() {
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
       <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 25 }} aria-hidden="true" />
 
-      <div className="absolute top-2 right-12 z-30 w-[min(220px,calc(100%-3.5rem))] rounded-xl border border-[#2a2e39] bg-[#131722]/95 p-2.5 text-[10px] leading-4 text-gray-300 shadow-xl pointer-events-auto font-mono">
+      <div className="live-information-panel absolute top-2 right-12 z-[80] w-[min(260px,calc(100%-3.5rem))] rounded-xl border border-[#2a2e39] bg-[#131722]/95 p-2.5 text-[10px] leading-4 text-gray-300 shadow-xl pointer-events-auto font-mono">
         <button type="button" onClick={() => setDashboardCollapsed(value => !value)}
           aria-expanded={!dashboardCollapsed}
           className="mb-1 flex w-full items-center justify-between gap-2 rounded text-left hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500">
