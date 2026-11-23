@@ -90,12 +90,6 @@ export const useStore = create((set, get) => ({
   timeframe: 1,
   chartLayout: 4,
   setChartLayout: (layout) => set({ chartLayout: [1, 2, 4].includes(Number(layout)) ? Number(layout) : 1 }),
-  uiTheme: (() => {
-    try { return localStorage.getItem('omaxfx-ui-theme') === 'light' ? 'light' : 'dark'; }
-    catch { return 'dark'; }
-  })(),
-  setUiTheme: (uiTheme) => set({ uiTheme: uiTheme === 'light' ? 'light' : 'dark' }),
-  toggleUiTheme: () => set(state => ({ uiTheme: state.uiTheme === 'light' ? 'dark' : 'light' })),
   currentIndex: 0,    
   isPlaying: false,
   replaySpeed: 1,
