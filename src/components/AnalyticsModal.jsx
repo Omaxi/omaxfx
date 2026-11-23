@@ -235,14 +235,14 @@ export default function AnalyticsModal() {
       window.alert('Please allow pop-ups for OmaxFX to export the analytics PDF.');
       return;
     }
-    printWindow.document.write('<!doctype html><title>Preparing OmaxFX report</title><body style="font:14px Arial;padding:32px;background:#ffffff;color:#172033">Preparing your analytics report and loading trade screenshots…</body>');
+    printWindow.document.write('<!doctype html><title>Preparing OmaxFX report</title><body style="font:14px Arial;padding:32px;background:#0b0e11;color:#d5d9e2">Preparing your analytics report and loading trade screenshots…</body>');
     setIsExportingPdf(true);
     try {
       const screenshots = {};
       await Promise.all(trades.map(async trade => {
         const key = String(trade.id);
-        // The exported report is intentionally always light, regardless of the app theme.
-        const image = renderTradeScreenshot(trade, screenshotCandles, timeframe, 'light');
+        // Keep embedded trade screenshots consistent with the dark-only PDF report.
+        const image = renderTradeScreenshot(trade, screenshotCandles, timeframe, 'dark');
         if (image) {
           await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
         }
