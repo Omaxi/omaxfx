@@ -25,7 +25,7 @@ function App() {
     isPlaying, stepForward, currentIndex, rawData, replaySpeed, balance, positions, 
     musicEnabled, gameStarted,
     gameState, restartGame,
-    loadingState, openInfo, openHistory, openAnalytics, theme, uiTheme, toggleUiTheme,
+    loadingState, isInfoOpen, openInfo, openHistory, openAnalytics, theme, uiTheme, toggleUiTheme,
     sessionName, setSessionName, saveSession,
     enableFireworks, toggleFireworks,
     symbolWarning, clearSymbolWarning,
@@ -318,7 +318,7 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col h-dvh overflow-hidden" style={{ backgroundColor: theme.background, color: uiTheme === 'light' ? '#172033' : '#ffffff' }}>
+    <div className={`flex flex-col h-dvh overflow-hidden ${isInfoOpen ? 'quick-guide-open' : ''}`} style={{ backgroundColor: theme.background, color: uiTheme === 'light' ? '#172033' : '#ffffff' }}>
       {/* Hidden audio element — preloaded by the browser at page load. */}
       <audio
         id="sfx-tphit"
