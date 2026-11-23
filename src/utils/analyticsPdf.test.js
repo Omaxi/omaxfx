@@ -72,8 +72,8 @@ test('uses semantic colors for report metrics and the daily trade journal', () =
   });
 
   assert.doesNotMatch(html, /class="eyebrow"/);
-  assert.match(html, /metric-value gain/);
-  assert.match(html, /metric-value loss/);
+  assert.match(html, /summary-card b\\.gain/);
+  assert.match(html, /summary-card b\\.loss/);
   assert.match(html, /journal-value gain/);
   assert.match(html, /journal-value loss/);
   assert.match(html, /journal-value warn/);
