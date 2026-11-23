@@ -990,7 +990,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
       <canvas ref={htfCandleCanvasRef} className="absolute inset-0 h-full w-full pointer-events-none" aria-hidden="true"/>
       <canvas ref={sessionCanvasRef} className="absolute inset-0 h-full w-full pointer-events-none" aria-hidden="true"/>
       <div className="absolute top-2 left-12 z-40 pointer-events-auto" onPointerDown={event => event.stopPropagation()}>
-      <button ref={panelButtonRef} onClick={() => setOpen(value => !value)} aria-expanded={open} aria-haspopup="dialog" className="flex items-center gap-1 rounded-md border border-[#2a2e39] bg-[#131722] px-2 py-1 text-[10px] font-bold text-gray-200 shadow-lg hover:bg-[#1e222d]">
+      <button ref={panelButtonRef} onClick={() => setOpen(value => !value)} aria-expanded={open} aria-haspopup="dialog" className="flex items-center gap-1 rounded-md border border-[#2a2e39] bg-[#131722] px-2 py-1 text-[10px] font-bold text-gray-200 shadow-none hover:bg-[#1e222d]">
         Indicators <ChevronDown size={11} className={open ? 'rotate-180' : ''}/>
         {selected.length > 0 && <span className="indicator-count-badge rounded bg-blue-600 px-1 text-white">{selected.length}</span>}
       </button>
