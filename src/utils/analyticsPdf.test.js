@@ -52,7 +52,7 @@ test('builds the analytics PDF when the trade-by-trade curve contains a drawdown
   assert.match(html, /<rect x="491" y="147" width="170" height="22" rx="5"/);
   assert.match(html, /Buy &amp; Hold/);
   assert.doesNotMatch(html, /Use your browser's Print dialog/);
-  assert.match(html, /Equity curve · Strategy vs Buy &amp; Hold/);
+  assert.match(html, /Profit and loss · Over time/);
 });
 
 
@@ -88,7 +88,7 @@ test('builds the analytics PDF when no drawdown exists', () => {
     ],
   });
 
-  assert.match(html, /Equity curve · Strategy vs Buy &amp; Hold/);
+  assert.match(html, /Profit and loss · Over time/);
 });
 
 
