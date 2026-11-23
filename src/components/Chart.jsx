@@ -1655,7 +1655,7 @@ export default function Chart({ chartId = 'main' }) {
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
       <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 25 }} aria-hidden="true" />
 
-      {gameStarted && !chartUiPanelsHidden && <div className="live-information-panel absolute top-2 left-1/2 -translate-x-1/2 z-[80] w-[min(260px,calc(100%-3.5rem))] rounded-xl border border-[#2a2e39] bg-[#131722]/95 p-2.5 text-[10px] leading-4 text-gray-300 shadow-xl pointer-events-auto font-mono">
+      {gameStarted && !chartUiPanelsHidden && <div className="live-information-panel absolute top-2 right-[72px] left-auto z-[80] w-[min(260px,calc(100%-5rem))] rounded-none border-0 bg-transparent p-0 text-[10px] leading-4 text-gray-300 shadow-none pointer-events-auto font-mono">
         <button type="button" onClick={() => setDashboardCollapsed(value => !value)}
           aria-expanded={!dashboardCollapsed}
           className="mb-1 flex w-full items-center justify-between gap-2 rounded text-left hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500">
@@ -1683,7 +1683,7 @@ export default function Chart({ chartId = 'main' }) {
             <div className="mt-1 font-sans text-[11px] font-semibold text-green-400">{htfDashboard.countdown} left</div>
           </div>}
           {indicatorDashboard.length > 0 && <div className="mt-2 border-t border-[#2a2e39] pt-2">
-            <div className="mb-1 font-sans text-[11px] font-bold tracking-wide text-gray-100">INDICATORS</div>
+            <div className="live-information-indicators-title mb-1 font-sans text-[11px] font-bold tracking-wide">INDICATORS</div>
             <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5">
               {indicatorDashboard.map(item => (
                 <div key={item.key} className="contents">
