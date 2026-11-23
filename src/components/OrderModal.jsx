@@ -188,8 +188,8 @@ export default function OrderModal() {
   const inputStep = precision === 5 ? '0.00001' : precision === 3 ? '0.001' : '0.01';
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#131722] rounded-2xl w-full max-w-md border border-[#2a2e39] overflow-hidden max-h-[90vh] flex flex-col">
+    <div className="order-modal-overlay fixed inset-0 bg-black/80 flex items-center justify-center z-[120] p-4">
+      <div className="order-modal-shell bg-[#131722] rounded-2xl w-full max-w-md border border-[#2a2e39] overflow-hidden max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center p-3 border-b border-[#2a2e39]">
           <h2 className="text-lg font-bold">Place Order</h2>
           <button onClick={handleCancel} className="p-1 hover:bg-[#2a2e39] rounded"><X size={20}/></button>
@@ -227,7 +227,7 @@ export default function OrderModal() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-gray-400">Side</label>
-                <div className={`mt-1 p-2 rounded font-bold capitalize ${orderSide === 'buy' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                <div className={`order-side-label mt-1 p-2 rounded font-bold capitalize ${orderSide === 'buy' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
                   {orderSide}
                 </div>
               </div>
@@ -284,7 +284,7 @@ export default function OrderModal() {
                   <option value="none">NONE</option>
                 </select>
                 <div className="mt-1 rounded bg-[#1e222d] px-2 py-1.5 text-xs text-gray-300">
-                  TP: <span className="font-mono text-green-400">{riskReward === 'none' ? 'Disabled' : Number(tpPrice || 0).toFixed(precision)}</span>
+                  TP: <span className="order-tp-value font-mono text-green-400">{riskReward === 'none' ? 'Disabled' : Number(tpPrice || 0).toFixed(precision)}</span>
                 </div>
               </div>
             </div>
