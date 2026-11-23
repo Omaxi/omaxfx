@@ -297,7 +297,7 @@ export default function Chart({ chartId = 'main' }) {
     chartRef.current = createChart(chartContainerRef.current, {
       layout: {
         background: { type: 'solid', color: 'transparent' },
-        textColor: '#858b98',
+        textColor: '#6b7280',
         fontSize: 9,
         attributionLogo: false,
         panes: {
@@ -410,7 +410,7 @@ export default function Chart({ chartId = 'main' }) {
         chartRef.current?.applyOptions({
           layout: {
             background: { type: 'solid', color: light ? '#f8fafc' : (useStore.getState().theme?.background || '#131722') },
-            textColor: light ? '#475467' : '#d1d4dc',
+            textColor: light ? '#475467' : '#6b7280',
             panes: { separatorColor: light ? '#d0d5dd' : '#2a2e39', separatorHoverColor: '#3b82f6', enableResize: true },
           },
           grid: {
