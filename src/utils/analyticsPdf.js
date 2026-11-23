@@ -119,33 +119,12 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
   const generated = new Date().toLocaleString();
   const summaryCards = [
     ['Net P&L', money(metrics.netPnl), metrics.netPnl >= 0 ? 'gain' : 'loss'],
-    ['Trade win rate', percent(metrics.winRate), 'blue'],
+    ['Trade win rate', percent(metrics.winRate), metrics.winRate >= 50 ? 'gain' : 'loss'],
     ['Avg win/loss', Number(metrics.avgRatio || 0).toFixed(2), 'blue'],
     ['Profit factor', metrics.profitFactor === Infinity ? '∞' : Number(metrics.profitFactor || 0).toFixed(2), metrics.profitFactor >= 1 ? 'gain' : 'loss'],
     ['Average R', Number(metrics.averageR || 0).toFixed(2) + 'R', metrics.averageR >= 0 ? 'gain' : 'loss'],
     ['Closed DD', percent(metrics.maxClosedDrawdown), 'loss'],
-    ['Current streak', metrics.currentStreak, 'neutral'],
-  ];
-  const metricTone = label => ({
-    'Starting balance': 'blue', 'Final balance': 'blue', 'Net P&L': metrics.netPnl >= 0 ? 'gain' : 'loss',
-    'Return': metrics.returnPct >= 0 ? 'gain' : 'loss', 'Total closed trades': 'blue', 'Wins': 'gain', 'Losses': 'loss',
-    'Breakeven': 'warn', 'Win rate': 'blue', 'Gross profit': 'gain', 'Gross loss': 'loss', 'Average win': 'gain',
-    'Average loss': 'loss', 'Average win/loss ratio': 'blue', 'Profit factor': metrics.profitFactor >= 1 ? 'gain' : 'loss',
-    'Average R': metrics.averageR >= 0 ? 'gain' : 'loss', 'Maximum closed drawdown': 'loss', 'Largest win': 'gain',
-    'Largest loss': 'loss', 'Maximum consecutive wins': 'gain', 'Maximum consecutive losses': 'loss',
-    'Current streak': String(metrics.currentStreak).toLowerCase().includes('winning') ? 'gain' : String(metrics.currentStreak).toLowerCase().includes('losing') ? 'loss' : 'warn',
-    'Long trades': 'gain', 'Short trades': 'warn', 'Peak closed balance': 'blue',
-  })[label] || 'neutral';
-  const metricRows = [
-    ['Starting balance', money(startBalance)], ['Final balance', money(balance)], ['Net P&L', money(metrics.netPnl)], ['Return', percent(metrics.returnPct)],
-    ['Total closed trades', metrics.totalTrades], ['Wins', metrics.wins], ['Losses', metrics.losses], ['Breakeven', metrics.breakeven],
-    ['Win rate', percent(metrics.winRate)], ['Gross profit', money(metrics.grossProfit)], ['Gross loss', money(-metrics.grossLoss)],
-    ['Average win', money(metrics.avgWin)], ['Average loss', money(-metrics.avgLoss)], ['Average win/loss ratio', Number(metrics.avgRatio).toFixed(2)],
-    ['Profit factor', metrics.profitFactor === Infinity ? '∞' : Number(metrics.profitFactor).toFixed(2)], ['Average R', `${Number(metrics.averageR).toFixed(2)}R`],
-    ['Maximum closed drawdown', percent(metrics.maxClosedDrawdown)], ['Largest win', money(metrics.largestWin)], ['Largest loss', money(metrics.largestLoss)],
-    ['Maximum consecutive wins', metrics.maxWins], ['Maximum consecutive losses', metrics.maxLosses], ['Current streak', metrics.currentStreak],
-    ['Long trades', `${metrics.longTrades} · ${percent(metrics.longWinRate)} win`], ['Short trades', `${metrics.shortTrades} · ${percent(metrics.shortWinRate)} win`],
-    ['Peak closed balance', money(metrics.maxBalance)],
+    ['Current streak', metrics.currentStreak, String(metrics.currentStreak).toLowerCase().includes('winning') ? 'gain' : String(metrics.currentStreak).toLowerCase().includes('losing') ? 'loss' : 'neutral'],
   ];
   const winningTrades = trades.filter(trade => Number(trade.pnl) > 0);
   const losingTrades = trades.filter(trade => Number(trade.pnl) < 0);
@@ -245,8 +224,8 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
     .top-metrics{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:8px 0 10px}
     .summary-card{min-width:0;background:#131923;border:1px solid #293142;border-radius:5px;padding:7px}
     .summary-card small{display:block;font-size:7px;color:#8993a5;margin-bottom:3px}
-    .summary-card b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e5eaf3}
-    .dashboard-grid{display:grid;grid-template-columns:minmax(220px,34%) minmax(0,1fr);gap:8px;align-items:stretch;margin:8px 0 12px}
+    .summary-card b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e5eaf3}.summary-card b.gain{color:#27c99a}.summary-card b.loss{color:#ff6969}.summary-card b.blue{color:#72a7ff}.summary-card b.warn{color:#f5b84b}.summary-card b.neutral{color:#c2cad7}
+    .dashboard-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;align-items:stretch;margin:8px 0 12px}
     .dashboard-panel{min-width:0;border:1px solid #293142;border-radius:6px;background:#111722;padding:8px;break-inside:avoid}
     .dashboard-panel h2{margin-bottom:7px}
     .metrics{display:grid;grid-template-columns:1fr;gap:0;border-top:1px solid #293142}
@@ -297,10 +276,7 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
     <header class="cover"><h1>${escapeHtml(sessionName||'Trading session')}</h1><div class="range-line"><b>Backtest range</b><span>${escapeHtml(backtestRange?.from || "—")}</span><span>TO</span><span>${escapeHtml(backtestRange?.to || "—")}</span><span class="range-duration">${escapeHtml(backtestRange?.elapsed || "")}</span></div><div class="meta"><span>Symbol: <b>${escapeHtml(symbol||'—')}</b></span><span>Session ID: ${escapeHtml(sessionId||'—')}</span><span>Timezone: ${escapeHtml(timezone||'UTC+3')}</span><span>Generated: ${escapeHtml(generated)}</span></div></header>
     <div class="top-metrics">${summaryCards.map(([label,value,tone])=>`<div class="summary-card"><small>${escapeHtml(label)}</small><b class="${tone}">${escapeHtml(value)}</b></div>`).join('')}</div>
     <section class="section"><h2>Profit and loss · Over time</h2><div class="curve">${buildCurveSvg(curve, 'Buy & Hold · '+(symbol||'Market'))}</div></section>
-    <div class="dashboard-grid">
-      <section class="dashboard-panel"><h2>Trading statistics</h2><div class="metrics">${metricRows.map(([label,value])=>`<div class="metric"><span class="metric-label">${escapeHtml(label)}</span><b class="metric-value ${metricTone(label)}">${escapeHtml(value)}</b></div>`).join('')}</div></section>
-      <section class="dashboard-panel"><h2>Trading calendar · All active months</h2><p class="muted">Daily realized net P&amp;L and closed trade count · UTC+3</p><div class="calendar-wrap ${new Set(dailyEntries.map(([key])=>key.slice(0,7))).size===1?'single-month':''}">${buildCalendar(dailyEntries)}</div></section>
-    </div>
+    <section class="dashboard-panel calendar-report-panel"><h2>Trading calendar · All active months</h2><p class="muted">Daily realized net P&amp;L and closed trade count · UTC+3</p><div class="calendar-wrap ${new Set(dailyEntries.map(([key])=>key.slice(0,7))).size===1?'single-month':''}">${buildCalendar(dailyEntries)}</div></section>
     ${performanceSections}
     <section class="page-break"><h2>Daily trade journal · All trades and chart screenshots</h2><p class="muted">${trades.length} closed trades across ${dailyEntries.length} active trading days.</p>${tradePages||'<div class="empty">No closed trades in this session.</div>'}</section>
     <div class="footer">OmaxFX · Report generated ${escapeHtml(generated)} · Values are based on the saved session trade history.</div>
