@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Minus, MoveVertical, Square, Type, Layers, Undo2, Trash2 } from 'lucide-react';
 import { useStore } from '../store';
 
+const EMPTY_DRAWINGS = [];
+
 const TOOLS = [
   { key: 'horizontal', title: 'Horizontal line', Icon: Minus },
   { key: 'vertical', title: 'Vertical line', Icon: MoveVertical },
@@ -15,7 +17,7 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
   const canvasRef = useRef(null);
   const dragRef = useRef(null);
   const [tool, setTool] = useState(null);
-  const drawings = useStore(state => state.chartDrawings?.[chartId] || []);
+  const drawings = useStore(state => state.chartDrawings?.[chartId] ?? EMPTY_DRAWINGS);
   const setDrawings = update => {
     const current = useStore.getState().chartDrawings?.[chartId] || [];
     useStore.getState().setChartDrawings(chartId, typeof update === 'function' ? update(current) : update);
