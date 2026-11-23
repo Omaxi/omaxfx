@@ -248,5 +248,4 @@ export default function StylePanel({ selectedId, onClose }) {
         )}
       </div>
     </div>, document.body);
-  );
 }
