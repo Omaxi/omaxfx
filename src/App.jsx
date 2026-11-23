@@ -18,7 +18,9 @@ import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
 import { fetchDataCatalog, loadBundledCsvFiles } from './utils/dataCatalog';
 import { getPnlMultiplier } from './utils/instrument';
-import { RotateCcw, Info, Sparkles, AlertTriangle, ChevronDown, LogOut, Square, Columns2, LayoutGrid } from 'lucide-react';
+import { RotateCcw, Info, Sparkles, AlertTriangle, ChevronDown, LogOut, Square, Columns2 } from 'lucide-react';
+
+function ThreeChartLayoutIcon({ size = 14 }) { return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1" y="1" width="5.5" height="14" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="9.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/></svg>; }
 
 function App() {
   const { 
@@ -382,7 +384,7 @@ function App() {
 
         {gameStarted && <div className="hidden md:flex items-center gap-1 rounded-lg border border-[#2a2e39] bg-[#0f131c] p-0.5 flex-shrink-0" aria-label="Chart layout">
           <span className="px-1 text-[8px] font-bold uppercase tracking-wide text-gray-500">Layout</span>
-          {[{ value: 1, label: 'Single', Icon: Square }, { value: 2, label: 'Two charts', Icon: Columns2 }, { value: 4, label: 'Four charts', Icon: LayoutGrid }].map(({ value, label, Icon }) => (
+          {[{ value: 1, label: 'Single chart', Icon: Square }, { value: 2, label: 'Two charts', Icon: Columns2 }, { value: 3, label: 'Three charts', Icon: ThreeChartLayoutIcon }].map(({ value, label, Icon }) => (
             <button key={value} type="button" onClick={() => useStore.getState().setChartLayout(value)} title={label} aria-label={label} aria-pressed={useStore.getState().chartLayout === value}
               className={`flex h-7 w-7 items-center justify-center rounded ${useStore.getState().chartLayout === value ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-[#2a2e39]'}`}>
               <Icon size={14}/>
