@@ -195,7 +195,9 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
     <>
       <div className="absolute left-0 top-0 z-[100] flex flex-col gap-0.5 rounded-r-md bg-[#131722]/95 p-1 shadow-none pointer-events-auto" onPointerDown={event => event.stopPropagation()}>
         {TOOLS.map(({ key, title, Icon }) => (
-          <button key={key} type="button" title={title} aria-label={title} onClick={() => setTool(value => value === key ? null : key)}
+          <button key={key} type="button" title={title} aria-label={title} aria-pressed={tool === key}
+            onPointerDown={event => event.stopPropagation()}
+            onClick={event => { event.preventDefault(); event.stopPropagation(); setTool(value => value === key ? null : key); }}
             className={`flex h-7 w-7 items-center justify-center rounded pointer-events-auto ${tool === key ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-[#2a2e39]'}`}>
             {Icon ? <Icon size={14}/> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 20 20 4M14 4h6v6"/></svg>}
           </button>
