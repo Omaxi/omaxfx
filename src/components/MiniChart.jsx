@@ -22,6 +22,7 @@ export default function MiniChart({ timeframe, onTimeframeChange }) {
   const currentIndex = useStore(state => state.currentIndex);
   const symbol = useStore(state => state.symbol);
   const theme = useStore(state => state.theme);
+  const uiTheme = useStore(state => state.uiTheme);
   const aggregatedData = useMemo(() => aggregateData(rawData, timeframe), [rawData, timeframe]);
   const candles = useMemo(() => {
     if (!rawData[currentIndex]) return [];
@@ -47,7 +48,7 @@ export default function MiniChart({ timeframe, onTimeframeChange }) {
     const chart = createChart(container, {
       width: container.clientWidth,
       height: container.clientHeight,
-      layout: { background: { type: 'solid', color: theme?.background || '#131722' }, textColor: '#aeb5c2', fontSize: 10, attributionLogo: false },
+      layout: { background: { type: 'solid', color: uiTheme === 'light' ? '#f8fafc' : (theme?.background || '#131722') }, textColor: uiTheme === 'light' ? '#475467' : '#aeb5c2', fontSize: 10, attributionLogo: false },
       grid: { vertLines: { visible: false }, horzLines: { visible: false } },
       rightPriceScale: { borderVisible: false },
       timeScale: { timeVisible: true, secondsVisible: false, borderVisible: false, rightOffset: 3, tickMarkFormatter: (time, type) => formatMarketTick(time, type) },
@@ -81,7 +82,7 @@ export default function MiniChart({ timeframe, onTimeframeChange }) {
       chartRef.current = null;
       seriesRef.current = null;
     };
-  }, [symbol, theme]);
+  }, [symbol, theme, uiTheme]);
 
   useEffect(() => {
     if (!seriesRef.current || !chartRef.current) return;
