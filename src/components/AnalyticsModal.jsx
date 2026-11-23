@@ -323,7 +323,7 @@ export default function AnalyticsModal() {
               </div>
             </section>
 
-            <section className="min-h-0 rounded-md border border-[#2a2e39] bg-[#131722] overflow-hidden flex flex-col">
+            <section className="analytics-statistics-panel min-h-0 rounded-md border border-[#2a2e39] bg-[#131722] overflow-hidden flex flex-col">
               <div className="h-7 shrink-0 flex items-center gap-1.5 px-2 border-b border-[#2a2e39] text-[10px] font-semibold text-gray-200"><Award size={12} className="text-amber-400"/> Trading statistics</div>
               <div className="grid grid-cols-2 gap-x-3 gap-y-1 p-2 content-start">
                 <Stat label="Largest win" value={`+${money(largestWin)}`} color="text-emerald-400"/>
@@ -338,10 +338,10 @@ export default function AnalyticsModal() {
                 <Stat label="Max balance" value={money(maxBalance)}/>
               </div>
               <div className="mt-auto px-2 pb-2">
-                <div className="h-1.5 rounded-full bg-[#2a2e39] overflow-hidden flex">
+                <div className="analytics-statistics-track h-1.5 rounded-full bg-[#2a2e39] overflow-hidden flex">
                   <div className="bg-emerald-500" style={{ width: `${trades.length ? wins.length / trades.length * 100 : 0}%` }}/>
                   <div className="bg-red-500" style={{ width: `${trades.length ? losses.length / trades.length * 100 : 0}%` }}/>
-                  <div className="bg-gray-500 flex-1"/>
+                  <div className="analytics-statistics-neutral flex-1 bg-gray-500"/>
                 </div>
                 <div className="mt-1 flex justify-between text-[8px] text-gray-500"><span>{wins.length} wins</span><span>{losses.length} losses</span><span>{breakeven.length} breakeven</span></div>
               </div>
