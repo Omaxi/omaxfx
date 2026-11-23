@@ -28,6 +28,7 @@ const DEFAULT_CONFIG = {
   adx: { period: 14 },
   fvg: { showCurrent: true, showHigher: true, higherTimeframe: 15 },
   htfCandleViewer: { timeframe: 240 },
+  pdhPdl: { showHigh: true, showLow: true, showOpen: false, showClose: true },
 };
 
 function IndicatorSelect({ value, onChange, options }) {
@@ -290,9 +291,12 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
     if (!previousDay) return undefined;
 
     const precision = getPricePrecision(symbol, contractSpecs);
+    const pdConfig = config.pdhPdl || DEFAULT_CONFIG.pdhPdl;
     const levels = [
-      { price: Number(previousDay.high), title: 'P.D High', color: '#3b82f6' },
-      { price: Number(previousDay.low), title: 'P.D Low', color: '#3b82f6' },
+      ...(pdConfig.showHigh ? [{ price: Number(previousDay.high), title: 'P.D High', color: '#3b82f6' }] : []),
+      ...(pdConfig.showLow ? [{ price: Number(previousDay.low), title: 'P.D Low', color: '#3b82f6' }] : []),
+      ...(pdConfig.showOpen ? [{ price: Number(previousDay.open), title: 'P.D Open', color: '#d946ef' }] : []),
+      ...(pdConfig.showClose ? [{ price: Number(previousDay.close), title: 'P.D Close', color: '#f59e0b' }] : []),
     ];
     previousDailyLinesRef.current = levels.filter(level => Number.isFinite(level.price)).map(level =>
       priceSeries.createPriceLine({
@@ -312,7 +316,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
       });
       previousDailyLinesRef.current = [];
     };
-  }, [active.pdhPdl, rawData, currentIndex, dailyCandles, priceSeriesRef, chartReady, symbol, contractSpecs]);
+  }, [active.pdhPdl, config.pdhPdl, rawData, currentIndex, dailyCandles, priceSeriesRef, chartReady, symbol, contractSpecs]);
 
 
   const sessionCandles = useMemo(() => {
@@ -970,9 +974,22 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
               </button>
             ))}
           </div>
-          {selected.some(item => ['ma', 'bb', 'rsi', 'atr', 'adx', 'fvg', 'htfCandleViewer'].includes(item.key)) && (
+          {selected.some(item => ['ma', 'bb', 'rsi', 'atr', 'adx', 'fvg', 'htfCandleViewer', 'pdhPdl'].includes(item.key)) && (
             <div className="mt-2 border-t border-[#2a2e39] pt-2">
               <div className="mb-1 flex items-center gap-1 text-[10px] font-bold text-gray-400"><Settings2 size={11}/> Indicator instances</div>
+              {selected.some(item => item.key === 'pdhPdl') && <div className="mb-2 rounded bg-[#1e222d] p-2">
+                <div className="mb-2 text-[10px] font-semibold text-white">Previous Daily Levels</div>
+                {[
+                  ['showHigh', 'P.D High', '#3b82f6'],
+                  ['showLow', 'P.D Low', '#3b82f6'],
+                  ['showOpen', 'P.D Open', '#d946ef'],
+                  ['showClose', 'P.D Close', '#f59e0b'],
+                ].map(([field, label, color]) => <label key={field} className="mb-1 flex items-center gap-2 text-[10px] text-gray-300">
+                  <input type="checkbox" checked={config.pdhPdl?.[field] ?? DEFAULT_CONFIG.pdhPdl[field]} onChange={event => updateConfig('pdhPdl', field, event.target.checked)} className="accent-blue-500"/>
+                  <span style={{ color }}>{label}</span>
+                </label>)}
+                <p className="mt-1 text-[9px] leading-4 text-gray-500">Levels are calculated from the previous completed UTC+3 market day.</p>
+              </div>}
               {selected.some(item => item.key === 'htfCandleViewer') && <div className="mb-2 rounded bg-[#1e222d] p-2">
                 <div className="mb-2 text-[10px] font-semibold text-white">HTF Candle Viewer</div>
                 <label className="flex items-center justify-between gap-2 text-[10px] text-gray-300">
