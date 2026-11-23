@@ -250,7 +250,7 @@ function calculateIndicators(candles, config, active, timeframe, sessionCandles 
 }
 export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, chartRef, chartReady, visibleData, displayData, timeframe, priceSeriesRef, liveCandle, rawData, currentIndex }) {
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState({});
+  const [active, setActive] = useState({ pdhPdl: true });
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const seriesRef = useRef({});
   const readyRef = useRef(false);
@@ -259,6 +259,8 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
   const htfCandleCanvasRef = useRef(null);
   const sessionColors = useStore(state => state.sessionColors);
   const symbol = useStore(state => state.symbol);
+  const allRawData = useStore(state => state.allRawData);
+  const dailyCandles = useMemo(() => aggregateData(allRawData || [], 1440), [allRawData]);
   const contractSpecs = useStore(state => state.contractSpecs);
   const previousDailyLinesRef = useRef([]);
 
@@ -278,11 +280,10 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
 
     const cursor = rawData[currentIndex];
     const currentDayStart = Math.floor((Number(cursor.time) + 3 * 3600) / 86400) * 86400 - 3 * 3600;
-    const daily = aggregateData(rawData.slice(0, currentIndex + 1), 1440);
     let previousDay = null;
-    for (let i = daily.length - 1; i >= 0; i--) {
-      if (Number(daily[i].time) < currentDayStart) {
-        previousDay = daily[i];
+    for (let i = dailyCandles.length - 1; i >= 0; i--) {
+      if (Number(dailyCandles[i].time) < currentDayStart) {
+        previousDay = dailyCandles[i];
         break;
       }
     }
@@ -311,7 +312,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
       });
       previousDailyLinesRef.current = [];
     };
-  }, [active.pdhPdl, rawData, currentIndex, priceSeriesRef, chartReady, symbol, contractSpecs]);
+  }, [active.pdhPdl, rawData, currentIndex, dailyCandles, priceSeriesRef, chartReady, symbol, contractSpecs]);
 
 
   const sessionCandles = useMemo(() => {
