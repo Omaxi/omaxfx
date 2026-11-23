@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { LayoutGrid, Columns2, Square } from 'lucide-react';
 import Chart from './Chart';
+import { useStore } from '../store';
 import MiniChart from './MiniChart';
 
 const PRESETS = {
@@ -10,6 +11,8 @@ const PRESETS = {
 
 export default function ChartWorkspace() {
   const [layout, setLayout] = useState(1);
+  const mainTimeframe = useStore(state => state.timeframe);
+  const mainTimeframeLabel = ({ 1: '1m', 5: '5m', 15: '15m', 30: '30m', 60: '1H', 240: '4H', 1440: '1D', 10080: '1W' })[mainTimeframe] || String(mainTimeframe);
   const [timeframes, setTimeframes] = useState({ 15: 15, 5: 5, 60: 60 });
 
   const updateTimeframe = (slot, value) => {
@@ -21,7 +24,7 @@ export default function ChartWorkspace() {
       <div className={layout === 1 ? 'absolute inset-0' : layout === 2 ? 'grid h-full min-h-0 grid-cols-2 gap-px bg-[#2a2e39]' : 'grid h-full min-h-0 grid-cols-2 grid-rows-2 gap-px bg-[#2a2e39]'}>
         <div className="relative min-h-0 min-w-0 overflow-hidden bg-[#131722]">
           <Chart />
-          {layout !== 1 && <div className="absolute left-2 top-2 z-[60] rounded bg-[#1e222d]/90 px-2 py-1 text-[10px] font-bold text-white pointer-events-none">MAIN · {useMainTimeframeLabel()}</div>}
+          {layout !== 1 && <div className="absolute left-2 top-2 z-[60] rounded bg-[#1e222d]/90 px-2 py-1 text-[10px] font-bold text-white pointer-events-none">MAIN · {mainTimeframeLabel}</div>}
         </div>
         {layout >= 2 && PRESETS[layout].map((slot, index) => (
           <div key={slot} className="relative min-h-0 min-w-0 overflow-hidden bg-[#131722]">
@@ -37,9 +40,4 @@ export default function ChartWorkspace() {
       </div>
     </section>
   );
-}
-
-function useMainTimeframeLabel() {
-  // The primary chart's timeframe remains controlled by the existing Control Panel.
-  return 'ACTIVE TIMEFRAME';
 }
