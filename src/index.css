@@ -247,7 +247,7 @@ html[data-ui-theme="light"] .live-information-panel {
   background: rgb(255 255 255 / 97%) !important;
   color: #344054 !important;
   border-color: #d0d5dd !important;
-  box-shadow: 0 8px 24px rgb(16 24 40 / 12%) !important;
+  box-shadow: none !important;
   opacity: 1 !important;
   z-index: 80 !important;
 }
