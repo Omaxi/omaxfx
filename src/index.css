@@ -407,3 +407,36 @@ html[data-ui-theme="light"] .analytics-statistics-neutral {
 html[data-ui-theme="light"] .live-information-indicators-title {
   color: #344054 !important;
 }
+
+
+/* Quick Guide is a focused overlay: hide the live dashboard while it is open. */
+.quick-guide-open .live-information-panel {
+  display: none !important;
+}
+
+/* Preserve semantic toolbar icon colors in both light and dark themes.
+   The light-theme neutral button rule must not wash these icons out. */
+.app-header .app-header-action.header-action-new-session,
+.app-header .app-header-action.header-action-new-session svg { color: #06b6d4 !important; }
+
+.app-header .app-header-action[title^="Switch to"],
+.app-header .app-header-action[title^="Switch to"] svg { color: #f59e0b !important; }
+
+.app-header .app-header-action[title="Quick guide"],
+.app-header .app-header-action[title="Quick guide"] svg { color: #3b82f6 !important; }
+
+.app-header .app-header-action[title*="Fireworks"],
+.app-header .app-header-action[title*="Fireworks"] svg { color: #f59e0b !important; }
+
+.app-header .app-header-action[title="Save and exit OmaxFX"],
+.app-header .app-header-action[title="Save and exit OmaxFX"] svg { color: #ef4444 !important; }
+
+.app-header button[title="Mute sound effects"],
+.app-header button[title="Enable sound effects"],
+.app-header button[title="Mute sound effects"] svg,
+.app-header button[title="Enable sound effects"] svg { color: #10b981 !important; }
+
+.app-header button[title="Stop music"],
+.app-header button[title="Play music"],
+.app-header button[title="Stop music"] svg,
+.app-header button[title="Play music"] svg { color: #3b82f6 !important; }
