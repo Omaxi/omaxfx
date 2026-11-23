@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createChart, CandlestickSeries } from 'lightweight-charts';
 import { useStore } from '../store';
 import { aggregateData, getTimeframeBucketStart } from '../utils/timeframe';
 import { getPricePrecision, getPriceTickSize } from '../utils/instrument';
 import { formatMarketDateTime, formatMarketTick } from '../utils/marketClock';
+import IndicatorsPanel from './IndicatorsPanel';
 
 const OPTIONS = [
   { value: 1, label: '1m' }, { value: 5, label: '5m' }, { value: 15, label: '15m' },
@@ -16,6 +17,7 @@ export default function MiniChart({ timeframe, onTimeframeChange }) {
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
   const lastTimeframeRef = useRef(null);
+  const [chartReady, setChartReady] = useState(false);
   const rawData = useStore(state => state.rawData);
   const currentIndex = useStore(state => state.currentIndex);
   const symbol = useStore(state => state.symbol);
@@ -66,6 +68,7 @@ export default function MiniChart({ timeframe, onTimeframeChange }) {
     });
     chartRef.current = chart;
     seriesRef.current = series;
+    setChartReady(true);
     const observer = new ResizeObserver(entries => {
       const rect = entries[0]?.contentRect;
       if (rect) chart.applyOptions({ width: Math.max(1, Math.floor(rect.width)), height: Math.max(1, Math.floor(rect.height)) });
@@ -74,6 +77,7 @@ export default function MiniChart({ timeframe, onTimeframeChange }) {
     return () => {
       observer.disconnect();
       chart.remove();
+      setChartReady(false);
       chartRef.current = null;
       seriesRef.current = null;
     };
@@ -91,6 +95,7 @@ export default function MiniChart({ timeframe, onTimeframeChange }) {
   return (
     <div className="absolute inset-0 bg-[#131722]">
       <div ref={containerRef} className="absolute inset-0" />
+      <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={candles} displayData={aggregatedData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={rawData[currentIndex] || null} rawData={rawData} currentIndex={currentIndex} />
       <div className="absolute left-2 top-2 z-20 flex items-center gap-2 rounded-md border border-[#2a2e39] bg-[#131722]/95 px-2 py-1 shadow-lg">
         <span className="text-[10px] font-bold text-white">{symbol}</span>
         <select aria-label="Chart timeframe" value={timeframe} onChange={event => onTimeframeChange(event.target.value)} className="h-6 rounded border border-[#343b4b] bg-[#1e222d] px-1 text-[10px] font-semibold text-white outline-none">
