@@ -42,7 +42,7 @@ function StyledSelect({ value, onChange, options }) {
   );
 }
 export default function DataImportModal() {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [file, setFile] = useState(null);
   const [customParsed, setCustomParsed] = useState(null);
   const [customMonth, setCustomMonth] = useState('__ALL__');
@@ -54,6 +54,12 @@ export default function DataImportModal() {
   const [quoteToAccountRate, setQuoteToAccountRate] = useState('1');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [status, setStatus] = useState({ loading: false, error: '' });
+
+  useEffect(() => {
+    const showImporter = () => setOpen(true);
+    window.addEventListener('omaxfx:open-data-import', showImporter);
+    return () => window.removeEventListener('omaxfx:open-data-import', showImporter);
+  }, []);
 
   const customMonths = useMemo(() => {
     if (!customParsed?.candles?.length) return [];

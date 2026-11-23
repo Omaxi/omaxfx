@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import { Calendar, Play, Shield, Target, TrendingDown, User, Sparkles, X, History as HistoryIcon, Trash2, ChevronDown, Check } from 'lucide-react';
+import { Calendar, Play, Shield, Target, TrendingDown, User, Sparkles, X, History as HistoryIcon, Trash2, ChevronDown, Check, Sun, Moon, Upload } from 'lucide-react';
 import { fetchDataCatalog, loadBundledCsvFiles } from '../utils/dataCatalog';
 
 function SavedSessionDropdown({ sessions, value, onChange }) {
@@ -95,7 +95,7 @@ export default function PeriodModal() {
   const { 
     allRawData, isPeriodModalOpen, closePeriodModal, gameStarted, startGame, 
     playerName, setPlayerName, sessionName, setSessionName,
-    readSessions, loadSavedSession, deleteSavedSession
+    readSessions, loadSavedSession, deleteSavedSession, uiTheme, toggleUiTheme
   } = useStore();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -226,15 +226,28 @@ export default function PeriodModal() {
             </div>
             <p className="text-[10px] text-gray-400">Configure your session</p>
           </div>
-          {gameStarted && (
-            <button 
-              onClick={closePeriodModal}
-              className="p-1 hover:bg-[#2a2e39] rounded text-gray-400 hover:text-white"
-              title="Cancel"
-            >
-              <X size={14} />
+          <div className="flex items-center gap-1">
+            <button type="button" onClick={toggleUiTheme}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2a2e39] bg-[#1e222d] text-gray-300 transition-colors hover:border-blue-500 hover:text-blue-400"
+              title={uiTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+              aria-label={uiTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
+              {uiTheme === 'dark' ? <Sun size={15}/> : <Moon size={15}/>}
             </button>
-          )}
+            <button type="button" onClick={() => window.dispatchEvent(new Event('omaxfx:open-data-import'))}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2a2e39] bg-[#1e222d] text-gray-300 transition-colors hover:border-blue-500 hover:text-blue-400"
+              title="Import market CSV" aria-label="Import market CSV">
+              <Upload size={15}/>
+            </button>
+            {gameStarted && (
+              <button 
+                onClick={closePeriodModal}
+                className="p-1 hover:bg-[#2a2e39] rounded text-gray-400 hover:text-white"
+                title="Cancel"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="p-3 space-y-3 max-h-[70vh] overflow-y-auto">

@@ -1410,6 +1410,7 @@ export default function Chart() {
     
     visibleDataRef.current = visibleData;
     const previous = lastRenderedDataRef.current;
+    const firstDataLoad = previous.length === 0;
     const canAppend = !tfChanged && !jumpChanged && previous.length > 0 &&
       visibleData.length >= previous.length &&
       visibleData[0]?.time === previous[0]?.time &&
@@ -1428,7 +1429,7 @@ export default function Chart() {
     }
     lastRenderedDataRef.current = visibleData;
 
-    if (tfChanged || jumpChanged) {
+    if (tfChanged || jumpChanged || firstDataLoad) {
       try {
         const container = chartContainerRef.current;
         const chartWidth = container ? container.clientWidth : 800;
@@ -1458,7 +1459,7 @@ export default function Chart() {
 
     lastTimeframeRef.current = timeframe;
     lastRecenterRef.current = recenterToken;
-  }, [visibleData, timeframe, recenterToken]);
+  }, [visibleData, timeframe, recenterToken, chartReady]);
 
   useEffect(() => {
     if (!seriesRef.current) return;

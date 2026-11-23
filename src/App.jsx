@@ -55,8 +55,54 @@ function App() {
   }, [loadingState.isActive]);
 
   useEffect(() => {
-    useStore.getState().setLoadingState({ isActive: false, loaded: 0, total: 0, error: null });
-    useStore.getState().openPeriodModal();
+    let cancelled = false;
+    const initializeMarketData = async () => {
+      const state = useStore.getState();
+      if (state.allRawData?.length > 1) {
+        state.setLoadingState({ isActive: false, loaded: 0, total: 0, error: null });
+        state.openPeriodModal();
+        return;
+      }
+
+      state.setLoadingState({ isActive: true, loaded: 0, total: 100, error: null });
+      try {
+        const catalog = await fetchDataCatalog();
+        const bundledFiles = catalog
+          .filter(file => String(file.symbol || '').toUpperCase() === 'XAUUSD')
+          .sort((a, b) => Number(a.year || 0) - Number(b.year || 0) || Number(a.month || 0) - Number(b.month || 0));
+        if (!bundledFiles.length) throw new Error('The bundled XAUUSD market dataset is missing.');
+
+        const loaded = await loadBundledCsvFiles(bundledFiles, progress => {
+          if (!cancelled) {
+            useStore.getState().setLoadingState({
+              isActive: true,
+              loaded: Number(progress.percent) || 0,
+              total: 100,
+              error: null,
+            });
+          }
+        });
+        if (cancelled) return;
+
+        useStore.getState().setCustomSymbolData('XAUUSD', loaded.candles, {
+          contractSize: 100,
+          tickSize: 0.01,
+          precision: 2,
+          quoteCurrency: 'USD',
+          quoteToAccountRate: 1,
+        });
+        useStore.getState().setLoadingState({ isActive: false, loaded: 100, total: 100, error: null });
+      } catch (error) {
+        if (cancelled) return;
+        console.error('[startup] Unable to load bundled XAUUSD data:', error);
+        useStore.getState().setLoadingState({ isActive: false, loaded: 0, total: 0, error: null });
+        useStore.getState().openPeriodModal();
+        window.dispatchEvent(new Event('omaxfx:open-data-import'));
+      }
+    };
+
+    initializeMarketData();
+    return () => { cancelled = true; };
   }, []);
 
   // ============================================================
@@ -334,7 +380,7 @@ function App() {
           )}
         </div>
 
-        <div className="hidden md:flex items-center gap-1 rounded-lg border border-[#2a2e39] bg-[#0f131c] p-0.5 flex-shrink-0" aria-label="Chart layout">
+        {gameStarted && <div className="hidden md:flex items-center gap-1 rounded-lg border border-[#2a2e39] bg-[#0f131c] p-0.5 flex-shrink-0" aria-label="Chart layout">
           <span className="px-1 text-[8px] font-bold uppercase tracking-wide text-gray-500">Layout</span>
           {[{ value: 1, label: 'Single', Icon: Square }, { value: 2, label: 'Two charts', Icon: Columns2 }, { value: 4, label: 'Four charts', Icon: LayoutGrid }].map(({ value, label, Icon }) => (
             <button key={value} type="button" onClick={() => useStore.getState().setChartLayout(value)} title={label} aria-label={label} aria-pressed={useStore.getState().chartLayout === value}
@@ -342,7 +388,7 @@ function App() {
               <Icon size={14}/>
             </button>
           ))}
-        </div>
+        </div>}
 
         {gameStarted && <div className="hidden lg:flex items-center gap-1.5 flex-shrink-0">
           <button onClick={openHistory} className="px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">History</button>
