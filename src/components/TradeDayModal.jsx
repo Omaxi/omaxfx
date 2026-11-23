@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { X, Camera, Download } from 'lucide-react';
-import { getTradeScreenshot, renderTradeScreenshot, saveTradeScreenshot } from '../utils/tradeScreenshots';
+import { renderTradeScreenshot, saveTradeScreenshot } from '../utils/tradeScreenshots';
 import { fmtMoney } from '../utils/format';
 import TradeScreenshotChart from './TradeScreenshotChart';
 
@@ -45,7 +45,7 @@ export default function TradeDayModal({ date, trades, onClose, sessionId, candle
 
   return (
     <div className="fixed inset-0 z-[90] bg-black/75 flex items-center justify-center p-3" onClick={onClose}>
-      <div className="w-full max-w-5xl max-h-[88vh] flex flex-col overflow-hidden rounded-xl border border-[#343a40] bg-[#131722] text-white shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="trade-journal-modal w-full max-w-5xl max-h-[88vh] flex flex-col overflow-hidden rounded-xl border border-[#343a40] bg-[#131722] text-white shadow-2xl" onClick={e => e.stopPropagation()}>
         <header className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-[#2a2e39]">
           <div>
             <h2 className="text-base font-bold">Trade journal · {new Date(date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h2>
@@ -60,7 +60,7 @@ export default function TradeDayModal({ date, trades, onClose, sessionId, candle
             const isBuy = trade.type === 'buy';
             const pnl = Number(trade.pnl) || 0;
             return (
-              <article key={trade.id ?? index} className="grid grid-cols-1 lg:grid-cols-[minmax(210px,0.65fr)_minmax(0,1.35fr)] gap-3 rounded-lg border border-[#2a2e39] bg-[#191e29] p-3">
+              <article key={trade.id ?? index} className="trade-journal-card grid grid-cols-1 lg:grid-cols-[minmax(210px,0.65fr)_minmax(0,1.35fr)] gap-3 rounded-lg border border-[#2a2e39] bg-[#191e29] p-3">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <b className="text-sm">Trade #{index + 1}</b>
@@ -83,7 +83,7 @@ export default function TradeDayModal({ date, trades, onClose, sessionId, candle
                   </div>
                   <div className="text-[10px] text-gray-500">Close reason: {trade.reason || '—'} · Trade ID: {trade.id}</div>
                 </div>
-                <div className="min-h-[240px] rounded-md border border-[#303744] bg-[#0d1117] overflow-hidden flex flex-col">
+                <div className="trade-journal-chart min-h-[240px] rounded-md border border-[#303744] bg-[#0d1117] overflow-hidden flex flex-col">
                   <div className="min-h-[220px] flex-1">
                     <TradeScreenshotChart trade={trade} candles={candles} timeframe={timeframe}/>
                   </div>
