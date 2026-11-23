@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { aggregateData, getExecutionCandle } from './timeframe.js';
+import { aggregateData, getExecutionCandle, getTimeframeBucketStart } from './timeframe.js';
 import { parseMarketCsvText } from './marketData.js';
 import { getPnlMultiplier } from './instrument.js';
 
@@ -21,6 +21,22 @@ test('aggregates intraday candles into UTC-aligned five-minute bars', () => {
 test('keeps one-minute data unchanged', () => {
   const data = [candle(60, 1, 2, 0.5, 1.5)];
   assert.equal(aggregateData(data, 1), data);
+});
+
+
+test('aligns daily candles to UTC+3 market midnight', () => {
+  const marketMidnight = Date.parse('2026-11-22T21:00:00Z') / 1000;
+  const beforeMidnight = marketMidnight - 60;
+  const afterMidnight = marketMidnight;
+  assert.equal(getTimeframeBucketStart(beforeMidnight, 1440), marketMidnight - 86400);
+  assert.equal(getTimeframeBucketStart(afterMidnight, 1440), marketMidnight);
+  const result = aggregateData([
+    candle(beforeMidnight, 10, 12, 9, 11),
+    candle(afterMidnight, 11, 13, 10, 12),
+  ], 1440);
+  assert.equal(result.length, 2);
+  assert.equal(result[0].time, marketMidnight - 86400);
+  assert.equal(result[1].time, marketMidnight);
 });
 
 test('aligns weekly bars to Monday UTC rather than Unix epoch Thursday', () => {
