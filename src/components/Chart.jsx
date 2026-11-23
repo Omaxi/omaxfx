@@ -1627,7 +1627,7 @@ export default function Chart() {
           className="mb-1 flex w-full items-center justify-between gap-2 rounded text-left hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500">
           <span className="font-sans text-[11px] font-bold tracking-wide text-gray-100">LIVE INFORMATION</span>
           <span className="flex items-center gap-2">
-            <span className="font-sans text-[10px] text-blue-400">{timeframe}m</span>
+            <span className="font-sans text-[10px] text-blue-400">{{ 1: '1m', 5: '5m', 15: '15m', 30: '30m', 60: '1H', 240: '4H', 1440: '1D', 10080: '1W' }[timeframe] || `${timeframe}m`}</span>
             <ChevronDown size={12} className={dashboardCollapsed ? '' : 'rotate-180'} />
           </span>
         </button>
