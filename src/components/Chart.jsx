@@ -613,7 +613,9 @@ export default function Chart({ chartId = 'main' }) {
           ctx.save();
           ctx.strokeStyle = level.color;
           ctx.lineWidth = level.type === 'entry' ? 1.5 : 1.25;
-          ctx.setLineDash([]);
+          // Once an order is filled and becomes an open position, show its
+          // Entry / SL / TP guides as dashed lines to distinguish triggered trades.
+          ctx.setLineDash(target === 'position' ? [6, 4] : []);
           ctx.beginPath();
           ctx.moveTo(0, y);
           ctx.lineTo(paneW, y);
