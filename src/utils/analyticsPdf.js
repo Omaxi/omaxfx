@@ -147,6 +147,59 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
     ['Long trades', `${metrics.longTrades} · ${percent(metrics.longWinRate)} win`], ['Short trades', `${metrics.shortTrades} · ${percent(metrics.shortWinRate)} win`],
     ['Peak closed balance', money(metrics.maxBalance)],
   ];
+  const winningTrades = trades.filter(trade => Number(trade.pnl) > 0);
+  const losingTrades = trades.filter(trade => Number(trade.pnl) < 0);
+  const breakevenTrades = trades.filter(trade => Number(trade.pnl) === 0);
+  const avgDuration = list => list.length ? list.reduce((sum, trade) => sum + Math.max(0, Number(trade.closeTime || 0) - Number(trade.openTime || 0)), 0) / list.length : 0;
+  const durationText = seconds => {
+    const mins = Math.round(seconds / 60), hours = Math.floor(mins / 60), days = Math.floor(hours / 24);
+    return days ? days + 'd ' + (hours % 24) + 'h' : hours ? hours + 'h ' + (mins % 60) + 'm' : mins + 'm';
+  };
+  const buyTrades = trades.filter(trade => String(trade.type || '').toLowerCase() === 'buy');
+  const sellTrades = trades.filter(trade => String(trade.type || '').toLowerCase() === 'sell');
+  const sideStats = list => ({ total: list.length, wins: list.filter(trade => Number(trade.pnl) > 0).length, pnl: list.reduce((sum, trade) => sum + (Number(trade.pnl) || 0), 0) });
+  const buyStats = sideStats(buyTrades), sellStats = sideStats(sellTrades);
+  const donut = (first, second, firstColor, secondColor) => {
+    const total = first + second, ratio = total ? first / total * 100 : 0;
+    return '<div class="donut" style="background:conic-gradient(' + firstColor + ' 0 ' + ratio + '%, ' + secondColor + ' ' + ratio + '% 100%)"><span>' + total + '</span></div>';
+  };
+  const weekdayStats = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day, index) => {
+    const entries = dailyEntries.filter(([key]) => new Date(key + 'T12:00:00Z').getUTCDay() === index);
+    return { day, pnl: entries.reduce((sum, [, value]) => sum + (Number(value.pnl) || 0), 0), trades: entries.reduce((sum, [, value]) => sum + (Number(value.trades) || 0), 0), wins: entries.reduce((sum, [, value]) => sum + (Number(value.wins) || 0), 0) };
+  });
+  const maxDayAbs = Math.max(1, ...weekdayStats.map(item => Math.abs(item.pnl)));
+  const dayBars = weekdayStats.map(item => {
+    const width = Math.abs(item.pnl) / maxDayAbs * 48;
+    const left = item.pnl < 0 ? 50 - width : 50;
+    return '<div class="day-row"><span>' + item.day + '</span><div class="day-track"><i class="day-zero"></i><i class="day-bar ' + (item.pnl >= 0 ? 'gain-bar' : 'loss-bar') + '" style="left:' + left + '%;width:' + width + '%"></i></div><b>' + money(item.pnl) + '</b><small>' + (item.trades ? Math.round(item.wins / item.trades * 100) : 0) + '%</small></div>';
+  }).join('');
+  const monthlyStats = new Map();
+  dailyEntries.forEach(([key, value]) => {
+    const monthKey = key.slice(0, 7), current = monthlyStats.get(monthKey) || { pnl: 0, trades: 0 };
+    current.pnl += Number(value.pnl) || 0; current.trades += Number(value.trades) || 0; monthlyStats.set(monthKey, current);
+  });
+  const monthCells = Array.from({length:12}, (_, index) => {
+    const monthKey = [...monthlyStats.keys()].find(key => Number(key.slice(5,7)) === index + 1);
+    const item = monthKey ? monthlyStats.get(monthKey) : null;
+    return '<div class="month-cell"><span>' + new Date(Date.UTC(2026,index,1)).toLocaleDateString(undefined,{month:'short',timeZone:'UTC'}) + '</span><b class="' + (item ? item.pnl >= 0 ? 'gain' : 'loss' : 'neutral') + '">' + (item ? money(item.pnl) : '—') + '</b><small>' + (item ? item.trades + ' trades' : 'No trades') + '</small></div>';
+  }).join('');
+  const expectancy = trades.length ? metrics.netPnl / trades.length : 0;
+  const performanceSections = `
+    <section class="section"><h2>Expectancy &amp; Profit Factor</h2><div class="two-panels">
+      <div class="dashboard-panel"><small>Expectancy per trade</small><h2 class="${expectancy >= 0 ? 'gain' : 'loss'}">${money(expectancy)}</h2><div class="expectancy-track"><i style="width:${Math.min(100, Math.max(0, metrics.winRate || 0))}%"></i></div><p class="muted">Average realized P&amp;L per closed trade</p></div>
+      <div class="dashboard-panel"><small>Profit factor</small><h2 class="${metrics.profitFactor >= 1 ? 'gain' : 'loss'}">${metrics.profitFactor === Infinity ? '∞' : Number(metrics.profitFactor || 0).toFixed(2)}</h2><p class="muted">Gross profit divided by gross loss</p></div>
+    </div></section>
+    <section class="section"><h2>Winners and Losers</h2><div class="two-panels">
+      <div class="dashboard-panel winner-panel"><h3>Winners</h3><div class="compact-stat"><span>Total winners</span><b>${winningTrades.length}</b></div><div class="compact-stat"><span>Best win</span><b class="gain">${money(metrics.largestWin)}</b></div><div class="compact-stat"><span>Average win</span><b class="gain">${money(metrics.avgWin)}</b></div><div class="compact-stat"><span>Average duration</span><b>${durationText(avgDuration(winningTrades))}</b></div><div class="compact-stat"><span>Max consecutive wins</span><b>${metrics.maxWins}</b></div></div>
+      <div class="dashboard-panel loser-panel"><h3>Losers</h3><div class="compact-stat"><span>Total losers</span><b>${losingTrades.length}</b></div><div class="compact-stat"><span>Worst loss</span><b class="loss">-${money(metrics.largestLoss)}</b></div><div class="compact-stat"><span>Average loss</span><b class="loss">-${money(metrics.avgLoss)}</b></div><div class="compact-stat"><span>Average duration</span><b>${durationText(avgDuration(losingTrades))}</b></div><div class="compact-stat"><span>Max consecutive losses</span><b>${metrics.maxLosses}</b></div></div>
+    </div></section>
+    <section class="section"><h2>Performance by side</h2><div class="two-panels">
+      <div class="dashboard-panel"><h3>Total trades</h3><div class="donut-row">${donut(buyStats.total,sellStats.total,'#20bd89','#2c67c5')}<div class="legend-stats"><span><i class="dot buy-dot"></i>Buy <b>${buyStats.total}</b></span><span><i class="dot sell-dot"></i>Sell <b>${sellStats.total}</b></span></div></div></div>
+      <div class="dashboard-panel"><h3>Win rate</h3><div class="donut-row">${donut(buyStats.wins,sellStats.wins,'#20bd89','#2c67c5')}<div class="legend-stats"><span><i class="dot buy-dot"></i>Buy <b>${buyStats.total ? Math.round(buyStats.wins/buyStats.total*100) : 0}%</b></span><span><i class="dot sell-dot"></i>Sell <b>${sellStats.total ? Math.round(sellStats.wins/sellStats.total*100) : 0}%</b></span></div></div></div>
+    </div></section>
+    <section class="section"><h2>Performance by day</h2><div class="dashboard-panel day-bars">${dayBars}</div></section>
+    <section class="section"><h2>Performance by month</h2><div class="dashboard-panel month-grid">${monthCells}<div class="month-cell ytd"><span>YTD</span><b class="${metrics.netPnl >= 0 ? 'gain' : 'loss'}">${money(metrics.netPnl)}</b><small>${trades.length} trades</small></div></div></section>
+  `;
   const grouped = new Map();
   trades.forEach(trade => {
     const key = dateKey(trade.closeTime || trade.openTime);
@@ -228,6 +281,11 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
     .trade-grid b.gain{color:#27c99a}.trade-grid b.loss{color:#ff6969}.trade-grid b.warn{color:#f5b84b}
     .trade-image{display:block;width:100%;max-height:290px;object-fit:contain;background:#111722;border:1px solid #293142;border-radius:4px}
     .no-image{padding:14px;text-align:center;color:#f5b84b;background:#292116;border:1px dashed #8a5b20;border-radius:4px}
+    .two-panels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.dashboard-panel>small{display:block;margin-bottom:5px}.dashboard-panel>h2{font-size:20px;margin:3px 0}.expectancy-track{height:7px;border-radius:9px;background:#293142;overflow:hidden;margin:9px 0}.expectancy-track i{display:block;height:100%;background:#20bd89}
+    .winner-panel{border-color:#176b56}.loser-panel{border-color:#793344}.compact-stat{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid #293142}.compact-stat span{color:#929db0}.compact-stat b{color:#d5d9e2}
+    .donut-row{display:flex;align-items:center;justify-content:center;gap:22px;padding:10px}.donut{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;position:relative}.donut:after{content:"";position:absolute;inset:13px;background:#111722;border-radius:50%}.donut span{position:relative;z-index:1;color:#d5d9e2;font-weight:bold}.legend-stats{display:grid;gap:8px}.legend-stats span{display:flex;align-items:center;gap:6px;color:#aeb8ca}.legend-stats b{margin-left:auto;color:#e5eaf3}.dot{width:7px;height:7px;border-radius:50%;display:inline-block}.buy-dot{background:#20bd89}.sell-dot{background:#2c67c5}
+    .day-bars{display:grid;gap:5px}.day-row{display:grid;grid-template-columns:28px minmax(0,1fr) 76px 28px;align-items:center;gap:8px;font-size:8px}.day-row>span,.day-row small{color:#929db0}.day-row>b{text-align:right;color:#d5d9e2}.day-track{height:12px;background:#171e2b;border-radius:3px;position:relative;overflow:hidden}.day-zero{position:absolute;left:50%;top:0;bottom:0;width:1px;background:#788397}.day-bar{position:absolute;top:2px;bottom:2px;border-radius:2px}.gain-bar{background:#20bd89}.loss-bar{background:#ef6262}
+    .month-grid{display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:5px}.month-cell{min-width:0;border:1px solid #293142;background:#171e2b;border-radius:5px;padding:6px 3px;text-align:center;display:grid;gap:4px}.month-cell span{color:#aeb8ca;font-size:8px}.month-cell b{font-size:8px;overflow-wrap:anywhere}.month-cell small{font-size:6px;color:#8993a5}.month-cell.ytd{border-color:#2c67c5}
     .page-break{break-before:page}.footer{margin-top:12px;border-top:1px solid #293142;padding-top:6px;color:#8993a5;font-size:7px}
     @media print{html,body{background:#0b0e11!important;color:#d5d9e2!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.dashboard-grid{grid-template-columns:34% 1fr}.trade-card,.month-card{break-inside:avoid}}
     @media screen{body{max-width:1400px;margin:20px auto;padding:0 20px}}</style></head><body>
@@ -239,6 +297,8 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
       <section class="dashboard-panel"><h2>Trading statistics</h2><div class="metrics">${metricRows.map(([label,value])=>`<div class="metric"><span class="metric-label">${escapeHtml(label)}</span><b class="metric-value ${metricTone(label)}">${escapeHtml(value)}</b></div>`).join('')}</div></section>
       <section class="dashboard-panel"><h2>Trading calendar · All active months</h2><p class="muted">Daily realized net P&amp;L and closed trade count · UTC+3</p><div class="calendar-wrap ${new Set(dailyEntries.map(([key])=>key.slice(0,7))).size===1?'single-month':''}">${buildCalendar(dailyEntries)}</div></section>
     </div>
+    ${performanceSections}
+    <section class="section"><h2>Full performance metrics</h2><div class="dashboard-panel"><div class="metrics">${metricRows.map(([label,value])=>`<div class="metric"><span class="metric-label">${escapeHtml(label)}</span><b class="metric-value ${metricTone(label)}">${escapeHtml(value)}</b></div>`).join('')}</div></div></section>
     <section class="page-break"><h2>Daily trade journal · All trades and chart screenshots</h2><p class="muted">${trades.length} closed trades across ${dailyEntries.length} active trading days.</p>${tradePages||'<div class="empty">No closed trades in this session.</div>'}</section>
     <div class="footer">OmaxFX · Report generated ${escapeHtml(generated)} · Values are based on the saved session trade history.</div>
     <script>window.addEventListener('load',()=>{const imgs=[...document.images];Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve}))).then(()=>setTimeout(()=>{document.querySelector('.print-hint')?.classList.add('ready')},150));});</script>
