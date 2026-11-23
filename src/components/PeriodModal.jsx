@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import { Calendar, Play, Shield, Target, TrendingDown, User, Sparkles, X, History as HistoryIcon, Trash2, ChevronDown, Check, Sun, Moon, Upload } from 'lucide-react';
+import { Calendar, Play, Shield, Target, TrendingDown, User, Sparkles, X, History as HistoryIcon, Trash2, ChevronDown, Check, Sun, Moon, Upload, Info, Plus } from 'lucide-react';
 import { fetchDataCatalog, loadBundledCsvFiles } from '../utils/dataCatalog';
 
 function SavedSessionDropdown({ sessions, value, onChange }) {
@@ -233,6 +233,16 @@ export default function PeriodModal() {
               aria-label={uiTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
               {uiTheme === 'dark' ? <Sun size={15}/> : <Moon size={15}/>}
             </button>
+            <button type="button" onClick={() => { setPresetKey('classic'); setError(''); setSessionName('Session 1'); }}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2a2e39] bg-[#1e222d] text-gray-300 transition-colors hover:border-blue-500 hover:text-blue-400"
+              title="New session" aria-label="New session">
+              <Plus size={15}/>
+            </button>
+            <button type="button" onClick={() => useStore.getState().openInfo()}
+              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2a2e39] bg-[#1e222d] text-gray-300 transition-colors hover:border-blue-500 hover:text-blue-400"
+              title="Quick guide" aria-label="Quick guide">
+              <Info size={15}/>
+            </button>
             <button type="button" onClick={() => window.dispatchEvent(new Event('omaxfx:open-data-import'))}
               className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2a2e39] bg-[#1e222d] text-gray-300 transition-colors hover:border-blue-500 hover:text-blue-400"
               title="Import market CSV" aria-label="Import market CSV">
@@ -303,12 +313,12 @@ export default function PeriodModal() {
                   onClick={() => setPresetKey(key)}
                   className={`flex flex-col items-center gap-0.5 p-1.5 rounded border transition-all text-center ${
                     presetKey === key 
-                      ? 'period-preset-selected bg-blue-600/20 border-blue-500 text-blue-600' 
+                      ? 'period-preset-selected bg-blue-600/20 border-blue-500 !text-blue-600' 
                       : 'bg-[#1e222d] border-[#2a2e39] text-gray-400 hover:border-[#3a3e49] hover:text-gray-200'
                   }`}
                 >
                   <span className="text-sm">{preset.icon}</span>
-                  <span className="text-[9px] font-bold">{preset.name}</span>
+                  <span className="text-[9px] font-bold text-inherit">{preset.name}</span>
                 </button>
               ))}
             </div>
