@@ -12,6 +12,7 @@ const TOOLS = [
   { key: 'fibonacci', title: 'Fibonacci', Icon: Layers },
   { key: 'text', title: 'Text note', Icon: Type },
 ];
+let activeMiniChartId = null;
 const COLORS = ['#ffffff','#ef5350','#26a69a','#3b82f6','#f59e0b','#a855f7','#22c55e','#06b6d4','#eab308','#f43f5e','#84cc16','#ec4899'];
 const distanceToSegment = (px, py, a, b) => {
   const dx=b.x-a.x, dy=b.y-a.y, len=dx*dx+dy*dy;
@@ -159,6 +160,8 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
     return unsubscribe;
   }, [chartId, readDrawings, scheduleDraw]);
 
+  useEffect(() => { scheduleDraw(); }, [candles, timeframe, scheduleDraw]);
+
   useEffect(() => {
     if(!chartReady||!canvasRef.current) return undefined;
     const chart=chartRef.current, canvas=canvasRef.current;
@@ -213,6 +216,7 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
     if(!container||!chartReady)return undefined;
     const local=(e)=>{const r=container.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};};
     const down=(e)=>{
+      activeMiniChartId=chartId;
       if(e.button!==0)return;
       const {x,y}=local(e), active=toolRef.current;
       const hit=getHit(x,y);
@@ -272,7 +276,7 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
     window.addEventListener('pointerup',up,true);
     window.addEventListener('pointercancel',up,true);
     const key=(e)=>{
-      if((e.key==='Delete'||e.key==='Backspace')&&selectedRef.current!=null&&!['INPUT','TEXTAREA'].includes(e.target?.tagName)){
+      if(activeMiniChartId===chartId&&(e.key==='Delete'||e.key==='Backspace')&&selectedRef.current!=null&&!['INPUT','TEXTAREA'].includes(e.target?.tagName)){
         e.preventDefault();pushHistory();writeDrawings(items=>items.filter(d=>d.id!==selectedRef.current));setSelectedId(null);selectedRef.current=null;setPanelOpen(false);scheduleDraw();
       }
       if(e.key==='Escape'){setTool(null);draftRef.current=null;dragRef.current=null;scheduleDraw();}
@@ -292,7 +296,7 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
 
   return (
     <>
-      <div className="absolute left-0 top-0 z-[100] flex flex-col gap-0.5 rounded-r-md bg-[#131722]/95 p-1 shadow-none pointer-events-auto" onPointerDown={e=>e.stopPropagation()}>
+      <div className="absolute left-0 top-0 z-[100] flex flex-col gap-0.5 rounded-r-md bg-[#131722]/95 p-1 shadow-none pointer-events-auto" onPointerDown={e=>{activeMiniChartId=chartId;e.stopPropagation();}}>
         {TOOLS.map(({key,title,Icon})=><button key={key} type="button" title={title} aria-label={title} aria-pressed={tool===key} onClick={()=>setTool(tool===key?null:key)} className={`flex h-7 w-7 items-center justify-center rounded ${tool===key?'bg-blue-600 text-white':'text-gray-300 hover:bg-[#2a2e39]'}`}>
           {Icon?<Icon size={14}/>:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 20 20 4M14 4h6v6"/></svg>}
         </button>)}
