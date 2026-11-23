@@ -29,6 +29,8 @@ const fmtPct = (value) => `${value.toFixed(1)}%`;
 export default function AnalyticsModal() {
   const store = useStore();
   const { isAnalyticsOpen, closeAnalytics, analyticsSnapshot } = store;
+  const uiTheme = store.uiTheme || 'dark';
+  const isLight = uiTheme === 'light';
   const tradeHistory = analyticsSnapshot?.tradeHistory || store.tradeHistory;
   const balance = analyticsSnapshot?.balance ?? store.balance;
   const rules = analyticsSnapshot?.rules || store.rules;
@@ -239,10 +241,11 @@ export default function AnalyticsModal() {
       const screenshots = {};
       await Promise.all(trades.map(async trade => {
         const key = String(trade.id);
-        let image = await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
-        if (!image) {
-          image = renderTradeScreenshot(trade, screenshotCandles, timeframe);
-          if (image) await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
+        // The exported report is intentionally always light, regardless of the app theme.
+        let image = renderTradeScreenshot(trade, screenshotCandles, timeframe, 'light');
+        if (!image) image = await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
+        if (image) {
+          await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
         }
         if (image) screenshots[key] = image;
       }));
@@ -311,10 +314,10 @@ export default function AnalyticsModal() {
                 {curve.length ? <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={curve} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
                     <defs><linearGradient id="analyticsPnlFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#2c67c5" stopOpacity={0.34}/><stop offset="100%" stopColor="#ffffff" stopOpacity={0.03}/></linearGradient></defs>
-                    <CartesianGrid stroke="#2a2e39" strokeDasharray="2 3" vertical={false}/>
+                    <CartesianGrid vertical={false} horizontal={false}/>
                     <XAxis dataKey="label" tick={{ fill: '#777d84', fontSize: 8 }} axisLine={false} tickLine={false} minTickGap={20}/>
                     <YAxis tick={{ fill: '#777d84', fontSize: 8 }} axisLine={false} tickLine={false} width={38} tickFormatter={v => v === 0 ? '$0' : `$${(v / 1000).toFixed(0)}k`}/>
-                    <Tooltip contentStyle={{ background: '#131722', border: '1px solid #2a2e39', borderRadius: 5, fontSize: 10 }} labelStyle={{ color: '#aab0b6' }} formatter={v => [money(v), 'Cumulative P&L']}/>
+                    <Tooltip contentStyle={{ background: isLight ? '#ffffff' : '#131722', border: '1px solid ' + (isLight ? '#d0d5dd' : '#2a2e39'), borderRadius: 5, fontSize: 10, color: isLight ? '#172033' : '#f3f4f6' }} labelStyle={{ color: isLight ? '#667085' : '#aab0b6' }} formatter={v => [money(v), 'Cumulative P&L']}/>
                     <Area type="monotone" dataKey="pnl" stroke="#2c67c5" strokeWidth={2.5} fill="url(#analyticsPnlFill)" isAnimationActive={false}/>
                   </AreaChart>
                 </ResponsiveContainer> : <Empty text="Close trades to build your P&L curve"/>}
@@ -363,7 +366,7 @@ export default function AnalyticsModal() {
                     {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="rounded bg-[#1e222d] text-center text-[9px] leading-5 font-semibold text-gray-400">{d}</div>)}
                   </div>
                   <div className="grid grid-cols-7 grid-rows-6 gap-1 flex-1 min-h-0">
-                    {cells.map((d, i) => <CalendarDay key={d?.key || `empty-${i}`} day={d} selected={selectedDate === d?.key} onClick={() => d && setSelectedDate(d.key)}/>)}
+                    {cells.map((d, i) => <CalendarDay key={d?.key || `empty-${i}`} day={d} selected={selectedDate === d?.key} uiTheme={uiTheme} onClick={() => d && setSelectedDate(d.key)}/>)}
                   </div>
                 </div>
                 <div className="min-h-0 flex flex-col pt-6 gap-1">
@@ -382,7 +385,7 @@ export default function AnalyticsModal() {
           </section>
         </div>
       </div>
-      {selectedDate && <TradeDayModal date={selectedDate} trades={selectedDayTrades} sessionId={sessionId} candles={rawData} timeframe={timeframe} onClose={() => setSelectedDate(null)} />}
+      {selectedDate && <TradeDayModal date={selectedDate} trades={selectedDayTrades} sessionId={sessionId} candles={rawData} timeframe={timeframe} uiTheme={uiTheme} onClose={() => setSelectedDate(null)} />}
     </div>
   );
 }
@@ -402,18 +405,22 @@ function Metric({ title, value, color, detail, gauge, ring, streak }) {
 function Stat({ label, value, color = 'text-gray-200' }) {
   return <div className="flex items-center justify-between gap-1 text-[9px] border-b border-[#2a2e39]/70 py-0.5"><span className="text-gray-500 truncate">{label}</span><b className={`font-mono ${color}`}>{value}</b></div>;
 }
-function CalendarDay({ day, selected, onClick }) {
-  if (!day) return <div className="analytics-calendar-empty rounded bg-[#131722] border border-[#1e2225]"/>;
+function CalendarDay({ day, selected, uiTheme = 'dark', onClick }) {
+  if (!day) return <div className="analytics-calendar-empty rounded"/>;
   const positive = day.pnl > 0, negative = day.pnl < 0;
   const active = day.trades > 0;
-  const background = !active ? '#1e222d' : positive ? '#003a2b' : negative ? '#551b1b' : '#1d2d4b';
-  const border = selected ? '#60a5fa' : !active ? '#2a2e39' : positive ? '#087b5a' : negative ? '#a33b3b' : '#4268ad';
-  return <button type="button" onClick={onClick} title={day.trades + ' trades · click to open day journal'} className="analytics-calendar-day rounded border min-w-0 p-1 flex flex-col items-end overflow-hidden text-left hover:brightness-125 focus:outline-none focus:ring-1 focus:ring-blue-400" style={{ background, borderColor: border }}>
-    <span className="text-[8px] text-gray-400">{day.day}</span>
+  const light = uiTheme === 'light';
+  const background = light
+    ? (!active ? '#f8fafc' : positive ? '#d1fae5' : negative ? '#fee2e2' : '#dbeafe')
+    : (!active ? '#1e222d' : positive ? '#003a2b' : negative ? '#551b1b' : '#1d2d4b');
+  const border = light ? (selected ? '#3b82f6' : '#e4e7ec') : (selected ? '#60a5fa' : !active ? '#2a2e39' : positive ? '#087b5a' : negative ? '#a33b3b' : '#4268ad');
+  const primary = light ? (positive ? '#047857' : negative ? '#b42318' : '#175cd3') : (positive ? '#6ee7b7' : negative ? '#fca5a5' : '#bfdbfe');
+  return <button type="button" onClick={onClick} title={day.trades + ' trades · click to open day journal'} className="analytics-calendar-day rounded border min-w-0 p-1 flex flex-col items-end overflow-hidden text-left hover:brightness-95 focus:outline-none focus:ring-1 focus:ring-blue-400" style={{ background, borderColor: border, color: light ? '#344054' : '#d1d5db' }}>
+    <span style={{ color: light ? '#667085' : '#9ca3af' }} className="text-[8px]">{day.day}</span>
     {active && <div className="mt-auto mb-auto w-full text-center min-w-0">
-      <b className={`block text-[10px] leading-3 truncate ${positive ? 'text-emerald-300' : negative ? 'text-red-300' : 'text-blue-200'}`}>{day.pnl >= 0 ? '' : '-'}{money(day.pnl)}</b>
-      <span className="block text-[8px] text-gray-300">{day.trades} {day.trades === 1 ? 'trade' : 'trades'}</span>
-      <span className="block text-[7px] text-gray-500">{Math.round(day.wins / day.trades * 100)}% win</span>
+      <b style={{ color: primary }} className="block text-[10px] leading-3 truncate">{day.pnl >= 0 ? '' : '-'}{money(day.pnl)}</b>
+      <span style={{ color: light ? '#344054' : '#d1d5db' }} className="block text-[8px]">{day.trades} {day.trades === 1 ? 'trade' : 'trades'}</span>
+      <span style={{ color: light ? '#667085' : '#9ca3af' }} className="block text-[7px]">{Math.round(day.wins / day.trades * 100)}% win</span>
     </div>}
   </button>;
 }
