@@ -29,7 +29,7 @@ export default function StylePanel({ selectedId, onClose }) {
 
   return createPortal(
     <div 
-      className="fixed top-[132px] left-[max(8px,calc(50vw-320px))] z-[10000] w-56 max-h-[calc(100vh-148px)] bg-[#131722]/98 border border-[#2a2e39] rounded-lg shadow-none overflow-y-auto"
+      className="drawing-style-panel fixed top-[132px] left-[max(8px,calc(50vw-320px))] z-[10000] w-56 max-h-[calc(100vh-148px)] bg-[#131722]/98 border border-[#2a2e39] rounded-lg shadow-none overflow-y-auto"
       onPointerDown={(e) => e.stopPropagation()}
     >
       {/* Header */}
