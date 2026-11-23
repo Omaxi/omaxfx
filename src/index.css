@@ -387,3 +387,17 @@ html[data-ui-theme="light"] .period-delete-session:hover {
   background: #fee2e2 !important;
   color: #991b1b !important;
 }
+
+
+/* Light theme: remove the leftover dark neutral segment in Trading statistics. */
+html[data-ui-theme="light"] .analytics-statistics-panel {
+  background: #ffffff !important;
+  border-color: #d0d5dd !important;
+  color: #172033 !important;
+}
+html[data-ui-theme="light"] .analytics-statistics-track {
+  background: #e4e7ec !important;
+}
+html[data-ui-theme="light"] .analytics-statistics-neutral {
+  background: #cbd5e1 !important;
+}
