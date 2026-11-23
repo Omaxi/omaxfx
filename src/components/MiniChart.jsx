@@ -15,6 +15,7 @@ export default function MiniChart({ timeframe, onTimeframeChange }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
+  const lastTimeframeRef = useRef(null);
   const rawData = useStore(state => state.rawData);
   const currentIndex = useStore(state => state.currentIndex);
   const symbol = useStore(state => state.symbol);
@@ -66,7 +67,10 @@ export default function MiniChart({ timeframe, onTimeframeChange }) {
   useEffect(() => {
     if (!seriesRef.current || !chartRef.current) return;
     seriesRef.current.setData(candles);
-    if (candles.length) chartRef.current.timeScale().fitContent();
+    if (candles.length && lastTimeframeRef.current !== timeframe) {
+      chartRef.current.timeScale().fitContent();
+      lastTimeframeRef.current = timeframe;
+    }
   }, [candles, timeframe]);
 
   return (
