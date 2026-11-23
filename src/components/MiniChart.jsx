@@ -6,6 +6,7 @@ import { getPricePrecision, getPriceTickSize } from '../utils/instrument';
 import { formatMarketDateTime, formatMarketTick } from '../utils/marketClock';
 import { ChevronDown, Check } from 'lucide-react';
 import IndicatorsPanel from './IndicatorsPanel';
+import DrawingToolbar from './DrawingToolbar';
 
 const OPTIONS = [
   { value: 1, label: '1m' }, { value: 5, label: '5m' }, { value: 15, label: '15m' },
@@ -162,12 +163,13 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
   return (
     <div className="absolute inset-0 bg-[#131722]">
       <div ref={containerRef} className="absolute inset-0" />
+      <DrawingToolbar positionClassName="absolute top-12 left-2" />
       <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={candles} displayData={aggregatedData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={rawData[currentIndex] || null} rawData={rawData} currentIndex={currentIndex} />
       {/* Keep each pane's timeframe control beside its own Indicators button. */}
       <div className="absolute left-[148px] top-2 z-30 pointer-events-auto">
         <button ref={timeframeButtonRef} type="button" onClick={toggleTimeframeMenu}
           aria-label="Chart timeframe" aria-haspopup="listbox" aria-expanded={timeframeMenuOpen}
-          className="flex h-7 min-w-[56px] items-center justify-center gap-1.5 rounded-md border border-[#2a2e39] bg-[#1e222d] px-2 text-[10px] font-bold text-white shadow-sm transition-colors hover:bg-[#2a2e39] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+          className="flex h-8 min-w-[56px] items-center justify-center gap-1.5 rounded-md border border-[#2a2e39] bg-[#1e222d] px-2 text-[10px] font-bold text-white shadow-none transition-colors hover:bg-[#2a2e39] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
           <span>{timeframeLabel(timeframe)}</span>
           <ChevronDown size={10} className={`transition-transform ${timeframeMenuOpen ? 'rotate-180' : ''}`}/>
         </button>
