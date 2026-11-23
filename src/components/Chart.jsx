@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import { getPricePrecision, getPriceTickSize } from '../utils/instrument';
 import { aggregateData, getTimeframeBucketStart } from '../utils/timeframe';
 import { toMarketDate, formatMarketDateTime, formatMarketTick } from '../utils/marketClock';
-import { X, Play, Pause, SkipForward, Trash2, Lock, ChevronDown } from 'lucide-react';
+import { X, Trash2, Lock, ChevronDown } from 'lucide-react';
 import IndicatorsPanel from './IndicatorsPanel';
 import DrawingToolbar from './DrawingToolbar';
 import StylePanel from './StylePanel';
@@ -348,11 +348,18 @@ export default function Chart() {
       },
     });
 
+    const resizeObserver = new ResizeObserver(entries => {
+      const rect = entries[0]?.contentRect;
+      if (!rect || !chartRef.current) return;
+      chartRef.current.applyOptions({ width: Math.max(1, Math.floor(rect.width)), height: Math.max(1, Math.floor(rect.height)) });
+      resizeCanvasRef.current?.();
+    });
+    resizeObserver.observe(chartContainerRef.current);
     const timer = setTimeout(() => {
       try { chartRef.current.timeScale().fitContent(); } catch (e) {}
       window.dispatchEvent(new Event('resize'));
     }, 50);
-    return () => { clearTimeout(timer); setChartReady(false); chartRef.current.remove(); };
+    return () => { clearTimeout(timer); resizeObserver.disconnect(); setChartReady(false); chartRef.current.remove(); };
   }, []);
 
   // Update price format when the active symbol changes.
@@ -1773,16 +1780,6 @@ export default function Chart() {
         </div>
       )}
 
-      <div className="absolute bottom-3 right-3 z-30 flex items-end gap-2 pointer-events-auto">
-        <button onClick={togglePlay}
-          className="w-12 h-12 rounded-full bg-[#1e222d] hover:bg-[#2a2e39] border-2 border-[#2a2e39] text-white flex items-center justify-center shadow-2xl shadow-black/60 active:scale-95 transition-transform">
-          {isPlaying ? <Pause size={20} /> : <Play size={20} />}
-        </button>
-        <button onClick={stepForward}
-          className="theme-action-contrast w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-2xl shadow-blue-900/60 active:scale-95 transition-transform border-2 border-blue-500">
-          <SkipForward size={30} />
-        </button>
-      </div>
     </div>
   );
 }
