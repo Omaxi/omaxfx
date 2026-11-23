@@ -352,7 +352,6 @@ export default function Chart() {
       const rect = entries[0]?.contentRect;
       if (!rect || !chartRef.current) return;
       chartRef.current.applyOptions({ width: Math.max(1, Math.floor(rect.width)), height: Math.max(1, Math.floor(rect.height)) });
-      resizeCanvasRef.current?.();
     });
     resizeObserver.observe(chartContainerRef.current);
     const timer = setTimeout(() => {
