@@ -455,7 +455,7 @@ function App() {
       </header>
       
       <main className="flex-1 relative min-h-0">
-        <ChartWorkspace />
+        {gameStarted && <ChartWorkspace />}
       </main>
       <TradeScreenshotCapture />
       
