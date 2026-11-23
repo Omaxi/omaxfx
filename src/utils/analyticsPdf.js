@@ -234,10 +234,6 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
     <div class="report-title">OmaxFX Simulator · Performance report</div>
     <header class="cover"><h1>${escapeHtml(sessionName||'Trading session')}</h1><div class="range-line"><b>Backtest range</b><span>${escapeHtml(backtestRange?.from || "—")}</span><span>TO</span><span>${escapeHtml(backtestRange?.to || "—")}</span><span class="range-duration">${escapeHtml(backtestRange?.elapsed || "")}</span></div><div class="meta"><span>Symbol: <b>${escapeHtml(symbol||'—')}</b></span><span>Session ID: ${escapeHtml(sessionId||'—')}</span><span>Timezone: ${escapeHtml(timezone||'UTC+3')}</span><span>Generated: ${escapeHtml(generated)}</span></div></header>
     <div class="top-metrics">${summaryCards.map(([label,value,tone])=>`<div class="summary-card"><small>${escapeHtml(label)}</small><b class="${tone}">${escapeHtml(value)}</b></div>`).join('')}</div>
-    <div class="dashboard-grid">
-      <section class="dashboard-panel"><h2>Trading statistics</h2><div class="metrics">${metricRows.map(([label,value])=>`<div class="metric"><span class="metric-label">${escapeHtml(label)}</span><b class="metric-value ${metricTone(label)}">${escapeHtml(value)}</b></div>`).join('')}</div></section>
-      <section class="dashboard-panel"><h2>Trading calendar · All active months</h2><p class="muted">Daily realized net P&amp;L and closed trade count · UTC+3</p><div class="calendar-wrap ${new Set(dailyEntries.map(([key])=>key.slice(0,7))).size===1?'single-month':''}">${buildCalendar(dailyEntries)}</div></section>
-    </div>
     <section class="section"><h2>Profit and loss · Over time</h2><div class="curve">${buildCurveSvg(curve, 'Buy & Hold · '+(symbol||'Market'))}</div></section>
     <div class="dashboard-grid">
       <section class="dashboard-panel"><h2>Trading statistics</h2><div class="metrics">${metricRows.map(([label,value])=>`<div class="metric"><span class="metric-label">${escapeHtml(label)}</span><b class="metric-value ${metricTone(label)}">${escapeHtml(value)}</b></div>`).join('')}</div></section>
