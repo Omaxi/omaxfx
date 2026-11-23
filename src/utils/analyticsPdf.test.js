@@ -36,6 +36,12 @@ test('builds the analytics PDF when the trade-by-trade curve contains a drawdown
   assert.match(html, /OmaxFX Simulator · Performance report/);
   assert.match(html, /Trading statistics/);
   assert.match(html, /Trading calendar · All active months/);
+  assert.match(html, /Expectancy &amp; Profit Factor/);
+  assert.match(html, /Winners and Losers/);
+  assert.match(html, /Performance by side/);
+  assert.match(html, /Performance by day/);
+  assert.match(html, /Performance by month/);
+  assert.match(html, /Full performance metrics/);
   assert.match(html, /top-metrics/);
   assert.match(html, /size:A4 portrait/);
   assert.match(html, /equityBlueFill/);
