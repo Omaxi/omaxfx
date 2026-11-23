@@ -444,6 +444,9 @@ export const useStore = create((set, get) => ({
   // DRAWINGS
   // ============================================================
   drawings: [],
+  // Mini-chart drawings are isolated by pane ID and survive layout switches.
+  chartDrawings: {},
+  setChartDrawings: (chartId, drawings) => set(state => ({ chartDrawings: { ...(state.chartDrawings || {}), [chartId]: drawings } })),
   drawingsPast: [],
   drawingsFuture: [],
   activeDrawingTool: null,
