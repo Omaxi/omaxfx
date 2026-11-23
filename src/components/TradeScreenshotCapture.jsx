@@ -20,7 +20,7 @@ export default function TradeScreenshotCapture() {
       const task = (async () => {
         const existing = await getTradeScreenshot(trade.id, sessionId);
         if (existing) return;
-        const image = renderTradeScreenshot(trade, candles, timeframe);
+        const image = renderTradeScreenshot(trade, candles, timeframe, useStore.getState().uiTheme || 'dark');
         if (image) await saveTradeScreenshot(trade.id, image, sessionId);
         else console.warn('[TradeScreenshotCapture] Historical chart unavailable for trade', trade.id);
       })().catch(error => {
