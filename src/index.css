@@ -244,7 +244,7 @@ html[data-ui-theme="light"] .trade-journal-modal [class~="text-blue-300"] { colo
    order ticket, trade history and header action controls.
    ============================================================ */
 html[data-ui-theme="light"] .live-information-panel {
-  background: rgb(255 255 255 / 97%) !important;
+  background: #f8fafc !important;
   color: #344054 !important;
   border-color: #d0d5dd !important;
   box-shadow: none !important;
