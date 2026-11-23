@@ -191,3 +191,19 @@ html[data-ui-theme="dark"] .text-slate-50,
 html[data-ui-theme="dark"] .text-slate-100 {
   color: #858b98 !important;
 }
+
+
+/* Dim neutral dashboard controls and indicator labels to reduce glare.
+   Explicit accent colors (blue, green, red, orange, etc.) are preserved. */
+html[data-ui-theme="dark"] .header-utility-action,
+html[data-ui-theme="dark"] .indicators-panel-trigger {
+  color: #6b7280 !important;
+}
+html[data-ui-theme="dark"] .indicators-panel {
+  color: #6b7280;
+}
+html[data-ui-theme="dark"] .indicators-panel .text-white,
+html[data-ui-theme="dark"] .indicators-panel .text-gray-200,
+html[data-ui-theme="dark"] .indicators-panel .text-gray-300 {
+  color: #6b7280 !important;
+}
