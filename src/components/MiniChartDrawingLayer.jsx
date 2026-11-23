@@ -24,6 +24,7 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
   const canvasRef = useRef(null);
   const toolRef = useRef(null);
   const selectedRef = useRef(null);
+  const lastTapRef = useRef({ time: 0, x: 0, y: 0 });
   const dragRef = useRef(null);
   const draftRef = useRef(null);
   const drawingsRef = useRef(EMPTY);
@@ -220,6 +221,42 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
       if(e.button!==0)return;
       const {x,y}=local(e), active=toolRef.current;
       const hit=getHit(x,y);
+      const now=Date.now();
+      const last=lastTapRef.current;
+      const isDoubleTap=(now-last.time)<320&&Math.hypot(x-last.x,y-last.y)<24;
+
+      // Mini charts use the same safe selection model as the main chart:
+      // an unselected drawing requires a double-click; once selected, a
+      // normal click-drag moves it, while a double-click deselects it.
+      if(!active){
+        if(!hit){
+          if(isDoubleTap&&selectedRef.current!=null){
+            e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+            setSelectedId(null);selectedRef.current=null;setPanelOpen(false);
+            lastTapRef.current={time:0,x:0,y:0};
+          }else lastTapRef.current={time:now,x,y};
+          return;
+        }
+        if(selectedRef.current!==hit.id){
+          if(!isDoubleTap){
+            lastTapRef.current={time:now,x,y};
+            return;
+          }
+          e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+          lastTapRef.current={time:0,x:0,y:0};
+          setSelectedId(hit.id);selectedRef.current=hit.id;setPanelOpen(true);
+          scheduleDraw();
+          return;
+        }
+        if(isDoubleTap){
+          e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+          lastTapRef.current={time:0,x:0,y:0};
+          setSelectedId(null);selectedRef.current=null;setPanelOpen(false);
+          scheduleDraw();
+          return;
+        }
+        lastTapRef.current={time:now,x,y};
+      }
       if(!active&&!hit)return;
       e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
       try{container.setPointerCapture(e.pointerId);}catch{}
@@ -235,7 +272,6 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
         const p=pointAt(x,y);if(!p)return;
         dragRef.current={kind:'create',type:active,start:p};draftRef.current={type:active,points:[p,p],color:'#f59e0b',lineWidth:1,fillColor:'#f59e0b33',showBorder:false};scheduleDraw();return;
       }
-      setSelectedId(hit.id);selectedRef.current=hit.id;setPanelOpen(true);
       const item=readDrawings().find(d=>d.id===hit.id);
       const p=pointAt(x,y);
       if(item&&p){pushHistory();dragRef.current={kind:'move',mode:hit.mode,id:hit.id,pointIndex:hit.pointIndex,start:p,original:item.points.map(v=>({...v}))};}
@@ -306,7 +342,7 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
       </div>
       <canvas ref={canvasRef} className="absolute inset-0 z-[90] pointer-events-none" style={{width:'100%',height:'100%'}}/>
       {selected&&panelOpen&&createPortal(
-        <div className="fixed right-3 top-24 z-[10050] w-56 rounded-lg border border-[#2a2e39] bg-[#131722] p-3 text-white shadow-none" onPointerDown={e=>e.stopPropagation()}>
+        <div className="drawing-style-panel fixed right-3 top-24 z-[10050] w-56 rounded-lg border border-[#2a2e39] bg-[#131722] p-3 text-white shadow-none" onPointerDown={e=>e.stopPropagation()}>
           <div className="mb-2 flex items-center justify-between"><span className="text-[11px] font-bold uppercase">Drawing style</span><button onClick={()=>setPanelOpen(false)}><X size={14}/></button></div>
           <div className="mb-2 text-[10px] text-gray-400">Line color</div>
           <div className="grid grid-cols-6 gap-1">{COLORS.map(color=><button key={color} onClick={()=>patchSelected({color,borderColor:color})} title={color} className="h-6 rounded" style={{background:color}}/>)}</div>
