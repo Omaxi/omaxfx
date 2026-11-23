@@ -18,6 +18,7 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
   const dragRef = useRef(null);
   const [tool, setTool] = useState(null);
   const drawings = useStore(state => state.chartDrawings?.[chartId] ?? EMPTY_DRAWINGS);
+  const drawingStyles = useStore(state => state.drawingStyles);
   const setDrawings = update => {
     const current = useStore.getState().chartDrawings?.[chartId] || [];
     useStore.getState().setChartDrawings(chartId, typeof update === 'function' ? update(current) : update);
@@ -103,9 +104,12 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
         const pts = drawing.points.map(toXY).filter(Boolean);
         if (!pts.length) return;
         ctx.save();
-        ctx.strokeStyle = drawing.color || '#f59e0b';
-        ctx.fillStyle = drawing.fill || '#f59e0b33';
-        ctx.lineWidth = 1.5;
+        const defaultStyle = drawingStyles?.[drawing.type] || {};
+        ctx.strokeStyle = drawing.color || defaultStyle.color || '#f59e0b';
+        ctx.fillStyle = drawing.fillColor || drawing.fill || '#f59e0b33';
+        const showBorder = drawing.showBorder === true;
+        // Match the main chart's crisp 1px drawing strokes.
+        ctx.lineWidth = Math.max(1, Number(drawing.lineWidth ?? 1));
         ctx.setLineDash(isDraft ? [5, 4] : []);
         if (drawing.type === 'horizontal') {
           ctx.beginPath(); ctx.moveTo(0, pts[0].y); ctx.lineTo(rect.width, pts[0].y); ctx.stroke();
@@ -120,9 +124,9 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
         } else if (pts.length === 2 && drawing.type === 'rectangle') {
           const x = Math.min(pts[0].x, pts[1].x), y = Math.min(pts[0].y, pts[1].y);
           ctx.fillRect(x, y, Math.abs(pts[1].x - pts[0].x), Math.abs(pts[1].y - pts[0].y));
-          ctx.strokeRect(x, y, Math.abs(pts[1].x - pts[0].x), Math.abs(pts[1].y - pts[0].y));
+          if (showBorder) ctx.strokeRect(x, y, Math.abs(pts[1].x - pts[0].x), Math.abs(pts[1].y - pts[0].y));
         } else if (pts.length === 2 && drawing.type === 'fibonacci') {
-          [0, .5, .618, .764, 1].forEach(level => {
+          [0, .5, .618, .764, 1].filter(() => showBorder).forEach(level => {
             const y = pts[0].y + (pts[1].y - pts[0].y) * level;
             ctx.beginPath(); ctx.moveTo(Math.min(pts[0].x, pts[1].x), y); ctx.lineTo(Math.max(pts[0].x, pts[1].x), y); ctx.stroke();
             ctx.fillStyle = drawing.color || '#f59e0b'; ctx.font = '10px sans-serif';
@@ -147,7 +151,7 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
       priceScale?.unsubscribeVisiblePriceRangeChange?.(onRange);
       observer.disconnect();
     };
-  }, [chartReady, chartRef, seriesRef, drawings, draft, chartId, candles, timeframe]);
+  }, [chartReady, chartRef, seriesRef, drawings, draft, chartId, candles, timeframe, drawingStyles]);
 
   const handlePointerDown = event => {
     if (!tool || event.button !== 0) return;
@@ -158,17 +162,18 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
     if (!point) return;
     if (tool === 'text') {
       const value = window.prompt('Enter chart note:');
-      if (value?.trim()) setDrawings(items => [...items, { id: Date.now(), type: 'text', points: [point], text: value.trim() }]);
+      if (value?.trim()) setDrawings(items => [...items, { id: Date.now(), type: 'text', points: [point], text: value.trim(), color: '#f59e0b', lineWidth: 1 }]);
       setTool(null);
       return;
     }
     if (tool === 'horizontal' || tool === 'vertical') {
-      setDrawings(items => [...items, { id: Date.now(), type: tool, points: [point] }]);
+      const style = drawingStyles?.[tool] || {};
+      setDrawings(items => [...items, { id: Date.now(), type: tool, points: [point], color: style.color || '#f59e0b', lineWidth: style.lineWidth ?? 1, showBorder: false }]);
       setTool(null);
       return;
     }
     dragRef.current = { type: tool, start: point };
-    setDraft({ type: tool, points: [point, point] });
+    setDraft({ type: tool, points: [point, point], color: '#f59e0b', lineWidth: 1, showBorder: false, fillColor: '#f59e0b33' });
     try { event.currentTarget.setPointerCapture(event.pointerId); } catch {}
   };
   const handlePointerMove = event => {
@@ -181,17 +186,17 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
     if (!dragRef.current) return;
     const completed = draft;
     setDraft(null);
-    if (completed?.points?.length === 2) setDrawings(items => [...items, { id: Date.now(), ...completed }]);
+    if (completed?.points?.length === 2) setDrawings(items => [...items, { id: Date.now(), ...completed, lineWidth: 1, showBorder: false }]);
     dragRef.current = null;
     setTool(null);
   };
 
   return (
     <>
-      <div className="absolute left-0 top-0 z-[35] flex flex-col gap-0.5 rounded-r-md bg-[#131722]/95 p-1 shadow-none" onPointerDown={event => event.stopPropagation()}>
+      <div className="absolute left-0 top-0 z-[100] flex flex-col gap-0.5 rounded-r-md bg-[#131722]/95 p-1 shadow-none pointer-events-auto" onPointerDown={event => event.stopPropagation()}>
         {TOOLS.map(({ key, title, Icon }) => (
           <button key={key} type="button" title={title} aria-label={title} onClick={() => setTool(value => value === key ? null : key)}
-            className={`flex h-7 w-7 items-center justify-center rounded ${tool === key ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-[#2a2e39]'}`}>
+            className={`flex h-7 w-7 items-center justify-center rounded pointer-events-auto ${tool === key ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-[#2a2e39]'}`}>
             {Icon ? <Icon size={14}/> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 20 20 4M14 4h6v6"/></svg>}
           </button>
         ))}
@@ -201,7 +206,7 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
         <button type="button" title="Clear this chart's drawings" aria-label="Clear this chart's drawings" disabled={!drawings.length}
           onClick={() => setDrawings([])} className="flex h-7 w-7 items-center justify-center rounded text-red-400 hover:bg-red-900/30 disabled:opacity-30"><Trash2 size={14}/></button>
       </div>
-      <canvas ref={canvasRef} className="absolute inset-0 z-[30]" style={{ width: '100%', height: '100%', pointerEvents: tool ? 'auto' : 'none', touchAction: 'none', cursor: tool ? 'crosshair' : 'default' }}
+      <canvas ref={canvasRef} className="absolute inset-0 z-[90]" style={{ width: '100%', height: '100%', pointerEvents: tool ? 'auto' : 'none', touchAction: 'none', cursor: tool ? 'crosshair' : 'default' }}
         onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}/>
     </>
   );
