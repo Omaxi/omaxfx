@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Minus, MoveVertical, Square, Type, Layers, Undo2, Trash2 } from 'lucide-react';
+import { useStore } from '../store';
 
 const TOOLS = [
   { key: 'horizontal', title: 'Horizontal line', Icon: Minus },
@@ -14,7 +15,11 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
   const canvasRef = useRef(null);
   const dragRef = useRef(null);
   const [tool, setTool] = useState(null);
-  const [drawings, setDrawings] = useState([]);
+  const drawings = useStore(state => state.chartDrawings?.[chartId] || []);
+  const setDrawings = update => {
+    const current = useStore.getState().chartDrawings?.[chartId] || [];
+    useStore.getState().setChartDrawings(chartId, typeof update === 'function' ? update(current) : update);
+  };
   const [draft, setDraft] = useState(null);
 
   const toPoint = (x, y) => {
@@ -89,11 +94,14 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
     draw();
     const timeScale = chartRef.current?.timeScale();
     const onRange = () => draw();
+    const priceScale = chartRef.current?.priceScale('right');
     timeScale?.subscribeVisibleLogicalRangeChange(onRange);
+    priceScale?.subscribeVisiblePriceRangeChange?.(onRange);
     const observer = new ResizeObserver(draw);
     observer.observe(canvas);
     return () => {
       timeScale?.unsubscribeVisibleLogicalRangeChange(onRange);
+      priceScale?.unsubscribeVisiblePriceRangeChange?.(onRange);
       observer.disconnect();
     };
   }, [chartReady, chartRef, seriesRef, drawings, draft, chartId]);
@@ -128,10 +136,9 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
   };
   const handlePointerUp = () => {
     if (!dragRef.current) return;
-    setDraft(current => {
-      if (current?.points?.length === 2) setDrawings(items => [...items, { id: Date.now(), ...current }]);
-      return null;
-    });
+    const completed = draft;
+    setDraft(null);
+    if (completed?.points?.length === 2) setDrawings(items => [...items, { id: Date.now(), ...completed }]);
     dragRef.current = null;
     setTool(null);
   };
