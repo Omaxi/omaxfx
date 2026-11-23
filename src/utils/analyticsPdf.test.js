@@ -40,8 +40,8 @@ test('builds the analytics PDF when the trade-by-trade curve contains a drawdown
   assert.match(html, /size:A4 portrait/);
   assert.match(html, /equityBlueFill/);
   assert.match(html, /drawdownFill/);
-  assert.match(html, /stop-color="#2c67c5"/);
-  assert.match(html, /stroke="#2c67c5" stroke-width="3"/);
+  assert.match(html, /stop-color="#2563eb"/);
+  assert.match(html, /stroke="#2563eb" stroke-width="3"/);
   // The annotation is rendered as a label centered vertically in the plot area.
   assert.match(html, /<rect x="491" y="147" width="170" height="22" rx="5"/);
   assert.match(html, /Buy &amp; Hold/);
@@ -86,14 +86,14 @@ test('builds the analytics PDF when no drawdown exists', () => {
 });
 
 
-test('exports a dark report to match the fixed application theme', () => {
+test('exports a consistently white report regardless of the application theme', () => {
   const html = buildAnalyticsPrintHtml({
     ...base,
     curve: [{ timestamp: 1793600400, label: '11-02 02:00', pnl: 0, benchmarkPnl: 0 }],
   });
 
-  assert.match(html, /background:#131722/);
-  assert.match(html, /color:#f3f4f6/);
-  assert.match(html, /background:#1e222d/);
-  assert.doesNotMatch(html, /background:#ffffff|color:#172033|background:#f1f5f9/);
+  assert.match(html, /background:#ffffff/);
+  assert.match(html, /color:#172033/);
+  assert.match(html, /background:#f2f4f7/);
+  assert.doesNotMatch(html, /background:#131722|color:#f3f4f6|background:#1e222d/);
 });
