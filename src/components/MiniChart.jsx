@@ -177,7 +177,7 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
       {timeframeMenuOpen && <>
         <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setTimeframeMenuOpen(false)} />
         <div data-mini-timeframe-menu role="listbox" aria-label="Select chart timeframe"
-          className="theme-menu-surface fixed min-w-[140px] overflow-hidden rounded-lg border border-[#2a2e39] bg-[#1e222d] shadow-2xl"
+          className="theme-menu-surface fixed min-w-[140px] overflow-hidden rounded-lg border border-[#2a2e39] bg-[#1e222d] shadow-none"
           style={{ zIndex: 9999, left: timeframeMenuPosition.left, top: timeframeMenuPosition.top, maxHeight: timeframeMenuPosition.maxHeight, overflowY: 'auto' }}>
           <div className="sticky top-0 border-b border-[#2a2e39] bg-[#1e222d] px-3 py-1.5 text-[9px] font-bold uppercase tracking-wide text-gray-500">Timeframe</div>
           {OPTIONS.map(option => {
