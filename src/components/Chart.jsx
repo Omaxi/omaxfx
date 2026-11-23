@@ -280,6 +280,7 @@ export default function Chart() {
     if (!chartContainerRef.current) return;
     const t = useStore.getState().theme;
     const ct = useStore.getState().chartType;
+    const lightUi = useStore.getState().uiTheme === 'light';
     
     chartRef.current = createChart(chartContainerRef.current, {
       layout: {
@@ -288,7 +289,7 @@ export default function Chart() {
         fontSize: 9,
         attributionLogo: false,
         panes: {
-          separatorColor: '#2a2e39',
+          separatorColor: lightUi ? '#d0d5dd' : '#2a2e39',
           separatorHoverColor: '#3b82f6',
           enableResize: true,
         },
@@ -398,6 +399,7 @@ export default function Chart() {
           layout: {
             background: { type: 'solid', color: light ? '#ffffff' : (useStore.getState().theme?.background || '#131722') },
             textColor: light ? '#475467' : '#d1d4dc',
+            panes: { separatorColor: light ? '#d0d5dd' : '#2a2e39', separatorHoverColor: '#3b82f6', enableResize: true },
           },
           grid: {
             vertLines: { visible: false },
