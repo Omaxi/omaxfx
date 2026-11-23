@@ -27,7 +27,7 @@ const TOOLS = [
   { key: 'text',          label: 'Text Note',      icon: Type },
 ];
 
-export default function DrawingToolbar() {
+export default function DrawingToolbar({ positionClassName = 'absolute top-1 left-0 md:top-2' }) {
   const { 
     activeDrawingTool, setActiveDrawingTool, clearDrawings, drawings,
     drawingsPast, drawingsFuture, undoDrawings, redoDrawings,
@@ -39,7 +39,7 @@ export default function DrawingToolbar() {
   const locked = isPencilMode; // when pencil active, other tools locked
 
   return (
-    <div className="absolute top-1 left-1 md:top-2 md:left-2 z-20 flex flex-col gap-0.5 md:gap-1 bg-[#131722]/95 backdrop-blur rounded-md md:rounded-lg p-0.5 md:p-1 shadow-lg">
+    <div className={`${positionClassName} z-20 flex flex-col gap-0.5 md:gap-1 bg-[#131722]/95 rounded-md md:rounded-lg p-0.5 md:p-1 shadow-none`}>
       {/* Pencil — top priority button */}
       <button
         onClick={() => setPencilMode(!isPencilMode)}
