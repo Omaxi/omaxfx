@@ -16,7 +16,7 @@ const OPTIONS = [
 const timeframeLabel = value => OPTIONS.find(option => option.value === Number(value))?.label || `${value}m`;
 
 
-export default function MiniChart({ timeframe, onTimeframeChange }) {
+export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'mini' }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
@@ -130,6 +130,30 @@ export default function MiniChart({ timeframe, onTimeframeChange }) {
       lastTimeframeRef.current = timeframe;
     }
   }, [candles, timeframe]);
+
+  const resetChartView = () => {
+    const chart = chartRef.current;
+    if (!chart || !candles.length) return;
+    const width = containerRef.current?.clientWidth || 600;
+    const axisWidth = chart.priceScale('right').width();
+    const halfBars = Math.max(16, Math.floor(Math.max(100, width - axisWidth) / 12));
+    const last = candles.length - 1;
+    const visible = candles.slice(Math.max(0, last - halfBars), last + 1);
+    const high = Math.max(...visible.map(c => Number(c.high)));
+    const low = Math.min(...visible.map(c => Number(c.low)));
+    const center = Number(candles[last].close);
+    const span = Math.max(high - low, Math.abs(center) * 0.0005, 0.0001) * 1.25;
+    chart.timeScale().applyOptions({ barSpacing: 6, rightOffset: halfBars, fixLeftEdge: false, fixRightEdge: false });
+    chart.timeScale().setVisibleLogicalRange({ from: last - halfBars, to: last + halfBars });
+    chart.priceScale('right').applyOptions({ autoScale: false });
+    chart.priceScale('right').setVisibleRange({ from: center - span / 2, to: center + span / 2 });
+  };
+
+  useEffect(() => {
+    const reset = () => resetChartView();
+    window.addEventListener(`omaxfx:reset-chart:${chartId}`, reset);
+    return () => window.removeEventListener(`omaxfx:reset-chart:${chartId}`, reset);
+  }, [chartId, candles]);
 
   return (
     <div className="absolute inset-0 bg-[#131722]">
