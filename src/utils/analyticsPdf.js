@@ -178,10 +178,14 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
     const monthKey = key.slice(0, 7), current = monthlyStats.get(monthKey) || { pnl: 0, trades: 0 };
     current.pnl += Number(value.pnl) || 0; current.trades += Number(value.trades) || 0; monthlyStats.set(monthKey, current);
   });
+  const reportYear = dailyEntries.length ? Number(dailyEntries[dailyEntries.length - 1][0].slice(0, 4)) : new Date().getFullYear();
+  const yearMonthlyStats = [...monthlyStats.entries()].filter(([key]) => Number(key.slice(0, 4)) === reportYear);
+  const yearPnl = yearMonthlyStats.reduce((sum, [, value]) => sum + value.pnl, 0);
+  const yearTrades = yearMonthlyStats.reduce((sum, [, value]) => sum + value.trades, 0);
   const monthCells = Array.from({length:12}, (_, index) => {
-    const monthKey = [...monthlyStats.keys()].find(key => Number(key.slice(5,7)) === index + 1);
+    const monthKey = reportYear + '-' + String(index + 1).padStart(2, '0');
     const item = monthKey ? monthlyStats.get(monthKey) : null;
-    return '<div class="month-cell"><span>' + new Date(Date.UTC(2026,index,1)).toLocaleDateString(undefined,{month:'short',timeZone:'UTC'}) + '</span><b class="' + (item ? item.pnl >= 0 ? 'gain' : 'loss' : 'neutral') + '">' + (item ? money(item.pnl) : '—') + '</b><small>' + (item ? item.trades + ' trades' : 'No trades') + '</small></div>';
+    return '<div class="month-cell"><span>' + new Date(Date.UTC(reportYear,index,1)).toLocaleDateString(undefined,{month:'short',timeZone:'UTC'}) + '</span><b class="' + (item ? item.pnl >= 0 ? 'gain' : 'loss' : 'neutral') + '">' + (item ? money(item.pnl) : '—') + '</b><small>' + (item ? item.trades + ' trades' : 'No trades') + '</small></div>';
   }).join('');
   const expectancy = trades.length ? metrics.netPnl / trades.length : 0;
   const performanceSections = `
@@ -198,7 +202,7 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
       <div class="dashboard-panel"><h3>Win rate</h3><div class="donut-row">${donut(buyStats.wins,sellStats.wins,'#20bd89','#2c67c5')}<div class="legend-stats"><span><i class="dot buy-dot"></i>Buy <b>${buyStats.total ? Math.round(buyStats.wins/buyStats.total*100) : 0}%</b></span><span><i class="dot sell-dot"></i>Sell <b>${sellStats.total ? Math.round(sellStats.wins/sellStats.total*100) : 0}%</b></span></div></div></div>
     </div></section>
     <section class="section"><h2>Performance by day</h2><div class="dashboard-panel day-bars">${dayBars}</div></section>
-    <section class="section"><h2>Performance by month</h2><div class="dashboard-panel month-grid">${monthCells}<div class="month-cell ytd"><span>YTD</span><b class="${metrics.netPnl >= 0 ? 'gain' : 'loss'}">${money(metrics.netPnl)}</b><small>${trades.length} trades</small></div></div></section>
+    <section class="section"><h2>Performance by month</h2><div class="dashboard-panel month-grid">${monthCells}<div class="month-cell ytd"><span>YTD ${reportYear}</span><b class="${yearPnl >= 0 ? 'gain' : 'loss'}">${money(yearPnl)}</b><small>${yearTrades} trades</small></div></div></section>
   `;
   const grouped = new Map();
   trades.forEach(trade => {
