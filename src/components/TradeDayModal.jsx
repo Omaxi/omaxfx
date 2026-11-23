@@ -18,26 +18,24 @@ const duration = (trade) => {
   return `${seconds}s`;
 };
 
-export default function TradeDayModal({ date, trades, onClose, sessionId, candles, timeframe = 1 }) {
+export default function TradeDayModal({ date, trades, onClose, sessionId, candles, timeframe = 1, uiTheme = 'dark' }) {
   const [images, setImages] = useState({});
   const [savingId, setSavingId] = useState(null);
   useEffect(() => {
     let active = true;
     Promise.all(trades.map(async trade => {
-      let image = await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
-      // Rebuild missing or legacy screenshots from this trade's own market window.
-      if (!image) {
-        image = renderTradeScreenshot(trade, candles, timeframe);
-        if (image) await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
-      }
+      // Re-render on journal open so screenshots always match the active theme,
+      // including screenshots that were originally captured in dark mode.
+      const image = renderTradeScreenshot(trade, candles, timeframe, uiTheme);
+      if (image) await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
       return [String(trade.id), image];
     })).then(entries => { if (active) setImages(Object.fromEntries(entries)); });
     return () => { active = false; };
-  }, [date, trades, sessionId, candles, timeframe]);
+  }, [date, trades, sessionId, candles, timeframe, uiTheme]);
 
   const captureForTrade = async (trade) => {
     setSavingId(String(trade.id));
-    const image = renderTradeScreenshot(trade, candles, timeframe);
+    const image = renderTradeScreenshot(trade, candles, timeframe, uiTheme);
     if (image) {
       const saved = await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
       if (saved) setImages(current => ({ ...current, [String(trade.id)]: image }));
