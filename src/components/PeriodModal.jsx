@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import { Calendar, Play, Shield, Target, TrendingDown, User, Sparkles, X, History as HistoryIcon, Trash2, ChevronDown, Check, Sun, Moon, Upload } from 'lucide-react';
+import { Calendar, Play, Shield, Target, TrendingDown, User, Sparkles, X, History as HistoryIcon, Trash2, ChevronDown, Check, Upload } from 'lucide-react';
 import { fetchDataCatalog, loadBundledCsvFiles } from '../utils/dataCatalog';
 
 function SavedSessionDropdown({ sessions, value, onChange }) {
@@ -95,7 +95,7 @@ export default function PeriodModal() {
   const { 
     allRawData, isPeriodModalOpen, closePeriodModal, gameStarted, startGame, 
     playerName, setPlayerName, sessionName, setSessionName,
-    readSessions, loadSavedSession, deleteSavedSession, uiTheme, toggleUiTheme
+    readSessions, loadSavedSession, deleteSavedSession
   } = useStore();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -227,12 +227,6 @@ export default function PeriodModal() {
             <p className="text-[10px] text-gray-400">Configure your session</p>
           </div>
           <div className="flex items-center gap-1">
-            <button type="button" onClick={toggleUiTheme}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2a2e39] bg-[#1e222d] text-gray-300 transition-colors hover:border-blue-500 hover:text-blue-400"
-              title={uiTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-              aria-label={uiTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
-              {uiTheme === 'dark' ? <Sun size={15}/> : <Moon size={15}/>}
-            </button>
             <button type="button" onClick={() => window.dispatchEvent(new Event('omaxfx:open-data-import'))}
               className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2a2e39] bg-[#1e222d] text-gray-300 transition-colors hover:border-blue-500 hover:text-blue-400"
               title="Import market CSV" aria-label="Import market CSV">
@@ -261,7 +255,7 @@ export default function PeriodModal() {
               <div className="flex items-center gap-2">
                 <SavedSessionDropdown sessions={savedSessions} value={selectedSessionId} onChange={setSelectedSessionId}/>
                 <button disabled={!selectedSessionId} onClick={() => { const saved = savedSessions.find(item => item.sessionId === selectedSessionId); if (saved) handleLoadSaved(saved); }} className="theme-action-contrast rounded bg-emerald-700 px-3 py-2 text-[10px] font-bold text-white hover:bg-emerald-600 disabled:opacity-40">RESUME</button>
-                <button disabled={!selectedSessionId} onClick={() => handleDeleteSaved(selectedSessionId)} className="period-delete-session rounded p-2 text-red-500 hover:bg-red-100 hover:text-red-700 disabled:opacity-60" title="Delete selected session"><Trash2 size={13} className="text-red-500"/></button>
+                <button disabled={!selectedSessionId} onClick={() => handleDeleteSaved(selectedSessionId)} className="period-delete-session rounded border border-red-900/70 bg-red-950 px-2 py-2 text-red-400 hover:bg-red-900 hover:text-red-200 disabled:opacity-60" title="Delete selected session"><Trash2 size={13} className="text-red-300"/></button>
               </div>
               {(() => { const saved = savedSessions.find(item => item.sessionId === selectedSessionId); return saved ? <p className="text-[9px] text-gray-400">{saved.tradeHistory?.length || 0} trades · {new Date(saved.savedAt).toLocaleString()} · {saved.balance?.toLocaleString?.() ?? '—'} balance</p> : null; })()}
             </div> : <p className="text-[9px] text-gray-500">Your sessions will appear here automatically as you trade.</p>}
@@ -303,7 +297,7 @@ export default function PeriodModal() {
                   onClick={() => setPresetKey(key)}
                   className={`flex flex-col items-center gap-0.5 p-1.5 rounded border transition-all text-center ${
                     presetKey === key 
-                      ? 'period-preset-selected bg-blue-600/20 border-blue-500 !text-blue-600' 
+                      ? 'period-preset-selected bg-blue-600/20 border-blue-500 !text-white' 
                       : 'bg-[#1e222d] border-[#2a2e39] text-gray-400 hover:border-[#3a3e49] hover:text-gray-200'
                   }`}
                 >
