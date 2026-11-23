@@ -13,7 +13,7 @@ const TOOLS = [
   { key: 'text', title: 'Text note', Icon: Type },
 ];
 
-export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady, chartId }) {
+export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady, chartId, candles = EMPTY_DRAWINGS, timeframe = 1 }) {
   const canvasRef = useRef(null);
   const dragRef = useRef(null);
   const [tool, setTool] = useState(null);
@@ -24,23 +24,64 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
   };
   const [draft, setDraft] = useState(null);
 
+  // Convert through logical bar coordinates rather than coordinateToTime().
+  // coordinateToTime() returns null in the blank/future area to the right of
+  // the latest candle, which previously made drawings impossible there.
   const toPoint = (x, y) => {
     const chart = chartRef.current;
     const series = seriesRef.current;
-    if (!chart || !series) return null;
-    const time = chart.timeScale().coordinateToTime(x);
+    const data = candles || [];
+    if (!chart || !series || data.length === 0) return null;
+    const logical = chart.timeScale().coordinateToLogical(x);
     const price = series.coordinateToPrice(y);
-    if (time == null || price == null || !Number.isFinite(Number(price))) return null;
-    return { time: Number(time), price: Number(price) };
+    if (logical == null || price == null || !Number.isFinite(Number(price))) return null;
+    const step = Math.max(1, Number(timeframe) || 1) * 60;
+    const firstTime = Number(data[0].time);
+    const lastTime = Number(data[data.length - 1].time);
+    let time;
+    if (logical <= 0) {
+      time = firstTime + logical * step;
+    } else if (logical >= data.length - 1) {
+      time = lastTime + (logical - (data.length - 1)) * step;
+    } else {
+      const lo = Math.floor(logical);
+      const hi = Math.min(lo + 1, data.length - 1);
+      const fraction = logical - lo;
+      time = Number(data[lo].time) + (Number(data[hi].time) - Number(data[lo].time)) * fraction;
+    }
+    return Number.isFinite(time) ? { time, price: Number(price) } : null;
   };
 
   const toXY = point => {
     const chart = chartRef.current;
     const series = seriesRef.current;
-    if (!chart || !series) return null;
-    const x = chart.timeScale().timeToCoordinate(point.time);
-    const y = series.priceToCoordinate(point.price);
-    return x == null || y == null ? null : { x, y };
+    const data = candles || [];
+    if (!chart || !series || data.length === 0) return null;
+    const timeScale = chart.timeScale();
+    const step = Math.max(1, Number(timeframe) || 1) * 60;
+    const targetTime = Number(point.time);
+    let logical;
+    if (data.length === 1) {
+      logical = (targetTime - Number(data[0].time)) / step;
+    } else {
+      let lo = 0, hi = data.length - 1;
+      if (targetTime <= Number(data[0].time)) {
+        logical = (targetTime - Number(data[0].time)) / step;
+      } else if (targetTime >= Number(data[hi].time)) {
+        logical = hi + (targetTime - Number(data[hi].time)) / step;
+      } else {
+        while (hi - lo > 1) {
+          const mid = Math.floor((lo + hi) / 2);
+          if (Number(data[mid].time) < targetTime) lo = mid;
+          else hi = mid;
+        }
+        const t1 = Number(data[lo].time), t2 = Number(data[hi].time);
+        logical = lo + (hi - lo) * ((targetTime - t1) / (t2 - t1));
+      }
+    }
+    const x = timeScale.logicalToCoordinate(logical);
+    const y = series.priceToCoordinate(Number(point.price));
+    return x == null || y == null || !Number.isFinite(x) || !Number.isFinite(y) ? null : { x, y };
   };
 
   useEffect(() => {
@@ -106,7 +147,7 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
       priceScale?.unsubscribeVisiblePriceRangeChange?.(onRange);
       observer.disconnect();
     };
-  }, [chartReady, chartRef, seriesRef, drawings, draft, chartId]);
+  }, [chartReady, chartRef, seriesRef, drawings, draft, chartId, candles, timeframe]);
 
   const handlePointerDown = event => {
     if (!tool || event.button !== 0) return;
