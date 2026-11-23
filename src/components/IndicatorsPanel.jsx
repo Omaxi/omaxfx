@@ -277,7 +277,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
     if (!active.pdhPdl || !rawData?.[currentIndex]) return undefined;
 
     const cursor = rawData[currentIndex];
-    const currentDayStart = Math.floor(Number(cursor.time) / 86400) * 86400;
+    const currentDayStart = Math.floor((Number(cursor.time) + 3 * 3600) / 86400) * 86400 - 3 * 3600;
     const daily = aggregateData(rawData.slice(0, currentIndex + 1), 1440);
     let previousDay = null;
     for (let i = daily.length - 1; i >= 0; i--) {
