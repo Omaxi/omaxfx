@@ -1655,7 +1655,7 @@ export default function Chart({ chartId = 'main' }) {
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
       <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 25 }} aria-hidden="true" />
 
-      {gameStarted && !chartUiPanelsHidden && <div className="live-information-panel absolute top-2 right-[72px] left-auto z-[80] w-[min(180px,calc(100%-5rem))] rounded-none border-0 bg-transparent p-0 text-[9px] leading-4 text-gray-300 shadow-none pointer-events-auto font-mono">
+      {gameStarted && !chartUiPanelsHidden && <div className="live-information-panel absolute top-2 right-[72px] left-auto z-[80] w-[min(180px,calc(100%-5rem))] rounded-none border-0 p-0 text-[9px] leading-4 text-gray-300 shadow-none pointer-events-auto font-mono" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : theme.background }}>
         <button type="button" onClick={() => setDashboardCollapsed(value => !value)}
           aria-expanded={!dashboardCollapsed}
           className="mb-1 flex w-full items-center justify-between gap-2 rounded text-left hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500">
