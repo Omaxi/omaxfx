@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { fmtMoney } from '../utils/format';
 import { getExecutionCandle } from '../utils/timeframe.js';
 import { getPricePrecision, getPriceTickSize } from '../utils/instrument.js';
-import { X, AlertTriangle } from 'lucide-react';
+import { X, AlertTriangle, ChevronDown } from 'lucide-react';
 
 // =========================================================================
 // Per-symbol price configuration
@@ -32,6 +32,7 @@ export default function OrderModal() {
   const { pointSize, precision } = meta;
 
   const [orderType, setOrderType] = useState('market');
+  const [orderTypeOpen, setOrderTypeOpen] = useState(false);
   const [riskPercent, setRiskPercent] = useState(1);
   const [slPrice, setSlPrice] = useState(0);
   const [tpPrice, setTpPrice] = useState(0);
@@ -233,11 +234,39 @@ export default function OrderModal() {
               </div>
               <div>
                 <label className="text-xs text-gray-400">Type</label>
-                <select value={orderType} onChange={(e) => setOrderType(e.target.value)} className="w-full mt-1 p-2 bg-[#1e222d] rounded text-sm border border-[#2a2e39]">
-                  <option value="market">Market</option>
-                  <option value="limit">Limit</option>
-                  <option value="stop">Stop</option>
-                </select>
+                <div className="relative mt-1" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOrderTypeOpen(false); }}>
+                  <button
+                    type="button"
+                    aria-haspopup="listbox"
+                    aria-expanded={orderTypeOpen}
+                    onClick={() => setOrderTypeOpen(open => !open)}
+                    onKeyDown={(e) => { if (e.key === 'Escape') setOrderTypeOpen(false); }}
+                    className="w-full flex items-center justify-between gap-2 rounded-lg border border-[#2a2e39] bg-[#1e222d] px-3 py-2 text-left text-sm text-gray-200 shadow-sm transition-colors hover:bg-[#252a36] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <span className="capitalize">{orderType}</span>
+                    <ChevronDown size={15} className={`text-gray-400 transition-transform ${orderTypeOpen ? 'rotate-180' : ''}`}/>
+                  </button>
+                  {orderTypeOpen && (
+                    <div role="listbox" aria-label="Order type" className="absolute left-0 right-0 top-full z-[150] mt-1 overflow-hidden rounded-lg border border-[#343b4b] bg-[#1e222d] p-1 shadow-xl">
+                      {[
+                        { value: 'market', label: 'Market' },
+                        { value: 'limit', label: 'Limit' },
+                        { value: 'stop', label: 'Stop' },
+                      ].map(option => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          role="option"
+                          aria-selected={orderType === option.value}
+                          onClick={() => { setOrderType(option.value); setOrderTypeOpen(false); }}
+                          className={`flex w-full items-center rounded-md px-3 py-2 text-left text-sm capitalize transition-colors ${orderType === option.value ? 'bg-[#1d2d4b] text-blue-300' : 'text-gray-300 hover:bg-[#2a2e39] hover:text-white'}`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
