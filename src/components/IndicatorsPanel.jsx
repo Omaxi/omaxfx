@@ -17,6 +17,7 @@ const INDICATORS = [
   { key: 'sessions', label: 'Sessions', color: '#64748b', pane: 'price' },
   { key: 'fvg', label: 'Fair Value Gaps', color: '#38bdf8', pane: 'price' },
   { key: 'htfCandleViewer', label: 'HTF Candle Viewer', color: '#22c55e', pane: 'price' },
+  { key: 'pdhPdl', label: 'Previous Daily High/Low', color: '#3b82f6', pane: 'price' },
 ];
 
 const DEFAULT_CONFIG = {
@@ -259,8 +260,60 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
   const sessionColors = useStore(state => state.sessionColors);
   const symbol = useStore(state => state.symbol);
   const contractSpecs = useStore(state => state.contractSpecs);
+  const previousDailyLinesRef = useRef([]);
 
   const selected = useMemo(() => INDICATORS.filter(item => active[item.key]), [active]);
+
+  // Previous Daily High/Low: calculate from source candles reached by replay,
+  // using the simulator's UTC+3 market-day buckets. The current (developing)
+  // day is excluded so these levels always belong to the prior completed day.
+  useEffect(() => {
+    const priceSeries = priceSeriesRef?.current;
+    if (!priceSeries) return undefined;
+    previousDailyLinesRef.current.forEach(line => {
+      try { priceSeries.removePriceLine(line); } catch {}
+    });
+    previousDailyLinesRef.current = [];
+    if (!active.pdhPdl || !rawData?.[currentIndex]) return undefined;
+
+    const cursor = rawData[currentIndex];
+    const currentDayStart = Math.floor(Number(cursor.time) / 86400) * 86400;
+    const daily = aggregateData(rawData.slice(0, currentIndex + 1), 1440);
+    let previousDay = null;
+    for (let i = daily.length - 1; i >= 0; i--) {
+      if (Number(daily[i].time) < currentDayStart) {
+        previousDay = daily[i];
+        break;
+      }
+    }
+    if (!previousDay) return undefined;
+
+    const precision = getPricePrecision(symbol, contractSpecs);
+    const levels = [
+      { price: Number(previousDay.high), title: 'P.D High', color: '#3b82f6' },
+      { price: Number(previousDay.low), title: 'P.D Low', color: '#3b82f6' },
+    ];
+    previousDailyLinesRef.current = levels.filter(level => Number.isFinite(level.price)).map(level =>
+      priceSeries.createPriceLine({
+        price: level.price,
+        color: level.color,
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: level.title,
+        axisLabelColor: level.color,
+        axisLabelTextColor: '#ffffff',
+      })
+    );
+    return () => {
+      previousDailyLinesRef.current.forEach(line => {
+        try { priceSeries.removePriceLine(line); } catch {}
+      });
+      previousDailyLinesRef.current = [];
+    };
+  }, [active.pdhPdl, rawData, currentIndex, priceSeriesRef, chartReady, symbol, contractSpecs]);
+
+
   const sessionCandles = useMemo(() => {
     const candles = [...(visibleData || [])];
     if (!liveCandle || !Number.isFinite(Number(liveCandle.time))) return candles;
