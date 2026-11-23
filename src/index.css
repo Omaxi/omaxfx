@@ -180,3 +180,14 @@ html[data-ui-theme="light"] .drawing-style-panel [class~="bg-[#1e222d]"] {
   background: #eef2f6 !important;
   color: #344054 !important;
 }
+
+
+/* Tone down pure-white interface copy in the dark theme to reduce glare.
+   Semantic accent colors (blue/green/red/orange) remain untouched. */
+html[data-ui-theme="dark"] .text-white,
+html[data-ui-theme="dark"] .text-gray-50,
+html[data-ui-theme="dark"] .text-gray-100,
+html[data-ui-theme="dark"] .text-slate-50,
+html[data-ui-theme="dark"] .text-slate-100 {
+  color: #858b98 !important;
+}
