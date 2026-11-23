@@ -64,13 +64,13 @@ function IndicatorSelect({ value, onChange, options }) {
   return (
     <>
       <button ref={buttonRef} type="button" onClick={toggle} aria-haspopup="listbox" aria-expanded={open}
-        className="flex h-8 min-w-[112px] items-center justify-between gap-2 rounded border border-[#2a2e39] bg-[#1e222d] px-3 text-xs font-bold text-white transition-colors hover:bg-[#2a2e39]">
+        className="flex h-8 min-w-[112px] items-center justify-between gap-2 rounded border border-[#2a2e39] bg-[#1e222d] px-3 text-xs font-bold text-white shadow-none transition-colors hover:bg-[#2a2e39]">
         <span>{selected?.label ?? value}</span>
         <ChevronDown size={11} className={'text-gray-400 transition-transform ' + (open ? 'rotate-180' : '')}/>
       </button>
       {open && <>
         <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setOpen(false)}/>
-        <div ref={menuRef} role="listbox" className="fixed min-w-[112px] overflow-hidden rounded-lg border border-[#2a2e39] bg-[#1e222d] shadow-2xl"
+        <div ref={menuRef} role="listbox" className="fixed min-w-[112px] overflow-hidden rounded-lg border border-[#2a2e39] bg-[#1e222d] shadow-none"
           style={{ zIndex: 9999, left: position.left, top: position.top, width: position.width }}>
           <div className="border-b border-[#2a2e39] px-3 py-1.5 text-[9px] font-bold uppercase tracking-wide text-gray-500">Timeframe</div>
           {options.map(option => {
