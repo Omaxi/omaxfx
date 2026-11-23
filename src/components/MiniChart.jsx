@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { createChart, CandlestickSeries } from 'lightweight-charts';
 import { useStore } from '../store';
-import { aggregateData } from '../utils/timeframe';
+import { aggregateData, getTimeframeBucketStart } from '../utils/timeframe';
 import { getPricePrecision, getPriceTickSize } from '../utils/instrument';
 import { formatMarketDateTime, formatMarketTick } from '../utils/marketClock';
 
@@ -18,12 +18,26 @@ export default function MiniChart({ timeframe, onTimeframeChange }) {
   const lastTimeframeRef = useRef(null);
   const rawData = useStore(state => state.rawData);
   const currentIndex = useStore(state => state.currentIndex);
+  const displayData = useStore(state => state.displayData);
   const symbol = useStore(state => state.symbol);
   const theme = useStore(state => state.theme);
   const candles = useMemo(() => {
-    const reached = rawData.slice(0, currentIndex + 1);
-    return aggregateData(reached, timeframe);
-  }, [rawData, currentIndex, timeframe]);
+    if (!rawData[currentIndex]) return [];
+    if (Number(timeframe) <= 1) return rawData.slice(0, currentIndex + 1);
+    const bucket = getTimeframeBucketStart(rawData[currentIndex].time, timeframe);
+    let lo = 0, hi = displayData.length;
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (Number(displayData[mid].time) < bucket) lo = mid + 1;
+      else hi = mid;
+    }
+    const completed = displayData.slice(0, lo);
+    let first = currentIndex;
+    while (first > 0 && getTimeframeBucketStart(rawData[first - 1].time, timeframe) === bucket) first--;
+    const forming = aggregateData(rawData.slice(first, currentIndex + 1), timeframe);
+    if (forming.length) completed.push(forming[forming.length - 1]);
+    return completed;
+  }, [rawData, displayData, currentIndex, timeframe]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -39,6 +53,7 @@ export default function MiniChart({ timeframe, onTimeframeChange }) {
       handleScroll: true,
       handleScale: true,
     });
+    lastTimeframeRef.current = null;
     const state = useStore.getState();
     const series = chart.addSeries(CandlestickSeries, {
       upColor: theme?.upBody || '#26a69a',
