@@ -228,11 +228,8 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
     .dashboard-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;align-items:stretch;margin:8px 0 12px}
     .dashboard-panel{min-width:0;border:1px solid #293142;border-radius:6px;background:#111722;padding:8px;break-inside:avoid}
     .dashboard-panel h2{margin-bottom:7px}
-    .metrics{display:grid;grid-template-columns:1fr;gap:0;border-top:1px solid #293142}
-    .metric{display:flex;justify-content:space-between;gap:8px;padding:3px 1px;border-bottom:1px solid #293142;font-size:8px}
-    .metric b{text-align:right}.metric-label{color:#929db0;font-weight:600}
-    .metric-value{font-weight:700}.metric-value.blue{color:#72a7ff}.metric-value.gain,.gain{color:#27c99a}
-    .metric-value.loss,.loss{color:#ff6969}.metric-value.warn{color:#f5b84b}.metric-value.neutral{color:#c2cad7}
+    .gain{color:#27c99a}
+    .loss{color:#ff6969}
     .calendar-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
     .calendar-wrap.single-month{grid-template-columns:minmax(0,1fr)}
     .month-card{border:1px solid #293142;border-radius:5px;padding:6px;background:#111722;break-inside:avoid}
