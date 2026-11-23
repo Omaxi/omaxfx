@@ -15,7 +15,6 @@ export default function ChartWorkspace() {
   const isPlaying = useStore(state => state.isPlaying);
   const togglePlay = useStore(state => state.togglePlay);
   const stepForward = useStore(state => state.stepForward);
-  const uiTheme = useStore(state => state.uiTheme);
   const [timeframes, setTimeframes] = useState({ 15: 15, 5: 5, 60: 60 });
 
   const updateTimeframe = (slot, value) => {
