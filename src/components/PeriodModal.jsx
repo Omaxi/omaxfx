@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import { Calendar, Play, Shield, Target, TrendingDown, User, Sparkles, X, History as HistoryIcon, Trash2, ChevronDown, Check, Sun, Moon, Upload, Info, Plus, Sparkles, LogOut } from 'lucide-react';
+import { Calendar, Play, Shield, Target, TrendingDown, User, Sparkles, X, History as HistoryIcon, Trash2, ChevronDown, Check, Sun, Moon, Upload, Info, Plus, LogOut } from 'lucide-react';
 import { fetchDataCatalog, loadBundledCsvFiles } from '../utils/dataCatalog';
 
 function SavedSessionDropdown({ sessions, value, onChange }) {
