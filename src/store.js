@@ -88,7 +88,7 @@ export const useStore = create((set, get) => ({
   rawData: [],        
   displayData: [],    
   timeframe: 1,
-  chartLayout: 3,
+  chartLayout: 1,
   setChartLayout: (layout) => set({ chartLayout: [1, 2, 3].includes(Number(layout)) ? Number(layout) : 1 }),
   currentIndex: 0,    
   isPlaying: false,
