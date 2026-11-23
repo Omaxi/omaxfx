@@ -163,7 +163,7 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
   return (
     <div className="absolute inset-0" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : (theme?.background || '#131722') }}>
       <div ref={containerRef} className="absolute inset-0" />
-      <MiniChartDrawingLayer chartRef={chartRef} seriesRef={seriesRef} chartReady={chartReady} chartId={chartId} candles={candles} timeframe={timeframe} />
+      <MiniChartDrawingLayer chartRef={chartRef} seriesRef={seriesRef} chartReady={chartReady} chartId={chartId} candles={candles} timeframe={timeframe} containerRef={containerRef} />
       <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={candles} displayData={aggregatedData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={rawData[currentIndex] || null} rawData={rawData} currentIndex={currentIndex} />
       {/* Keep each pane's timeframe control beside its own Indicators button. */}
       <div className="absolute left-[148px] top-2 z-30 pointer-events-auto">
