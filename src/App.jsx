@@ -18,7 +18,7 @@ import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
 import { fetchDataCatalog, loadBundledCsvFiles } from './utils/dataCatalog';
 import { getPnlMultiplier } from './utils/instrument';
-import { RotateCcw, Info, Sparkles, AlertTriangle, ChevronDown, LogOut } from 'lucide-react';
+import { RotateCcw, Info, Sparkles, AlertTriangle, ChevronDown, LogOut, Square, Columns2, LayoutGrid } from 'lucide-react';
 
 function App() {
   const { 
@@ -333,6 +333,16 @@ function App() {
               </>}
             </div>
           )}
+        </div>
+
+        <div className="hidden md:flex items-center gap-1 rounded-lg border border-[#2a2e39] bg-[#0f131c] p-0.5 flex-shrink-0" aria-label="Chart layout">
+          <span className="px-1 text-[8px] font-bold uppercase tracking-wide text-gray-500">Layout</span>
+          {[{ value: 1, label: 'Single', Icon: Square }, { value: 2, label: 'Two charts', Icon: Columns2 }, { value: 4, label: 'Four charts', Icon: LayoutGrid }].map(({ value, label, Icon }) => (
+            <button key={value} type="button" onClick={() => useStore.getState().setChartLayout(value)} title={label} aria-label={label} aria-pressed={useStore.getState().chartLayout === value}
+              className={`flex h-7 w-7 items-center justify-center rounded ${useStore.getState().chartLayout === value ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-[#2a2e39]'}`}>
+              <Icon size={14}/>
+            </button>
+          ))}
         </div>
 
         {gameStarted && <div className="hidden lg:flex items-center gap-1.5 flex-shrink-0">
