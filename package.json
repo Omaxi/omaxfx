@@ -16,7 +16,7 @@
     "prebuild:desktop": "node scripts/generate-data-manifest.mjs && node scripts/create-electron-icon.mjs",
     "build:desktop": "vite build --mode desktop",
     "desktop:dev": "concurrently -k \"vite --mode desktop --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
-    "dist:win": "npm run build:desktop && electron-builder --win nsis --x64"
+    "dist:win": "npm run build:desktop && electron-builder --win nsis --x64 --publish never"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
