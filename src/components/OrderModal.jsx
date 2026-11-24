@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useStore } from '../store';
 import { fmtMoney } from '../utils/format';
 import { getExecutionCandle } from '../utils/timeframe.js';
-import { getPricePrecision, getPriceTickSize } from '../utils/instrument.js';
+import { getPricePrecision, getPriceTickSize, getDefaultMarketStopDistance } from '../utils/instrument.js';
 import { X, AlertTriangle, ChevronDown, Check } from 'lucide-react';
 
 // =========================================================================
@@ -11,10 +11,6 @@ import { X, AlertTriangle, ChevronDown, Check } from 'lucide-react';
 //   pointSize  → the value of 1 "point" in price terms
 //   precision  → number of decimals shown / rounded to
 // =========================================================================
-// Default distance for a market order (in points):
-const DEFAULT_SL_POINTS = 100;
-const DEFAULT_TP_POINTS = 200;
-
 const roundTo = (n, precision) => {
   const factor = Math.pow(10, precision);
   return Math.round(n * factor) / factor;
@@ -64,22 +60,24 @@ export default function OrderModal() {
 
     if (draftPosition) {
       // User dragged a position on the chart → use those prices
+      const defaultStopDistance = getDefaultMarketStopDistance(symbol, pointSize);
       setEntryPrice(roundTo(draftPosition.entry || currentPrice, precision));
       setSlPrice(roundTo(draftPosition.sl || (orderSide === 'buy'
-        ? currentPrice - DEFAULT_SL_POINTS * pointSize
-        : currentPrice + DEFAULT_SL_POINTS * pointSize), precision));
+        ? currentPrice - defaultStopDistance
+        : currentPrice + defaultStopDistance), precision));
       setTpPrice(draftPosition.tp ? roundTo(draftPosition.tp, precision) : 0);
       setOrderType(draftPosition.orderType || 'limit');
     } else {
-      // Market order default: SL = 100 points away, TP = 200 points away
+      // EURUSD market default: 20-pip SL. The default 1:2 RR creates a 40-pip TP.
+      const defaultStopDistance = getDefaultMarketStopDistance(symbol, pointSize);
       setEntryPrice(roundTo(currentPrice, precision));
       setSlPrice(roundTo(orderSide === 'buy'
-        ? currentPrice - DEFAULT_SL_POINTS * pointSize
-        : currentPrice + DEFAULT_SL_POINTS * pointSize, precision));
+        ? currentPrice - defaultStopDistance
+        : currentPrice + defaultStopDistance, precision));
       setTpPrice(0);
       setOrderType('market');
     }
-  }, [isOrderModalOpen, draftPosition, orderSide, currentPrice, precision, pointSize]);
+  }, [isOrderModalOpen, draftPosition, orderSide, currentPrice, precision, pointSize, symbol]);
 
   // When the user flips between Market / Limit / Stop, re-apply market defaults
   // only when switching TO market. Switching away keeps whatever they typed.
@@ -88,12 +86,13 @@ export default function OrderModal() {
     if (orderType !== 'market') return;
     if (draftPosition) return;
 
+    const defaultStopDistance = getDefaultMarketStopDistance(symbol, pointSize);
     setEntryPrice(roundTo(currentPrice, precision));
     setSlPrice(roundTo(orderSide === 'buy'
-      ? currentPrice - DEFAULT_SL_POINTS * pointSize
-      : currentPrice + DEFAULT_SL_POINTS * pointSize, precision));
+      ? currentPrice - defaultStopDistance
+      : currentPrice + defaultStopDistance, precision));
     setTpPrice(0);
-  }, [orderType, isOrderModalOpen, currentPrice, orderSide, precision, pointSize, draftPosition]);
+  }, [orderType, isOrderModalOpen, currentPrice, orderSide, precision, pointSize, draftPosition, symbol]);
 
   useEffect(() => {
     if (!isOrderModalOpen) return;
