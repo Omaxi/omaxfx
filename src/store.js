@@ -8,6 +8,10 @@ import {
 } from './utils/audio.js';
 
 export const INITIAL_BALANCE = 100000;
+
+// The simulator's market data and chart clock are fixed to UTC+3.
+// Keep this map in sync with the timezone options exposed in ControlPanel.
+const TZ_OFFSETS = { 'UTC+3': 180 };
 const EPSILON = 0.001;
 
 const getDayKey = (unixSeconds) => {
@@ -233,8 +237,8 @@ export const useStore = create((set, get) => ({
 
   setTimezone: (newTz) => set((state) => {
     if (newTz === state.timezone) return state;
-    const oldOffset = TZ_OFFSETS[state.timezone] ?? -300;
-    const newOffset = TZ_OFFSETS[newTz] ?? -300;
+    const oldOffset = TZ_OFFSETS[state.timezone] ?? 180;
+    const newOffset = TZ_OFFSETS[newTz] ?? oldOffset;
     const shiftSec = (newOffset - oldOffset) * 60;
     if (shiftSec === 0) return { timezone: newTz };
     const shift = (t) => t == null ? t : t + shiftSec;
