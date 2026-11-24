@@ -200,7 +200,7 @@ function App() {
         <div className="flex items-center gap-2 flex-shrink-0">
           <h1 className="flex items-center gap-2 whitespace-nowrap">
             <img
-              src={`${import.meta.env.BASE_URL}omaxfx-logo.svg`}
+              src={`${import.meta.env.BASE_URL}omaxfx-logo.svg?v=6`}
               alt="OmaxFX"
               className="h-8 w-8 object-contain"
               draggable="false"
