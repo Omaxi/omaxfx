@@ -52,8 +52,10 @@ test('builds the analytics PDF when the trade-by-trade curve contains a drawdown
   assert.match(html, /drawdownFill/);
   assert.match(html, /stop-color="#2563eb"/);
   assert.match(html, /stroke="#2563eb" stroke-width="3"/);
-  // The annotation is rendered as a label centered vertically in the plot area.
-  assert.match(html, /<rect x="491" y="147" width="170" height="22" rx="5"/);
+  // Max DD belongs beside the chart title, not inside the SVG plot.
+  assert.match(html, /<div class="section-heading-row"><h2>Profit and loss · Over time<\/h2><span class="curve-dd-badge">Max DD \$150\.00 · 20m<\/span><\/div>/);
+  const equitySvg = html.match(/<svg[\s\S]*?<\/svg>/)?.[0] || '';
+  assert.doesNotMatch(equitySvg, /Max DD/);
   assert.match(html, /Buy &amp; Hold/);
   assert.doesNotMatch(html, /Use your browser's Print dialog/);
   assert.match(html, /Profit and loss · Over time/);
