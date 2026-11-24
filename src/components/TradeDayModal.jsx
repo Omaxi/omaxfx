@@ -17,7 +17,7 @@ const duration = (trade) => {
   return `${seconds}s`;
 };
 
-export default function TradeDayModal({ date, trades, onClose, sessionId, candles, timeframe = 1, uiTheme = 'dark' }) {
+export default function TradeDayModal({ date, trades, onClose, sessionId, candles, timeframe = 1 }) {
   const [images, setImages] = useState({});
   const [savingId, setSavingId] = useState(null);
   useEffect(() => {
