@@ -3,8 +3,10 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-export default defineConfig(({ command }) => ({
-  base: command === 'serve' ? '/' : '/omaxfx/',
+export default defineConfig(({ command, mode }) => ({
+  // The hosted web app keeps its /omaxfx/ path; Electron loads dist/index.html
+  // directly, so desktop assets must use relative paths.
+  base: mode === 'desktop' ? './' : command === 'serve' ? '/' : '/omaxfx/',
   plugins: [
     react(),
     tailwindcss(),
