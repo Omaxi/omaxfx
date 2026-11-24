@@ -1549,22 +1549,6 @@ export default function Chart({ chartId = 'main' }) {
   const candleDate = currentCandle ? formatMarketDateTime(Number(currentCandle.time)) : '—';
   const candlePrice = value => Number.isFinite(Number(value)) ? Number(value).toFixed(3) : '—';
 
-  // The replay cursor is the authoritative market clock. For higher chart
-  // timeframes, show how much source-data time remains before this candle's
-  // timeframe bucket closes. The countdown freezes naturally when replay is paused.
-  const candleCountdown = (() => {
-    const minutes = Number(timeframe);
-    const sourceCandle = rawData?.[currentIndex];
-    if (!sourceCandle || !Number.isFinite(minutes) || minutes <= 1) return null;
-    const bucketStart = getTimeframeBucketStart(Number(sourceCandle.time), minutes);
-    const remaining = Math.max(0, bucketStart + minutes * 60 - (Number(sourceCandle.time) + 60));
-    const hours = Math.floor(remaining / 3600);
-    const mins = Math.floor((remaining % 3600) / 60);
-    const seconds = Math.floor(remaining % 60);
-    return hours > 0
-      ? `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-      : `${String(mins).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  })();
 
   const resetChartView = useCallback(() => {
     const chart = chartRef.current;
@@ -1741,10 +1725,6 @@ export default function Chart({ chartId = 'main' }) {
             <span className="text-gray-500">Close</span><span className="text-right text-white">{candlePrice(currentCandle?.close)}</span>
             <span className="text-gray-500">Datetime</span><span className="text-right text-white">{candleDate}</span>
             <span className="text-gray-500">Session</span><span className="text-right text-white">{candleSession}</span>
-            {candleCountdown !== null && <>
-              <span className="text-gray-500">Candle closes in</span>
-              <span className="text-right font-semibold tabular-nums text-amber-400">{candleCountdown}</span>
-            </>}
           </div>
           {htfDashboard && <div className="mt-2 border-t border-[#2a2e39] pt-2">
             <div className="mb-1 flex items-center justify-between">
