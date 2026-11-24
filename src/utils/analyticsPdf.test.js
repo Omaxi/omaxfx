@@ -3,9 +3,8 @@ import assert from 'node:assert/strict';
 import { buildAnalyticsPrintHtml } from './analyticsPdf.js';
 
 const base = {
-  sessionName: 'PDF regression',
+  traderName: 'PDF regression',
   symbol: 'XAUUSD',
-  sessionId: 'session-test',
   startBalance: 10000,
   balance: 10020,
   timezone: 'UTC+3',
@@ -33,7 +32,9 @@ test('builds the analytics PDF when the trade-by-trade curve contains a drawdown
   });
 
   assert.match(html, /Max DD/);
-  assert.match(html, /OmaxFX Simulator · Performance report/);
+  assert.match(html, /<title>PDF regression<\/title>/);
+  assert.match(html, /<div class="report-title">PDF regression<\/div>/);
+  assert.match(html, /<header class="cover"><h1>PDF regression<\/h1>/);
   assert.doesNotMatch(html, /Trading statistics|Full performance metrics|metric-value/);
   assert.match(html, /Trading calendar · All active months/);
   assert.match(html, /Expectancy &amp; Profit Factor/);
