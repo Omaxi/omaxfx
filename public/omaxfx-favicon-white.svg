@@ -12,6 +12,4 @@
   <circle cx="245" cy="226" r="154" fill="none" stroke="#087dff" stroke-opacity=".32" stroke-width="54" filter="url(#soft)"/>
   <circle cx="245" cy="226" r="154" fill="none" stroke="url(#ring)" stroke-width="38"/>
   <path d="M211 154 Q201 148 201 164 L201 287 Q201 303 215 295 L321 237 Q336 228 321 219 Z" fill="url(#play)" stroke="#dff7ff" stroke-opacity=".65" stroke-width="3" stroke-linejoin="round"/>
-  <path d="M55 337 C126 359 228 321 315 264 C375 225 417 180 395 151 C437 170 424 216 380 258 C292 341 150 386 65 356 C43 348 38 337 55 337 Z" fill="url(#orbit)"/>
-  <path d="M58 338 C138 353 242 315 329 256" fill="none" stroke="#fff" stroke-opacity=".32" stroke-width="5" stroke-linecap="round"/>
 </svg>
