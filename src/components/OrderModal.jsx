@@ -30,6 +30,7 @@ export default function OrderModal() {
 
   const [orderType, setOrderType] = useState('market');
   const [orderTypeOpen, setOrderTypeOpen] = useState(false);
+  const [riskRewardOpen, setRiskRewardOpen] = useState(false);
   const [riskPercent, setRiskPercent] = useState(1);
   const [slPrice, setSlPrice] = useState(0);
   const [tpPrice, setTpPrice] = useState(0);
@@ -305,15 +306,50 @@ export default function OrderModal() {
               </div>
               <div>
                 <label className="text-xs text-green-400">Risk / Reward</label>
-                <select value={riskReward} onChange={(e) => setRiskReward(e.target.value)} className="w-full mt-1 p-2 bg-[#1e222d] rounded border border-[#2a2e39] text-sm">
-                  <option value="1">1:1</option>
-                  <option value="2">1:2</option>
-                  <option value="3">1:3</option>
-                  <option value="4">1:4</option>
-                  <option value="5">1:5</option>
-                  {riskReward !== 'none' && !['1', '2', '3', '4', '5'].includes(riskReward) && <option value={riskReward}>1:{riskReward}</option>}
-                  <option value="none">NONE</option>
-                </select>
+                <div className="relative mt-1" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setRiskRewardOpen(false); }}>
+                  <button
+                    type="button"
+                    aria-haspopup="listbox"
+                    aria-expanded={riskRewardOpen}
+                    onClick={() => setRiskRewardOpen(open => !open)}
+                    onKeyDown={(e) => { if (e.key === 'Escape') setRiskRewardOpen(false); }}
+                    className="w-full flex items-center justify-between gap-2 rounded-lg border border-[#2a2e39] bg-[#1e222d] px-3 py-2 text-left text-sm text-gray-200 shadow-sm transition-colors hover:bg-[#252a36] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <span>{riskReward === 'none' ? 'NONE' : `1:${riskReward}`}</span>
+                    <ChevronDown size={15} className={`text-gray-400 transition-transform ${riskRewardOpen ? 'rotate-180' : ''}`}/>
+                  </button>
+                  {riskRewardOpen && (
+                    <div role="listbox" aria-label="Risk / reward ratio" className="theme-menu-surface absolute left-0 right-0 bottom-full z-[150] mb-1 overflow-hidden rounded-lg border border-[#2a2e39] bg-[#1e222d] shadow-2xl">
+                      <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide">Risk / Reward</div>
+                      {[
+                        { value: '1', label: '1:1' },
+                        { value: '2', label: '1:2' },
+                        { value: '3', label: '1:3' },
+                        { value: '4', label: '1:4' },
+                        { value: '5', label: '1:5' },
+                        ...(riskReward !== 'none' && !['1', '2', '3', '4', '5'].includes(riskReward)
+                          ? [{ value: riskReward, label: `1:${riskReward}` }]
+                          : []),
+                        { value: 'none', label: 'NONE' },
+                      ].map(option => {
+                        const isSelected = riskReward === option.value;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => { setRiskReward(option.value); setRiskRewardOpen(false); }}
+                            className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left text-white hover:bg-[#2a2e39] cursor-pointer ${isSelected ? 'bg-blue-600/15' : ''}`}
+                          >
+                            <span className={isSelected ? 'font-bold' : ''}>{option.label}</span>
+                            {isSelected && <Check size={10} className="text-blue-400" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
                 <div className="mt-1 rounded bg-[#1e222d] px-2 py-1.5 text-xs text-gray-300">
                   TP: <span className="order-tp-value font-mono text-green-400">{riskReward === 'none' ? 'Disabled' : Number(tpPrice || 0).toFixed(precision)}</span>
                 </div>
