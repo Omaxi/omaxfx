@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, dialog } = require('electron');
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
@@ -144,6 +144,67 @@ function createMainWindow(appUrl) {
     mainWindow = null;
   });
 }
+
+
+ipcMain.handle('omaxfx:export-analytics-pdf', async (event, html) => {
+  if (!mainWindow || event.sender !== mainWindow.webContents) {
+    throw new Error('Unauthorized PDF export request.');
+  }
+  if (typeof html !== 'string' || html.length > 100 * 1024 * 1024) {
+    throw new Error('The analytics report is invalid or too large to export.');
+  }
+
+  const stamp = new Date().toISOString().slice(0, 10);
+  const tempHtmlPath = path.join(app.getPath('temp'), `omaxfx-analytics-${Date.now()}.html`);
+  let reportWindow;
+  try {
+    await fs.promises.writeFile(tempHtmlPath, html, 'utf8');
+    reportWindow = new BrowserWindow({
+      width: 1440,
+      height: 1000,
+      show: false,
+      autoHideMenuBar: true,
+      backgroundColor: '#0b0e11',
+      title: 'OmaxFX Analytics Report',
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+      },
+    });
+    await reportWindow.loadFile(tempHtmlPath);
+    await reportWindow.webContents.executeJavaScript(`
+      (async () => {
+        if (document.fonts?.ready) await document.fonts.ready;
+        await Promise.all(Array.from(document.images, image => image.complete
+          ? Promise.resolve()
+          : new Promise(resolve => {
+              image.onload = resolve;
+              image.onerror = resolve;
+            })));
+      })()
+    `);
+    const pdf = await reportWindow.webContents.printToPDF({
+      printBackground: true,
+      pageSize: 'A4',
+      landscape: true,
+      margins: { top: 0.35, bottom: 0.35, left: 0.35, right: 0.35 },
+      preferCSSPageSize: true,
+    });
+    const save = await dialog.showSaveDialog(mainWindow, {
+      title: 'Save OmaxFX Analytics Report',
+      defaultPath: `OmaxFX-Analytics-${stamp}.pdf`,
+      buttonLabel: 'Save PDF',
+      filters: [{ name: 'PDF Documents', extensions: ['pdf'] }],
+    });
+    if (save.canceled || !save.filePath) return { canceled: true };
+    await fs.promises.writeFile(save.filePath, pdf);
+    return { canceled: false, filePath: save.filePath };
+  } finally {
+    if (reportWindow && !reportWindow.isDestroyed()) reportWindow.close();
+    await fs.promises.rm(tempHtmlPath, { force: true }).catch(() => {});
+  }
+});
 
 app.setAppUserModelId('com.omaxfx.simulator');
 
