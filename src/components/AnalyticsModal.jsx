@@ -28,18 +28,17 @@ const fmtPct = (value) => `${value.toFixed(1)}%`;
 
 export default function AnalyticsModal() {
   const store = useStore();
-  const { isAnalyticsOpen, closeAnalytics, analyticsSnapshot } = store;
+  const { isAnalyticsOpen, closeAnalytics } = store;
   const uiTheme = store.uiTheme || 'dark';
   const isLight = uiTheme === 'light';
-  const tradeHistory = analyticsSnapshot?.tradeHistory || store.tradeHistory;
-  const balance = analyticsSnapshot?.balance ?? store.balance;
-  const rules = analyticsSnapshot?.rules || store.rules;
-  const rawData = analyticsSnapshot ? [] : store.rawData;
-  const currentIndex = analyticsSnapshot ? 0 : store.currentIndex;
-  const sessionId = analyticsSnapshot?.sessionId || store.sessionId;
-  const timeframe = analyticsSnapshot?.timeframe || store.timeframe;
-  const gamePeriod = analyticsSnapshot?.gamePeriod || store.gamePeriod || null;
-  const screenshotCandles = rawData.length ? rawData : (store.allRawDataBySymbol?.[analyticsSnapshot?.symbol || store.symbol] || []);
+  const tradeHistory = store.tradeHistory;
+  const balance = store.balance;
+  const rules = store.rules;
+  const rawData = store.rawData;
+  const currentIndex = store.currentIndex;
+  const sessionId = store.sessionId;
+  const timeframe = store.timeframe;
+  const screenshotCandles = rawData.length ? rawData : (store.allRawDataBySymbol?.[store.symbol] || []);
   const [selectedDate, setSelectedDate] = useState(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [monthCursor, setMonthCursor] = useState(() => {
@@ -262,11 +261,11 @@ export default function AnalyticsModal() {
       };
       const html = buildAnalyticsPrintHtml({
         traderName: store.playerName || 'Trader',
-        symbol: analyticsSnapshot?.symbol || store.symbol,
+        symbol: store.symbol,
         sessionId,
         startBalance,
         balance,
-        timezone: analyticsSnapshot?.timezone || store.timezone || 'UTC+3',
+        timezone: store.timezone || 'UTC+3',
         backtestRange,
         trades,
         metrics,
