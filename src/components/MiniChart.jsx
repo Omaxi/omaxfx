@@ -32,6 +32,21 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
   const theme = useStore(state => state.theme);
   const uiTheme = useStore(state => state.uiTheme);
 
+  // This is a replay-time countdown: it advances only when the simulator
+  // steps to the next 1-minute source candle, not with the computer's clock.
+  // Each mini chart uses its own timeframe, so 5m/15m/1H panes stay in sync
+  // with the same replay cursor while showing their own bucket-close time.
+  const candleCountdown = useMemo(() => {
+    const minutes = Number(timeframe);
+    const sourceCandle = rawData?.[currentIndex];
+    if (!sourceCandle || !Number.isFinite(minutes) || minutes <= 1) return null;
+    const bucketStart = getTimeframeBucketStart(Number(sourceCandle.time), minutes);
+    const remainingSeconds = Math.max(0, bucketStart + minutes * 60 - (Number(sourceCandle.time) + 60));
+    const hours = Math.floor(remainingSeconds / 3600);
+    const mins = Math.floor((remainingSeconds % 3600) / 60);
+    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  }, [rawData, currentIndex, timeframe]);
+
   useEffect(() => {
     if (!timeframeMenuOpen) return undefined;
     const closeOnOutside = event => {
@@ -165,6 +180,12 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
       <div ref={containerRef} className="absolute inset-0" />
       <MiniChartDrawingLayer chartRef={chartRef} seriesRef={seriesRef} chartReady={chartReady} chartId={chartId} candles={candles} timeframe={timeframe} containerRef={containerRef} />
       <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={candles} displayData={aggregatedData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={rawData[currentIndex] || null} rawData={rawData} currentIndex={currentIndex} />
+      {candleCountdown !== null && (
+        <div aria-live="polite" aria-label={`Candle closes in ${candleCountdown}`}
+          className="absolute right-2 top-2 z-20 rounded-md border border-amber-500/30 bg-[#1e222d]/90 px-2 py-1 text-[10px] font-semibold tabular-nums text-amber-400 shadow-sm pointer-events-none">
+          Closes in {candleCountdown}
+        </div>
+      )}
       {/* Keep each pane's timeframe control beside its own Indicators button. */}
       <div className="absolute left-[148px] top-2 z-30 pointer-events-auto">
         <button ref={timeframeButtonRef} type="button" onClick={toggleTimeframeMenu}
