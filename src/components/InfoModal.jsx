@@ -97,6 +97,7 @@ export default function InfoModal() {
           <Section icon={<Award size={12}/>} title="Credits">
             <ul className="list-disc pl-4 space-y-0.5">
               <li><b>Created by Omar Mohamed Yonis</b></li>
+              <li>Email: <a href="mailto:omarmohamedyonis@gmail.com" className="text-blue-400 hover:text-blue-300 underline underline-offset-2">omarmohamedyonis@gmail.com</a></li>
               <li>Historical data: <b>Dukascopy</b> — industry-standard, high-quality tick data trusted by professional traders worldwide</li>
               <li>Charting engine: TradingView Lightweight Charts</li>
               <li>Built with React + Vite + Capacitor for offline PWA</li>
