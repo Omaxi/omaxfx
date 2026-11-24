@@ -4,6 +4,7 @@ import {
   getPnlMultiplier,
   getPricePrecision,
   getPriceTickSize,
+  getDefaultMarketStopDistance,
   calculateIntrabarUnrealizedPnl,
   calculateFavorableIntrabarPnl,
 } from '../src/utils/instrument.js';
@@ -13,6 +14,16 @@ test('EURUSD uses five decimal places and a 0.00001 tick', () => {
   assert.equal(getPriceTickSize('EURUSD'), 0.00001);
   assert.equal(getPricePrecision('EURUSD', { EURUSD: { precision: 4 } }), 5);
   assert.equal(getPriceTickSize('EURUSD', { EURUSD: { tickSize: 0.0001 } }), 0.00001);
+});
+
+test('CUSTOM data displays five decimals and uses a five-decimal tick', () => {
+  assert.equal(getPricePrecision('CUSTOM', { CUSTOM: { precision: 2 } }), 5);
+  assert.equal(getPriceTickSize('CUSTOM', { CUSTOM: { tickSize: 0.01 } }), 0.00001);
+});
+
+test('EURUSD market defaults use a 20-pip stop; other symbols retain the existing point default', () => {
+  assert.equal(getDefaultMarketStopDistance('EURUSD', 0.00001), 0.002);
+  assert.equal(getDefaultMarketStopDistance('XAUUSD', 0.001), 0.1);
 });
 
 test('Gold uses three decimal places and a 0.001 tick to match the CSV', () => {
