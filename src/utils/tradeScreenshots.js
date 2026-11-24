@@ -98,8 +98,21 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = '
   const plotW = width - left - right, plotH = height - top - bottom;
   void uiTheme;
   const entry = Number(trade.entryPrice), sl = trade.sl == null ? NaN : Number(trade.sl), tp = trade.tp == null ? NaN : Number(trade.tp);
+  const drawings = [
+    ...(Array.isArray(drawingSnapshot.drawings) ? drawingSnapshot.drawings : []),
+    ...Object.values(drawingSnapshot.chartDrawings || {}).flatMap(list => Array.isArray(list) ? list : []),
+  ];
+  const pencilStrokes = Array.isArray(drawingSnapshot.pencilStrokes) ? drawingSnapshot.pencilStrokes : [];
   const prices = data.flatMap(c => [Number(c.high), Number(c.low)]);
   [entry, Number(trade.exitPrice), sl, tp].forEach(v => { if (Number.isFinite(v)) prices.push(v); });
+  drawings.forEach(d => (d.points || []).forEach(point => {
+    const price = Number(point?.price);
+    if (Number.isFinite(price)) prices.push(price);
+  }));
+  pencilStrokes.forEach(stroke => (stroke.points || []).forEach(point => {
+    const price = Number(point?.price);
+    if (Number.isFinite(price)) prices.push(price);
+  }));
   if (!prices.length) return null;
   let min = Math.min(...prices), max = Math.max(...prices);
   const span = Math.max(max - min, Math.abs(max || 1) * 0.0001, 1e-8);
@@ -141,10 +154,6 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = '
     ctx.fillRect(cx - candleW / 2, Math.min(yo, yc), candleW, Math.max(1, Math.abs(yc - yo)));
   });
 
-  const drawings = [
-    ...(Array.isArray(drawingSnapshot.drawings) ? drawingSnapshot.drawings : []),
-    ...Object.values(drawingSnapshot.chartDrawings || {}).flatMap(list => Array.isArray(list) ? list : []),
-  ];
   const seen = new Set();
   drawings.forEach(d => {
     if (!d || (d.symbol && d.symbol !== trade.symbol)) return;
@@ -171,7 +180,7 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = '
     }
     ctx.restore();
   });
-  (drawingSnapshot.pencilStrokes || []).forEach(stroke => {
+  pencilStrokes.forEach(stroke => {
     const points=(stroke.points||[]).map(p=>Number.isFinite(Number(p?.time))&&Number.isFinite(Number(p?.price))?pointToXY(p):null).filter(Boolean);
     if(points.length<2)return;
     ctx.save();ctx.strokeStyle=stroke.color||'#3b82f6';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);
