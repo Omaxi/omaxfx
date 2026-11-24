@@ -72,7 +72,8 @@
           ]
         }
       ],
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "artifactName": "OmaxFX-Setup.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -82,6 +83,7 @@
       "createStartMenuShortcut": true,
       "shortcutName": "OmaxFX Simulator",
       "deleteAppDataOnUninstall": false
-    }
+    },
+    "compression": "maximum"
   }
 }
