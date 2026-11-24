@@ -13,7 +13,7 @@ export default function StylePanel({ selectedId, onClose }) {
   const drawing = drawings.find(d => d.id === selectedId);
   if (!drawing) return null;
 
-  const currentBorder = drawing.borderColor || drawing.color || '#f59e0b';
+  const currentBorder = drawing.borderColor || drawing.color || '#3b82f6';
   const currentFill = drawing.fillColor || (currentBorder + '33');
   const currentWidth = drawing.lineWidth ?? 1;
   const showBorder = drawing.showBorder === true;
@@ -29,7 +29,7 @@ export default function StylePanel({ selectedId, onClose }) {
 
   return createPortal(
     <div 
-      className="drawing-style-panel fixed top-[132px] left-[max(8px,calc(50vw-320px))] z-[10000] w-56 max-h-[calc(100vh-148px)] bg-[#131722]/98 border border-[#2a2e39] rounded-lg shadow-none overflow-y-auto"
+      className="drawing-style-panel fixed top-[72px] left-[36px] z-[10000] w-56 max-h-[calc(100vh-84px)] bg-[#131722]/98 border border-[#2a2e39] rounded-lg shadow-none overflow-y-auto"
       onPointerDown={(e) => e.stopPropagation()}
     >
       {/* Header */}
