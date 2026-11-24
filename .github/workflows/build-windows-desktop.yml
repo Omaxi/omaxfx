@@ -15,6 +15,9 @@ on:
       - 'vite.config.js'
       - '.github/workflows/build-windows-desktop.yml'
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -29,15 +32,26 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Build Windows installer
+      - name: Build compressed Windows installer
         run: npm run dist:win
 
-      - name: Upload installer
-        uses: actions/upload-artifact@v4
+      - name: Publish public OmaxFX release
+        uses: softprops/action-gh-release@v2
         with:
-          name: OmaxFX-Windows-Installer
-          path: release/*.exe
-          if-no-files-found: error
-          retention-days: 14
+          tag_name: v1.0.0-build-${{ github.run_number }}
+          name: OmaxFX Simulator v1.0.0 (Build ${{ github.run_number }})
+          body: |
+            Official OmaxFX Simulator for Windows.
+
+            - Offline desktop application
+            - Windows x64 installer
+            - Automatically generated from the latest successful desktop build
+
+            Download **OmaxFX-Setup.exe** below.
+          files: release/OmaxFX-Setup.exe
+          draft: false
+          prerelease: false
+          make_latest: true
+          fail_on_unmatched_files: true
