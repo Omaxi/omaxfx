@@ -204,6 +204,7 @@ export default function Chart({ chartId = 'main' }) {
   const lastRenderedDataRef = useRef([]);
   const lastTimeframeRef = useRef(1);
   const lastRecenterRef = useRef(0);
+  const initialAutoResetRef = useRef(false);
   const activePointersRef = useRef(new Set());
   const lastTapRef = useRef({ time: 0, x: 0, y: 0 });
   const touchDownPosRef = useRef({ x: 0, y: 0 });
@@ -1573,6 +1574,18 @@ export default function Chart({ chartId = 'main' }) {
       window.removeEventListener(`omaxfx:reset-chart:${chartId}`, reset);
     };
   }, [resetChartView, chartId]);
+
+  // Match the Reset Chart view once when a chart first receives its candles.
+  // Waiting for the initial layout/resize prevents the first candle from being
+  // left-pinned when the chart mounts before its container has its final width.
+  useEffect(() => {
+    if (!chartReady || visibleData.length === 0 || initialAutoResetRef.current) return undefined;
+    initialAutoResetRef.current = true;
+    const timer = window.setTimeout(() => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resetChartView()));
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [chartReady, visibleData.length, resetChartView]);
 
   useEffect(() => {
     const chart = chartReady ? chartRef.current : null;
