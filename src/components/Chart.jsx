@@ -204,7 +204,6 @@ export default function Chart({ chartId = 'main' }) {
   const lastRenderedDataRef = useRef([]);
   const lastTimeframeRef = useRef(1);
   const lastRecenterRef = useRef(0);
-  const initialAutoResetRef = useRef(false);
   const activePointersRef = useRef(new Set());
   const lastTapRef = useRef({ time: 0, x: 0, y: 0 });
   const touchDownPosRef = useRef({ x: 0, y: 0 });
@@ -217,6 +216,7 @@ export default function Chart({ chartId = 'main' }) {
   const [positionBtnPos, setPositionBtnPos] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [chartReady, setChartReady] = useState(false);
+  const [startupViewReady, setStartupViewReady] = useState(false);
   const [textInput, setTextInput] = useState(null);
   const [htfDashboard, setHtfDashboard] = useState(null);
   const [indicatorDashboard, setIndicatorDashboard] = useState([]);
@@ -1575,17 +1575,47 @@ export default function Chart({ chartId = 'main' }) {
     };
   }, [resetChartView, chartId]);
 
-  // Match the Reset Chart view once when a chart first receives its candles.
-  // Waiting for the initial layout/resize prevents the first candle from being
-  // left-pinned when the chart mounts before its container has its final width.
+  // Keep the chart hidden during startup until its container has completed
+  // its first real measurement. Then apply the exact Reset Chart viewport
+  // before revealing it, so users never see the temporary left-pinned frame.
   useEffect(() => {
-    if (!chartReady || visibleData.length === 0 || initialAutoResetRef.current) return undefined;
-    initialAutoResetRef.current = true;
-    const timer = window.setTimeout(() => {
-      requestAnimationFrame(() => requestAnimationFrame(() => resetChartView()));
-    }, 120);
-    return () => window.clearTimeout(timer);
-  }, [chartReady, visibleData.length, resetChartView]);
+    if (!chartReady || visibleData.length === 0 || startupViewReady) return undefined;
+    const container = chartContainerRef.current;
+    const chart = chartRef.current;
+    if (!container || !chart) return undefined;
+
+    let disposed = false;
+    let frameOne = 0;
+    let frameTwo = 0;
+    const finishInitialLayout = () => {
+      if (disposed || startupViewReady) return;
+      const rect = container.getBoundingClientRect();
+      const timeScaleWidth = chart.timeScale().width();
+      if (rect.width < 100 || rect.height < 100 || timeScaleWidth < 100) return;
+
+      frameOne = requestAnimationFrame(() => {
+        if (disposed) return;
+        // Re-check after the browser has committed the measured chart size.
+        const latest = container.getBoundingClientRect();
+        if (latest.width < 100 || latest.height < 100) return;
+        resetChartView();
+        frameTwo = requestAnimationFrame(() => {
+          if (!disposed) setStartupViewReady(true);
+        });
+      });
+    };
+
+    const observer = new ResizeObserver(finishInitialLayout);
+    observer.observe(container);
+    finishInitialLayout();
+
+    return () => {
+      disposed = true;
+      observer.disconnect();
+      cancelAnimationFrame(frameOne);
+      cancelAnimationFrame(frameTwo);
+    };
+  }, [chartReady, visibleData.length, startupViewReady, resetChartView]);
 
   useEffect(() => {
     const chart = chartReady ? chartRef.current : null;
@@ -1665,7 +1695,7 @@ export default function Chart({ chartId = 'main' }) {
   }, [chartReady, timeframe, symbol]);
 
   return (
-    <div className="chart-root relative w-full h-full" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : theme.background }}>
+    <div className="chart-root relative w-full h-full" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : theme.background, visibility: startupViewReady ? 'visible' : 'hidden' }}>
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none', cursor: isPencilMode ? 'crosshair' : 'default' }} />
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
       <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 25 }} aria-hidden="true" />
