@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { X, Camera, Download } from 'lucide-react';
-import { renderTradeScreenshot, saveTradeScreenshot } from '../utils/tradeScreenshots';
+import { getTradeScreenshot, renderTradeScreenshot, saveTradeScreenshot } from '../utils/tradeScreenshots';
 import { fmtMoney } from '../utils/format';
-import TradeScreenshotChart from './TradeScreenshotChart';
 
 const stamp = (unix) => unix ? new Date((unix + 3 * 3600) * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) : '—';
 const duration = (trade) => {
@@ -24,18 +23,28 @@ export default function TradeDayModal({ date, trades, onClose, sessionId, candle
   useEffect(() => {
     let active = true;
     Promise.all(trades.map(async trade => {
-      // Re-render on journal open so screenshots always match the active theme,
-      // including screenshots that were originally captured in dark mode.
-      const image = renderTradeScreenshot(trade, candles, timeframe, uiTheme);
+      // A trade-time drawing snapshot is authoritative. Rebuild from it when
+      // available; otherwise keep the previous image rather than replacing a
+      // valid historical screenshot with a drawing-free render.
+      const stored = await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
+      if (trade.drawingSnapshot) {
+        const captured = renderTradeScreenshot(trade, candles, timeframe, 'dark', trade.drawingSnapshot);
+        if (captured) {
+          await saveTradeScreenshot(trade.id, captured, sessionId || 'unsaved-session').catch(() => false);
+          return [String(trade.id), captured];
+        }
+      }
+      if (stored) return [String(trade.id), stored];
+      const image = renderTradeScreenshot(trade, candles, timeframe, 'dark', {});
       if (image) await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
       return [String(trade.id), image];
     })).then(entries => { if (active) setImages(Object.fromEntries(entries)); });
     return () => { active = false; };
-  }, [date, trades, sessionId, candles, timeframe, uiTheme]);
+  }, [date, trades, sessionId, candles, timeframe]);
 
   const captureForTrade = async (trade) => {
     setSavingId(String(trade.id));
-    const image = renderTradeScreenshot(trade, candles, timeframe, uiTheme);
+    const image = renderTradeScreenshot(trade, candles, timeframe, 'dark', trade.drawingSnapshot || {});
     if (image) {
       const saved = await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
       if (saved) setImages(current => ({ ...current, [String(trade.id)]: image }));
@@ -84,8 +93,12 @@ export default function TradeDayModal({ date, trades, onClose, sessionId, candle
                   <div className="text-[10px] text-gray-500">Close reason: {trade.reason || '—'} · Trade ID: {trade.id}</div>
                 </div>
                 <div className="trade-journal-chart min-h-[240px] rounded-md border border-[#303744] bg-[#0d1117] overflow-hidden flex flex-col">
-                  <div className="min-h-[220px] flex-1">
-                    <TradeScreenshotChart trade={trade} candles={candles} timeframe={timeframe}/>
+                  <div className="min-h-[220px] flex-1 bg-[#0d1117]">
+                    {image ? (
+                      <img src={image} alt={`Trade ${index + 1} market screenshot with saved drawings`} className="block h-full min-h-[220px] w-full object-contain" />
+                    ) : (
+                      <div className="flex h-full min-h-[220px] items-center justify-center text-xs text-gray-500">Preparing historical chart screenshot…</div>
+                    )}
                   </div>
                   <div className="shrink-0 flex justify-end border-t border-[#303744] p-1.5">
                     {image ? (
