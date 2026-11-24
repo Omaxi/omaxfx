@@ -14,9 +14,10 @@ export default function LoadingScreen() {
       {/* Logo / Brand */}
       <div className="mb-8 flex flex-col items-center animate-pulse">
         <img
-          src={`${import.meta.env.BASE_URL}favicon.png`}
+          src={`${import.meta.env.BASE_URL}omaxfx-logo.svg`}
           alt="OmaxFX"
-          className="w-20 h-20 rounded-2xl shadow-2xl shadow-blue-900/50 mb-4 object-contain"
+          className="w-28 h-28 mb-4 object-contain"
+          draggable="false"
           onError={(e) => { e.currentTarget.style.display = 'none'; }}
         />
         <h1 className="text-2xl font-bold tracking-widest text-white">OMAXFX</h1>
