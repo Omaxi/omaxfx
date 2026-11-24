@@ -32,9 +32,9 @@ test('builds the analytics PDF when the trade-by-trade curve contains a drawdown
   });
 
   assert.match(html, /Max DD/);
-  assert.match(html, /<title>PDF regression<\/title>/);
-  assert.match(html, /<div class="report-title">PDF regression<\/div>/);
-  assert.match(html, /<header class="cover"><h1>PDF regression<\/h1>/);
+  assert.match(html, /<title>PDF regression - Performance Reports<\/title>/);
+  assert.doesNotMatch(html, /class="report-title"/);
+  assert.match(html, /<header class="cover"><h1>PDF regression - Performance Reports<\/h1>/);
   assert.doesNotMatch(html, /Trading statistics|Full performance metrics|metric-value/);
   assert.match(html, /Trading calendar · All active months/);
   assert.match(html, /Expectancy &amp; Profit Factor/);
