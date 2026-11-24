@@ -12,6 +12,7 @@ import CelebrationOverlay from './components/CelebrationOverlay';
 import LoadingScreen from './components/LoadingScreen';
 import TradeScreenshotCapture from './components/TradeScreenshotCapture';
 import DataImportModal from './components/DataImportModal';
+import TooltipLayer from './components/TooltipLayer';
 import { useStore } from './store';
 import { useEffect, useRef } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
@@ -288,6 +289,7 @@ function App() {
       <EquityModal />
 
       <CelebrationOverlay />
+      <TooltipLayer />
 
       {symbolWarning && (
         <div
