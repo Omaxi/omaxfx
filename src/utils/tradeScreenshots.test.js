@@ -80,7 +80,8 @@ test('adds dashed entry, exit, SL and TP guides only when trade levels are visua
     strokes.length = 0;
     renderTradeScreenshot({ ...base, sl: 0.95, tp: 1.08 }, candles, 1);
     assert.equal(dashPatterns.length, 0, 'normal-sized trades should keep the clean screenshot without guide lines');
-    assert.equal(guideLabels.length, 0);
+    assert.ok(!['ENTRY', 'EXIT', 'SL', 'TP'].some(label => guideLabels.includes(label)),
+      'normal-sized trades must not add trade-level labels (axis labels remain visible)');
   } finally {
     if (originalDocument === undefined) delete globalThis.document;
     else globalThis.document = originalDocument;
