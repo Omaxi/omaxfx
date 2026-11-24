@@ -1,4 +1,4 @@
-const DB_NAME = 'omaxfx-trade-journal-v6';
+const DB_NAME = 'omaxfx-trade-journal-v7';
 const STORE_NAME = 'screenshots';
 let dbPromise;
 
@@ -84,47 +84,45 @@ export function getTradeCandleWindow(trade, candles, timeframe = 1) {
 
 // Render a deterministic historical chart for exactly one trade. The live chart
 // canvas is never reused, so a batch of closures cannot receive one shared image.
-export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = 'dark') {
+export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = 'dark', drawingSnapshot = {}) {
   const windowData = getTradeCandleWindow(trade, candles, timeframe);
   if (!windowData || typeof document === 'undefined') return null;
   const { data, entryIndex, exitIndex } = windowData;
-  const light = uiTheme === 'light';
-  const palette = light
-    ? { background: '#ffffff', grid: '#e4e7ec', text: '#667085' }
-    : { background: '#0d1117', grid: '#273244', text: '#9aa4b2' };
-
+  const palette = { background: '#0d1117', text: '#9aa4b2' };
   const width = 1280, height = 640;
   const canvas = document.createElement('canvas');
   canvas.width = width; canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
-
   const left = 76, right = 108, top = 34, bottom = 58;
   const plotW = width - left - right, plotH = height - top - bottom;
-  const entry = Number(trade.entryPrice), exit = Number(trade.exitPrice);
-  const sl = trade.sl == null ? NaN : Number(trade.sl);
-  const tp = trade.tp == null ? NaN : Number(trade.tp);
+  const entry = Number(trade.entryPrice), sl = trade.sl == null ? NaN : Number(trade.sl), tp = trade.tp == null ? NaN : Number(trade.tp);
   const prices = data.flatMap(c => [Number(c.high), Number(c.low)]);
-  [entry, exit, sl, tp].forEach(v => { if (Number.isFinite(v)) prices.push(v); });
+  [entry, Number(trade.exitPrice), sl, tp].forEach(v => { if (Number.isFinite(v)) prices.push(v); });
   if (!prices.length) return null;
-
   let min = Math.min(...prices), max = Math.max(...prices);
   const span = Math.max(max - min, Math.abs(max || 1) * 0.0001, 1e-8);
   min -= span * 0.12; max += span * 0.12;
   const y = price => top + ((max - price) / (max - min)) * plotH;
-  const step = plotW / data.length;
-  const candleW = Math.max(1, Math.min(9, step * 0.68));
+  const timeToIndex = time => {
+    const target = Number(time);
+    if (!Number.isFinite(target)) return null;
+    if (data.length === 1) return 0;
+    if (target <= Number(data[0].time)) return (target - Number(data[0].time)) / Math.max(1, Number(data[1].time) - Number(data[0].time));
+    const last = data.length - 1;
+    if (target >= Number(data[last].time)) return last + (target - Number(data[last].time)) / Math.max(1, Number(data[last].time) - Number(data[last - 1].time));
+    let lo = 0, hi = last;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (Number(data[mid].time) < target) lo = mid; else hi = mid; }
+    const t1 = Number(data[lo].time), t2 = Number(data[hi].time);
+    return lo + (hi - lo) * ((target - t1) / Math.max(1, t2 - t1));
+  };
+  const step = plotW / data.length, candleW = Math.max(1, Math.min(9, step * 0.68));
   const x = index => left + (index + 0.5) * step;
-
+  const pointToXY = point => {
+    const index = timeToIndex(point?.time), price = Number(point?.price);
+    return index == null || !Number.isFinite(price) ? null : { x: x(index), y: y(price) };
+  };
   ctx.fillStyle = palette.background; ctx.fillRect(0, 0, width, height);
-  ctx.strokeStyle = palette.grid; ctx.lineWidth = 1; ctx.font = '11px Arial'; ctx.fillStyle = palette.text;
-  for (let i = 0; i <= 6; i++) {
-    const yy = top + (plotH * i / 6), value = max - (max - min) * i / 6;
-    ctx.beginPath(); ctx.moveTo(left, yy); ctx.lineTo(width - right, yy); ctx.stroke();
-    ctx.textAlign = 'right';
-    ctx.fillText(value.toFixed(Math.min(8, Math.max(2, Number(trade.precision) || 5))), width - 12, yy + 4);
-  }
-
   const boxLeft = x(entryIndex), boxRight = x(exitIndex);
   if (Number.isFinite(entry) && Number.isFinite(sl)) {
     ctx.fillStyle = 'rgba(239,83,80,0.14)';
@@ -134,21 +132,54 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = '
     ctx.fillStyle = 'rgba(38,166,154,0.14)';
     ctx.fillRect(Math.min(boxLeft, boxRight), Math.min(y(entry), y(tp)), Math.max(3, Math.abs(boxRight - boxLeft)), Math.abs(y(entry) - y(tp)));
   }
-
   data.forEach((c, i) => {
-    const cx = x(i), yo = y(Number(c.open)), yc = y(Number(c.close));
-    const yh = y(Number(c.high)), yl = y(Number(c.low));
+    const cx = x(i), yo = y(Number(c.open)), yc = y(Number(c.close)), yh = y(Number(c.high)), yl = y(Number(c.low));
     const color = Number(c.close) >= Number(c.open) ? '#26a69a' : '#ef5350';
     ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(cx, yh); ctx.lineTo(cx, yl); ctx.stroke();
     ctx.fillRect(cx - candleW / 2, Math.min(yo, yc), candleW, Math.max(1, Math.abs(yc - yo)));
   });
 
-  ctx.fillStyle = palette.text; ctx.font = '11px Arial'; ctx.textAlign = 'center';
-  const labelCount = Math.min(7, data.length);
-  for (let i = 0; i < labelCount; i++) {
-    const idx = Math.round(i * (data.length - 1) / Math.max(1, labelCount - 1));
-    ctx.fillText(new Date((Number(data[idx].time) + 3 * 3600) * 1000).toLocaleString(undefined, { timeZone: 'UTC' }), x(idx), height - 24);
-  }
-  try { return canvas.toDataURL('image/jpeg', 0.9); } catch { return null; }
+  const drawings = [
+    ...(Array.isArray(drawingSnapshot.drawings) ? drawingSnapshot.drawings : []),
+    ...Object.values(drawingSnapshot.chartDrawings || {}).flatMap(list => Array.isArray(list) ? list : []),
+  ];
+  const seen = new Set();
+  drawings.forEach(d => {
+    if (!d || (d.symbol && d.symbol !== trade.symbol)) return;
+    const signature = d.id != null ? String(d.id) : JSON.stringify(d);
+    if (seen.has(signature)) return;
+    seen.add(signature);
+    const pts = (d.points || []).map(pointToXY);
+    if (!pts.length || pts.some(p => !p)) return;
+    const color = d.color || d.borderColor || '#f59e0b';
+    ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = d.fillColor || (color + '33');
+    ctx.lineWidth = Math.max(1, Number(d.lineWidth) || 1);
+    if (d.type === 'horizontal') { ctx.beginPath(); ctx.moveTo(left, pts[0].y); ctx.lineTo(width-right, pts[0].y); ctx.stroke(); }
+    else if (d.type === 'vertical') { ctx.beginPath(); ctx.moveTo(pts[0].x, top); ctx.lineTo(pts[0].x, height-bottom); ctx.stroke(); }
+    else if (d.type === 'trendline' && pts.length >= 2) { ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); ctx.lineTo(pts[1].x, pts[1].y); ctx.stroke(); }
+    else if (d.type === 'rectangle' && pts.length >= 2) {
+      const rx=Math.min(pts[0].x,pts[1].x), ry=Math.min(pts[0].y,pts[1].y), rw=Math.abs(pts[1].x-pts[0].x), rh=Math.abs(pts[1].y-pts[0].y);
+      ctx.fillRect(rx,ry,rw,rh); if(d.showBorder===true)ctx.strokeRect(rx,ry,rw,rh);
+    } else if (d.type === 'fibonacci' && pts.length >= 2) {
+      const rx=Math.min(pts[0].x,pts[1].x), rw=Math.abs(pts[1].x-pts[0].x);
+      ctx.fillRect(rx,Math.min(pts[0].y,pts[1].y),rw,Math.abs(pts[1].y-pts[0].y));
+      if(d.showBorder===true)[0,.236,.382,.5,.618,.764,1].forEach(level=>{const yy=pts[0].y+(pts[1].y-pts[0].y)*level;ctx.beginPath();ctx.moveTo(rx,yy);ctx.lineTo(rx+rw,yy);ctx.stroke();});
+    } else if (d.type === 'text') {
+      ctx.fillStyle=color; ctx.font=(d.fontSize||14)+'px '+(d.fontFamily||'Arial'); ctx.textBaseline='bottom'; ctx.fillText(String(d.text||''),pts[0].x,pts[0].y);
+    }
+    ctx.restore();
+  });
+  (drawingSnapshot.pencilStrokes || []).forEach(stroke => {
+    const points=(stroke.points||[]).map(p=>Number.isFinite(Number(p?.time))&&Number.isFinite(Number(p?.price))?pointToXY(p):null).filter(Boolean);
+    if(points.length<2)return;
+    ctx.save();ctx.strokeStyle=stroke.color||'#3b82f6';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);
+    points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.stroke();ctx.restore();
+  });
+  ctx.fillStyle=palette.text;ctx.font='11px Arial';ctx.textAlign='right';
+  for(let i=0;i<=4;i++){const value=max-(max-min)*i/4;ctx.fillText(value.toFixed(Math.min(8,Math.max(2,Number(trade.precision)||5))),width-12,y(value)+4);}
+  ctx.textAlign='center';
+  const labelCount=Math.min(7,data.length);
+  for(let i=0;i<labelCount;i++){const idx=Math.round(i*(data.length-1)/Math.max(1,labelCount-1));ctx.fillText(new Date((Number(data[idx].time)+3*3600)*1000).toLocaleString(undefined,{timeZone:'UTC'}),x(idx),height-24);}
+  try{return canvas.toDataURL('image/jpeg',0.9);}catch{return null;}
 }
