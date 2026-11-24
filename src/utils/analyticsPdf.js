@@ -66,7 +66,26 @@ function buildCurveSvg(curve, benchmarkLabel = 'Buy & Hold') {
   // inside the plotting coordinate system where it could cover the curve.
   const ddAnnotation=ddRect?'<rect x="'+ddRect.x+'" y="'+top+'" width="'+ddRect.width+'" height="'+(height-top-bottom)+'" fill="url(#drawdownFill)" stroke="none"/>':'';
   const legend='<g transform="translate('+(left+10)+',14)"><line x1="0" y1="0" x2="22" y2="0" stroke="#2563eb" stroke-width="3"/><text x="28" y="4" fill="#d5d9e2" font-size="10">Strategy equity</text>'+(benchmarkPath?'<line x1="142" y1="0" x2="164" y2="0" stroke="#f5b84b" stroke-width="2.5" stroke-dasharray="5 3"/><text x="170" y="4" fill="#d5d9e2" font-size="10">'+escapeHtml(benchmarkLabel)+'</text>':'')+'</g>';
-  return '<div class="curve-chart"><div class="curve-header"><span class="curve-dd-badge">Max DD '+money(worst.depth)+' · '+elapsed+'</span></div><svg viewBox="0 0 '+width+' '+height+'" role="img" aria-label="Trade-by-trade equity curve with buy and hold benchmark"><defs><linearGradient id="equityBlueFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2563eb" stop-opacity=".34"/><stop offset="100%" stop-color="#0b0e11" stop-opacity=".18"/></linearGradient><linearGradient id="drawdownFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b42318" stop-opacity=".20"/><stop offset="100%" stop-color="#ff6969" stop-opacity=".18"/></linearGradient></defs>'+legend+grid+ddAnnotation+'<path d="'+areaPath+'" fill="url(#equityBlueFill)" stroke="none"/>'+(benchmarkPath?'<path d="'+benchmarkPath+'" fill="none" stroke="#f5b84b" stroke-width="2.5" stroke-dasharray="6 4" stroke-linejoin="round" stroke-linecap="round"/>':'')+'<path d="'+linePath+'" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>'+coords.map(p=>'<circle cx="'+p.x+'" cy="'+p.y+'" r="2.5" fill="#2563eb"/>').join('')+xLabels+'</svg></div>';
+  return '<svg viewBox="0 0 '+width+' '+height+'" role="img" aria-label="Trade-by-trade equity curve with buy and hold benchmark"><defs><linearGradient id="equityBlueFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2563eb" stop-opacity=".34"/><stop offset="100%" stop-color="#0b0e11" stop-opacity=".18"/></linearGradient><linearGradient id="drawdownFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b42318" stop-opacity=".20"/><stop offset="100%" stop-color="#ff6969" stop-opacity=".18"/></linearGradient></defs>'+legend+grid+ddAnnotation+'<path d="'+areaPath+'" fill="url(#equityBlueFill)" stroke="none"/>'+(benchmarkPath?'<path d="'+benchmarkPath+'" fill="none" stroke="#f5b84b" stroke-width="2.5" stroke-dasharray="6 4" stroke-linejoin="round" stroke-linecap="round"/>':'')+'<path d="'+linePath+'" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>'+coords.map(p=>'<circle cx="'+p.x+'" cy="'+p.y+'" r="2.5" fill="#2563eb"/>').join('')+xLabels+'</svg>';
+}
+
+function buildCurveDrawdownLabel(curve) {
+  if (!curve?.length) return '';
+  const values=curve.map(point=>Number(point.pnl)||0);
+  let peak=values[0],peakIndex=0,worst=null;
+  values.forEach((value,index)=>{
+    if(value>peak){peak=value;peakIndex=index;}
+    const depth=peak-value;
+    if(!worst||depth>worst.depth)worst={depth,peakIndex,troughIndex:index,peak};
+  });
+  if(!worst||worst.depth<=0)return '';
+  let recoveryIndex=worst.troughIndex;
+  while(recoveryIndex<values.length-1&&values[recoveryIndex]<worst.peak)recoveryIndex++;
+  const startTime=Number(curve[worst.peakIndex]?.timestamp||0);
+  const endTime=Number(curve[recoveryIndex]?.timestamp||curve[curve.length-1]?.timestamp||0);
+  const seconds=Math.max(0,endTime-startTime);
+  const elapsed=seconds>=86400?Math.floor(seconds/86400)+'d '+Math.floor(seconds%86400/3600)+'h':seconds>=3600?Math.floor(seconds/3600)+'h '+Math.floor(seconds%3600/60)+'m':Math.floor(seconds/60)+'m';
+  return '<span class="curve-dd-badge">Max DD '+money(worst.depth)+' · '+elapsed+'</span>';
 }
 
 function buildCalendar(dailyEntries) {
@@ -248,8 +267,8 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
     .calendar td.positive{background:#10372f;border-color:#176b56;color:#55d6ad}.calendar td.negative{background:#401f29;border-color:#793344;color:#ff8585}
     .calendar td.flat{background:#192e4d;border-color:#2c67c5;color:#9bc2ff}.calendar td.blank{background:transparent;border-color:transparent}
     .curve{border:1px solid #293142;border-radius:7px;padding:8px;background:#111722}
-    .curve-chart{display:flex;flex-direction:column;gap:4px}
-    .curve-header{display:flex;justify-content:flex-end;align-items:center;min-height:22px}
+    .section-heading-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+    .section-heading-row h2{margin:0}
     .curve-dd-badge{display:inline-block;padding:3px 10px;border:1px solid #ff6969;border-radius:5px;background:#1a2130;color:#ff8585;font-size:10px;font-weight:700;line-height:1.2;white-space:nowrap}
     .curve svg{display:block;width:100%;height:auto}.empty{padding:18px;text-align:center;color:#8993a5;background:#171e2b;border:1px solid #293142;border-radius:6px}
     .journal-date{color:#e5eaf3}.journal-value{color:#c2cad7}.journal-value.blue{color:#72a7ff}
@@ -277,7 +296,7 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
     <div class="report-title">OmaxFX Simulator · Performance report</div>
     <header class="cover"><h1>${escapeHtml(sessionName||'Trading session')}</h1><div class="range-line"><b>Backtest range</b><span>${escapeHtml(backtestRange?.from || "—")}</span><span>TO</span><span>${escapeHtml(backtestRange?.to || "—")}</span><span class="range-duration">${escapeHtml(backtestRange?.elapsed || "")}</span></div><div class="meta"><span>Symbol: <b>${escapeHtml(symbol||'—')}</b></span><span>Session ID: ${escapeHtml(sessionId||'—')}</span><span>Timezone: ${escapeHtml(timezone||'UTC+3')}</span><span>Generated: ${escapeHtml(generated)}</span></div></header>
     <div class="top-metrics">${summaryCards.map(([label,value,tone])=>`<div class="summary-card"><small>${escapeHtml(label)}</small><b class="${tone}">${escapeHtml(value)}</b></div>`).join('')}</div>
-    <section class="section"><h2>Profit and loss · Over time</h2><div class="curve">${buildCurveSvg(curve, 'Buy & Hold · '+(symbol||'Market'))}</div></section>
+    <section class="section"><div class="section-heading-row"><h2>Profit and loss · Over time</h2>${buildCurveDrawdownLabel(curve)}</div><div class="curve">${buildCurveSvg(curve, 'Buy & Hold · '+(symbol||'Market'))}</div></section>
     <section class="dashboard-panel calendar-report-panel"><h2>Trading calendar · All active months</h2><p class="muted">Daily realized net P&amp;L and closed trade count · UTC+3</p><div class="calendar-wrap ${new Set(dailyEntries.map(([key])=>key.slice(0,7))).size===1?'single-month':''}">${buildCalendar(dailyEntries)}</div></section>
     ${performanceSections}
     <section class="page-break"><h2>Daily trade journal · All trades and chart screenshots</h2><p class="muted">${trades.length} closed trades across ${dailyEntries.length} active trading days.</p>${tradePages||'<div class="empty">No closed trades in this session.</div>'}</section>
