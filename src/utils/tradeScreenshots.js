@@ -82,6 +82,25 @@ export function getTradeCandleWindow(trade, candles, timeframe = 1) {
   return { data, entryIndex: entryIndex - start, exitIndex: exitIndex - start, startIndex: start, endIndex: end };
 }
 
+// The screenshot price scale must be driven by market data and trade levels only.
+// User drawings are visual annotations: a distant horizontal line or pencil point
+// must never zoom the candles out of view.
+export function getTradeScreenshotPriceRange(data, trade) {
+  if (!Array.isArray(data) || !data.length || !trade) return null;
+  const prices = data.flatMap(c => [Number(c.high), Number(c.low)]);
+  [Number(trade.entryPrice), Number(trade.exitPrice),
+    trade.sl == null ? NaN : Number(trade.sl),
+    trade.tp == null ? NaN : Number(trade.tp)]
+    .forEach(value => { if (Number.isFinite(value)) prices.push(value); });
+  const valid = prices.filter(Number.isFinite);
+  if (!valid.length) return null;
+  let min = Math.min(...valid), max = Math.max(...valid);
+  const span = Math.max(max - min, Math.abs(max || 1) * 0.0001, 1e-8);
+  min -= span * 0.12;
+  max += span * 0.12;
+  return { min, max };
+}
+
 // Render a deterministic historical chart for exactly one trade. The live chart
 // canvas is never reused, so a batch of closures cannot receive one shared image.
 export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = 'dark', drawingSnapshot = {}) {
@@ -89,12 +108,14 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = '
   if (!windowData || typeof document === 'undefined') return null;
   const { data, entryIndex, exitIndex } = windowData;
   const palette = { background: '#0d1117', text: '#9aa4b2' };
-  const width = 1280, height = 640;
+  // 2:1 high-resolution export: it fits the journal card while keeping labels
+  // and candles crisp on high-DPI displays and in downloaded reports.
+  const width = 1600, height = 800;
   const canvas = document.createElement('canvas');
   canvas.width = width; canvas.height = height;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
-  const left = 76, right = 108, top = 34, bottom = 58;
+  const left = 90, right = 128, top = 42, bottom = 70;
   const plotW = width - left - right, plotH = height - top - bottom;
   void uiTheme;
   const entry = Number(trade.entryPrice), sl = trade.sl == null ? NaN : Number(trade.sl), tp = trade.tp == null ? NaN : Number(trade.tp);
@@ -103,20 +124,9 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = '
     ...Object.values(drawingSnapshot.chartDrawings || {}).flatMap(list => Array.isArray(list) ? list : []),
   ];
   const pencilStrokes = Array.isArray(drawingSnapshot.pencilStrokes) ? drawingSnapshot.pencilStrokes : [];
-  const prices = data.flatMap(c => [Number(c.high), Number(c.low)]);
-  [entry, Number(trade.exitPrice), sl, tp].forEach(v => { if (Number.isFinite(v)) prices.push(v); });
-  drawings.forEach(d => (d.points || []).forEach(point => {
-    const price = Number(point?.price);
-    if (Number.isFinite(price)) prices.push(price);
-  }));
-  pencilStrokes.forEach(stroke => (stroke.points || []).forEach(point => {
-    const price = Number(point?.price);
-    if (Number.isFinite(price)) prices.push(price);
-  }));
-  if (!prices.length) return null;
-  let min = Math.min(...prices), max = Math.max(...prices);
-  const span = Math.max(max - min, Math.abs(max || 1) * 0.0001, 1e-8);
-  min -= span * 0.12; max += span * 0.12;
+  const priceRange = getTradeScreenshotPriceRange(data, trade);
+  if (!priceRange) return null;
+  const { min, max } = priceRange;
   const y = price => top + ((max - price) / (max - min)) * plotH;
   const timeToIndex = time => {
     const target = Number(time);
@@ -137,6 +147,12 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = '
     return index == null || !Number.isFinite(price) ? null : { x: x(index), y: y(price) };
   };
   ctx.fillStyle = palette.background; ctx.fillRect(0, 0, width, height);
+  // Keep every chart annotation inside the plotting viewport. Off-scale user
+  // drawings remain stored in their original snapshot but cannot expand the Y-axis.
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left, top, plotW, plotH);
+  ctx.clip();
   const boxLeft = x(entryIndex), boxRight = x(exitIndex);
   if (Number.isFinite(entry) && Number.isFinite(sl)) {
     ctx.fillStyle = 'rgba(239,83,80,0.14)';
@@ -223,10 +239,12 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = '
     });
   }
 
-  ctx.fillStyle=palette.text;ctx.font='11px Arial';ctx.textAlign='right';
+  ctx.restore();
+  ctx.fillStyle=palette.text;ctx.font='13px Arial';ctx.textAlign='right';
   for(let i=0;i<=4;i++){const value=max-(max-min)*i/4;ctx.fillText(value.toFixed(Math.min(8,Math.max(2,Number(trade.precision)||5))),width-12,y(value)+4);}
   ctx.textAlign='center';
+  ctx.font='13px Arial';
   const labelCount=Math.min(7,data.length);
-  for(let i=0;i<labelCount;i++){const idx=Math.round(i*(data.length-1)/Math.max(1,labelCount-1));ctx.fillText(new Date((Number(data[idx].time)+3*3600)*1000).toLocaleString(undefined,{timeZone:'UTC'}),x(idx),height-24);}
-  try{return canvas.toDataURL('image/jpeg',0.9);}catch{return null;}
+  for(let i=0;i<labelCount;i++){const idx=Math.round(i*(data.length-1)/Math.max(1,labelCount-1));ctx.fillText(new Date((Number(data[idx].time)+3*3600)*1000).toLocaleString(undefined,{timeZone:'UTC'}),x(idx),height-28);}
+  try{return canvas.toDataURL('image/jpeg',0.94);}catch{return null;}
 }
