@@ -41,6 +41,9 @@ test('builds the analytics PDF when the trade-by-trade curve contains a drawdown
   assert.match(html, /Performance by side/);
   assert.match(html, /Performance by day/);
   assert.match(html, /Performance by month/);
+  assert.match(html, /month-histogram/);
+  assert.match(html, /month-hist-bar/);
+  assert.doesNotMatch(html, /month-grid|month-cell/);
   assert.match(html, /top-metrics/);
   assert.match(html, /summary-card b\.gain/);
   assert.match(html, /summary-card b\.loss/);
