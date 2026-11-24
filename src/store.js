@@ -51,10 +51,36 @@ const checkRuleViolations = (state, newBalance, newPeak, newDailyLoss) => {
   return null;
 };
 
-const cloneDrawings = (drawings) => drawings.map(d => ({
+const cloneDrawings = (drawings = []) => (drawings || []).map(d => ({
   ...d,
-  points: d.points.map(p => ({ ...p })),
+  points: (d.points || []).map(p => ({ ...p })),
 }));
+
+const cloneTradeDrawingSnapshot = (state) => ({
+  drawings: cloneDrawings(state.drawings),
+  chartDrawings: Object.fromEntries(Object.entries(state.chartDrawings || {}).map(([chartId, items]) => [chartId, cloneDrawings(items)])),
+  pencilStrokes: (state.pencilStrokes || []).map(stroke => ({
+    ...stroke,
+    points: (stroke.points || []).map(point => ({ ...point })),
+  })),
+});
+
+const shiftTradeDrawingSnapshot = (snapshot, shift) => {
+  if (!snapshot) return snapshot;
+  const shiftItems = items => (items || []).map(item => ({
+    ...item,
+    points: (item.points || []).map(point => ({
+      ...point,
+      ...(Number.isFinite(Number(point.time)) ? { time: shift(point.time) } : {}),
+    })),
+  }));
+  return {
+    ...snapshot,
+    drawings: shiftItems(snapshot.drawings),
+    chartDrawings: Object.fromEntries(Object.entries(snapshot.chartDrawings || {}).map(([chartId, items]) => [chartId, shiftItems(items)])),
+    pencilStrokes: shiftItems(snapshot.pencilStrokes),
+  };
+};
 
 const DEFAULT_THEME = {
   background: '#131722',
@@ -237,7 +263,12 @@ export const useStore = create((set, get) => ({
       drawingsPast: state.drawingsPast.map(group => group.map(d => ({ ...d, points: d.points.map(p => ({ ...p, time: shift(p.time) })) }))),
       drawingsFuture: state.drawingsFuture.map(group => group.map(d => ({ ...d, points: d.points.map(p => ({ ...p, time: shift(p.time) })) }))),
       pencilStrokes: state.pencilStrokes.map(stroke => ({ ...stroke, points: stroke.points.map(p => Number.isFinite(p.time) ? { ...p, time: shift(p.time) } : p) })),
-      tradeHistory: state.tradeHistory.map(t => ({ ...t, openTime: shift(t.openTime), closeTime: shift(t.closeTime) })),
+      tradeHistory: state.tradeHistory.map(t => ({
+        ...t,
+        openTime: shift(t.openTime),
+        closeTime: shift(t.closeTime),
+        ...(t.drawingSnapshot ? { drawingSnapshot: shiftTradeDrawingSnapshot(t.drawingSnapshot, shift) } : {}),
+      })),
       positions: state.positions.map(p => ({ ...p, openTime: shift(p.openTime) })),
       pendingOrders: state.pendingOrders.map(o => ({ ...o, openTime: shift(o.openTime) })),
       gamePeriod: state.gamePeriod ? { from: shift(state.gamePeriod.from), to: shift(state.gamePeriod.to) } : null,
@@ -779,7 +810,7 @@ export const useStore = create((set, get) => ({
       balance: newBalance,
       peakBalance: newPeak,
       positions: state.positions.filter(p => p.id !== id),
-      tradeHistory: [...state.tradeHistory, { ...pos, exitPrice, pnl, reason: 'MANUAL', closeTime: currentCandle.time }],
+      tradeHistory: [...state.tradeHistory, { ...pos, exitPrice, pnl, reason: 'MANUAL', closeTime: currentCandle.time, drawingSnapshot: cloneTradeDrawingSnapshot(state) }],
       gameState: newGameState,
       isPlaying: newGameState.isOver ? false : state.isPlaying,
     };
@@ -797,7 +828,7 @@ export const useStore = create((set, get) => ({
       const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
       const pnl = priceDiff * contractSize * pos.size;
       newBalance += pnl;
-      newHistory.push({ ...pos, exitPrice, pnl, reason: 'MANUAL', closeTime: currentCandle.time });
+      newHistory.push({ ...pos, exitPrice, pnl, reason: 'MANUAL', closeTime: currentCandle.time, drawingSnapshot: cloneTradeDrawingSnapshot(state) });
     });
     if (state.soundEnabled) playPositionClosed();
     const newPeak = Math.max(state.peakBalance, newBalance);
@@ -890,7 +921,7 @@ export const useStore = create((set, get) => ({
             const exitPrice = getStopLossFillPrice(pos.type, pos.sl, candle);
             const pnl = (isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice) * contractSize * pos.size;
             newBalance += pnl;
-            newHistory.push({ ...pos, exitPrice, pnl, reason: 'SL', closeTime: candle.time });
+            newHistory.push({ ...pos, exitPrice, pnl, reason: 'SL', closeTime: candle.time, drawingSnapshot: cloneTradeDrawingSnapshot(state) });
             closed = true; slHit = true;
           }
         }
@@ -901,7 +932,7 @@ export const useStore = create((set, get) => ({
             const exitPrice = getTakeProfitFillPrice(pos.type, pos.tp, candle);
             const pnl = (isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice) * contractSize * pos.size;
             newBalance += pnl;
-            newHistory.push({ ...pos, exitPrice, pnl, reason: 'TP', closeTime: candle.time });
+            newHistory.push({ ...pos, exitPrice, pnl, reason: 'TP', closeTime: candle.time, drawingSnapshot: cloneTradeDrawingSnapshot(state) });
             closed = true; tpHit = true;
           }
         }
@@ -978,14 +1009,14 @@ export const useStore = create((set, get) => ({
             const pnl = (isBuy ? exitPrice - fillPrice : fillPrice - exitPrice) *
               contractSize * recalculatedLots;
             newBalance += pnl;
-            newHistory.push({ ...filledPosition, exitPrice, pnl, reason: 'SL', closeTime: candle.time });
+            newHistory.push({ ...filledPosition, exitPrice, pnl, reason: 'SL', closeTime: candle.time, drawingSnapshot: cloneTradeDrawingSnapshot(state) });
             slHit = true;
           } else if (hitTargetOnEntryBar) {
             const exitPrice = getTakeProfitFillPrice(order.type, targetPrice, candle);
             const pnl = (isBuy ? exitPrice - fillPrice : fillPrice - exitPrice) *
               contractSize * recalculatedLots;
             newBalance += pnl;
-            newHistory.push({ ...filledPosition, exitPrice, pnl, reason: 'TP', closeTime: candle.time });
+            newHistory.push({ ...filledPosition, exitPrice, pnl, reason: 'TP', closeTime: candle.time, drawingSnapshot: cloneTradeDrawingSnapshot(state) });
             tpHit = true;
           } else {
             newPositions.push(filledPosition);
