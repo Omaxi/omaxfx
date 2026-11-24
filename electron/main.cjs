@@ -1,10 +1,110 @@
 const { app, BrowserWindow, shell } = require('electron');
+const fs = require('node:fs');
+const http = require('node:http');
 const path = require('node:path');
 
 const isDevelopment = !app.isPackaged;
+const distDirectory = path.resolve(__dirname, '..', 'dist');
 let mainWindow;
+let staticServer;
 
-function createMainWindow() {
+const mimeTypes = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.ico': 'image/x-icon',
+  '.csv': 'text/csv; charset=utf-8',
+  '.mp3': 'audio/mpeg',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+};
+
+function startLocalServer() {
+  return new Promise((resolve, reject) => {
+    staticServer = http.createServer((request, response) => {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        response.writeHead(405);
+        response.end();
+        return;
+      }
+
+      let pathname;
+      try {
+        pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
+      } catch {
+        response.writeHead(400);
+        response.end();
+        return;
+      }
+
+      const relativePath = path.normalize(pathname.replace(/^[/\\]+/, ''));
+      let filePath = path.resolve(distDirectory, relativePath || 'index.html');
+      if (filePath !== distDirectory && !filePath.startsWith(distDirectory + path.sep)) {
+        response.writeHead(403);
+        response.end();
+        return;
+      }
+
+      const sendFile = (target) => {
+        fs.stat(target, (statError, stats) => {
+          if (statError || !stats.isFile()) {
+            // Client-side routes should resolve to the app shell.
+            target = path.join(distDirectory, 'index.html');
+            fs.stat(target, (fallbackError, fallbackStats) => {
+              if (fallbackError || !fallbackStats.isFile()) {
+                response.writeHead(404);
+                response.end('OmaxFX application files were not found.');
+                return;
+              }
+              streamFile(target);
+            });
+            return;
+          }
+          streamFile(target);
+        });
+      };
+
+      const streamFile = (target) => {
+        const extension = path.extname(target).toLowerCase();
+        response.writeHead(200, {
+          'Content-Type': mimeTypes[extension] || 'application/octet-stream',
+          'X-Content-Type-Options': 'nosniff',
+          'Cache-Control': extension === '.html' ? 'no-store' : 'public, max-age=31536000, immutable',
+        });
+        if (request.method === 'HEAD') {
+          response.end();
+          return;
+        }
+        const stream = fs.createReadStream(target);
+        stream.on('error', () => {
+          if (!response.headersSent) response.writeHead(500);
+          response.end();
+        });
+        stream.pipe(response);
+      };
+
+      fs.stat(filePath, (statError, stats) => {
+        if (!statError && stats.isDirectory()) filePath = path.join(filePath, 'index.html');
+        sendFile(filePath);
+      });
+    });
+
+    staticServer.once('error', reject);
+    staticServer.listen(0, '127.0.0.1', () => {
+      const address = staticServer.address();
+      resolve(`http://127.0.0.1:${address.port}/`);
+    });
+  });
+}
+
+function createMainWindow(appUrl) {
   mainWindow = new BrowserWindow({
     width: 1600,
     height: 950,
@@ -36,11 +136,7 @@ function createMainWindow() {
     return { action: 'deny' };
   });
 
-  if (isDevelopment) {
-    mainWindow.loadURL('http://127.0.0.1:5173');
-  } else {
-    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
-  }
+  mainWindow.loadURL(appUrl);
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -49,12 +145,19 @@ function createMainWindow() {
 
 app.setAppUserModelId('com.omaxfx.simulator');
 
-app.whenReady().then(() => {
-  createMainWindow();
+app.whenReady().then(async () => {
+  const appUrl = isDevelopment
+    ? 'http://127.0.0.1:5173'
+    : await startLocalServer();
+  createMainWindow(appUrl);
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
+    if (BrowserWindow.getAllWindows().length === 0) createMainWindow(appUrl);
   });
+});
+
+app.on('before-quit', () => {
+  if (staticServer) staticServer.close();
 });
 
 app.on('window-all-closed', () => {
