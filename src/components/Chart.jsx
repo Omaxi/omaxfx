@@ -156,52 +156,61 @@ const drawPencilStroke = (ctx, stroke, pointToXY) => {
     .filter(p => p && Number.isFinite(p.x) && Number.isFinite(p.y));
   if (rawPoints.length < 2) return;
 
-  // Pointer events can arrive unevenly (especially on high-DPI displays and
-  // trackpads). A light screen-space low-pass filter removes the tiny
-  // stair-step jitter without changing the market-time/price anchors stored
-  // for the drawing. Preserve the first and last points so the stroke starts
-  // and ends exactly where the user placed the pen.
+  // Smooth in screen space only. The stored points remain market time/price
+  // coordinates, so strokes stay attached to the same candles and prices
+  // when the user zooms, pans, or changes chart timeframe.
   let points = rawPoints;
   if (rawPoints.length >= 4) {
-    for (let pass = 0; pass < 2; pass++) {
-      const smoothed = [points[0]];
+    for (let pass = 0; pass < 3; pass++) {
+      const filtered = [points[0]];
       for (let i = 1; i < points.length - 1; i++) {
         const prev = points[i - 1];
         const current = points[i];
         const next = points[i + 1];
-        smoothed.push({
-          x: prev.x * 0.2 + current.x * 0.6 + next.x * 0.2,
-          y: prev.y * 0.2 + current.y * 0.6 + next.y * 0.2,
+        filtered.push({
+          x: prev.x * 0.25 + current.x * 0.5 + next.x * 0.25,
+          y: prev.y * 0.25 + current.y * 0.5 + next.y * 0.25,
         });
       }
-      smoothed.push(points[points.length - 1]);
-      points = smoothed;
+      filtered.push(points[points.length - 1]);
+      points = filtered;
     }
   }
 
+  ctx.save();
   ctx.strokeStyle = stroke.color || '#3b82f6';
-  ctx.lineWidth = 2.25;
+  ctx.lineWidth = 2.5;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
+  ctx.miterLimit = 2;
   ctx.setLineDash([]);
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
+
   if (points.length === 2) {
     ctx.lineTo(points[1].x, points[1].y);
   } else {
-    // Quadratic midpoint interpolation gives a continuous, fluid path with
-    // no sharp joins, while the filtered samples suppress angular jitter.
-    for (let i = 1; i < points.length - 1; i++) {
-      const current = points[i];
-      const next = points[i + 1];
-      const midX = (current.x + next.x) / 2;
-      const midY = (current.y + next.y) / 2;
-      ctx.quadraticCurveTo(current.x, current.y, midX, midY);
+    // Centripetal-style Catmull-Rom-to-Bezier conversion: unlike a chain of
+    // straight pointer samples, this produces a continuous curve with smooth
+    // tangents at every sample and avoids the visible stair-step/zigzag look.
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[Math.max(0, i - 1)];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = points[Math.min(points.length - 1, i + 2)];
+      const dx1 = (p2.x - p0.x) / 6;
+      const dy1 = (p2.y - p0.y) / 6;
+      const dx2 = (p3.x - p1.x) / 6;
+      const dy2 = (p3.y - p1.y) / 6;
+      ctx.bezierCurveTo(
+        p1.x + dx1, p1.y + dy1,
+        p2.x - dx2, p2.y - dy2,
+        p2.x, p2.y
+      );
     }
-    const last = points[points.length - 1];
-    ctx.lineTo(last.x, last.y);
   }
   ctx.stroke();
+  ctx.restore();
 };
 
 const DOUBLE_TAP_TIME = 500;
