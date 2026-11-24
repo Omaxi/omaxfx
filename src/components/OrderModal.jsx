@@ -32,6 +32,7 @@ export default function OrderModal() {
   const [orderTypeOpen, setOrderTypeOpen] = useState(false);
   const [riskRewardOpen, setRiskRewardOpen] = useState(false);
   const [riskPercent, setRiskPercent] = useState(1);
+  const [customRiskInput, setCustomRiskInput] = useState('');
   const [slPrice, setSlPrice] = useState(0);
   const [tpPrice, setTpPrice] = useState(0);
   const [riskReward, setRiskReward] = useState('2');
@@ -188,45 +189,49 @@ export default function OrderModal() {
 
   return (
     <div className="order-modal-overlay fixed inset-0 bg-black/80 flex items-center justify-center z-[120] p-4">
-      <div className="order-modal-shell bg-[#131722] rounded-2xl w-full max-w-md border border-[#2a2e39] overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="flex justify-between items-center p-3 border-b border-[#2a2e39]">
-          <h2 className="text-lg font-bold">Place Order</h2>
+      <div className="order-modal-shell bg-[#131722] rounded-2xl w-full max-w-xl border border-[#2a2e39] overflow-hidden max-h-[94vh] flex flex-col">
+        <div className="flex justify-between items-center px-3 py-2 border-b border-[#2a2e39]">
+          <h2 className="text-base font-bold">Place Order</h2>
           <button onClick={handleCancel} className="p-1 hover:bg-[#2a2e39] rounded"><X size={20}/></button>
         </div>
 
-        <div className="overflow-y-auto flex-1">
-          <div className="bg-[#1e222d] mx-3 mt-3 p-3 rounded-lg flex justify-between">
+        <div className="flex-1 min-h-0">
+          <div className="bg-[#1e222d] mx-3 mt-2 p-2.5 rounded-lg flex justify-between">
             <div>
-              <p className="text-xs text-gray-400">Estimated Loss</p>
-              <p className="text-red-400 font-bold">${fmtMoney(estimatedLoss)}</p>
+              <p className="text-[11px] text-gray-400">Estimated Loss</p>
+              <p className="text-sm text-red-400 font-bold">${fmtMoney(estimatedLoss)}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-400">Estimated Profit</p>
-              <p className="text-green-400 font-bold">${fmtMoney(estimatedProfit)}</p>
+              <p className="text-[11px] text-gray-400">Estimated Profit</p>
+              <p className="text-sm text-green-400 font-bold">${fmtMoney(estimatedProfit)}</p>
             </div>
           </div>
 
-          <div className="p-3 space-y-3">
+          <div className="px-3 py-2 space-y-2">
             <div>
-              <label className="text-[11px] text-gray-400 block mb-1">
+              <label className="text-[10px] text-gray-400 block mb-1">
                 Risk Percentage {propFirmEnabled && <span className="text-gray-500">(max {maxRisk}%)</span>}
               </label>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-5 gap-1.5">
                 {[0.5, 1, 2, 3].filter(pct => !propFirmEnabled || pct <= maxRisk).map(pct => (
-                  <button key={pct} onClick={() => setRiskPercent(pct)} className={`flex-1 py-2 rounded text-sm font-bold ${riskPercent === pct ? 'bg-blue-600' : 'bg-[#1e222d]'}`}>{pct}%</button>
+                  <button key={pct} onClick={() => { setRiskPercent(pct); setCustomRiskInput(''); }} className={`min-w-0 py-1.5 rounded text-xs font-bold ${riskPercent === pct && !customRiskInput ? 'bg-blue-600' : 'bg-[#1e222d]'}`}>{pct}%</button>
                 ))}
+                <label className={`min-w-0 flex items-center gap-1 rounded px-2 bg-[#1e222d] border ${customRiskInput ? 'border-blue-500' : 'border-[#2a2e39]'}`}>
+                  <input type="number" min="0.01" max={propFirmEnabled ? maxRisk : 100} step="0.1" value={customRiskInput} placeholder="Custom" aria-label="Custom risk percentage" onChange={(e) => { const value = e.target.value; setCustomRiskInput(value); if (value !== '') setRiskPercent(Number(value)); }} className="w-full min-w-0 bg-transparent py-1 text-xs text-white outline-none placeholder:text-gray-500"/>
+                  <span className="text-[10px] text-gray-400">%</span>
+                </label>
               </div>
             </div>
 
-            <label className="flex items-center gap-2 rounded bg-[#1e222d] px-3 py-2 text-[11px] text-gray-300">
+            <label className="flex items-center gap-2 rounded bg-[#1e222d] px-2.5 py-1.5 text-[10px] text-gray-300">
               <input type="checkbox" checked={breakevenEnabled} onChange={(e) => setBreakevenEnabled(e.target.checked)} className="accent-blue-500"/>
               Automatically move Stop Loss to breakeven at +1R
             </label>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs text-gray-400">Side</label>
-                <div className={`order-side-label mt-1 p-2 rounded font-bold capitalize ${orderSide === 'buy' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                <label className="text-[11px] text-gray-400">Side</label>
+                <div className={`order-side-label mt-1 px-2.5 py-1.5 rounded text-sm font-bold capitalize ${orderSide === 'buy' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
                   {orderSide}
                 </div>
               </div>
@@ -239,7 +244,7 @@ export default function OrderModal() {
                     aria-expanded={orderTypeOpen}
                     onClick={() => setOrderTypeOpen(open => !open)}
                     onKeyDown={(e) => { if (e.key === 'Escape') setOrderTypeOpen(false); }}
-                    className="w-full flex items-center justify-between gap-2 rounded-lg border border-[#2a2e39] bg-[#1e222d] px-3 py-2 text-left text-sm text-gray-200 shadow-sm transition-colors hover:bg-[#252a36] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full flex items-center justify-between gap-2 rounded-lg border border-[#2a2e39] bg-[#1e222d] px-2.5 py-1.5 text-left text-xs text-gray-200 shadow-sm transition-colors hover:bg-[#252a36] focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     <span className="capitalize">{orderType}</span>
                     <ChevronDown size={15} className={`text-gray-400 transition-transform ${orderTypeOpen ? 'rotate-180' : ''}`}/>
@@ -274,7 +279,7 @@ export default function OrderModal() {
             </div>
 
             {orderType === 'market' ? (
-              <div className="bg-[#1e222d] p-3 rounded text-sm">
+              <div className="bg-[#1e222d] px-2.5 py-1.5 rounded text-xs">
                 <span className="text-gray-400">Entry at market: </span>
                 <span className="font-mono font-bold text-white">{currentPrice.toFixed(precision)}</span>
               </div>
@@ -286,26 +291,26 @@ export default function OrderModal() {
                   value={entryPrice} 
                   step={inputStep}
                   onChange={(e) => setEntryPrice(Number(e.target.value))} 
-                  className="w-full mt-1 p-2 bg-[#1e222d] rounded border border-[#2a2e39]" 
+                  className="w-full mt-1 px-2.5 py-1.5 text-sm bg-[#1e222d] rounded border border-[#2a2e39]" 
                 />
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-red-400">Stop Loss</label>
+                <label className="text-[11px] text-red-400">Stop Loss</label>
                 <input 
                   type="number" 
                   value={slPrice} 
                   step={inputStep}
                   onChange={(e) => setSlPrice(Number(e.target.value))} 
-                  className={`w-full mt-1 p-2 bg-[#1e222d] rounded border ${
+                  className={`w-full mt-1 px-2.5 py-1.5 text-sm bg-[#1e222d] rounded border ${
                     validation.errors.some(e => e.includes('Stop Loss')) ? 'border-red-500' : 'border-[#2a2e39]'
                   }`}
                 />
               </div>
               <div>
-                <label className="text-xs text-green-400">Risk / Reward</label>
+                <label className="text-[11px] text-green-400">Risk / Reward</label>
                 <div className="relative mt-1" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setRiskRewardOpen(false); }}>
                   <button
                     type="button"
@@ -350,16 +355,16 @@ export default function OrderModal() {
                     </div>
                   )}
                 </div>
-                <div className="mt-1 rounded bg-[#1e222d] px-2 py-1.5 text-xs text-gray-300">
+                <div className="mt-1 rounded bg-[#1e222d] px-2 py-1 text-[11px] text-gray-300">
                   TP: <span className="order-tp-value font-mono text-green-400">{riskReward === 'none' ? 'Disabled' : Number(tpPrice || 0).toFixed(precision)}</span>
                 </div>
               </div>
             </div>
 
             {!validation.isValid && (
-              <div className="bg-red-900/30 border border-red-700 rounded-lg p-3 space-y-1">
+              <div className="bg-red-900/30 border border-red-700 rounded-lg p-2 space-y-1">
                 {validation.errors.map((err, i) => (
-                  <div key={i} className="flex items-center gap-2 text-red-400 text-xs">
+                  <div key={i} className="flex items-center gap-2 text-red-400 text-[10px]">
                     <AlertTriangle size={14} />
                     <span>{err}</span>
                   </div>
@@ -369,12 +374,12 @@ export default function OrderModal() {
           </div>
         </div>
 
-        <div className="p-3 flex gap-2 border-t border-[#2a2e39]">
-          <button onClick={handleCancel} className="flex-1 py-2 bg-[#2a2e39] rounded font-bold text-sm">Cancel</button>
+        <div className="px-3 py-2 flex gap-2 border-t border-[#2a2e39]">
+          <button onClick={handleCancel} className="flex-1 py-1.5 bg-[#2a2e39] rounded font-bold text-xs">Cancel</button>
           <button 
             onClick={handleSubmit} 
             disabled={!validation.isValid}
-            className={`flex-1 py-2 rounded font-bold text-sm ${
+            className={`flex-1 py-1.5 rounded font-bold text-xs ${
               !validation.isValid
                 ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
                 : orderSide === 'buy' 
