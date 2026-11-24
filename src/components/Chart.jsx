@@ -32,7 +32,7 @@ const distToSegment = (px, py, x1, y1, x2, y2) => {
 };
 
 const drawShape = (ctx, drawing, pointToXY, isDraft, isSelected) => {
-  const borderColor = drawing.borderColor || drawing.color || '#f59e0b';
+  const borderColor = drawing.borderColor || drawing.color || '#3b82f6';
   const fillColor = drawing.fillColor || (borderColor + '33');
   const lineWidth = drawing.lineWidth ?? 1;
   const showBorder = drawing.showBorder === true;
@@ -731,7 +731,7 @@ export default function Chart({ chartId = 'main' }) {
         if (drawing.symbol && drawing.symbol !== state.symbol) return;
         const point = drawing.points?.[0];
         if (!point) return;
-        const color = drawing.borderColor || drawing.color || '#f59e0b';
+        const color = drawing.borderColor || drawing.color || '#3b82f6';
         ctx.save();
         ctx.font = '500 9px Arial';
         ctx.textBaseline = 'middle';
