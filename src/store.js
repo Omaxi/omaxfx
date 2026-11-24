@@ -91,8 +91,8 @@ const DEFAULT_THEME = {
 };
 const DEFAULT_SESSION_COLORS = { asia: '#f59e0b', london: '#38bdf8', newyork: '#fb7185' };
 const DEFAULT_DRAWING_STYLES = {
-  vertical: { color: '#f59e0b', lineWidth: 1 },
-  horizontal: { color: '#f59e0b', lineWidth: 1 },
+  vertical: { color: '#3b82f6', lineWidth: 1 },
+  horizontal: { color: '#3b82f6', lineWidth: 1 },
 };
 
 const DEFAULT_RULES = {
@@ -512,13 +512,13 @@ export const useStore = create((set, get) => ({
     const newDrawing = { 
       ...drawing, 
       id: Date.now() + Math.random(),
-      color: drawing.color || '#f59e0b',
-      borderColor: drawing.borderColor || drawing.color || '#f59e0b',
-      fillColor: drawing.fillColor || '#f59e0b33',
+      color: drawing.color || '#3b82f6',
+      borderColor: drawing.borderColor || drawing.color || '#3b82f6',
+      fillColor: drawing.fillColor || '#3b82f633',
       lineWidth: drawing.lineWidth ?? state.drawingStyles?.[drawing.type]?.lineWidth ?? 1,
       ...(drawing.type === 'vertical' || drawing.type === 'horizontal'
-        ? { color: state.drawingStyles?.[drawing.type]?.color || drawing.color || '#f59e0b',
-            borderColor: state.drawingStyles?.[drawing.type]?.color || drawing.borderColor || drawing.color || '#f59e0b' }
+        ? { color: state.drawingStyles?.[drawing.type]?.color || drawing.color || '#3b82f6',
+            borderColor: state.drawingStyles?.[drawing.type]?.color || drawing.borderColor || drawing.color || '#3b82f6' }
         : {}),
       showBorder: drawing.showBorder === true,
       symbol: state.symbol,
