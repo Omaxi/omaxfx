@@ -4,7 +4,7 @@ import { fmtMoney } from '../utils/format';
 import { X, TrendingUp, TrendingDown, CalendarDays, ChevronLeft, ChevronRight, BarChart3, Target, Activity, Award, Download } from 'lucide-react';
 import TradeDayModal from './TradeDayModal';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { renderTradeScreenshot, saveTradeScreenshot } from '../utils/tradeScreenshots';
+import { getTradeScreenshot, renderTradeScreenshot, saveTradeScreenshot } from '../utils/tradeScreenshots';
 import { buildAnalyticsPrintHtml, writeAnalyticsPrintWindow } from '../utils/analyticsPdf';
 
 const money = (value) => `$${fmtMoney(Math.abs(value), 0)}`;
@@ -241,11 +241,15 @@ export default function AnalyticsModal() {
       const screenshots = {};
       await Promise.all(trades.map(async trade => {
         const key = String(trade.id);
-        // Keep embedded trade screenshots consistent with the dark-only PDF report.
-        const image = renderTradeScreenshot(trade, screenshotCandles, timeframe, 'dark');
-        if (image) {
-          await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
-        }
+        // Prefer the immutable image captured at trade close; later drawing edits
+        // must not rewrite the historical journal screenshot.
+        const saved = await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
+        const image = saved || renderTradeScreenshot(trade, screenshotCandles, timeframe, 'dark', {
+          drawings: trade.drawingSnapshot?.drawings || [],
+          chartDrawings: trade.drawingSnapshot?.chartDrawings || {},
+          pencilStrokes: trade.drawingSnapshot?.pencilStrokes || [],
+        });
+        if (!saved && image) await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
         if (image) screenshots[key] = image;
       }));
       const metrics = {
