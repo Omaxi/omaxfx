@@ -26,6 +26,7 @@ export default function OrderModal() {
 
   const meta = { pointSize: getPriceTickSize(symbol, contractSpecs), precision: getPricePrecision(symbol, contractSpecs) };
   const { pointSize, precision } = meta;
+  const defaultStopDistance = getDefaultMarketStopDistance(symbol, pointSize, precision);
 
   const [orderType, setOrderType] = useState('market');
   const [orderTypeOpen, setOrderTypeOpen] = useState(false);
@@ -60,7 +61,6 @@ export default function OrderModal() {
 
     if (draftPosition) {
       // User dragged a position on the chart → use those prices
-      const defaultStopDistance = getDefaultMarketStopDistance(symbol, pointSize);
       setEntryPrice(roundTo(draftPosition.entry || currentPrice, precision));
       setSlPrice(roundTo(draftPosition.sl || (orderSide === 'buy'
         ? currentPrice - defaultStopDistance
@@ -68,8 +68,7 @@ export default function OrderModal() {
       setTpPrice(draftPosition.tp ? roundTo(draftPosition.tp, precision) : 0);
       setOrderType(draftPosition.orderType || 'limit');
     } else {
-      // EURUSD market default: 20-pip SL. The default 1:2 RR creates a 40-pip TP.
-      const defaultStopDistance = getDefaultMarketStopDistance(symbol, pointSize);
+      // Five-decimal pairs: 5-pip SL. The default 1:2 RR creates a 10-pip TP.
       setEntryPrice(roundTo(currentPrice, precision));
       setSlPrice(roundTo(orderSide === 'buy'
         ? currentPrice - defaultStopDistance
@@ -77,7 +76,7 @@ export default function OrderModal() {
       setTpPrice(0);
       setOrderType('market');
     }
-  }, [isOrderModalOpen, draftPosition, orderSide, currentPrice, precision, pointSize, symbol]);
+  }, [isOrderModalOpen, draftPosition, orderSide, currentPrice, precision, pointSize, symbol, defaultStopDistance]);
 
   // When the user flips between Market / Limit / Stop, re-apply market defaults
   // only when switching TO market. Switching away keeps whatever they typed.
@@ -86,13 +85,12 @@ export default function OrderModal() {
     if (orderType !== 'market') return;
     if (draftPosition) return;
 
-    const defaultStopDistance = getDefaultMarketStopDistance(symbol, pointSize);
     setEntryPrice(roundTo(currentPrice, precision));
     setSlPrice(roundTo(orderSide === 'buy'
       ? currentPrice - defaultStopDistance
       : currentPrice + defaultStopDistance, precision));
     setTpPrice(0);
-  }, [orderType, isOrderModalOpen, currentPrice, orderSide, precision, pointSize, draftPosition, symbol]);
+  }, [orderType, isOrderModalOpen, currentPrice, orderSide, precision, pointSize, draftPosition, symbol, defaultStopDistance]);
 
   useEffect(() => {
     if (!isOrderModalOpen) return;
