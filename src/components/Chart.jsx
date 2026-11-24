@@ -625,7 +625,7 @@ export default function Chart({ chartId = 'main' }) {
           const tagWidth = ctx.measureText(tag).width + 12;
           ctx.fillStyle = level.color;
           ctx.fillRect(Math.max(0, paneW - tagWidth), y - 8, tagWidth, 16);
-          ctx.fillStyle = '#858b98';
+          ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(tag, Math.max(0, paneW - tagWidth / 2), y);
@@ -635,7 +635,7 @@ export default function Chart({ chartId = 'main' }) {
         if (entryY != null && Number.isFinite(entryY)) {
           ctx.save();
           ctx.font = '600 10px Arial';
-          ctx.fillStyle = '#858b98';
+          ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'middle';
           const rrr = calcRRR(entry, tool.sl, tool.tp);
