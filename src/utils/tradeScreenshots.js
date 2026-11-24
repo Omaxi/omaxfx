@@ -186,6 +186,43 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = '
     ctx.save();ctx.strokeStyle=stroke.color||'#3b82f6';ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);
     points.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.stroke();ctx.restore();
   });
+
+  // Very tight stop/target distances can disappear at screenshot scale. Only
+  // in that case, add dashed trade-level guides to the saved image (never the
+  // live chart or interactive journal preview).
+  const smallTradeLevels = [sl, tp]
+    .filter(Number.isFinite)
+    .some(price => Math.abs(y(entry) - y(price)) <= 22);
+  if (smallTradeLevels) {
+    const guides = [
+      { label: 'ENTRY', price: entry, color: '#60a5fa' },
+      { label: 'EXIT', price: Number(trade.exitPrice), color: '#e5e7eb' },
+      { label: 'SL', price: sl, color: '#ef5350' },
+      { label: 'TP', price: tp, color: '#26a69a' },
+    ].filter(level => Number.isFinite(level.price));
+    const drawn = [];
+    guides.forEach(level => {
+      const levelY = y(level.price);
+      if (drawn.some(item => Math.abs(item.y - levelY) < 1.5)) return;
+      drawn.push({ y: levelY });
+      ctx.save();
+      ctx.strokeStyle = level.color;
+      ctx.fillStyle = level.color;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([7, 5]);
+      ctx.beginPath();
+      ctx.moveTo(left, levelY);
+      ctx.lineTo(width - right, levelY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = 'bold 10px Arial';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(level.label, left + 5, levelY - 3);
+      ctx.restore();
+    });
+  }
+
   ctx.fillStyle=palette.text;ctx.font='11px Arial';ctx.textAlign='right';
   for(let i=0;i<=4;i++){const value=max-(max-min)*i/4;ctx.fillText(value.toFixed(Math.min(8,Math.max(2,Number(trade.precision)||5))),width-12,y(value)+4);}
   ctx.textAlign='center';
