@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { createChart, CandlestickSeries, LineSeries } from 'lightweight-charts';
 import { useStore } from '../store';
 import { getPricePrecision, getPriceTickSize } from '../utils/instrument';
@@ -368,11 +368,10 @@ export default function Chart({ chartId = 'main' }) {
       chartRef.current.applyOptions({ width: Math.max(1, Math.floor(rect.width)), height: Math.max(1, Math.floor(rect.height)) });
     });
     resizeObserver.observe(chartContainerRef.current);
-    const timer = setTimeout(() => {
-      try { chartRef.current.timeScale().fitContent(); } catch (e) {}
-      window.dispatchEvent(new Event('resize'));
-    }, 50);
-    return () => { clearTimeout(timer); resizeObserver.disconnect(); setChartReady(false); chartRef.current.remove(); };
+    // Do not call fitContent here: it briefly pins the first candle to the
+    // left before the replay viewport is centered. The data effect and startup
+    // layout observer apply the final centered logical range after measurement.
+    return () => { resizeObserver.disconnect(); setChartReady(false); chartRef.current.remove(); };
   }, []);
 
   // Update price format when the active symbol changes.
@@ -1382,6 +1381,13 @@ export default function Chart({ chartId = 'main' }) {
 
   useEffect(() => { draftRef.current = null; dragDrawRef.current = null; }, [activeDrawingTool]);
 
+  // A new replay session / explicit recenter must be hidden until its
+  // measured viewport has been centered. useLayoutEffect prevents one paint
+  // with the previous session's left-pinned range.
+  useLayoutEffect(() => {
+    setStartupViewReady(false);
+  }, [recenterToken]);
+
   const visibleData = useMemo(() => {
     if (!rawData[currentIndex]) return [];
     if (Number(timeframe) <= 1) return rawData.slice(0, currentIndex + 1);
@@ -1632,7 +1638,7 @@ export default function Chart({ chartId = 'main' }) {
       cancelAnimationFrame(frameOne);
       cancelAnimationFrame(frameTwo);
     };
-  }, [chartReady, visibleData.length, startupViewReady, resetChartView]);
+  }, [chartReady, visibleData.length, startupViewReady, resetChartView, recenterToken]);
 
   useEffect(() => {
     const chart = chartReady ? chartRef.current : null;
