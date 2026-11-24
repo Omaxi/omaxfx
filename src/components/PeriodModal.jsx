@@ -215,7 +215,7 @@ export default function PeriodModal() {
 
           <div className="border-t border-[#2a2e39] pt-2">
             <h3 className="text-[10px] font-bold uppercase text-gray-400 mb-1.5 flex items-center gap-1.5">
-              <Shield size={10} /> Session Rules
+              <Shield size={10} /> Risk Rules
             </h3>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between gap-2">
@@ -266,7 +266,7 @@ export default function PeriodModal() {
                   />
                   <span className="text-[10px] text-gray-500 w-3">%</span>
                 </div>
-              </div></div> : <p className="text-[9px] text-gray-500">Prop-firm restrictions are disabled for this session.</p>}
+              </div></div> : <p className="text-[9px] text-gray-500">Prop-firm restrictions are disabled for this simulation.</p>}
             </div>
           </div>
 
@@ -291,7 +291,7 @@ export default function PeriodModal() {
             className="theme-action-contrast flex-[2] py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-sm text-white flex items-center justify-center gap-1.5 transition-colors"
           >
             <Play size={14} fill="currentColor" />
-            Start {activePreset?.name} Session
+            Start {activePreset?.name} Simulation
           </button>
         </div>
       </div>
