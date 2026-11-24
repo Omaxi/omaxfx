@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getTradeCandleWindow, getTradeScreenshotKey, renderTradeScreenshot } from './tradeScreenshots.js';
+import { getTradeCandleWindow, getTradeScreenshotKey, getTradeScreenshotPriceRange, renderTradeScreenshot } from './tradeScreenshots.js';
 
 const candles = Array.from({ length: 100 }, (_, i) => ({
   time: i * 60,
@@ -9,6 +9,22 @@ const candles = Array.from({ length: 100 }, (_, i) => ({
   low: 0.999 + i / 10000,
   close: 1.0005 + i / 10000,
 }));
+
+test('keeps screenshot price scaling independent from distant user drawings', () => {
+  const chartData = [
+    { high: 4430, low: 4427 },
+    { high: 4432, low: 4428 },
+    { high: 4431, low: 4426 },
+  ];
+  const trade = { entryPrice: 4429, exitPrice: 4430, sl: 4424, tp: 4435 };
+  // Drawings are deliberately not inputs to this range calculation. A saved
+  // horizontal line or pencil stroke at 4368 must not compress the candle view.
+  const range = getTradeScreenshotPriceRange(chartData, trade);
+  assert.ok(range);
+  assert.ok(range.min > 4410, 'a distant drawing must not pull the lower scale down');
+  assert.ok(range.max < 4450, 'the candle and trade levels should remain tightly framed');
+  assert.ok(range.min < 4424 && range.max > 4435, 'the full trade risk/reward levels remain visible');
+});
 
 test('builds a separate historical candle window for each trade', () => {
   const first = getTradeCandleWindow({ openTime: 600, closeTime: 720 }, candles, 1);
@@ -55,7 +71,7 @@ test('adds dashed entry, exit, SL and TP guides only when trade levels are visua
       const context = {
         setLineDash: pattern => dashPatterns.push(pattern.slice()),
         fillText: value => guideLabels.push(String(value)),
-        beginPath() {}, moveTo() {}, lineTo() {}, stroke() { strokes.push(this.strokeStyle); },
+        beginPath() {}, rect() {}, clip() {}, moveTo() {}, lineTo() {}, stroke() { strokes.push(this.strokeStyle); },
         fillRect() {}, save() {}, restore() {},
       };
       return {
@@ -97,7 +113,7 @@ test('renders distinct screenshot payloads without the removed trade title heade
       const labels = [];
       const context = new Proxy({
         fillText: (value) => labels.push(String(value)),
-        beginPath() {}, moveTo() {}, lineTo() {}, stroke() { strokeColors.push(this.strokeStyle); }, fillRect() { fillColors.push(this.fillStyle); },
+        beginPath() {}, rect() {}, clip() {}, moveTo() {}, lineTo() {}, stroke() { strokeColors.push(this.strokeStyle); }, fillRect() { fillColors.push(this.fillStyle); },
         save() {}, restore() {}, setLineDash() {},
       }, { set(target, key, value) { target[key] = value; return true; } });
       return {
