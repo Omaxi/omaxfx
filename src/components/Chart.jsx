@@ -1016,8 +1016,8 @@ export default function Chart({ chartId = 'main' }) {
           const now = Date.now();
           const previousTap = lastTapRef.current;
           const isArrowDoubleClick = previousTap.time > 0 &&
-            now - previousTap.time <= DOUBLE_TAP_TIME &&
-            Math.hypot(x - previousTap.x, y - previousTap.y) <= DOUBLE_TAP_DIST;
+            now - previousTap.time <= 400 &&
+            Math.hypot(x - previousTap.x, y - previousTap.y) <= 14;
           const fixedPoints = draftRef.current?.fixedPoints || [];
           if (!fixedPoints.length) {
             draftRef.current = { type: 'arrow', fixedPoints: [point], points: [point, point] };
