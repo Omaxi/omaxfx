@@ -325,3 +325,23 @@ test('autoplay minute mode advances one source candle while the chart is set to 
     assert.equal(useStore.getState().currentIndex, 20);
   } finally { restore(); }
 });
+
+test('custom CSV import keeps UTC+3 timestamps unchanged', () => {
+  const original = useStore.getState();
+  const candles = [
+    { time: 1767225600, open: 1.1, high: 1.2, low: 1.0, close: 1.15, volume: 0 },
+    { time: 1767225660, open: 1.15, high: 1.25, low: 1.1, close: 1.2, volume: 0 },
+  ];
+  try {
+    useStore.setState({ timezone: 'UTC+3' });
+    useStore.getState().setCustomSymbolData('TEST', candles, {
+      contractSize: 100000, tickSize: 0.00001, precision: 5,
+    });
+    const state = useStore.getState();
+    assert.equal(state.symbol, 'TEST');
+    assert.deepEqual(state.rawData.map(candle => candle.time), candles.map(candle => candle.time));
+    assert.deepEqual(state.allRawData.map(candle => candle.time), candles.map(candle => candle.time));
+  } finally {
+    useStore.setState(original, true);
+  }
+});
