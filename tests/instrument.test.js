@@ -21,9 +21,11 @@ test('CUSTOM data displays five decimals and uses a five-decimal tick', () => {
   assert.equal(getPriceTickSize('CUSTOM', { CUSTOM: { tickSize: 0.01 } }), 0.00001);
 });
 
-test('EURUSD market defaults use a 20-pip stop; other symbols retain the existing point default', () => {
-  assert.equal(getDefaultMarketStopDistance('EURUSD', 0.00001), 0.002);
-  assert.equal(getDefaultMarketStopDistance('XAUUSD', 0.001), 0.1);
+test('all five-decimal pairs default to a 5-pip stop; the 1:2 target is 10 pips', () => {
+  assert.equal(getDefaultMarketStopDistance('EURUSD', 0.00001, 5), 0.0005);
+  assert.equal(getDefaultMarketStopDistance('GBPUSD', 0.00001, 5), 0.0005);
+  assert.equal(getDefaultMarketStopDistance('AUDUSD', 0.00001, 5), 0.0005);
+  assert.equal(getDefaultMarketStopDistance('XAUUSD', 0.001, 3), 0.1);
 });
 
 test('Gold uses three decimal places and a 0.001 tick to match the CSV', () => {
