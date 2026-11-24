@@ -10,7 +10,7 @@ function defaultSpecs(symbol) {
   if (code === 'XAUUSD') return { contractSize: 100, tickSize: 0.01, precision: 2 };
   if (code === 'EURUSD' || code.endsWith('USD') && code.length === 6) return { contractSize: 100000, tickSize: 0.00001, precision: 5 };
   if (code.includes('JPY')) return { contractSize: 100000, tickSize: 0.001, precision: 3 };
-  return { contractSize: 1, tickSize: 0.01, precision: 2 };
+  return { contractSize: 1, tickSize: 0.00001, precision: 5 };
 }
 
 function StyledSelect({ value, onChange, options }) {
@@ -48,8 +48,8 @@ export default function DataImportModal() {
   const [customMonth, setCustomMonth] = useState('__ALL__');
   const [symbol, setSymbol] = useState('CUSTOM');
   const [contractSize, setContractSize] = useState('1');
-  const [tickSize, setTickSize] = useState('0.01');
-  const [precision, setPrecision] = useState('2');
+  const [tickSize, setTickSize] = useState('0.00001');
+  const [precision, setPrecision] = useState('5');
   const [quoteCurrency, setQuoteCurrency] = useState('USD');
   const [quoteToAccountRate, setQuoteToAccountRate] = useState('1');
   const [showAdvanced, setShowAdvanced] = useState(false);
