@@ -1,57 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { Calendar, Play, Shield, Target, TrendingDown, User, Sparkles, X, History as HistoryIcon, Trash2, ChevronDown, Check, Upload } from 'lucide-react';
-import { fetchDataCatalog, loadBundledCsvFiles } from '../utils/dataCatalog';
-
-function SavedSessionDropdown({ sessions, value, onChange }) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef(null);
-  const menuRef = useRef(null);
-  const [position, setPosition] = useState({ left: 8, top: 8, width: 220 });
-  const selected = sessions.find(session => session.sessionId === value);
-  useEffect(() => {
-    if (!open) return undefined;
-    const close = event => {
-      if (event.type === 'keydown' && event.key === 'Escape') setOpen(false);
-      if (event.type === 'pointerdown' && !rootRef.current?.contains(event.target) && !menuRef.current?.contains(event.target)) setOpen(false);
-    };
-    document.addEventListener('pointerdown', close);
-    document.addEventListener('keydown', close);
-    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', close); };
-  }, [open]);
-  const label = session => (session.sessionName || 'Untitled session') + ' · ' + (session.symbol || 'Unknown');
-  const toggle = () => {
-    if (!open && rootRef.current) {
-      const rect = rootRef.current.getBoundingClientRect();
-      setPosition({ left: Math.max(8, rect.left), top: rect.bottom + 4, width: Math.max(220, rect.width) });
-    }
-    setOpen(current => !current);
-  };
-  return (
-    <div ref={rootRef} className="relative min-w-0 flex-1">
-      <button type="button" aria-haspopup="listbox" aria-expanded={open} onClick={toggle}
-        className="flex w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-[#2a2e39] bg-[#1e222d] px-3 py-2 text-left text-[11px] text-white transition-colors hover:border-[#46536a] focus:border-blue-500 focus:outline-none">
-        <span className="truncate font-semibold">{selected ? label(selected) : 'Select a saved session'}</span>
-        <ChevronDown size={13} className={'shrink-0 text-gray-400 transition-transform ' + (open ? 'rotate-180' : '')} />
-      </button>
-      {open && <div ref={menuRef} role="listbox" className="fixed max-h-56 overflow-y-auto rounded-lg border border-[#2a2e39] bg-[#1e222d] p-1 shadow-2xl" style={{ zIndex: 9999, left: position.left, top: position.top, width: position.width }}>
-        <div className="border-b border-[#2a2e39] px-2 py-1.5 text-[9px] font-bold uppercase tracking-wide text-gray-500">Saved sessions</div>
-        {sessions.map(session => {
-          const active = session.sessionId === value;
-          return <button key={session.sessionId} type="button" role="option" aria-selected={active}
-            onClick={() => { onChange(session.sessionId); setOpen(false); }}
-            className={'flex w-full items-center justify-between gap-2 rounded-md px-2 py-2 text-left text-[11px] transition-colors ' + (active ? 'bg-blue-600/15 text-white' : 'text-gray-300 hover:bg-[#2a2e39] hover:text-white')}>
-            <span className="min-w-0 flex-1">
-              <span className={'block truncate ' + (active ? 'font-bold' : 'font-medium')}>{label(session)}</span>
-              <span className="mt-0.5 block truncate text-[9px] text-gray-500">{session.tradeHistory?.length || 0} trades · {new Date(session.savedAt).toLocaleString()}</span>
-            </span>
-            {active && <Check size={12} className="shrink-0 text-blue-400"/>}
-          </button>;
-        })}
-      </div>}
-    </div>
-  );
-}
+import { Calendar, Play, Shield, Target, TrendingDown, User, Sparkles, X, Upload } from 'lucide-react';
 
 const toInputDate = (unixSeconds) => {
   const d = new Date((unixSeconds + 3 * 3600) * 1000);
@@ -94,8 +43,7 @@ const PRESETS = {
 export default function PeriodModal() {
   const { 
     allRawData, isPeriodModalOpen, closePeriodModal, gameStarted, startGame, 
-    playerName, setPlayerName, sessionName, setSessionName,
-    readSessions, loadSavedSession, deleteSavedSession
+    playerName, setPlayerName
   } = useStore();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -106,8 +54,6 @@ export default function PeriodModal() {
   const [maxDrawdown, setMaxDrawdown] = useState(10);
   const [propFirmEnabled, setPropFirmEnabled] = useState(true);
   const [error, setError] = useState('');
-  const [savedSessions, setSavedSessions] = useState([]);
-  const [selectedSessionId, setSelectedSessionId] = useState('');
 
   useEffect(() => {
     if (allRawData.length > 0) {
@@ -115,15 +61,6 @@ export default function PeriodModal() {
       setTo(toInputDate(allRawData[allRawData.length - 1].time));
     }
   }, [allRawData]);
-
-  // Check for saved session each time modal opens
-  useEffect(() => {
-    if (isPeriodModalOpen) {
-      const sessions = readSessions();
-      setSavedSessions(sessions);
-      setSelectedSessionId(current => sessions.some(item => item.sessionId === current) ? current : (sessions[0]?.sessionId || ''));
-    }
-  }, [isPeriodModalOpen, readSessions]);
 
   useEffect(() => {
     const preset = PRESETS[presetKey];
@@ -174,42 +111,6 @@ export default function PeriodModal() {
     });
   };
 
-  const handleLoadSaved = async (saved) => {
-    setError('');
-    try {
-      let catalog = [];
-      try { catalog = await fetchDataCatalog(); } catch (catalogError) { /* Use an already loaded custom dataset when offline. */ }
-      const fromYear = new Date((saved.gamePeriod.from + 3 * 3600) * 1000).getUTCFullYear();
-      const toYear = new Date((saved.gamePeriod.to + 3 * 3600) * 1000).getUTCFullYear();
-      const files = catalog.filter(file => file.symbol === saved.symbol && (file.year == null || (file.year >= fromYear && file.year <= toYear)));
-      if (files.length) {
-        const loaded = await loadBundledCsvFiles(files);
-        const code = saved.symbol;
-        const defaults = code === 'XAUUSD'
-          ? { contractSize: 100, tickSize: 0.01, precision: 2 }
-          : code === 'EURUSD'
-            ? { contractSize: 100000, tickSize: 0.0001, precision: 5 }
-            : { contractSize: 1, tickSize: 0.01, precision: 2 };
-        useStore.getState().setCustomSymbolData(code, loaded.candles, {
-          ...defaults, quoteCurrency: 'USD', quoteToAccountRate: 1,
-          ...(saved.contractSpecs?.[code] || {}),
-        });
-      } else if (!useStore.getState().allRawDataBySymbol[saved.symbol]) {
-        throw new Error(`Data for ${saved.symbol} is not available in public/data or the current import. Add its CSV files and restart the app.`);
-      }
-      const ok = loadSavedSession(saved.sessionId);
-      if (!ok) throw new Error('The saved session could not be restored. Its market data may have changed.');
-    } catch (err) {
-      setError(err?.message || 'Unable to resume this session.');
-    }
-  };
-
-  const handleDeleteSaved = (sessionId) => {
-    const remaining = deleteSavedSession(sessionId);
-    setSavedSessions(remaining);
-    setSelectedSessionId(remaining[0]?.sessionId || '');
-  };
-
   return (
     <div className="fixed inset-0 bg-[#0b0e11]/95 backdrop-blur flex items-center justify-center z-50 p-2 overflow-y-auto">
       <div className="bg-[#131722] rounded-xl w-full max-w-sm border border-[#2a2e39] overflow-hidden shadow-2xl my-2">
@@ -224,7 +125,7 @@ export default function PeriodModal() {
                 <span className="text-white">OmaxFX Simulator</span>
               </h1>
             </div>
-            <p className="text-[10px] text-gray-400">Configure your session</p>
+            <p className="text-[10px] text-gray-400">Configure your trading setup</p>
           </div>
           <div className="flex items-center gap-1">
             <button type="button" onClick={() => window.dispatchEvent(new Event('omaxfx:open-data-import'))}
@@ -246,33 +147,8 @@ export default function PeriodModal() {
 
         <div className="p-3 space-y-3 max-h-[70vh] overflow-y-auto">
 
-          <section className="border border-[#2a2e39] rounded-lg p-2">
-            <div className="flex items-center justify-between mb-1.5">
-              <h3 className="text-[10px] font-bold uppercase text-gray-300 flex items-center gap-1.5"><HistoryIcon size={11}/> Saved sessions</h3>
-              <span className="text-[9px] text-gray-500">{savedSessions.length} saved</span>
-            </div>
-            {savedSessions.length ? <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <SavedSessionDropdown sessions={savedSessions} value={selectedSessionId} onChange={setSelectedSessionId}/>
-                <button disabled={!selectedSessionId} onClick={() => { const saved = savedSessions.find(item => item.sessionId === selectedSessionId); if (saved) handleLoadSaved(saved); }} className="theme-action-contrast rounded bg-emerald-700 px-3 py-2 text-[10px] font-bold text-white hover:bg-emerald-600 disabled:opacity-40">RESUME</button>
-                <button disabled={!selectedSessionId} onClick={() => handleDeleteSaved(selectedSessionId)} className="period-delete-session rounded border border-red-900/70 bg-red-950 px-2 py-2 text-red-400 hover:bg-red-900 hover:text-red-200 disabled:opacity-60" title="Delete selected session"><Trash2 size={13} className="text-red-300"/></button>
-              </div>
-              {(() => { const saved = savedSessions.find(item => item.sessionId === selectedSessionId); return saved ? <p className="text-[9px] text-gray-400">{saved.tradeHistory?.length || 0} trades · {new Date(saved.savedAt).toLocaleString()} · {saved.balance?.toLocaleString?.() ?? '—'} balance</p> : null; })()}
-            </div> : <p className="text-[9px] text-gray-500">Your sessions will appear here automatically as you trade.</p>}
-          </section>
           
           <div className="grid grid-cols-1 gap-2">
-            <div>
-              <h3 className="text-[10px] font-bold uppercase text-gray-400 mb-1 flex items-center gap-1.5">
-                <User size={10} /> Session Name
-              </h3>
-              <input 
-                type="text" value={sessionName} maxLength={30}
-                onChange={(e) => setSessionName(e.target.value)}
-                placeholder="Session 1"
-                className="w-full p-1.5 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-xs focus:border-blue-500 outline-none"
-              />
-            </div>
             <div>
               <h3 className="text-[10px] font-bold uppercase text-gray-400 mb-1 flex items-center gap-1.5">
                 <User size={10} /> Trader Name
