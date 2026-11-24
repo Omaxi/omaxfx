@@ -10,7 +10,7 @@ export default defineConfig(({ command }) => ({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['omaxfx-logo.svg', 'favicon.png', 'sounds/*.mp3'],
+      includeAssets: ['omaxfx-logo.svg', 'sounds/*.mp3'],
       devOptions: {
         enabled: true,
         type: 'module',
@@ -28,9 +28,6 @@ export default defineConfig(({ command }) => ({
         start_url: './',
         scope: './',
         icons: [
-          { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          { src: 'icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: 'omaxfx-logo.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
       },
@@ -40,7 +37,7 @@ export default defineConfig(({ command }) => ({
         navigateFallback: 'index.html',
         runtimeCaching: [
           {
-            urlPattern: /\/data\/.*\.csv(?:\?.*)?$/i,
+            urlPattern: /\\/data\\/.*\\.csv(?:\\?.*)?$/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'csv-cache-v2',
