@@ -5,6 +5,9 @@ const path = require('node:path');
 
 const isDevelopment = !app.isPackaged;
 const distDirectory = path.resolve(__dirname, '..', 'dist');
+// A stable origin is essential: Chromium stores sessions and preferences by origin.
+const LOCAL_APP_PORT = 43871;
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
 let mainWindow;
 let staticServer;
 
@@ -97,9 +100,8 @@ function startLocalServer() {
     });
 
     staticServer.once('error', reject);
-    staticServer.listen(0, '127.0.0.1', () => {
-      const address = staticServer.address();
-      resolve(`http://127.0.0.1:${address.port}/`);
+    staticServer.listen(LOCAL_APP_PORT, '127.0.0.1', () => {
+      resolve(`http://127.0.0.1:${LOCAL_APP_PORT}/`);
     });
   });
 }
@@ -145,7 +147,18 @@ function createMainWindow(appUrl) {
 
 app.setAppUserModelId('com.omaxfx.simulator');
 
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (!mainWindow) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  });
+}
+
 app.whenReady().then(async () => {
+  if (!hasSingleInstanceLock) return;
   const appUrl = isDevelopment
     ? 'http://127.0.0.1:5173'
     : await startLocalServer();
@@ -154,6 +167,14 @@ app.whenReady().then(async () => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow(appUrl);
   });
+}).catch((error) => {
+  console.error('[OmaxFX desktop] Startup failed:', error);
+  const { dialog } = require('electron');
+  dialog.showErrorBox(
+    'OmaxFX could not start',
+    `The local application server could not start on port ${LOCAL_APP_PORT}. Close any other OmaxFX instance and try again.\\n\\n${error.message}`,
+  );
+  app.quit();
 });
 
 app.on('before-quit', () => {
