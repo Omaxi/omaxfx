@@ -1,15 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
-  <title id="title">OmaxFX symbol</title>
+  <title id="title">OmaxFX play symbol</title>
   <defs>
-    <linearGradient id="ring" x1=".12" y1=".08" x2=".88" y2=".92">
-      <stop offset="0" stop-color="#77f5ff"/><stop offset=".34" stop-color="#09c9f5"/><stop offset=".72" stop-color="#0878f2"/><stop offset="1" stop-color="#063eae"/>
+    <clipPath id="orbClip"><circle cx="256" cy="256" r="224"/></clipPath>
+    <linearGradient id="orbBase" x1="0.12" y1="0.04" x2="0.88" y2="0.98">
+      <stop offset="0" stop-color="#09d9f5"/>
+      <stop offset="0.34" stop-color="#087be8"/>
+      <stop offset="0.62" stop-color="#102b79"/>
+      <stop offset="1" stop-color="#17124f"/>
     </linearGradient>
-    <linearGradient id="play" x1=".18" y1=".08" x2=".82" y2="1">
-      <stop offset="0" stop-color="#fff"/><stop offset=".6" stop-color="#e7f4ff"/><stop offset="1" stop-color="#8ecbff"/>
+    <linearGradient id="cyanSweep" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#38f4ff"/>
+      <stop offset="0.52" stop-color="#00b9ed"/>
+      <stop offset="1" stop-color="#0875dc"/>
     </linearGradient>
-    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="8"/></filter>
+    <linearGradient id="purpleSweep" x1="0.08" y1="0.12" x2="0.94" y2="0.86">
+      <stop offset="0" stop-color="#8d32ff"/>
+      <stop offset="0.58" stop-color="#6124e8"/>
+      <stop offset="1" stop-color="#3211a4"/>
+    </linearGradient>
+    <linearGradient id="playFill" x1="0.2" y1="0.08" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#e5f4ff"/>
+    </linearGradient>
   </defs>
-  <circle cx="245" cy="226" r="154" fill="none" stroke="#087dff" stroke-opacity=".32" stroke-width="54" filter="url(#soft)"/>
-  <circle cx="245" cy="226" r="154" fill="none" stroke="url(#ring)" stroke-width="38"/>
-  <path d="M211 154 Q201 148 201 164 L201 287 Q201 303 215 295 L321 237 Q336 228 321 219 Z" fill="url(#play)" stroke="#dff7ff" stroke-opacity=".65" stroke-width="3" stroke-linejoin="round"/>
+  <g clip-path="url(#orbClip)">
+    <circle cx="256" cy="256" r="224" fill="url(#orbBase)"/>
+    <path d="M20 236 C38 112 126 28 239 26 C294 25 340 49 376 88 C328 71 278 78 233 105 C171 143 135 210 127 286 C87 279 48 262 20 236Z" fill="url(#cyanSweep)"/>
+    <path d="M94 385 C158 438 245 458 327 430 C397 407 451 350 476 279 C474 370 419 456 331 489 C241 523 142 490 94 385Z" fill="url(#purpleSweep)"/>
+    <path d="M206 157 C193 149 181 158 181 174 L181 339 C181 355 194 363 208 354 L344 272 C359 263 359 247 344 238 Z" fill="url(#playFill)"/>
+  </g>
 </svg>
