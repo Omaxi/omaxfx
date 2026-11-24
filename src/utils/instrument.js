@@ -24,8 +24,11 @@ export const getPriceTickSize = (symbol, specs = {}) => {
   return symbol?.includes('JPY') ? 0.001 : 0.01;
 };
 
-export const getDefaultMarketStopDistance = (symbol, tickSize) =>
-  symbol === 'EURUSD' ? 20 * 0.0001 : 100 * tickSize;
+// Five-decimal FX quotes use 0.00001 points and 0.0001 pips.
+ // Default qualifying market orders to 5 pips of risk; the order modal's
+ // default 1:2 risk/reward setting then places TP at 10 pips.
+export const getDefaultMarketStopDistance = (symbol, tickSize, precision = getPricePrecision(symbol)) =>
+  precision === 5 ? 5 * tickSize * 10 : 100 * tickSize;
 
 export const getPnlMultiplier = (symbol, specs = {}) => {
   const spec = specs?.[symbol];
