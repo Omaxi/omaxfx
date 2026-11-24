@@ -68,13 +68,16 @@ test('renders distinct screenshot payloads without the removed trade title heade
     const first = renderTradeScreenshot({
       id: 'trade-A', symbol: 'EURUSD', type: 'buy', openTime: 600, closeTime: 720,
       entryPrice: 1.1, exitPrice: 1.102, sl: 1.099, tp: 1.102, pnl: 20,
-    }, candles, 1);
+    }, candles, 1, 'dark', {
+      drawings: [{ id: 'h1', type: 'horizontal', color: '#f59e0b', points: [{ time: 600, price: 1.1005 }] }],
+    });
     const second = renderTradeScreenshot({
       id: 'trade-B', symbol: 'EURUSD', type: 'sell', openTime: 3600, closeTime: 3720,
       entryPrice: 1.2, exitPrice: 1.198, sl: 1.201, tp: 1.198, pnl: 20,
     }, candles, 1);
     assert.ok(first && second);
     assert.equal(fillColors[0], '#0d1117', 'saved trade screenshots must use the dark OmaxFX chart background');
+    assert.ok(fillColors.includes('#f59e0b33') || fillColors.includes('#f59e0b'), 'historical user drawings should be included in the screenshot');
     assert.notEqual(first, second);
     const firstLabels = Buffer.from(first.split(',')[1], 'base64').toString();
     const secondLabels = Buffer.from(second.split(',')[1], 'base64').toString();
