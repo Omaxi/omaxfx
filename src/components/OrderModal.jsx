@@ -43,10 +43,14 @@ export default function OrderModal() {
   const riskAmount = balance * (riskPercent / 100);
   const maxRisk = rules?.maxRiskPerTrade ?? 3;
   const propFirmEnabled = rules?.propFirmEnabled !== false;
+  const isCustomPreset = rules?.presetName === 'Custom';
+  const availableRiskOptions = [0.5, 1, 2, 3].filter(pct => !propFirmEnabled || pct <= maxRisk);
+  const riskControlCount = availableRiskOptions.length + (isCustomPreset ? 1 : 0);
 
   useEffect(() => {
     if (propFirmEnabled && riskPercent > maxRisk) setRiskPercent(maxRisk);
-  }, [propFirmEnabled, maxRisk, riskPercent]);
+    if (!isCustomPreset && customRiskInput) setCustomRiskInput('');
+  }, [propFirmEnabled, maxRisk, riskPercent, isCustomPreset, customRiskInput]);
 
   useEffect(() => {
     if (!isOrderModalOpen) return;
@@ -189,7 +193,7 @@ export default function OrderModal() {
 
   return (
     <div className="order-modal-overlay fixed inset-0 bg-black/80 flex items-center justify-center z-[120] p-4">
-      <div className="order-modal-shell bg-[#131722] rounded-2xl w-full max-w-xl border border-[#2a2e39] overflow-hidden max-h-[94vh] flex flex-col">
+      <div className="order-modal-shell bg-[#131722] rounded-2xl w-[min(560px,calc(100vw-2rem))] max-w-none border border-[#2a2e39] overflow-hidden max-h-[94vh] flex flex-col">
         <div className="flex justify-between items-center px-3 py-2 border-b border-[#2a2e39]">
           <h2 className="text-base font-bold">Place Order</h2>
           <button onClick={handleCancel} className="p-1 hover:bg-[#2a2e39] rounded"><X size={20}/></button>
@@ -212,14 +216,34 @@ export default function OrderModal() {
               <label className="text-[10px] text-gray-400 block mb-1">
                 Risk Percentage {propFirmEnabled && <span className="text-gray-500">(max {maxRisk}%)</span>}
               </label>
-              <div className="grid grid-cols-5 gap-1.5">
-                {[0.5, 1, 2, 3].filter(pct => !propFirmEnabled || pct <= maxRisk).map(pct => (
-                  <button key={pct} onClick={() => { setRiskPercent(pct); setCustomRiskInput(''); }} className={`min-w-0 py-1.5 rounded text-xs font-bold ${riskPercent === pct && !customRiskInput ? 'bg-blue-600' : 'bg-[#1e222d]'}`}>{pct}%</button>
+              <div
+                className="grid gap-1.5"
+                style={{ gridTemplateColumns: `repeat(${Math.max(1, riskControlCount)}, minmax(0, 1fr))` }}
+              >
+                {availableRiskOptions.map(pct => (
+                  <button
+                    key={pct}
+                    type="button"
+                    onClick={() => { setRiskPercent(pct); setCustomRiskInput(''); }}
+                    className={`w-full min-w-0 min-h-[34px] py-1.5 rounded text-xs font-bold ${riskPercent === pct && !customRiskInput ? 'bg-blue-600 text-white' : 'bg-[#1e222d] text-gray-300'}`}
+                  >{pct}%</button>
                 ))}
-                <label className={`min-w-0 flex items-center gap-1 rounded px-2 bg-[#1e222d] border ${customRiskInput ? 'border-blue-500' : 'border-[#2a2e39]'}`}>
-                  <input type="number" min="0.01" max={propFirmEnabled ? maxRisk : 100} step="0.1" value={customRiskInput} placeholder="Custom" aria-label="Custom risk percentage" onChange={(e) => { const value = e.target.value; setCustomRiskInput(value); if (value !== '') setRiskPercent(Number(value)); }} className="w-full min-w-0 bg-transparent py-1 text-xs text-white outline-none placeholder:text-gray-500"/>
-                  <span className="text-[10px] text-gray-400">%</span>
-                </label>
+                {isCustomPreset && (
+                  <label className={`w-full min-w-0 min-h-[34px] flex items-center gap-1 rounded px-2 bg-[#1e222d] border ${customRiskInput ? 'border-blue-500' : 'border-[#2a2e39]'}`}>
+                    <input
+                      type="number"
+                      min="0.01"
+                      max={propFirmEnabled ? maxRisk : 100}
+                      step="0.1"
+                      value={customRiskInput}
+                      placeholder="Custom"
+                      aria-label="Custom risk percentage"
+                      onChange={(e) => { const value = e.target.value; setCustomRiskInput(value); if (value !== '') setRiskPercent(Number(value)); }}
+                      className="w-full min-w-0 bg-transparent py-1 text-xs text-white outline-none placeholder:text-gray-500"
+                    />
+                    <span className="text-[10px] text-gray-400">%</span>
+                  </label>
+                )}
               </div>
             </div>
 
