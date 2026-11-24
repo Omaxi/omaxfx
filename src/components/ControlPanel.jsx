@@ -373,17 +373,17 @@ export default function ControlPanel() {
               <button onClick={() => startDrawing('sell')} className="h-9 px-2 py-1 bg-red-600/30 text-red-400 rounded font-bold text-[10px] whitespace-nowrap">Short position</button>
             </div>
           ) : (
-            <div className="flex items-center gap-2 bg-yellow-900/30 px-2 py-1 rounded flex-shrink-0">
+            <div className="flex h-9 min-h-9 items-center gap-2 bg-yellow-900/30 px-2 rounded flex-shrink-0">
               <span className="text-yellow-400 text-[10px] font-bold whitespace-nowrap">{isDrawingMode ? drawingStep?.toUpperCase() : 'POSITION READY'}</span>
-              <button onClick={clearDraft} className="text-red-400" title="Cancel position tool"><X size={11}/></button>
+              <button onClick={clearDraft} className="flex h-6 w-6 items-center justify-center rounded text-red-400 hover:bg-red-500/10" title="Cancel position tool"><X size={11}/></button>
             </div>
           )}
 
           {positions.length > 0 && (
-            <button onClick={closeAllPositions} className="px-2 py-1 bg-yellow-600 rounded font-bold text-[10px] text-white whitespace-nowrap flex-shrink-0">✕ {positions.length}</button>
+            <button onClick={closeAllPositions} className="flex h-9 min-h-9 items-center justify-center px-2 bg-yellow-600 rounded font-bold text-[10px] text-white whitespace-nowrap flex-shrink-0">✕ {positions.length}</button>
           )}
           {pendingOrders.length > 0 && (
-            <div className="px-2 py-1 text-[10px] text-yellow-400 bg-yellow-900/30 rounded font-bold whitespace-nowrap flex-shrink-0">{pendingOrders.length}P</div>
+            <div className="flex h-9 min-h-9 items-center justify-center px-2 text-[10px] text-yellow-400 bg-yellow-900/30 rounded font-bold whitespace-nowrap flex-shrink-0">{pendingOrders.length}P</div>
           )}
 
           <div className="flex items-center gap-1 flex-shrink-0">
