@@ -169,8 +169,8 @@ export const useStore = create((set, get) => ({
       ...state.contractSpecs,
       [code]: {
         contractSize: Number(spec.contractSize) > 0 ? Number(spec.contractSize) : 1,
-        tickSize: Number(spec.tickSize) > 0 ? Number(spec.tickSize) : 0.01,
-        precision: Number.isInteger(Number(spec.precision)) ? Math.max(0, Math.min(10, Number(spec.precision))) : 2,
+        tickSize: Number(spec.tickSize) > 0 ? Number(spec.tickSize) : 0.00001,
+        precision: Number.isInteger(Number(spec.precision)) ? Math.max(0, Math.min(10, Number(spec.precision))) : 5,
         quoteCurrency: String(spec.quoteCurrency || 'USD').toUpperCase(),
         quoteToAccountRate: Number(spec.quoteToAccountRate) > 0 ? Number(spec.quoteToAccountRate) : 1,
       },
