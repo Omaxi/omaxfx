@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import { X, ChevronDown, Check, Sunrise, Sun, Sunset, ArrowUpDown, CandlestickChart } from 'lucide-react';
+import { X, ChevronDown, Check, Sunrise, Sun, Sunset, ArrowUpDown, CandlestickChart, AlertTriangle } from 'lucide-react';
 
 const TIMEFRAMES = [
   { label: '1 min', value: 1 },
@@ -54,6 +54,7 @@ export default function ControlPanel() {
   const [jumpOpen, setJumpOpen] = useState(false);
   const [ctOpen, setCtOpen] = useState(false);
   const [speedOpen, setSpeedOpen] = useState(false);
+  const [marketOrderWarning, setMarketOrderWarning] = useState('');
 
   const tfButtonRef = useRef(null);
   const jumpButtonRef = useRef(null);
@@ -63,6 +64,12 @@ export default function ControlPanel() {
   const [jumpLeft, setJumpLeft] = useState(0);
   const [ctLeft, setCtLeft] = useState(0);
   const [speedLeft, setSpeedLeft] = useState(0);
+
+  useEffect(() => {
+    if (!marketOrderWarning) return undefined;
+    const timer = window.setTimeout(() => setMarketOrderWarning(''), 4000);
+    return () => window.clearTimeout(timer);
+  }, [marketOrderWarning]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -76,6 +83,24 @@ export default function ControlPanel() {
 
   const closeAll = () => { 
     setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false); setSpeedOpen(false);
+  };
+
+  const handleMarketOrder = (side) => {
+    const { draftPosition: draft, isDrawingMode: drawing } = useStore.getState();
+    const hasCompletedMatchingTool = draft?.type === side && !drawing &&
+      ['entry', 'sl', 'tp'].every(key =>
+        draft[key] != null && Number.isFinite(Number(draft[key])) && Number(draft[key]) > 0
+      );
+
+    if (!hasCompletedMatchingTool) {
+      setMarketOrderWarning(side === 'buy'
+        ? 'Before buying please place the long position tool on the chart'
+        : 'Before selling please place the short position tool on the chart');
+      return;
+    }
+
+    setMarketOrderWarning('');
+    openOrderModal(side);
   };
   const toggleSymbol = () => { const o = !symbolOpen; closeAll(); setSymbolOpen(o); };
   const toggleTz = () => { const o = !tzOpen; closeAll(); setTzOpen(o); };
@@ -295,7 +320,13 @@ export default function ControlPanel() {
   );
 
   return (
-    <div className="flex-shrink-0 bg-[#131722] border-t border-[#2a2e39]">
+    <div className="relative flex-shrink-0 bg-[#131722] border-t border-[#2a2e39]">
+      {marketOrderWarning && (
+        <div role="alert" aria-live="assertive" className="absolute bottom-full left-1/2 z-[12000] mb-2 flex max-w-[min(92vw,520px)] -translate-x-1/2 items-center gap-2 rounded-lg border border-amber-500/50 bg-[#1e222d] px-4 py-3 text-xs font-semibold text-amber-200 shadow-2xl">
+          <AlertTriangle size={15} className="shrink-0 text-amber-400" />
+          <span>{marketOrderWarning}</span>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-1 px-1.5 py-1.5 overflow-x-auto">
 
         <button onClick={toggleSymbol}
@@ -356,8 +387,8 @@ export default function ControlPanel() {
           )}
 
           <div className="flex items-center gap-1 flex-shrink-0">
-            <button onClick={() => openOrderModal('buy')} className="theme-action-contrast h-9 px-3 bg-green-600 active:bg-green-700 rounded font-bold text-xs text-white">BUY</button>
-            <button onClick={() => openOrderModal('sell')} className="theme-action-contrast h-9 px-3 bg-red-600 active:bg-red-700 rounded font-bold text-xs text-white">SELL</button>
+            <button onClick={() => handleMarketOrder('buy')} className="theme-action-contrast h-9 px-3 bg-green-600 active:bg-green-700 rounded font-bold text-xs text-white">BUY</button>
+            <button onClick={() => handleMarketOrder('sell')} className="theme-action-contrast h-9 px-3 bg-red-600 active:bg-red-700 rounded font-bold text-xs text-white">SELL</button>
           </div>
         </div>
 
