@@ -133,7 +133,8 @@ function buildCalendar(dailyEntries) {
   return months.join('');
 }
 
-export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startBalance, balance, timezone, backtestRange, trades, metrics, dailyEntries, curve, screenshots }) {
+export function buildAnalyticsPrintHtml({ traderName, symbol, startBalance, balance, timezone, backtestRange, trades, metrics, dailyEntries, curve, screenshots }) {
+  const reportTitle = String(traderName || '').trim() || 'Trader';
   const generated = new Date().toLocaleString();
   const summaryCards = [
     ['Net P&L', money(metrics.netPnl), metrics.netPnl >= 0 ? 'gain' : 'loss'],
@@ -229,7 +230,7 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
         </article>`;
       }).join('')}
     </section>`).join('');
-  return `<!doctype html><html><head><meta charset="utf-8"><title>OmaxFX Analytics - ${escapeHtml(sessionName)}</title><style>
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(reportTitle)}</title><style>
     @page{size:A4 portrait;margin:9mm 9mm 10mm;background:#0b0e11}
     *{box-sizing:border-box}
     html{background:#0b0e11}
@@ -293,14 +294,14 @@ export function buildAnalyticsPrintHtml({ sessionName, symbol, sessionId, startB
     .page-break{break-before:page}.footer{margin-top:12px;border-top:1px solid #293142;padding-top:6px;color:#8993a5;font-size:7px}
     @media print{html,body{background:#0b0e11!important;color:#d5d9e2!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.dashboard-grid{grid-template-columns:34% 1fr}.trade-card,.month-card{break-inside:avoid}.month-histogram{min-height:155px}.month-hist-plot,.month-hist-total{min-height:76px}}
     @media screen{body{max-width:1400px;margin:20px auto;padding:0 20px}}</style></head><body>
-    <div class="report-title">OmaxFX Simulator · Performance report</div>
-    <header class="cover"><h1>${escapeHtml(sessionName||'Trading session')}</h1><div class="range-line"><b>Backtest range</b><span>${escapeHtml(backtestRange?.from || "—")}</span><span>TO</span><span>${escapeHtml(backtestRange?.to || "—")}</span><span class="range-duration">${escapeHtml(backtestRange?.elapsed || "")}</span></div><div class="meta"><span>Symbol: <b>${escapeHtml(symbol||'—')}</b></span><span>Session ID: ${escapeHtml(sessionId||'—')}</span><span>Timezone: ${escapeHtml(timezone||'UTC+3')}</span><span>Generated: ${escapeHtml(generated)}</span></div></header>
+    <div class="report-title">${escapeHtml(reportTitle)}</div>
+    <header class="cover"><h1>${escapeHtml(reportTitle)}</h1><div class="range-line"><b>Backtest range</b><span>${escapeHtml(backtestRange?.from || "—")}</span><span>TO</span><span>${escapeHtml(backtestRange?.to || "—")}</span><span class="range-duration">${escapeHtml(backtestRange?.elapsed || "")}</span></div><div class="meta"><span>Symbol: <b>${escapeHtml(symbol||'—')}</b></span><span>Timezone: ${escapeHtml(timezone||'UTC+3')}</span><span>Generated: ${escapeHtml(generated)}</span></div></header>
     <div class="top-metrics">${summaryCards.map(([label,value,tone])=>`<div class="summary-card"><small>${escapeHtml(label)}</small><b class="${tone}">${escapeHtml(value)}</b></div>`).join('')}</div>
     <section class="section"><div class="section-heading-row"><h2>Profit and loss · Over time</h2>${buildCurveDrawdownLabel(curve)}</div><div class="curve">${buildCurveSvg(curve, 'Buy & Hold · '+(symbol||'Market'))}</div></section>
     <section class="dashboard-panel calendar-report-panel"><h2>Trading calendar · All active months</h2><p class="muted">Daily realized net P&amp;L and closed trade count · UTC+3</p><div class="calendar-wrap ${new Set(dailyEntries.map(([key])=>key.slice(0,7))).size===1?'single-month':''}">${buildCalendar(dailyEntries)}</div></section>
     ${performanceSections}
     <section class="page-break"><h2>Daily trade journal · All trades and chart screenshots</h2><p class="muted">${trades.length} closed trades across ${dailyEntries.length} active trading days.</p>${tradePages||'<div class="empty">No closed trades in this session.</div>'}</section>
-    <div class="footer">OmaxFX · Report generated ${escapeHtml(generated)} · Values are based on the saved session trade history.</div>
+    <div class="footer">OmaxFX · Report generated ${escapeHtml(generated)} · Values are based on the current trade history.</div>
     <script>window.addEventListener('load',()=>{const imgs=[...document.images];Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve}))).then(()=>setTimeout(()=>{document.querySelector('.print-hint')?.classList.add('ready')},150));});</script>
     </body></html>`;
 }
