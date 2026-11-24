@@ -387,8 +387,8 @@ export default function ControlPanel() {
           )}
 
           <div className="flex items-center gap-1 flex-shrink-0">
-            <button onClick={() => handleMarketOrder('buy')} className="theme-action-contrast h-9 px-3 bg-green-600 active:bg-green-700 rounded font-bold text-xs text-white">BUY</button>
-            <button onClick={() => handleMarketOrder('sell')} className="theme-action-contrast h-9 px-3 bg-red-600 active:bg-red-700 rounded font-bold text-xs text-white">SELL</button>
+            <button onClick={() => handleMarketOrder('buy')} className="h-9 px-3 bg-green-600/30 hover:bg-green-600/40 active:bg-green-600/50 text-green-400 rounded font-bold text-xs transition-colors">BUY</button>
+            <button onClick={() => handleMarketOrder('sell')} className="h-9 px-3 bg-red-600/30 hover:bg-red-600/40 active:bg-red-600/50 text-red-400 rounded font-bold text-xs transition-colors">SELL</button>
           </div>
         </div>
 
