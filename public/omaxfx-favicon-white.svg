@@ -1,12 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
-  <title id="title">OmaxFX play symbol</title>
+  <title id="title">OmaxFX play logo</title>
   <defs>
-    <clipPath id="orbClip"><circle cx="256" cy="256" r="224"/></clipPath>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#35e5ff"/>
+      <stop offset=".48" stop-color="#079df2"/>
+      <stop offset="1" stop-color="#0754d8"/>
+    </linearGradient>
+    <linearGradient id="play" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dcecff"/>
+    </linearGradient>
   </defs>
-  <g clip-path="url(#orbClip)">
-    <circle cx="256" cy="256" r="224" fill="#081747"/>
-    <path d="M20 236 C38 112 126 28 239 26 C294 25 340 49 376 88 C328 71 278 78 233 105 C171 143 135 210 127 286 C87 279 48 262 20 236Z" fill="#08BDEB"/>
-    <path d="M94 385 C158 438 245 458 327 430 C397 407 451 350 476 279 C474 370 419 456 331 489 C241 523 142 490 94 385Z" fill="#7028DE"/>
-    <path d="M206 157 C193 149 181 158 181 174 L181 339 C181 355 194 363 208 354 L344 272 C359 263 359 247 344 238Z" fill="#FFFFFF"/>
-  </g>
+  <circle cx="256" cy="256" r="224" fill="#101a30"/>
+  <circle cx="256" cy="256" r="207" fill="none" stroke="url(#ring)" stroke-width="38"/>
+  <path d="M211 145c-15-9-34 2-34 20v182c0 18 19 29 34 20l151-91c16-10 16-33 0-42z" fill="url(#play)"/>
 </svg>
