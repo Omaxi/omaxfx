@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 const TOOLTIP_ID = 'omaxfx-custom-tooltip';
 
 function splitTooltip(value) {
-  const parts = String(value || '').split(/\\s*[·|—]\\s*/, 2);
+  const parts = String(value || '').split(/\s*[·|—]\s*/, 2);
   return { heading: parts[0] || '', detail: parts[1] || '' };
 }
 
