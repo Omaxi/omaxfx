@@ -14,13 +14,13 @@ export default function TradeScreenshotCapture() {
   useEffect(() => {
     const inFlight = new Map();
 
-    const captureTrade = (trade, candles, timeframe, sessionId) => {
+    const captureTrade = (trade, candles, timeframe, sessionId, drawingSnapshot) => {
       const key = getTradeScreenshotKey(trade.id, sessionId);
       if (!key || inFlight.has(key)) return inFlight.get(key);
       const task = (async () => {
         const existing = await getTradeScreenshot(trade.id, sessionId);
         if (existing) return;
-        const image = renderTradeScreenshot(trade, candles, timeframe, useStore.getState().uiTheme || 'dark');
+        const image = renderTradeScreenshot(trade, candles, timeframe, 'dark', drawingSnapshot);
         if (image) await saveTradeScreenshot(trade.id, image, sessionId);
         else console.warn('[TradeScreenshotCapture] Historical chart unavailable for trade', trade.id);
       })().catch(error => {
@@ -57,7 +57,12 @@ export default function TradeScreenshotCapture() {
       const candles = state.rawData || [];
       const timeframe = state.timeframe || 1;
       const sessionId = state.sessionId || 'unsaved-session';
-      newlyClosed.forEach(trade => captureTrade(trade, candles, timeframe, sessionId));
+      const drawingSnapshot = {
+        drawings: (state.drawings || []).map(d => ({ ...d, points: (d.points || []).map(p => ({ ...p })) })),
+        chartDrawings: Object.fromEntries(Object.entries(state.chartDrawings || {}).map(([id, list]) => [id, (list || []).map(d => ({ ...d, points: (d.points || []).map(p => ({ ...p })) }))])),
+        pencilStrokes: (state.pencilStrokes || []).map(stroke => ({ ...stroke, points: (stroke.points || []).map(p => ({ ...p })) })),
+      };
+      newlyClosed.forEach(trade => captureTrade(trade, candles, timeframe, sessionId, drawingSnapshot));
     });
 
     return unsubscribe;
