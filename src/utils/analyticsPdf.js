@@ -134,7 +134,8 @@ function buildCalendar(dailyEntries) {
 }
 
 export function buildAnalyticsPrintHtml({ traderName, symbol, startBalance, balance, timezone, backtestRange, trades, metrics, dailyEntries, curve, screenshots }) {
-  const reportTitle = String(traderName || '').trim() || 'Trader';
+  const traderLabel = String(traderName || '').trim() || 'Trader';
+  const reportTitle = `${traderLabel} - Performance Reports`;
   const generated = new Date().toLocaleString();
   const summaryCards = [
     ['Net P&L', money(metrics.netPnl), metrics.netPnl >= 0 ? 'gain' : 'loss'],
@@ -294,7 +295,6 @@ export function buildAnalyticsPrintHtml({ traderName, symbol, startBalance, bala
     .page-break{break-before:page}.footer{margin-top:12px;border-top:1px solid #293142;padding-top:6px;color:#8993a5;font-size:7px}
     @media print{html,body{background:#0b0e11!important;color:#d5d9e2!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.dashboard-grid{grid-template-columns:34% 1fr}.trade-card,.month-card{break-inside:avoid}.month-histogram{min-height:155px}.month-hist-plot,.month-hist-total{min-height:76px}}
     @media screen{body{max-width:1400px;margin:20px auto;padding:0 20px}}</style></head><body>
-    <div class="report-title">${escapeHtml(reportTitle)}</div>
     <header class="cover"><h1>${escapeHtml(reportTitle)}</h1><div class="range-line"><b>Backtest range</b><span>${escapeHtml(backtestRange?.from || "—")}</span><span>TO</span><span>${escapeHtml(backtestRange?.to || "—")}</span><span class="range-duration">${escapeHtml(backtestRange?.elapsed || "")}</span></div><div class="meta"><span>Symbol: <b>${escapeHtml(symbol||'—')}</b></span><span>Timezone: ${escapeHtml(timezone||'UTC+3')}</span><span>Generated: ${escapeHtml(generated)}</span></div></header>
     <div class="top-metrics">${summaryCards.map(([label,value,tone])=>`<div class="summary-card"><small>${escapeHtml(label)}</small><b class="${tone}">${escapeHtml(value)}</b></div>`).join('')}</div>
     <section class="section"><div class="section-heading-row"><h2>Profit and loss · Over time</h2>${buildCurveDrawdownLabel(curve)}</div><div class="curve">${buildCurveSvg(curve, 'Buy & Hold · '+(symbol||'Market'))}</div></section>
