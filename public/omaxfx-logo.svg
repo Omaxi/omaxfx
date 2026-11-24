@@ -2,31 +2,11 @@
   <title id="title">OmaxFX play symbol</title>
   <defs>
     <clipPath id="orbClip"><circle cx="256" cy="256" r="224"/></clipPath>
-    <linearGradient id="orbBase" x1="0.12" y1="0.04" x2="0.88" y2="0.98">
-      <stop offset="0" stop-color="#09d9f5"/>
-      <stop offset="0.34" stop-color="#087be8"/>
-      <stop offset="0.62" stop-color="#102b79"/>
-      <stop offset="1" stop-color="#17124f"/>
-    </linearGradient>
-    <linearGradient id="cyanSweep" x1="0.1" y1="0" x2="0.9" y2="1">
-      <stop offset="0" stop-color="#38f4ff"/>
-      <stop offset="0.52" stop-color="#00b9ed"/>
-      <stop offset="1" stop-color="#0875dc"/>
-    </linearGradient>
-    <linearGradient id="purpleSweep" x1="0.08" y1="0.12" x2="0.94" y2="0.86">
-      <stop offset="0" stop-color="#8d32ff"/>
-      <stop offset="0.58" stop-color="#6124e8"/>
-      <stop offset="1" stop-color="#3211a4"/>
-    </linearGradient>
-    <linearGradient id="playFill" x1="0.2" y1="0.08" x2="0.8" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#e5f4ff"/>
-    </linearGradient>
   </defs>
   <g clip-path="url(#orbClip)">
-    <circle cx="256" cy="256" r="224" fill="url(#orbBase)"/>
-    <path d="M20 236 C38 112 126 28 239 26 C294 25 340 49 376 88 C328 71 278 78 233 105 C171 143 135 210 127 286 C87 279 48 262 20 236Z" fill="url(#cyanSweep)"/>
-    <path d="M94 385 C158 438 245 458 327 430 C397 407 451 350 476 279 C474 370 419 456 331 489 C241 523 142 490 94 385Z" fill="url(#purpleSweep)"/>
-    <path d="M206 157 C193 149 181 158 181 174 L181 339 C181 355 194 363 208 354 L344 272 C359 263 359 247 344 238 Z" fill="url(#playFill)"/>
+    <circle cx="256" cy="256" r="224" fill="#081747"/>
+    <path d="M20 236 C38 112 126 28 239 26 C294 25 340 49 376 88 C328 71 278 78 233 105 C171 143 135 210 127 286 C87 279 48 262 20 236Z" fill="#08BDEB"/>
+    <path d="M94 385 C158 438 245 458 327 430 C397 407 451 350 476 279 C474 370 419 456 331 489 C241 523 142 490 94 385Z" fill="#7028DE"/>
+    <path d="M206 157 C193 149 181 158 181 174 L181 339 C181 355 194 363 208 354 L344 272 C359 263 359 247 344 238Z" fill="#FFFFFF"/>
   </g>
 </svg>
