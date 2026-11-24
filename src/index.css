@@ -189,7 +189,13 @@ html[data-ui-theme="dark"] .text-gray-50,
 html[data-ui-theme="dark"] .text-gray-100,
 html[data-ui-theme="dark"] .text-slate-50,
 html[data-ui-theme="dark"] .text-slate-100 {
-  color: #858b98 !important;
+  color: #c0c4cc !important;
+}
+
+/* Keep action labels readable against saturated BUY/SELL and utility buttons
+   even while neutral dashboard copy uses the softer 80% text tone. */
+html[data-ui-theme="dark"] .theme-action-contrast {
+  color: #ffffff !important;
 }
 
 
