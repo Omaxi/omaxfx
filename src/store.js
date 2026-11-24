@@ -296,10 +296,6 @@ export const useStore = create((set, get) => ({
   isEquityOpen: false,
   isInfoOpen: false,
   isAnalyticsOpen: false,
-  analyticsSnapshot: null,
-  isPreviousSessionsOpen: false,
-  openPreviousSessions: () => set({ isPreviousSessionsOpen: true }),
-  closePreviousSessions: () => set({ isPreviousSessionsOpen: false }),
   isThemeOpen: false,
   orderSide: 'buy',
 
@@ -579,9 +575,8 @@ export const useStore = create((set, get) => ({
   closeEquity: () => set({ isEquityOpen: false }),
   openInfo: () => set({ isInfoOpen: true }),
   closeInfo: () => set({ isInfoOpen: false }),
-  openAnalytics: () => set({ isAnalyticsOpen: true, analyticsSnapshot: null }),
-  openAnalyticsForSession: (session) => set({ isAnalyticsOpen: true, analyticsSnapshot: session, isPreviousSessionsOpen: false }),
-  closeAnalytics: () => set({ isAnalyticsOpen: false, analyticsSnapshot: null }),
+  openAnalytics: () => set({ isAnalyticsOpen: true }),
+  closeAnalytics: () => set({ isAnalyticsOpen: false }),
   openTheme: () => set({ isThemeOpen: true }),
   closeTheme: () => set({ isThemeOpen: false }),
 
