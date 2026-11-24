@@ -151,21 +151,46 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, isSelected) => {
 
 const drawPencilStroke = (ctx, stroke, pointToXY) => {
   if (!stroke.points || stroke.points.length < 2) return;
-  const points = stroke.points.map(p => Number.isFinite(p.time) && Number.isFinite(p.price) ? pointToXY(p) : p).filter(Boolean);
-  if (points.length < 2) return;
+  const rawPoints = stroke.points
+    .map(p => Number.isFinite(p.time) && Number.isFinite(p.price) ? pointToXY(p) : p)
+    .filter(p => p && Number.isFinite(p.x) && Number.isFinite(p.y));
+  if (rawPoints.length < 2) return;
+
+  // Pointer events can arrive unevenly (especially on high-DPI displays and
+  // trackpads). A light screen-space low-pass filter removes the tiny
+  // stair-step jitter without changing the market-time/price anchors stored
+  // for the drawing. Preserve the first and last points so the stroke starts
+  // and ends exactly where the user placed the pen.
+  let points = rawPoints;
+  if (rawPoints.length >= 4) {
+    for (let pass = 0; pass < 2; pass++) {
+      const smoothed = [points[0]];
+      for (let i = 1; i < points.length - 1; i++) {
+        const prev = points[i - 1];
+        const current = points[i];
+        const next = points[i + 1];
+        smoothed.push({
+          x: prev.x * 0.2 + current.x * 0.6 + next.x * 0.2,
+          y: prev.y * 0.2 + current.y * 0.6 + next.y * 0.2,
+        });
+      }
+      smoothed.push(points[points.length - 1]);
+      points = smoothed;
+    }
+  }
+
   ctx.strokeStyle = stroke.color || '#3b82f6';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.25;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.setLineDash([]);
-  // Smooth the freehand path with quadratic curves through segment midpoints.
-  // Unlike the previous uniform spline, this avoids sharp joins and overshoot
-  // when pointer samples arrive at uneven intervals.
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
   if (points.length === 2) {
     ctx.lineTo(points[1].x, points[1].y);
   } else {
+    // Quadratic midpoint interpolation gives a continuous, fluid path with
+    // no sharp joins, while the filtered samples suppress angular jitter.
     for (let i = 1; i < points.length - 1; i++) {
       const current = points[i];
       const next = points[i + 1];
