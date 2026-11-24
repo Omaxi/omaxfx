@@ -1,11 +1,29 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <g fill="none" stroke="#fff" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="512" cy="512" r="450"/>
-    <circle cx="512" cy="512" r="394" stroke-width="36"/>
-    <g stroke-width="40">
-      <path d="M330 440H220V600M220 520H320"/>
-      <path d="M404 373Q404 352 425 364L665 497Q687 510 665 526L425 674Q404 686 404 664Z"/>
-      <path d="M704 435L834 600M834 435L704 600"/>
-    </g>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">OmaxFX symbol</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#073b86"/><stop offset=".48" stop-color="#061b42"/><stop offset="1" stop-color="#010817"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".24" cy=".08" r=".82">
+      <stop offset="0" stop-color="#0875ed" stop-opacity=".48"/><stop offset="1" stop-color="#001027" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ring" x1=".12" y1=".08" x2=".88" y2=".92">
+      <stop offset="0" stop-color="#77f5ff"/><stop offset=".34" stop-color="#09c9f5"/><stop offset=".72" stop-color="#0878f2"/><stop offset="1" stop-color="#063eae"/>
+    </linearGradient>
+    <linearGradient id="play" x1=".18" y1=".08" x2=".82" y2="1">
+      <stop offset="0" stop-color="#fff"/><stop offset=".6" stop-color="#e7f4ff"/><stop offset="1" stop-color="#8ecbff"/>
+    </linearGradient>
+    <linearGradient id="orbit" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#f7fcff"/><stop offset=".5" stop-color="#fff"/><stop offset="1" stop-color="#13d8ff"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="8"/></filter>
+  </defs>
+  <rect width="512" height="512" rx="78" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="78" fill="url(#glow)"/>
+  <rect x="2" y="2" width="508" height="508" rx="76" fill="none" stroke="#0877f2" stroke-opacity=".28" stroke-width="4"/>
+  <circle cx="245" cy="226" r="154" fill="none" stroke="#087dff" stroke-opacity=".32" stroke-width="54" filter="url(#soft)"/>
+  <circle cx="245" cy="226" r="154" fill="none" stroke="url(#ring)" stroke-width="38"/>
+  <path d="M211 154 Q201 148 201 164 L201 287 Q201 303 215 295 L321 237 Q336 228 321 219 Z" fill="url(#play)" stroke="#dff7ff" stroke-opacity=".65" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M55 337 C126 359 228 321 315 264 C375 225 417 180 395 151 C437 170 424 216 380 258 C292 341 150 386 65 356 C43 348 38 337 55 337 Z" fill="url(#orbit)"/>
+  <path d="M58 338 C138 353 242 315 329 256" fill="none" stroke="#fff" stroke-opacity=".32" stroke-width="5" stroke-linecap="round"/>
 </svg>
