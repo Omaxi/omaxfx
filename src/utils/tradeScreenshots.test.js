@@ -45,6 +45,48 @@ test('scopes screenshot storage keys by session and trade ID', () => {
   assert.equal(getTradeScreenshotKey(null, 'session-a'), null);
 });
 
+test('adds dashed entry, exit, SL and TP guides only when trade levels are visually tight', () => {
+  const originalDocument = globalThis.document;
+  const dashPatterns = [];
+  const guideLabels = [];
+  const strokes = [];
+  globalThis.document = {
+    createElement: () => {
+      const context = {
+        setLineDash: pattern => dashPatterns.push(pattern.slice()),
+        fillText: value => guideLabels.push(String(value)),
+        beginPath() {}, moveTo() {}, lineTo() {}, stroke() { strokes.push(this.strokeStyle); },
+        fillRect() {}, save() {}, restore() {},
+      };
+      return {
+        getContext: () => context,
+        toDataURL: () => 'data:image/jpeg;base64,test',
+      };
+    },
+  };
+  try {
+    const base = {
+      symbol: 'XAUUSD', openTime: 2400, closeTime: 2460,
+      entryPrice: 1.01, exitPrice: 1.0101, sl: 1.0099, tp: 1.0102,
+    };
+    renderTradeScreenshot(base, candles, 1);
+    assert.ok(dashPatterns.some(pattern => pattern.length === 2 && pattern[0] > 0 && pattern[1] > 0),
+      'tight SL/TP distances should trigger dashed guides');
+    assert.ok(['ENTRY', 'EXIT', 'SL', 'TP'].every(label => guideLabels.includes(label)),
+      'the screenshot should identify each dashed trade level');
+
+    dashPatterns.length = 0;
+    guideLabels.length = 0;
+    strokes.length = 0;
+    renderTradeScreenshot({ ...base, sl: 0.95, tp: 1.08 }, candles, 1);
+    assert.equal(dashPatterns.length, 0, 'normal-sized trades should keep the clean screenshot without guide lines');
+    assert.equal(guideLabels.length, 0);
+  } finally {
+    if (originalDocument === undefined) delete globalThis.document;
+    else globalThis.document = originalDocument;
+  }
+});
+
 test('renders distinct screenshot payloads without the removed trade title header', () => {
   const originalDocument = globalThis.document;
   const fillColors = [];
