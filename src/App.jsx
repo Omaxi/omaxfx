@@ -331,10 +331,14 @@ function App() {
 
       <header className="app-header px-2 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-2">
         <div className="flex items-center gap-2 flex-shrink-0">
-          <h1 className="text-sm font-bold tracking-wider whitespace-nowrap">
-            <span className="text-blue-500">Omax</span>
-            <span className="text-white">FX</span>
-            <span className="hidden sm:inline text-gray-400 ml-1">Simulator</span>
+          <h1 className="flex items-center gap-2 whitespace-nowrap">
+            <img
+              src={`${import.meta.env.BASE_URL}omaxfx-logo.svg`}
+              alt="OmaxFX"
+              className="h-8 w-8 object-contain"
+              draggable="false"
+            />
+            <span className="hidden sm:inline text-sm font-bold tracking-wider text-gray-400">Simulator</span>
           </h1>
           {gameStarted && (
             <>
