@@ -139,24 +139,24 @@ html[data-ui-theme="dark"] select option {
 .app-header .app-header-action.header-action-new-session,
 .app-header .app-header-action.header-action-new-session svg { color: #06b6d4 !important; }
 
-.app-header .app-header-action[title="Quick guide"],
-.app-header .app-header-action[title="Quick guide"] svg { color: #3b82f6 !important; }
+.app-header .app-header-action[data-omax-tooltip="Quick guide"],
+.app-header .app-header-action[data-omax-tooltip="Quick guide"] svg { color: #3b82f6 !important; }
 
-.app-header .app-header-action[title*="Fireworks"],
-.app-header .app-header-action[title*="Fireworks"] svg { color: #f59e0b !important; }
+.app-header .app-header-action[data-omax-tooltip*="Fireworks"],
+.app-header .app-header-action[data-omax-tooltip*="Fireworks"] svg { color: #f59e0b !important; }
 
-.app-header .app-header-action[title="Save and exit OmaxFX"],
-.app-header .app-header-action[title="Save and exit OmaxFX"] svg { color: #ef4444 !important; }
+.app-header .app-header-action[data-omax-tooltip="Save and exit OmaxFX"],
+.app-header .app-header-action[data-omax-tooltip="Save and exit OmaxFX"] svg { color: #ef4444 !important; }
 
-.app-header button[title="Mute sound effects"],
-.app-header button[title="Enable sound effects"],
-.app-header button[title="Mute sound effects"] svg,
-.app-header button[title="Enable sound effects"] svg { color: #10b981 !important; }
+.app-header button[data-omax-tooltip="Mute sound effects"],
+.app-header button[data-omax-tooltip="Enable sound effects"],
+.app-header button[data-omax-tooltip="Mute sound effects"] svg,
+.app-header button[data-omax-tooltip="Enable sound effects"] svg { color: #10b981 !important; }
 
-.app-header button[title="Stop music"],
-.app-header button[title="Play music"],
-.app-header button[title="Stop music"] svg,
-.app-header button[title="Play music"] svg { color: #3b82f6 !important; }
+.app-header button[data-omax-tooltip="Stop music"],
+.app-header button[data-omax-tooltip="Play music"],
+.app-header button[data-omax-tooltip="Stop music"] svg,
+.app-header button[data-omax-tooltip="Play music"] svg { color: #3b82f6 !important; }
 
 
 /* Drawing configuration follows the active UI theme instead of inheriting
@@ -212,4 +212,58 @@ html[data-ui-theme="dark"] .indicators-panel .text-white,
 html[data-ui-theme="dark"] .indicators-panel .text-gray-200,
 html[data-ui-theme="dark"] .indicators-panel .text-gray-300 {
   color: #6b7280 !important;
+}
+
+
+/* OmaxFX custom tooltips — styled like the equity-curve information panel.
+   Native browser title bubbles are converted by TooltipLayer at runtime. */
+.omax-tooltip {
+  position: fixed;
+  z-index: 10000;
+  width: max-content;
+  max-width: min(280px, calc(100vw - 24px));
+  box-sizing: border-box;
+  padding: 10px 12px 11px;
+  border: 1px solid rgba(96, 165, 250, 0.34);
+  border-radius: 10px;
+  background: rgba(19, 23, 34, 0.97);
+  color: #f3f4f6;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(255, 255, 255, 0.025) inset;
+  backdrop-filter: blur(12px);
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 6px) scale(0.985);
+  transform-origin: center bottom;
+  transition: opacity 140ms ease, transform 140ms ease;
+  font-family: inherit;
+  line-height: 1.35;
+}
+.omax-tooltip.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+.omax-tooltip__eyebrow {
+  margin-bottom: 4px;
+  color: #60a5fa;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  line-height: 1;
+}
+.omax-tooltip__heading {
+  color: #f3f4f6;
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.omax-tooltip__detail {
+  margin-top: 3px;
+  color: #60a5fa;
+  font-size: 11px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.omax-tooltip__detail[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .omax-tooltip { transition: none; }
 }
