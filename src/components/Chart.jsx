@@ -156,20 +156,19 @@ const drawPencilStroke = (ctx, stroke, pointToXY) => {
     .filter(p => p && Number.isFinite(p.x) && Number.isFinite(p.y));
   if (rawPoints.length < 2) return;
 
-  // Smooth in screen space only. The stored points remain market time/price
-  // coordinates, so strokes stay attached to the same candles and prices
-  // when the user zooms, pans, or changes chart timeframe.
+  // Smooth screen-space noise while keeping the saved points anchored to
+  // market time/price. Re-run this after zoom/pan so drawings never drift.
   let points = rawPoints;
-  if (rawPoints.length >= 4) {
-    for (let pass = 0; pass < 3; pass++) {
+  if (rawPoints.length >= 3) {
+    for (let pass = 0; pass < 5; pass++) {
       const filtered = [points[0]];
       for (let i = 1; i < points.length - 1; i++) {
         const prev = points[i - 1];
         const current = points[i];
         const next = points[i + 1];
         filtered.push({
-          x: prev.x * 0.25 + current.x * 0.5 + next.x * 0.25,
-          y: prev.y * 0.25 + current.y * 0.5 + next.y * 0.25,
+          x: prev.x * 0.2 + current.x * 0.6 + next.x * 0.2,
+          y: prev.y * 0.2 + current.y * 0.6 + next.y * 0.2,
         });
       }
       filtered.push(points[points.length - 1]);
@@ -179,7 +178,7 @@ const drawPencilStroke = (ctx, stroke, pointToXY) => {
 
   ctx.save();
   ctx.strokeStyle = stroke.color || '#3b82f6';
-  ctx.lineWidth = 2.5;
+  ctx.lineWidth = 2.7;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.miterLimit = 2;
@@ -190,9 +189,8 @@ const drawPencilStroke = (ctx, stroke, pointToXY) => {
   if (points.length === 2) {
     ctx.lineTo(points[1].x, points[1].y);
   } else {
-    // Centripetal-style Catmull-Rom-to-Bezier conversion: unlike a chain of
-    // straight pointer samples, this produces a continuous curve with smooth
-    // tangents at every sample and avoids the visible stair-step/zigzag look.
+    // Catmull-Rom converted to cubic Beziers gives a continuous, fluid path
+    // with matching tangents instead of connecting pointer samples as angles.
     for (let i = 0; i < points.length - 1; i++) {
       const p0 = points[Math.max(0, i - 1)];
       const p1 = points[i];
@@ -976,6 +974,7 @@ export default function Chart({ chartId = 'main' }) {
           color: state.pencilColor,
           points: [xyToPoint(x, y)].filter(Boolean),
           lastScreen: { x, y },
+          smoothScreen: { x, y },
         };
         try { container.setPointerCapture(e.pointerId); } catch (error) {}
         scheduleDrawRef.current();
@@ -1214,11 +1213,22 @@ export default function Chart({ chartId = 'main' }) {
         const samples = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [e];
         for (const sample of samples) {
           const local = getLocalXY(sample);
-          if (Math.hypot(local.x - stroke.lastScreen.x, local.y - stroke.lastScreen.y) < 1.25) continue;
-          const marketPoint = xyToPoint(local.x, local.y);
+          if (Math.hypot(local.x - stroke.lastScreen.x, local.y - stroke.lastScreen.y) < 0.75) continue;
+
+          // Apply a responsive low-pass filter to raw pointer samples before
+          // converting them into chart coordinates. This removes hand jitter
+          // at capture time, rather than relying only on visual smoothing.
+          const previous = stroke.smoothScreen || stroke.lastScreen;
+          const alpha = 0.45;
+          const smooth = {
+            x: previous.x + (local.x - previous.x) * alpha,
+            y: previous.y + (local.y - previous.y) * alpha,
+          };
+          const marketPoint = xyToPoint(smooth.x, smooth.y);
           if (marketPoint) {
             stroke.points.push(marketPoint);
             stroke.lastScreen = local;
+            stroke.smoothScreen = smooth;
           }
         }
         scheduleDrawRef.current();
@@ -1301,8 +1311,13 @@ export default function Chart({ chartId = 'main' }) {
       if (state.isPencilMode && currentPencilRef.current) {
         const stroke = currentPencilRef.current;
         const { x, y } = getLocalXY(e);
-        if (Math.hypot(x - stroke.lastScreen.x, y - stroke.lastScreen.y) >= 1) {
-          const finalPoint = xyToPoint(x, y);
+        if (Math.hypot(x - stroke.lastScreen.x, y - stroke.lastScreen.y) >= 0.75) {
+          const previous = stroke.smoothScreen || stroke.lastScreen;
+          const smoothEnd = {
+            x: previous.x + (x - previous.x) * 0.55,
+            y: previous.y + (y - previous.y) * 0.55,
+          };
+          const finalPoint = xyToPoint(smoothEnd.x, smoothEnd.y);
           if (finalPoint) stroke.points.push(finalPoint);
         }
         currentPencilRef.current = null;
