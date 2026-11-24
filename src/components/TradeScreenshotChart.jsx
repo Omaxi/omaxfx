@@ -25,9 +25,10 @@ export default function TradeScreenshotChart({ trade, candles, timeframe = 1 }) 
         textColor: light ? '#667085' : '#9aa4b2',
         fontSize: 10,
       },
+      // Historical trade charts intentionally have no background grid.
       grid: {
-        vertLines: { color: light ? 'rgba(148,163,184,0.10)' : 'rgba(148,163,184,0.06)' },
-        horzLines: { color: light ? 'rgba(148,163,184,0.14)' : 'rgba(148,163,184,0.10)' },
+        vertLines: { visible: false },
+        horzLines: { visible: false },
       },
       rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.12, bottom: 0.12 } },
       timeScale: { timeVisible: true, secondsVisible: false, borderVisible: false, rightOffset: 3 },
