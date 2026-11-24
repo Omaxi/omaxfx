@@ -5,7 +5,7 @@ OmaxFX is a local-first market replay and manual backtesting application. No acc
 ## Run locally
 
 1. Install Node.js 20 or newer.
-2. Install dependencies once: `npm ci`.
+2. Install dependencies once: `npm install`.
 3. Start the local app: `npm run dev`.
 4. Open the localhost URL printed by Vite.
 
@@ -17,6 +17,19 @@ For a production/offline-ready build:
 4. Load the market data you need at least once. Selected CSV files are cached on this computer and can be used offline on later launches.
 
 The app shell and data catalog are precached by the service worker. CSV market files are cached locally as they are loaded. Keep the local preview server running when launching the installed local PWA.
+
+## Windows desktop application
+
+The Electron desktop build is prepared on the `feature/omaxfx-windows-desktop` branch.
+
+- `npm install` — install development/build dependencies.
+- `npm run desktop:dev` — run the app in an Electron window during development.
+- `npm run dist:win` — build the Windows NSIS installer in `release/`.
+- The installer bundles Electron/Chromium and the application assets; end users do not need Python, Node.js, or a separate Lightweight Charts installation.
+- The desktop app serves its bundled files from a loopback-only local HTTP origin. This keeps local CSV fetches working and preserves saved sessions between launches.
+- The Windows installer is built for x64 Windows 10 and Windows 11. Clients can install it with the normal setup wizard.
+
+A GitHub Actions workflow named **Build OmaxFX Windows installer** also builds the installer on pushes to the desktop branch and uploads the setup executable as a workflow artifact.
 
 ## Add or update market data
 
