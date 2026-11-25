@@ -1,7 +1,7 @@
 import Papa from 'papaparse';
 
 const aliases = {
-  time: ['time', 'timestamp', 'datetime', 'date time', 'gmt time', 'utc time', 'local time'],
+  time: ['time', 'timestamp', 'time stamp', 'datetime', 'date time', 'gmt time', 'utc time', 'local time'],
   date: ['date', 'day', 'trading date'],
   clock: ['clock', 'hour', 'time of day', 'time'],
   open: ['open', 'o', 'open price', 'bid open', 'ask open', 'open bid', 'open ask'],
@@ -12,7 +12,7 @@ const aliases = {
 };
 
 const cleanHeader = value => String(value ?? '')
-  .replace(/^\uFEFF/, '').trim().toLowerCase()
+  .replace(/^\uFEFF/, '').replace(/([a-z])([A-Z])/g, '$1 $2').trim().toLowerCase()
   .replace(/[<>()[\]{}]/g, ' ')
   .replace(/[._\/-]+/g, ' ').replace(/\s+/g, ' ').trim();
 
