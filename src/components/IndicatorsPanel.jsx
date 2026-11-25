@@ -481,7 +481,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
     }
     // Only show indicator values when the user has explicitly enabled that indicator.
     // ATR is calculated only from completed 1-hour bars.
-    const calculated = calculateIndicators(visibleData, config, dashboardActive, timeframe, sessionCandles);
+    const calculated = calculateIndicators(visibleData, config, active, timeframe, sessionCandles);
     Object.entries(seriesRef.current).forEach(([key, series]) => {
       try { series.setData(calculated[key] || []); } catch (e) {}
     });
