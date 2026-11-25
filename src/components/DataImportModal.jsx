@@ -190,7 +190,7 @@ export default function DataImportModal() {
                   <span>Invalid rows</span><span className="text-right text-white">{status.invalidRows ?? customParsed.invalidRows ?? 0}</span>
                   <span>Duplicate rows</span><span className="text-right text-white">{status.duplicateRows ?? customParsed.duplicateRows ?? 0}</span>
                   <span>Detected columns</span><span className="text-right text-white">{(customParsed.fields || []).join(', ')}</span>
-                  <span>Data range (UTC+3)</span><span className="text-right text-white">{customParsed.candles.length ? `${new Date((customParsed.candles[0].time + (customParsed.timestampsAreUtc ? 0 : 0)) * 1000).toISOString().slice(0, 16).replace('T', ' ')} → ${new Date((customParsed.candles.at(-1).time) * 1000).toISOString().slice(0, 16).replace('T', ' ')}` : '—'}</span>
+                  <span>Data range (UTC+3)</span><span className="text-right text-white">{customParsed.candles.length ? `${new Date((customParsed.candles[0].time + (customParsed.timestampsAreUtc ? UTC_PLUS_3_SECONDS : 0)) * 1000).toISOString().slice(0, 16).replace('T', ' ')} → ${new Date((customParsed.candles.at(-1).time) * 1000).toISOString().slice(0, 16).replace('T', ' ')}` : '—'}</span>
                 </div>
               </div>
             )}
