@@ -199,23 +199,16 @@ async function inspectCsv(file) {
 }
 
 export function parseMarketCsvText(text) {
-  const sample = Papa.parse(String(text).slice(0, 256 * 1024), { skipEmptyLines: 'greedy', preview: 12 });
+  const raw = String(text);
+  const sample = Papa.parse(raw.slice(0, 256 * 1024), { skipEmptyLines: 'greedy', preview: 12 });
   const info = findHeaderInfo(sample.data || []);
   const delimiter = sample.meta?.delimiter || ',';
   const sampleRows = sample.data || [];
   const decimalComma = delimiter !== ',' && sampleRows.some(row => Array.isArray(row) && row.some(value => typeof value === 'string' && /^-?\\d+,\\d+$/.test(value.trim())));
-  const full = Papa.parse(String(text), {
-    delimiter,
-    header: info.header,
-    skipEmptyLines: 'greedy',
-  });
-  if (info.headerRowIndex > 0) full.data = full.data.slice(info.headerRowIndex);
-  const normalizer = createRowNormalizer(info.fields, {
-    headerless: !info.header,
-    delimiter: full.meta?.delimiter || delimiter,
-    decimalComma,
-  });
-  normalizer.addRows(full.data);
+  const content = raw.split(/\\r\\n|\\n|\\r/).slice(info.headerRowIndex).join('\\n');
+  const full = Papa.parse(content, { delimiter, header: info.header, skipEmptyLines: 'greedy', dynamicTyping: false });
+  const normalizer = createRowNormalizer(info.fields, { headerless: !info.header, delimiter, decimalComma });
+  normalizer.addRows(full.data || []);
   return normalizer.finish(full.errors?.length || 0);
 }
 
