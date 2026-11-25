@@ -1331,7 +1331,17 @@ export default function Chart({ chartId = 'main' }) {
       }
 
       if (dragDrawRef.current && draftRef.current) {
-        const point = xyToPoint(x, y);
+        let point = xyToPoint(x, y);
+        if (point && e.shiftKey && dragDrawRef.current.tool === 'trendline') {
+          const anchor = dragDrawRef.current.startPoint;
+          const anchorXY = pointToXY(anchor);
+          if (anchorXY) {
+            const dx = x - anchorXY.x;
+            const dy = y - anchorXY.y;
+            point = xyToPoint(Math.abs(dx) >= Math.abs(dy) ? x : anchorXY.x,
+                              Math.abs(dx) >= Math.abs(dy) ? anchorXY.y : y) || point;
+          }
+        }
         if (point) {
           draftRef.current = {
             ...draftRef.current,
