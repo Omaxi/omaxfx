@@ -73,7 +73,7 @@
         }
       ],
       "icon": "build/icon.ico",
-      "artifactName": "OmaxFX-Setup.${ext}"
+      "artifactName": "OmaxFX-Simulator.${ext}"
     },
     "nsis": {
       "oneClick": false,
