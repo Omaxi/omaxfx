@@ -190,7 +190,25 @@ function parseTimestamp(row, columns) {
 
 function createRowNormalizer(fields = []) {
   if (!fields.length) throw new Error('The CSV has no readable header row.');
-  const columns = resolveColumns(fields);
+  let columns = resolveColumns(fields);
+  let headerlessFirstRow = null;
+  const missingColumns = ['open', 'high', 'low', 'close'].filter((field) => !columns[field]);
+  if (missingColumns.length || (!columns.datetime && !(columns.date && columns.clock))) {
+    const first = fields.map(value => String(value ?? '').trim());
+    const dateLike = parseDateParts(first[0]) !== null;
+    const clockLike = parseClockParts(first[1]) !== null;
+    const ohlcStart = dateLike && clockLike ? 2 : 1;
+    const timestampLike = dateLike || Number(first[0]) > 1e9 || /^\\d{4}\\d{2}\\d{2}T/i.test(first[0]);
+    const hasPrices = first.slice(ohlcStart, ohlcStart + 4).length === 4 && first.slice(ohlcStart, ohlcStart + 4).every(value => Number.isFinite(parseNumeric(value)));
+    if (timestampLike && hasPrices) {
+      if (dateLike && clockLike) {
+        columns = { ...columns, date: fields[0], clock: fields[1], open: fields[2], high: fields[3], low: fields[4], close: fields[5], volume: fields[6] || null };
+      } else {
+        columns = { ...columns, datetime: fields[0], open: fields[1], high: fields[2], low: fields[3], close: fields[4], volume: fields[5] || null };
+      }
+      headerlessFirstRow = Object.fromEntries(fields.map((field, index) => [field, field]));
+    }
+  }
   const missing = ['open', 'high', 'low', 'close'].filter((field) => !columns[field]);
   if (missing.length) {
     throw new Error('Could not identify required price columns (' + missing.join(', ') + '). Detected headers: ' + fields.join(', ') + '. Supported examples include Date, Time, Open, High, Low, Close; Timestamp, O, H, L, C; and broker Bid/Ask OHLC exports.');
@@ -206,6 +224,11 @@ function createRowNormalizer(fields = []) {
   let isChronological = true;
 
   const addRows = (rows) => {
+    if (headerlessFirstRow) {
+      const firstRow = headerlessFirstRow;
+      headerlessFirstRow = null;
+      addRows([firstRow]);
+    }
     for (const row of rows) {
       const parsedTimestamp = parseTimestamp(row, columns);
       const time = parsedTimestamp?.time;
