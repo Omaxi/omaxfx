@@ -16,6 +16,22 @@ const cleanHeader = value => String(value ?? '')
   .replace(/[<>()[\]{}]/g, ' ')
   .replace(/[._\/-]+/g, ' ').replace(/\s+/g, ' ').trim();
 
+function detectDelimiter(sampleText) {
+  const candidates = [',', ';', '\\t', '|'];
+  const ranked = candidates.map(delimiter => {
+    const rows = Papa.parse(sampleText, { delimiter, skipEmptyLines: 'greedy', preview: 12 }).data
+      .filter(row => Array.isArray(row) && row.some(value => String(value ?? '').trim() !== ''));
+    const widths = rows.map(row => row.length);
+    const counts = new Map();
+    widths.forEach(width => counts.set(width, (counts.get(width) || 0) + 1));
+    const modeWidth = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || 1;
+    const consistency = (counts.get(modeWidth) || 0) / Math.max(1, widths.length);
+    const score = consistency * 100 + Math.min(modeWidth, 12) * 2 - Math.max(0, modeWidth - 12) * 20;
+    return { delimiter, score, modeWidth };
+  });
+  return ranked.sort((a, b) => b.score - a.score)[0]?.delimiter || ',';
+}
+
 function normalizeNumber(value, decimalComma) {
   if (typeof value === 'number') return value;
   let raw = String(value ?? '').trim().replace(/[\s'’]/g, '');
@@ -190,19 +206,20 @@ export function normalizeMarketRows(parsed) {
 
 async function inspectCsv(file) {
   const sample = await file.slice(0, Math.min(file.size || 256 * 1024, 256 * 1024)).text();
-  const parsed = Papa.parse(sample, { skipEmptyLines: 'greedy', preview: 12 });
+  const delimiter = detectDelimiter(sample);
+  const parsed = Papa.parse(sample, { delimiter, skipEmptyLines: 'greedy', preview: 12 });
   const info = findHeaderInfo(parsed.data || []);
   const rows = info.header ? parsed.data.slice(info.headerRowIndex + 1) : parsed.data;
-  const delimiter = parsed.meta?.delimiter || ',';
   const decimalComma = delimiter !== ',' && rows.some(row => Array.isArray(row) && row.some(value => typeof value === 'string' && /^-?\d+,\d+$/.test(value.trim())));
   return { ...info, delimiter, decimalComma };
 }
 
 export function parseMarketCsvText(text) {
   const raw = String(text);
-  const sample = Papa.parse(raw.slice(0, 256 * 1024), { skipEmptyLines: 'greedy', preview: 12 });
+  const sampleText = raw.slice(0, 256 * 1024);
+  const delimiter = detectDelimiter(sampleText);
+  const sample = Papa.parse(sampleText, { delimiter, skipEmptyLines: 'greedy', preview: 12 });
   const info = findHeaderInfo(sample.data || []);
-  const delimiter = sample.meta?.delimiter || ',';
   const sampleRows = sample.data || [];
   const decimalComma = delimiter !== ',' && sampleRows.some(row => Array.isArray(row) && row.some(value => typeof value === 'string' && /^-?\\d+,\\d+$/.test(value.trim())));
   const content = raw.split(/\\r\\n|\\n|\\r/).slice(info.headerRowIndex).join('\\n');
