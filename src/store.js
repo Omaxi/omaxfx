@@ -537,18 +537,30 @@ export const useStore = create((set, get) => ({
   }),
 
   jumpToSession: (session) => set((state) => {
-    if (!state.rawData.length) return state;
+    if (!state.rawData.length || !state.rawData[state.currentIndex]) return state;
     const startHour = Number(state.sessionTimes?.[session]);
     const endHour = Number(state.sessionEndTimes?.[session]);
     if (!Number.isFinite(startHour) || !Number.isFinite(endHour) || endHour <= startHour) return state;
 
-    // Find the next available candle within the configured broker UTC+3 session.
-    const nextIndex = state.rawData.findIndex((candle, index) => {
-      if (index <= state.currentIndex) return false;
-      const marketDate = new Date((Number(candle.time) + 3 * 3600) * 1000);
-      const minuteOfDay = marketDate.getUTCHours() * 60 + marketDate.getUTCMinutes();
-      return minuteOfDay >= startHour * 60 && minuteOfDay < endHour * 60;
-    });
+    // Resolve the next session start in broker UTC+3 time. If the replay
+    // cursor has already passed today's start, jump to tomorrow's window.
+    const currentMarketDate = new Date((Number(state.rawData[state.currentIndex].time) + 3 * 3600) * 1000);
+    const marketDayStart = Date.UTC(
+      currentMarketDate.getUTCFullYear(),
+      currentMarketDate.getUTCMonth(),
+      currentMarketDate.getUTCDate()
+    ) / 1000;
+    let sessionStart = marketDayStart + startHour * 3600 - 3 * 3600;
+    if (Number(state.rawData[state.currentIndex].time) >= sessionStart) sessionStart += 86400;
+    const sessionEnd = sessionStart + (endHour - startHour) * 3600;
+
+    // Use the first available candle inside the window, even when the CSV
+    // does not contain a candle at the exact :00 start minute.
+    const nextIndex = state.rawData.findIndex((candle, index) =>
+      index > state.currentIndex &&
+      Number(candle.time) >= sessionStart &&
+      Number(candle.time) < sessionEnd
+    );
     if (nextIndex < 0) return state;
     return {
       currentIndex: nextIndex,
