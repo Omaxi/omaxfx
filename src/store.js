@@ -85,9 +85,12 @@ const DEFAULT_THEME = {
   downWick: '#59616e',
 };
 const DEFAULT_SESSION_COLORS = { asia: '#f59e0b', london: '#38bdf8', newyork: '#fb7185' };
+export const DEFAULT_SESSION_TIMES = { asian: 3, london: 11, newyork: 16 };
+export const DEFAULT_SESSION_END_TIMES = { asian: 8, london: 13, newyork: 18 };
 const DEFAULT_DRAWING_STYLES = {
-  vertical: { color: '#3b82f6', lineWidth: 1 },
-  horizontal: { color: '#3b82f6', lineWidth: 1 },
+  vertical: { color: '#3b82f6', lineWidth: 1, lineStyle: 'solid' },
+  horizontal: { color: '#3b82f6', lineWidth: 1, lineStyle: 'solid' },
+  trendline: { color: '#3b82f6', lineWidth: 1, lineStyle: 'solid' },
 };
 
 const DEFAULT_RULES = {
@@ -123,8 +126,8 @@ export const useStore = create((set, get) => ({
   symbolWarning: null,
   clearSymbolWarning: () => set({ symbolWarning: null }),
 
-  sessionTimes: { asian: 3, london: 11, newyork: 16 },
-  sessionEndTimes: { asian: 8, london: 13, newyork: 18 },
+  sessionTimes: { ...DEFAULT_SESSION_TIMES },
+  sessionEndTimes: { ...DEFAULT_SESSION_END_TIMES },
   sessionColors: { ...DEFAULT_SESSION_COLORS },
   setSessionColor: (key, color) => set((state) => ({
     sessionColors: { ...state.sessionColors, [key]: color },
@@ -132,6 +135,7 @@ export const useStore = create((set, get) => ({
   drawingStyles: {
     vertical: { ...DEFAULT_DRAWING_STYLES.vertical },
     horizontal: { ...DEFAULT_DRAWING_STYLES.horizontal },
+    trendline: { ...DEFAULT_DRAWING_STYLES.trendline },
   },
   setDrawingStyle: (key, patch) => set((state) => ({
     drawingStyles: { ...state.drawingStyles, [key]: { ...state.drawingStyles[key], ...patch } },
@@ -139,6 +143,7 @@ export const useStore = create((set, get) => ({
       ...d,
       ...(patch.color ? { color: patch.color, borderColor: patch.color } : {}),
       ...(patch.lineWidth != null ? { lineWidth: patch.lineWidth } : {}),
+      ...(patch.lineStyle ? { lineStyle: patch.lineStyle } : {}),
     } : d),
   })),
 
@@ -363,7 +368,8 @@ export const useStore = create((set, get) => ({
       borderColor: drawing.borderColor || drawing.color || '#3b82f6',
       fillColor: drawing.fillColor || '#3b82f633',
       lineWidth: drawing.lineWidth ?? state.drawingStyles?.[drawing.type]?.lineWidth ?? 1,
-      ...(drawing.type === 'vertical' || drawing.type === 'horizontal'
+      lineStyle: drawing.lineStyle ?? state.drawingStyles?.[drawing.type]?.lineStyle ?? 'solid',
+      ...(drawing.type === 'vertical' || drawing.type === 'horizontal' || drawing.type === 'trendline'
         ? { color: state.drawingStyles?.[drawing.type]?.color || drawing.color || '#3b82f6',
             borderColor: state.drawingStyles?.[drawing.type]?.color || drawing.borderColor || drawing.color || '#3b82f6' }
         : {}),
@@ -531,25 +537,21 @@ export const useStore = create((set, get) => ({
   }),
 
   jumpToSession: (session) => set((state) => {
-    if (state.rawData.length === 0) return state;
-    const targetHour = state.sessionTimes[session];
-    if (targetHour == null) return state;
-    
-    const maxScan = Math.min(state.rawData.length, state.currentIndex + 5000);
-    let targetIndex = -1;
-    
-    for (let i = state.currentIndex + 1; i < maxScan; i++) {
-      // Stored candle epochs are UTC; add the configured UTC+3 market offset once.
-      const d = new Date((state.rawData[i].time + 3 * 3600) * 1000);
-      if (d.getUTCHours() === targetHour && d.getUTCMinutes() === 0) {
-        targetIndex = i;
-        break;
-      }
-    }
-    
-    if (targetIndex === -1) return state;
-    return { 
-      currentIndex: targetIndex, 
+    if (!state.rawData.length) return state;
+    const startHour = Number(state.sessionTimes?.[session]);
+    const endHour = Number(state.sessionEndTimes?.[session]);
+    if (!Number.isFinite(startHour) || !Number.isFinite(endHour) || endHour <= startHour) return state;
+
+    // Find the next available candle within the configured broker UTC+3 session.
+    const nextIndex = state.rawData.findIndex((candle, index) => {
+      if (index <= state.currentIndex) return false;
+      const marketDate = new Date((Number(candle.time) + 3 * 3600) * 1000);
+      const minuteOfDay = marketDate.getUTCHours() * 60 + marketDate.getUTCMinutes();
+      return minuteOfDay >= startHour * 60 && minuteOfDay < endHour * 60;
+    });
+    if (nextIndex < 0) return state;
+    return {
+      currentIndex: nextIndex,
       isPlaying: false,
       recenterToken: state.recenterToken + 1,
     };
