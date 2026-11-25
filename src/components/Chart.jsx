@@ -608,51 +608,8 @@ export default function Chart({ chartId = 'main' }) {
       ctx.clip();
       const state = useStore.getState();
 
-      // Shade each configured trading-session window across the full chart pane.
-      // Internal timestamps are stored three hours behind the broker's UTC+3 clock.
-      const sessionStarts = { asian: 3, london: 11, newyork: 16, ...(state.sessionTimes || {}) };
-      const sessionEnds = { asian: 8, london: 13, newyork: 18, ...(state.sessionEndTimes || {}) };
-      const sessionMeta = [
-        { key: 'asian', label: 'ASIA' },
-        { key: 'london', label: 'LONDON' },
-        { key: 'newyork', label: 'NEW YORK' },
-      ];
-      const visibleBars = visibleDataRef.current;
-      if (visibleBars.length) {
-        const firstMarketDate = toMarketDate(Number(visibleBars[0].time));
-        const lastMarketDate = toMarketDate(Number(visibleBars[visibleBars.length - 1].time));
-        if (firstMarketDate && lastMarketDate) {
-          const firstDay = Date.UTC(firstMarketDate.getUTCFullYear(), firstMarketDate.getUTCMonth(), firstMarketDate.getUTCDate());
-          const lastDay = Date.UTC(lastMarketDate.getUTCFullYear(), lastMarketDate.getUTCMonth(), lastMarketDate.getUTCDate());
-          for (let day = firstDay; day <= lastDay; day += 86400000) {
-            sessionMeta.forEach(session => {
-              const startHour = Number(sessionStarts[session.key]);
-              const endHour = Number(sessionEnds[session.key]);
-              if (!Number.isFinite(startHour) || !Number.isFinite(endHour) || endHour <= startHour) return;
-              const startTime = day / 1000 + startHour * 3600 - 10800;
-              const endTime = day / 1000 + endHour * 3600 - 10800;
-              const x1 = timeToX(startTime);
-              const x2 = timeToX(endTime);
-              if (x1 == null || x2 == null || !Number.isFinite(x1) || !Number.isFinite(x2)) return;
-              const left = Math.max(0, Math.min(paneW, Math.min(x1, x2)));
-              const right = Math.max(0, Math.min(paneW, Math.max(x1, x2)));
-              if (right <= left) return;
-              const color = state.sessionColors?.[session.key] || '#64748b';
-              ctx.save();
-              ctx.globalAlpha = 0.10;
-              ctx.fillStyle = color;
-              ctx.fillRect(left, 0, right - left, paneH);
-              ctx.globalAlpha = 0.75;
-              ctx.fillStyle = color;
-              ctx.font = '600 9px Arial';
-              ctx.textAlign = 'left';
-              ctx.textBaseline = 'top';
-              ctx.fillText(session.label, left + 5, 5);
-              ctx.restore();
-            });
-          }
-        }
-      }
+      // Session shading is rendered only by the Sessions indicator canvas.
+      // Keeping one renderer prevents duplicate bands/boxes and color mismatches.
 
       // Draw Entry / SL / TP as full-width, directly draggable horizontal levels.
       // This is the classic chart-level interaction: users grab the price line
@@ -1839,7 +1796,7 @@ export default function Chart({ chartId = 'main' }) {
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
       <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 25 }} aria-hidden="true" />
 
-      {gameStarted && !chartUiPanelsHidden && <div className="live-information-panel absolute top-2 right-[72px] left-auto z-[10] w-[min(180px,calc(100%-5rem))] rounded-none border-0 p-0 text-[9px] leading-4 text-gray-300 shadow-none pointer-events-auto font-mono" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : theme.background }}>
+      {gameStarted && !chartUiPanelsHidden && <div className="live-information-panel absolute top-2 right-[72px] left-auto z-[10] w-[min(230px,calc(100%-5rem))] rounded-lg border border-[#343b49] p-3 text-[9px] leading-4 text-gray-300 shadow-lg pointer-events-auto font-mono" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : theme.background }}>
         <button type="button" onClick={() => setDashboardCollapsed(value => !value)}
           aria-expanded={!dashboardCollapsed}
           className="mb-1 flex w-full items-center justify-between gap-2 rounded text-left hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500">
