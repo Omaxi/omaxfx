@@ -265,9 +265,6 @@ function createRowNormalizer(fields = []) {
       unique.push(candle);
       lastTime = candle.time;
     }
-    if (unique.length < 2) {
-      throw new Error('Only ' + unique.length + ' unique candle was found. At least two different timestamps are required for replay.');
-    }
     return {
       candles: unique,
       invalidRows,
