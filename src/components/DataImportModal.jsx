@@ -110,7 +110,7 @@ export default function DataImportModal() {
         const marketDate = new Date((normalizedTime + UTC_PLUS_3_SECONDS) * 1000);
         return `${marketDate.getUTCFullYear()}-${String(marketDate.getUTCMonth() + 1).padStart(2, '0')}`;
       }));
-      setCustomMonth([...months].sort().at(-1) || '__ALL__');
+      setCustomMonth('__ALL__');
       setStatus({
         loading: false, error: '', progress: 100, fileName: selectedFile.name, stage: 'verified',
         detectedFormat: parsed.detectedFormat, candleCount: parsed.candles.length,
