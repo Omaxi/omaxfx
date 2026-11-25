@@ -34,7 +34,7 @@ const TIMEZONES = [
 ];
 
 const SESSIONS = [
-  { key: 'asian',   label: 'Asian & Sydney', icon: Sunrise, color: 'text-orange-400' },
+  { key: 'asian',   label: 'Asia', icon: Sunrise, color: 'text-orange-400' },
   { key: 'london',  label: 'London',   icon: Sun,     color: 'text-blue-400' },
   { key: 'newyork', label: 'New York', icon: Sunset,  color: 'text-purple-400' },
 ];
