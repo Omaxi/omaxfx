@@ -121,8 +121,8 @@ export default function StylePanel({ selectedId, onClose }) {
           </>
         ) : (
           <>
-            {/* Show Border Toggle */}
-            <div className="flex items-center justify-between">
+            {/* Show Border Toggle — only applies to filled shapes */}
+            {!isAxisLine && <div className="flex items-center justify-between">
               <div className="text-[10px] text-gray-400 uppercase font-bold">Show Border Line</div>
               <button
                 onClick={() => commit({ showBorder: !showBorder })}
@@ -130,7 +130,7 @@ export default function StylePanel({ selectedId, onClose }) {
               >
                 <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${showBorder ? 'left-4' : 'left-0.5'}`} />
               </button>
-            </div>
+            </div>}
 
             {/* Border/Line color */}
             <div>
