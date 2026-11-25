@@ -84,7 +84,7 @@ const DEFAULT_THEME = {
   upWick: '#0897a7',
   downWick: '#59616e',
 };
-const DEFAULT_SESSION_COLORS = { asia: '#f59e0b', london: '#38bdf8', newyork: '#fb7185' };
+const DEFAULT_SESSION_COLORS = { asia: '#737373', london: '#38bdf8', newyork: '#fb7185' };
 export const DEFAULT_SESSION_TIMES = { asian: 3, london: 11, newyork: 16 };
 export const DEFAULT_SESSION_END_TIMES = { asian: 8, london: 13, newyork: 18 };
 const DEFAULT_DRAWING_STYLES = {
