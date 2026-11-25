@@ -32,6 +32,32 @@ function App() {
     symbolWarning, clearSymbolWarning,
   } = useStore();
   const soundtrackStarted = useRef(false);
+  // Disable native browser hover tooltips across the entire application.
+  // Watch the DOM so title attributes added by dynamically rendered controls are removed too.
+  useEffect(() => {
+    const stripTooltips = (root) => {
+      if (root?.nodeType === 1 && root.hasAttribute?.('title')) root.removeAttribute('title');
+      root?.querySelectorAll?.('[title]').forEach((element) => element.removeAttribute('title'));
+    };
+    stripTooltips(document.documentElement);
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'title') {
+          mutation.target.removeAttribute('title');
+        } else {
+          mutation.addedNodes.forEach(stripTooltips);
+        }
+      }
+    });
+    observer.observe(document.documentElement, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['title'],
+    });
+    return () => observer.disconnect();
+  }, []);
+
   useEffect(() => {
     document.documentElement.dataset.uiTheme = 'dark';
     window.dispatchEvent(new CustomEvent('omaxfx-ui-theme-change', { detail: 'dark' }));
