@@ -74,6 +74,22 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, isSelected) => {
       ctx.lineTo(pts[1].x, pts[1].y);
       ctx.stroke();
     }
+  } else if (drawing.type === 'arrow' && pts.length >= 2) {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
+    const end = pts[pts.length - 1];
+    const before = pts[pts.length - 2];
+    const angle = Math.atan2(end.y - before.y, end.x - before.x);
+    const headLength = 13;
+    const headAngle = Math.PI / 7;
+    ctx.beginPath();
+    ctx.moveTo(end.x, end.y);
+    ctx.lineTo(end.x - headLength * Math.cos(angle - headAngle), end.y - headLength * Math.sin(angle - headAngle));
+    ctx.moveTo(end.x, end.y);
+    ctx.lineTo(end.x - headLength * Math.cos(angle + headAngle), end.y - headLength * Math.sin(angle + headAngle));
+    ctx.stroke();
   } else if (drawing.type === 'rectangle' && pts.length === 2) {
     const x = Math.min(pts[0].x, pts[1].x);
     const y = Math.min(pts[0].y, pts[1].y);
@@ -132,10 +148,10 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, isSelected) => {
       ctx.moveTo(x, 0);
       ctx.lineTo(x, canvasH);
       ctx.stroke();
-    } else if (drawing.type === 'trendline' && pts.length === 2) {
+    } else if ((drawing.type === 'trendline' || drawing.type === 'arrow') && pts.length >= 2) {
       ctx.beginPath();
       ctx.moveTo(pts[0].x, pts[0].y);
-      ctx.lineTo(pts[1].x, pts[1].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
       ctx.stroke();
     } else if (pts.length === 2) {
       const x1 = Math.min(pts[0].x, pts[1].x);
@@ -892,9 +908,11 @@ export default function Chart({ chartId = 'main' }) {
           if (Math.abs(y - pts[0].y) < BODY_TOL) return { drawingId: d.id, mode: 'drag-body' };
         } else if (d.type === 'vertical' && pts[0]) {
           if (Math.abs(x - pts[0].x) < BODY_TOL) return { drawingId: d.id, mode: 'drag-body' };
-        } else if (d.type === 'trendline' && pts.length === 2) {
-          if (distToSegment(x, y, pts[0].x, pts[0].y, pts[1].x, pts[1].y) < BODY_TOL)
-            return { drawingId: d.id, mode: 'drag-body' };
+        } else if ((d.type === 'trendline' && pts.length === 2) || (d.type === 'arrow' && pts.length >= 2)) {
+          for (let j = 1; j < pts.length; j++) {
+            if (distToSegment(x, y, pts[j - 1].x, pts[j - 1].y, pts[j].x, pts[j].y) < BODY_TOL)
+              return { drawingId: d.id, mode: 'drag-body' };
+          }
         } else if ((d.type === 'rectangle' || d.type === 'fibonacci') && pts.length === 2) {
           const x1 = Math.min(pts[0].x, pts[1].x), x2 = Math.max(pts[0].x, pts[1].x);
           const y1 = Math.min(pts[0].y, pts[1].y), y2 = Math.max(pts[0].y, pts[1].y);
@@ -1002,7 +1020,35 @@ export default function Chart({ chartId = 'main' }) {
         if (!point) return;
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         const tool = state.activeDrawingTool;
-        
+
+        if (tool === 'arrow') {
+          const now = Date.now();
+          const previousTap = lastTapRef.current;
+          const isArrowDoubleClick = previousTap.time > 0 &&
+            now - previousTap.time <= 400 &&
+            Math.hypot(x - previousTap.x, y - previousTap.y) <= 14;
+          const fixedPoints = draftRef.current?.fixedPoints || [];
+          if (!fixedPoints.length) {
+            draftRef.current = { type: 'arrow', fixedPoints: [point], points: [point, point] };
+            lastTapRef.current = { time: now, x, y };
+          } else if (isArrowDoubleClick) {
+            const finalPoints = [...fixedPoints];
+            const last = finalPoints[finalPoints.length - 1];
+            if (Math.hypot(x - lastTapRef.current.x, y - lastTapRef.current.y) > 3) finalPoints.push(point);
+            if (finalPoints.length >= 2) state.addDrawing({ type: 'arrow', points: finalPoints });
+            draftRef.current = null;
+            lastTapRef.current = { time: 0, x: 0, y: 0 };
+            state.setActiveDrawingTool(null);
+          } else {
+            const last = fixedPoints[fixedPoints.length - 1];
+            if (Math.hypot(x - lastTapRef.current.x, y - lastTapRef.current.y) > 3) fixedPoints.push(point);
+            draftRef.current = { type: 'arrow', fixedPoints, points: [...fixedPoints, point] };
+            lastTapRef.current = { time: now, x, y };
+          }
+          scheduleDrawRef.current();
+          return;
+        }
+
         if (tool === 'text') {
           setTextInput({ x, y, time: point.time, price: point.price, value: '' });
           return;
@@ -1240,6 +1286,19 @@ export default function Chart({ chartId = 'main' }) {
         return;
       }
 
+      if (state.activeDrawingTool === 'arrow' && draftRef.current?.fixedPoints?.length) {
+        const point = xyToPoint(x, y);
+        if (point) {
+          draftRef.current = {
+            ...draftRef.current,
+            points: [...draftRef.current.fixedPoints, point],
+          };
+          scheduleDrawRef.current();
+        }
+        container.style.cursor = 'crosshair';
+        return;
+      }
+
       if (activePointersRef.current.size > 1) return;
 
       const dx = x - touchDownPosRef.current.x;
@@ -1417,6 +1476,7 @@ export default function Chart({ chartId = 'main' }) {
       }
       if (e.key === 'Escape') {
         draftRef.current = null;
+        lastTapRef.current = { time: 0, x: 0, y: 0 };
         dragDrawRef.current = null;
         setSelectedItem(null);
         setTextInput(null);
