@@ -58,3 +58,21 @@ test('reports unrecognized OHLC headings with actionable diagnostics', () => {
     /Could not identify required price columns/
   );
 });
+
+
+test('parses compact timestamp columns and headerless OHLC files', () => {
+  const compact = parseMarketCsvText([
+    'time,open,high,low,close',
+    '20241202010000,1.1,1.2,1.0,1.15',
+    '20241202010100,1.15,1.25,1.1,1.2',
+  ].join('\n'));
+  assert.equal(compact.candles.length, 2);
+  assert.equal(compact.candles[0].time, Date.UTC(2024, 11, 2, 1, 0, 0) / 1000);
+
+  const headerless = parseMarketCsvText([
+    '20241202,1:00:00,1.1,1.2,1.0,1.15,7',
+    '20241202,1:01:00,1.15,1.25,1.1,1.2,8',
+  ].join('\n'));
+  assert.equal(headerless.candles.length, 2);
+  assert.equal(headerless.candles[0].volume, 7);
+});
