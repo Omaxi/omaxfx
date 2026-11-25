@@ -1,85 +1,192 @@
 import Papa from 'papaparse';
 
-const aliases = {
-  time: ['time', 'timestamp', 'datetime', 'date time', 'gmt time', 'utc time'],
-  date: ['date', 'day'],
-  clock: ['clock', 'hour', 'time of day', 'time'],
-  open: ['open', 'o', 'open price'],
-  high: ['high', 'h', 'high price'],
-  low: ['low', 'l', 'low price'],
-  close: ['close', 'c', 'last', 'close price'],
-  volume: ['volume', 'vol', 'tick volume'],
+const HEADER_ALIASES = {
+  datetime: ['datetime', 'date time', 'date and time', 'date/time', 'timestamp', 'time stamp', 'unix time', 'epoch', 'gmt time', 'utc time', 'server time', 'open time'],
+  date: ['date', 'day', 'trading date', 'gmt date', 'utc date', 'server date', 'local date'],
+  clock: ['time', 'clock', 'hour', 'time of day'],
+  open: ['open', 'o', 'open price', 'opening price', 'bid open', 'ask open', 'bidopen', 'askopen'],
+  high: ['high', 'h', 'high price', 'maximum', 'bid high', 'ask high', 'bidhigh', 'askhigh'],
+  low: ['low', 'l', 'low price', 'minimum', 'bid low', 'ask low', 'bidlow', 'asklow'],
+  close: ['close', 'c', 'last', 'close price', 'closing price', 'bid close', 'ask close', 'bidclose', 'askclose'],
+  volume: ['volume', 'vol', 'tick volume', 'tickvol', 'tick volume', 'real volume', 'quantity'],
 };
 
-const cleanHeader = (value) => String(value ?? '').replace(/^\uFEFF/, '').trim().toLowerCase().replace(/[._-]+/g, ' ').replace(/\s+/g, ' ');
+const cleanHeader = (value) => String(value ?? '')
+  .replace(/^\uFEFF/, '')
+  .trim()
+  .toLowerCase()
+  .replace(/[\u00A0_./\\-]+/g, ' ')
+  .replace(/[()[\]{}]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
 
-function makeRowPicker() {
-  return (row, candidates) => {
-    for (const key of candidates) {
-      const value = row?.[key];
-      if (value !== undefined && value !== null && value !== '') return value;
-    }
-    return undefined;
-  };
+function headerScore(header, field) {
+  const normalized = cleanHeader(header);
+  const aliases = HEADER_ALIASES[field] || [];
+  if (aliases.includes(normalized)) return 100;
+  const stripped = normalized
+    .replace(/^(bid|ask|last|mid|price)\s+/, '')
+    .replace(/\s+(bid|ask|price|value|rate)$/, '')
+    .replace(/\s+(ohlc)$/, '');
+  if (aliases.includes(stripped)) return 90;
+  const compact = normalized.replace(/\s+/g, '');
+  const compactAliases = aliases.map((item) => item.replace(/\s+/g, ''));
+  if (compactAliases.includes(compact)) return 85;
+  if (field === 'open' || field === 'high' || field === 'low' || field === 'close') {
+    const token = field;
+    if (new RegExp('(^|\\s)' + token + '(\\s|$)').test(normalized) &&
+        !/(time|date|spread|change|percent|percentage)/.test(normalized)) return 50;
+  }
+  if (field === 'datetime' && /(date.*time|time.*date|timestamp)/.test(normalized)) return 80;
+  return 0;
 }
 
-function normalizeClockTime(value) {
+function resolveColumns(fields) {
+  const result = {};
+  for (const field of Object.keys(HEADER_ALIASES)) {
+    const ranked = fields.map((name, index) => ({ name, index, score: headerScore(name, field) }))
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score || a.index - b.index);
+    result[field] = ranked.length ? ranked[0].name : null;
+  }
+  // A single "time" column can contain either a full timestamp or a clock.
+  if (!result.datetime && result.clock && !result.date) result.datetime = result.clock;
+  return result;
+}
+
+function parseNumeric(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : NaN;
+  let text = String(value ?? '').trim().replace(/[\s\u00A0']/g, '');
+  if (!text) return NaN;
+  if (text.includes(',') && text.includes('.')) {
+    const decimal = text.lastIndexOf(',') > text.lastIndexOf('.') ? ',' : '.';
+    text = decimal === ',' ? text.replace(/\./g, '').replace(',', '.') : text.replace(/,/g, '');
+  } else if (text.includes(',')) {
+    const parts = text.split(',');
+    text = parts.length === 2 && parts[1].length !== 3 ? parts[0] + '.' + parts[1] : text.replace(/,/g, '');
+  }
+  const number = Number(text);
+  return Number.isFinite(number) ? number : NaN;
+}
+
+function validUtcParts(year, month, day, hour = 0, minute = 0, second = 0, ms = 0) {
+  if (![year, month, day, hour, minute, second, ms].every(Number.isFinite)) return NaN;
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59) return NaN;
+  const value = Date.UTC(year, month - 1, day, hour, minute, second, ms);
+  const date = new Date(value);
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return NaN;
+  return Math.floor(value / 1000);
+}
+
+function parseDateParts(value) {
   const raw = String(value ?? '').trim();
-  const match = raw.match(/^(\d{1,2}):(\d{2})(?::(\d{2})(\.\d+)?)?$/);
-  if (!match) return raw;
-  const hour = match[1].padStart(2, '0');
-  const seconds = match[3] == null ? '' : `:${match[3]}${match[4] || ''}`;
-  return `${hour}:${match[2]}${seconds}`;
+  let match = raw.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (match) return { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) };
+  match = raw.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})$/);
+  if (match) return { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) };
+  match = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+  if (match) {
+    const first = Number(match[1]), second = Number(match[2]);
+    // Trading-platform exports most often use day-first dates. If one side is
+    // greater than 12, the ordering is unambiguous; otherwise use DD/MM/YYYY.
+    const dayFirst = first > 12 || second <= 12;
+    return dayFirst
+      ? { year: Number(match[3]), month: second, day: first }
+      : { year: Number(match[3]), month: first, day: second };
+  }
+  const parsed = Date.parse(raw);
+  if (Number.isFinite(parsed)) {
+    const date = new Date(parsed);
+    return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate() };
+  }
+  return null;
 }
-function parseTimestamp(row, pick, keys) {
-  const raw = pick(row, keys.time);
-  if (raw !== undefined) {
-    const numeric = Number(raw);
-    if (Number.isFinite(numeric) && String(raw).trim() !== '') {
-      if (numeric > 1e12) return { time: Math.floor(numeric / 1000), isUtc: true };
-      if (numeric > 1e9) return { time: Math.floor(numeric), isUtc: true };
-    }
-    const rawText = String(raw).trim();
-    if (!/^\d{1,2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(rawText)) {
-      const hasExplicitZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(rawText);
-      // Broker CSV exports commonly use dotted dates (YYYY.MM.DD HH:mm:ss)
-      // or European dates (DD.MM.YYYY HH:mm:ss). Normalize before Date.parse;
-      // browsers reject those strings when a time component is attached.
-      let normalized = rawText;
-      const yearFirst = normalized.match(/^(\d{4})[./](\d{1,2})[./](\d{1,2})(.*)$/);
-      const dayFirst = normalized.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})(.*)$/);
-      if (yearFirst) normalized = `${yearFirst[1]}-${yearFirst[2].padStart(2, '0')}-${yearFirst[3].padStart(2, '0')}${yearFirst[4]}`;
-      else if (dayFirst) normalized = `${dayFirst[3]}-${dayFirst[2].padStart(2, '0')}-${dayFirst[1].padStart(2, '0')}${dayFirst[4]}`;
-      normalized = normalized.includes(' ') && !normalized.includes('T') ? normalized.replace(' ', 'T') : normalized;
-      const parsed = Date.parse(hasExplicitZone ? normalized : `${normalized}Z`);
-      if (Number.isFinite(parsed)) return { time: Math.floor(parsed / 1000), isUtc: hasExplicitZone };
+
+function parseClockParts(value) {
+  let raw = String(value ?? '').trim().toUpperCase();
+  if (!raw) return null;
+  const ampm = raw.match(/\s*(AM|PM)$/);
+  const suffix = ampm?.[1];
+  if (suffix) raw = raw.replace(/\s*(AM|PM)$/, '').trim();
+  const match = raw.match(/^(\d{1,2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?$/);
+  if (!match) return null;
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const second = Number(match[3] || 0);
+  const ms = match[4] ? Number(('0.' + match[4])) * 1000 : 0;
+  if (suffix) {
+    if (hour < 1 || hour > 12) return null;
+    if (suffix === 'AM' && hour === 12) hour = 0;
+    if (suffix === 'PM' && hour !== 12) hour += 12;
+  }
+  if (hour > 23 || minute > 59 || second > 59) return null;
+  return { hour, minute, second, ms: Math.floor(ms) };
+}
+
+function normalizeDateTime(raw) {
+  let text = String(raw ?? '').trim();
+  if (!text) return null;
+  // Normalize compact and dotted broker timestamps before parsing.
+  text = text.replace(/^(\d{4})(\d{2})(\d{2})(?=\s|T)/, '$1-$2-$3');
+  text = text.replace(/^(\d{4})[./](\d{1,2})[./](\d{1,2})(.*)$/, (_, y, m, d, tail) =>
+    y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0') + tail);
+  text = text.replace(/^(\d{1,2})[./](\d{1,2})[./](\d{4})(.*)$/, (_, a, b, y, tail) => {
+    const first = Number(a), second = Number(b);
+    const dayFirst = first > 12 || second <= 12;
+    const month = dayFirst ? second : first;
+    const day = dayFirst ? first : second;
+    return y + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0') + tail;
+  });
+  if (text.includes(' ') && !text.includes('T')) text = text.replace(/\s+/, 'T');
+  return text;
+}
+
+function parseTimestamp(row, columns) {
+  const rawDateTime = columns.datetime ? row?.[columns.datetime] : undefined;
+  if (rawDateTime !== undefined && rawDateTime !== null && String(rawDateTime).trim() !== '') {
+    const raw = String(rawDateTime).trim();
+    const clockOnly = /^\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:\s*(AM|PM))?$/i.test(raw);
+    if (!clockOnly) {
+      const numeric = Number(raw);
+      if (/^\d+$/.test(raw) && Number.isFinite(numeric)) {
+        if (numeric >= 1e12) return { time: Math.floor(numeric / 1000), isUtc: true };
+        if (numeric >= 1e9) return { time: Math.floor(numeric), isUtc: true };
+        // Excel serial date (days since 1899-12-30).
+        if (numeric >= 20000 && numeric <= 100000) {
+          const ms = Date.UTC(1899, 11, 30) + numeric * 86400000;
+          return { time: Math.floor(ms / 1000), isUtc: false };
+        }
+      }
+      const normalized = normalizeDateTime(raw);
+      const explicitZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized);
+      const parsed = Date.parse(explicitZone ? normalized : normalized + 'Z');
+      if (Number.isFinite(parsed)) return { time: Math.floor(parsed / 1000), isUtc: explicitZone };
     }
   }
-  const date = pick(row, keys.date);
-  const clock = pick(row, keys.clock);
-  if (date === undefined || clock === undefined) return null;
-  const d = String(date).trim();
-  const t = normalizeClockTime(clock);
-  let normalizedDate = d;
-  if (/^\d{8}$/.test(d)) normalizedDate = `${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}`;
-  else if (/^\d{4}[./-]\d{1,2}[./-]\d{1,2}$/.test(d)) normalizedDate = d.replace(/[./]/g, '-');
-  else {
-    const european = d.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
-    if (european) normalizedDate = `${european[3]}-${european[2].padStart(2,'0')}-${european[1].padStart(2,'0')}`;
-  }
-  const iso = `${normalizedDate}T${t}`;
-  const hasExplicitZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(t);
-  const parsed = Date.parse(hasExplicitZone ? iso : `${iso}Z`);
-  return Number.isFinite(parsed) ? { time: Math.floor(parsed / 1000), isUtc: hasExplicitZone } : null;
+
+  const dateValue = columns.date ? row?.[columns.date] : undefined;
+  const clockValue = columns.clock ? row?.[columns.clock] : undefined;
+  if (dateValue === undefined || clockValue === undefined) return null;
+  const date = parseDateParts(dateValue);
+  const clock = parseClockParts(clockValue);
+  if (!date || !clock) return null;
+  const time = validUtcParts(date.year, date.month, date.day, clock.hour, clock.minute, clock.second, clock.ms);
+  if (!Number.isFinite(time)) return null;
+  const explicitZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(String(clockValue).trim());
+  return { time, isUtc: explicitZone };
 }
 
 function createRowNormalizer(fields = []) {
   if (!fields.length) throw new Error('The CSV has no readable header row.');
-  const pick = makeRowPicker();
-  const keys = Object.fromEntries(Object.entries(aliases).map(([name, candidates]) => [
-    name,
-    candidates.map((candidate) => fields.find((field) => cleanHeader(field) === candidate)).filter(Boolean),
-  ]));
+  const columns = resolveColumns(fields);
+  const missing = ['open', 'high', 'low', 'close'].filter((field) => !columns[field]);
+  if (missing.length) {
+    throw new Error('Could not identify required price columns (' + missing.join(', ') + '). Detected headers: ' + fields.join(', ') + '. Supported examples include Date, Time, Open, High, Low, Close; Timestamp, O, H, L, C; and broker Bid/Ask OHLC exports.');
+  }
+  if (!columns.datetime && !(columns.date && columns.clock)) {
+    throw new Error('Could not identify a date/time column. Detected headers: ' + fields.join(', ') + '. Use a timestamp column or separate Date and Time columns.');
+  }
+
   const candles = [];
   let invalidRows = 0;
   let timestampsAreUtc = true;
@@ -88,15 +195,14 @@ function createRowNormalizer(fields = []) {
 
   const addRows = (rows) => {
     for (const row of rows) {
-      const parsedTimestamp = parseTimestamp(row, pick, keys);
+      const parsedTimestamp = parseTimestamp(row, columns);
       const time = parsedTimestamp?.time;
       if (parsedTimestamp && !parsedTimestamp.isUtc) timestampsAreUtc = false;
-      const open = Number(pick(row, keys.open));
-      const high = Number(pick(row, keys.high));
-      const low = Number(pick(row, keys.low));
-      const close = Number(pick(row, keys.close));
-      const volumeRaw = pick(row, keys.volume);
-      const volume = volumeRaw == null ? 0 : Number(volumeRaw);
+      const open = parseNumeric(row?.[columns.open]);
+      const high = parseNumeric(row?.[columns.high]);
+      const low = parseNumeric(row?.[columns.low]);
+      const close = parseNumeric(row?.[columns.close]);
+      const volume = columns.volume ? parseNumeric(row?.[columns.volume]) : 0;
       if (time == null || ![open, high, low, close].every(Number.isFinite) ||
           high < Math.max(open, close, low) || low > Math.min(open, close, high)) {
         invalidRows++;
@@ -110,10 +216,8 @@ function createRowNormalizer(fields = []) {
 
   const finish = (parserWarnings = 0) => {
     if (!candles.length) {
-      const detected = fields.join(', ') || 'none';
-      throw new Error(`No valid candles found. Detected columns: ${detected}. Expected a timestamp or Date + Time, plus Open, High, Low and Close. Check date format and OHLC headers.`);
+      throw new Error('No valid candles were found. The file was read, but its dates or OHLC values could not be interpreted. Check the detected headers and date format.');
     }
-    // Most broker exports are already chronological. Avoid an O(n log n) sort in that common case.
     if (!isChronological) candles.sort((a, b) => a.time - b.time);
     const unique = [];
     let lastTime = -Infinity;
@@ -126,7 +230,19 @@ function createRowNormalizer(fields = []) {
       unique.push(candle);
       lastTime = candle.time;
     }
-    return { candles: unique, invalidRows, duplicateRows, parserWarnings, timestampsAreUtc, fields: [...fields] };
+    if (unique.length < 2) {
+      throw new Error('Only ' + unique.length + ' unique candle was found. At least two different timestamps are required for replay.');
+    }
+    return {
+      candles: unique,
+      invalidRows,
+      duplicateRows,
+      parserWarnings,
+      timestampsAreUtc,
+      fields: [...fields],
+      detectedColumns: { ...columns },
+      totalRows: candles.length + invalidRows,
+    };
   };
 
   return { addRows, finish };
@@ -145,11 +261,19 @@ const parseOptions = {
 };
 
 export function parseMarketCsvText(text) {
-  return normalizeMarketRows(Papa.parse(text, parseOptions));
+  const result = Papa.parse(text, { ...parseOptions, delimiter: '' });
+  return normalizeMarketRows(result);
 }
 
-// Parse CSVs in chunks. Papa's worker keeps CSV tokenization off the UI thread,
-// while chunk callbacks normalize bounded batches instead of one huge result array.
+export function inferSymbolFromFilename(filename = '') {
+  const base = String(filename).split(/[\\/]/).pop().replace(/\.[^.]+$/, '').toUpperCase();
+  const known = base.match(/(?:^|[^A-Z0-9])(XAUUSD|XAGUSD|EURUSD|GBPUSD|USDJPY|USDCHF|USDCAD|AUDUSD|NZDUSD|BTCUSD|ETHUSD|NAS100|US30|SPX500|GER40|UK100|JP225)(?:$|[^A-Z0-9])/);
+  if (known) return known[1];
+  const compact = base.replace(/[^A-Z0-9]/g, '');
+  const pair = compact.match(/(XAUUSD|XAGUSD|[A-Z]{6}|[A-Z]{3,6}\d{2,5})/);
+  return pair ? pair[1] : '';
+}
+
 export function parseMarketCsv(file, onProgress = () => {}) {
   return new Promise((resolve, reject) => {
     let normalizer = null;
@@ -157,7 +281,6 @@ export function parseMarketCsv(file, onProgress = () => {}) {
     let settled = false;
     let processedBytes = 0;
     const fileSize = Number(file?.size) || 0;
-
     const fail = (error) => {
       if (settled) return;
       settled = true;
@@ -165,13 +288,10 @@ export function parseMarketCsv(file, onProgress = () => {}) {
     };
 
     try {
-      // Do not use Papa Parse's worker option here. In the deployed Vite/PWA
-      // build the generated worker can fail to start, leaving the Promise
-      // pending forever and the UI stuck at 0%. Papa's local FileStreamer
-      // already reads Blob/File input asynchronously in bounded chunks.
       onProgress({ loaded: 0, total: fileSize, percent: 0, stage: 'parsing' });
       Papa.parse(file, {
         ...parseOptions,
+        delimiter: '',
         worker: false,
         chunkSize: 1024 * 1024,
         chunk: (results) => {
@@ -198,7 +318,7 @@ export function parseMarketCsv(file, onProgress = () => {}) {
           try {
             if (!normalizer) throw new Error('The CSV file is empty or has no readable header row.');
             const result = normalizer.finish(parserWarnings);
-            onProgress({ loaded: fileSize, total: fileSize, percent: 100 });
+            onProgress({ loaded: fileSize, total: fileSize, percent: 100, stage: 'complete' });
             settled = true;
             resolve(result);
           } catch (error) {
