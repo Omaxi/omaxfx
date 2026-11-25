@@ -17,7 +17,7 @@ export default function StylePanel({ selectedId, onClose }) {
   const currentFill = drawing.fillColor || (currentBorder + '33');
   const currentWidth = drawing.lineWidth ?? 1;
   const lineStyle = drawing.lineStyle || 'solid';
-  const isLineDrawing = ['horizontal', 'vertical', 'trendline'].includes(drawing.type);
+  const isLineDrawing = ['horizontal', 'vertical', 'trendline', 'arrow'].includes(drawing.type);
   const showBorder = drawing.showBorder === true;
   const isText = drawing.type === 'text';
   const fontSize = drawing.fontSize || 14;
