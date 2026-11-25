@@ -17,7 +17,7 @@ export default function StylePanel({ selectedId, onClose }) {
   const currentFill = drawing.fillColor || (currentBorder + '33');
   const currentWidth = drawing.lineWidth ?? 1;
   const lineStyle = drawing.lineStyle || 'solid';
-  const isAxisLine = ['horizontal', 'vertical'].includes(drawing.type);
+  const isLineDrawing = ['horizontal', 'vertical', 'trendline'].includes(drawing.type);
   const showBorder = drawing.showBorder === true;
   const isText = drawing.type === 'text';
   const fontSize = drawing.fontSize || 14;
@@ -169,8 +169,8 @@ export default function StylePanel({ selectedId, onClose }) {
               </div>
             </div>
 
-            {/* Horizontal/vertical line controls */}
-            {isAxisLine && (
+            {/* Trendline, horizontal and vertical line controls */}
+            {isLineDrawing && (
               <div>
                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1.5">Line Style</div>
                 <div className="grid grid-cols-3 gap-1">
@@ -242,7 +242,7 @@ export default function StylePanel({ selectedId, onClose }) {
             )}
 
             {/* Line width — only show if border is enabled */}
-            {(showBorder || isAxisLine) && (
+            {(showBorder || isLineDrawing) && (
               <div>
                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1.5">
                   Line Thickness — {currentWidth}px
