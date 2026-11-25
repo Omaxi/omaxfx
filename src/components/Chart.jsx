@@ -42,7 +42,7 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, isSelected) => {
   ctx.strokeStyle = borderColor;
   ctx.fillStyle = fillColor;
   ctx.lineWidth = isDraft ? 1.5 : lineWidth;
-  ctx.setLineDash(isDraft ? [5, 5] : []);
+  ctx.setLineDash(isDraft ? [5, 5] : drawing.lineStyle === 'dashed' ? [7, 5] : drawing.lineStyle === 'dotted' ? [2, 4] : []);
   const canvasW = ctx.canvas.clientWidth || ctx.canvas.width;
   const canvasH = ctx.canvas.clientHeight || ctx.canvas.height;
 
@@ -314,7 +314,7 @@ export default function Chart({ chartId = 'main' }) {
         locale: 'en-GB',
         timeFormatter: (time) => formatMarketDateTime(time),
       },
-      grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+      grid: { vertLines: { visible: true, color: '#202433' }, horzLines: { visible: true, color: '#202433' } },
       timeScale: { 
         timeVisible: true, secondsVisible: false,
         borderVisible: false, barSpacing: 6, rightOffset: 60,
@@ -414,8 +414,8 @@ export default function Chart({ chartId = 'main' }) {
             panes: { separatorColor: light ? '#d0d5dd' : '#2a2e39', separatorHoverColor: '#3b82f6', enableResize: true },
           },
           grid: {
-            vertLines: { visible: false },
-            horzLines: { visible: false },
+            vertLines: { visible: true, color: '#202433' },
+            horzLines: { visible: true, color: '#202433' },
           },
         });
       } catch (e) {}
