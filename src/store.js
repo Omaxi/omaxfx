@@ -78,11 +78,11 @@ const shiftTradeDrawingSnapshot = (snapshot, shift) => {
 };
 
 const DEFAULT_THEME = {
-  background: '#131722',
-  upBody: '#26a69a',
-  downBody: '#ef5350',
-  upWick: '#26a69a',
-  downWick: '#ef5350',
+  background: '#171a27',
+  upBody: '#0897a7',
+  downBody: '#59616e',
+  upWick: '#0897a7',
+  downWick: '#59616e',
 };
 const DEFAULT_SESSION_COLORS = { asia: '#f59e0b', london: '#38bdf8', newyork: '#fb7185' };
 const DEFAULT_DRAWING_STYLES = {
