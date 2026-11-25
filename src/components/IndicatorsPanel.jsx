@@ -523,18 +523,14 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
     onIndicatorDashboard?.(dashboard);
   }, [chartRef, visibleData, sessionCandles, hourlyCandles, config, active, chartReady, timeframe, onIndicatorDashboard, symbol, contractSpecs]);
 
-  // LuxAlgo-inspired session boxes: translucent range rectangles with dashed
-  // borders and session labels. Times use the simulator's fixed UTC+3 clock.
+  // One Sessions indicator: translucent vertical bands limited to each
+  // configured UTC+3 session window. No candle-high/low range rectangles.
   useEffect(() => {
     const canvas = sessionCanvasRef.current;
     const chart = chartReady ? chartRef.current : null;
-    const priceSeries = priceSeriesRef?.current;
     if (!canvas || !chart) return undefined;
     let frame = null;
     const draw = () => {
-      // Coalesce rapid pointer/scale events into one paint per animation frame.
-      // Do not cancel the pending frame: doing so can starve redraws while the
-      // trader is actively dragging the price axis.
       if (frame !== null) return;
       frame = requestAnimationFrame(() => {
         frame = null;
@@ -546,91 +542,100 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
         if (!ctx) return;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, rect.width, rect.height);
-        if (!active.sessions || !priceSeries) return;
+        if (!active.sessions) return;
 
         const data = sessionCandles;
         if (!data?.length) return;
+        const state = useStore.getState();
         const defs = [
-          { key: 'asia', label: 'Asian', color: sessionColors?.asia || '#f59e0b' },
-          { key: 'london', label: 'London', color: sessionColors?.london || '#38bdf8' },
-          { key: 'newyork', label: 'New York', color: sessionColors?.newyork || '#fb7185' },
+          { key: 'asian', colorKey: 'asia', label: 'ASIA', color: state.sessionColors?.asia || '#f59e0b' },
+          { key: 'london', colorKey: 'london', label: 'LONDON', color: state.sessionColors?.london || '#38bdf8' },
+          { key: 'newyork', colorKey: 'newyork', label: 'NEW YORK', color: state.sessionColors?.newyork || '#fb7185' },
         ];
-        const defsByKey = Object.fromEntries(defs.map(def => [def.key, def]));
-        const groups = new Map();
-        data.forEach(candle => {
-          const session = getMarketSession(Number(candle.time));
-          const def = session && defsByKey[session.key];
-          if (def) {
-            const id = session.sessionDate + ':' + def.key;
-            let item = groups.get(id);
-            if (!item) {
-              item = { ...def, startTime: Number(candle.time), endTime: Number(candle.time), high: Number(candle.high), low: Number(candle.low) };
-              groups.set(id, item);
-            } else {
-              item.endTime = Number(candle.time);
-              item.high = Math.max(item.high, Number(candle.high));
-              item.low = Math.min(item.low, Number(candle.low));
+        const starts = { asian: 3, london: 11, newyork: 16, ...(state.sessionTimes || {}) };
+        const ends = { asian: 8, london: 13, newyork: 18, ...(state.sessionEndTimes || {}) };
+
+        // Match the visible data's market dates, then convert each UTC+3
+        // session boundary to the simulator's UTC timestamps.
+        const firstDate = toMarketDate(Number(data[0].time));
+        const lastDate = toMarketDate(Number(data[data.length - 1].time));
+        if (!firstDate || !lastDate) return;
+        const firstDay = Date.UTC(firstDate.getUTCFullYear(), firstDate.getUTCMonth(), firstDate.getUTCDate());
+        const lastDay = Date.UTC(lastDate.getUTCFullYear(), lastDate.getUTCMonth(), lastDate.getUTCDate());
+
+        const timeScale = chart.timeScale();
+        const barSpacing = Math.max(1, Number(timeScale.options().barSpacing) || 6);
+        const timeToX = timestamp => {
+          let lo = 0, hi = data.length - 1;
+          if (timestamp <= Number(data[0].time)) hi = 1;
+          else if (timestamp >= Number(data[hi].time)) lo = hi - 1;
+          else {
+            while (hi - lo > 1) {
+              const mid = Math.floor((lo + hi) / 2);
+              if (Number(data[mid].time) < timestamp) lo = mid;
+              else hi = mid;
             }
           }
-        });
+          const t1 = Number(data[lo].time), t2 = Number(data[hi].time);
+          const x1 = timeScale.timeToCoordinate(t1), x2 = timeScale.timeToCoordinate(t2);
+          if ([x1, x2].some(value => value == null || !Number.isFinite(value)) || t2 === t1) return null;
+          return x1 + (x2 - x1) * ((timestamp - t1) / (t2 - t1));
+        };
 
-        // Session boxes belong only to the main price pane. Using the full
-        // chart height here lets the session fill bleed into RSI/ATR/ADX panes.
         let paneWidth = rect.width, paneHeight = rect.height;
         try {
           const axisWidth = chart.priceScale('right').width();
-          const mainPane = chart.panes?.()?.[0];
-          const mainPaneHeight = mainPane?.getHeight?.();
+          const mainPaneHeight = chart.panes?.()?.[0]?.getHeight?.();
           const timeAxisHeight = chart.timeScale().height();
           if (axisWidth > 0) paneWidth -= axisWidth;
-          if (Number.isFinite(mainPaneHeight) && mainPaneHeight > 0) {
-            paneHeight = mainPaneHeight;
-          } else if (timeAxisHeight > 0) {
-            paneHeight -= timeAxisHeight;
-          }
+          if (Number.isFinite(mainPaneHeight) && mainPaneHeight > 0) paneHeight = mainPaneHeight;
+          else if (timeAxisHeight > 0) paneHeight -= timeAxisHeight;
         } catch {}
+
         ctx.save();
         ctx.beginPath();
         ctx.rect(0, 0, paneWidth, paneHeight);
         ctx.clip();
-        groups.forEach(item => {
-          // Anchor the session range to candle times to keep it aligned with
-          // the actual chart data after replay jumps and timeframe changes.
-          const timeScale = chart.timeScale();
-          const barSpacing = Math.max(1, Number(timeScale.options().barSpacing) || 6);
-          const firstX = timeScale.timeToCoordinate(item.startTime);
-          const lastX = timeScale.timeToCoordinate(item.endTime);
-          const x1 = firstX == null ? null : firstX - barSpacing / 2;
-          const x2 = lastX == null ? null : lastX + barSpacing / 2;
-          const y1 = priceSeries.priceToCoordinate(item.high);
-          const y2 = priceSeries.priceToCoordinate(item.low);
-          if ([x1, x2, y1, y2].some(value => value == null || !Number.isFinite(value))) return;
-          const left = Math.max(0, Math.min(x1, x2));
-          const right = Math.min(paneWidth, Math.max(x1, x2));
-          const top = Math.max(0, Math.min(y1, y2));
-          const bottom = Math.min(paneHeight, Math.max(y1, y2));
-          if (right <= left || bottom <= top) return;
-          const boxHeight = Math.max(3, bottom - top);
-          ctx.fillStyle = item.color + '18';
-          ctx.fillRect(left, top, right - left, boxHeight);
-          ctx.font = '600 10px Arial';
-          ctx.textAlign = 'center';
-          ctx.fillStyle = item.color;
-          ctx.fillText(item.label, Math.max(36, Math.min(paneWidth - 36, (left + right) / 2)), Math.max(11, top - 5));
-        });
+
+        for (let day = firstDay; day <= lastDay; day += 86400000) {
+          defs.forEach(session => {
+            const startHour = Number(starts[session.key]);
+            const endHour = Number(ends[session.key]);
+            if (!Number.isFinite(startHour) || !Number.isFinite(endHour) || endHour <= startHour) return;
+
+            const startTime = day / 1000 + startHour * 3600 - 3 * 3600;
+            const endTime = day / 1000 + endHour * 3600 - 3 * 3600;
+            const x1 = timeToX(startTime);
+            const x2 = timeToX(endTime);
+            if (x1 == null || x2 == null || !Number.isFinite(x1) || !Number.isFinite(x2)) return;
+
+            const left = Math.max(0, Math.min(paneWidth, Math.min(x1, x2) - barSpacing / 2));
+            const right = Math.max(0, Math.min(paneWidth, Math.max(x1, x2) - barSpacing / 2));
+            if (right <= left) return;
+
+            ctx.save();
+            ctx.globalAlpha = 0.11;
+            ctx.fillStyle = session.color;
+            ctx.fillRect(left, 0, right - left, paneHeight);
+            ctx.globalAlpha = 0.95;
+            ctx.fillStyle = session.color;
+            ctx.font = '600 10px Arial';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(session.label, left + 5, 6);
+            ctx.restore();
+          });
+        }
         ctx.restore();
       });
     };
+
     draw();
     const timeScale = chart.timeScale();
     const priceScale = chart.priceScale('right');
     timeScale.subscribeVisibleLogicalRangeChange(draw);
-    // Session rectangles use priceToCoordinate for their vertical bounds.
-    // Redraw whenever the visible price range changes (including Y-axis drag).
     priceScale.subscribeVisiblePriceRangeChange?.(draw);
     chart.subscribeSizeChange?.(draw);
-    // Price-axis dragging does not consistently emit a time-range event.
-    // Pointer/wheel events keep the overlay synchronized during the gesture.
     window.addEventListener('pointermove', draw, { passive: true });
     window.addEventListener('wheel', draw, { passive: true });
     const observer = new ResizeObserver(draw);
