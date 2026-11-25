@@ -97,7 +97,7 @@ export default function DataImportModal() {
       setContractSize(String(specs.contractSize));
       setTickSize(String(specs.tickSize));
       setPrecision(String(specs.precision));
-      setQuoteCurrency(detectedSymbol.slice(-3).length === 3 ? detectedSymbol.slice(-3) : 'USD');
+      setQuoteCurrency(/^[A-Z]{6}$/.test(detectedSymbol) ? detectedSymbol.slice(-3) : 'USD');
     }
     setStatus({ loading: true, error: '', progress: 0, fileName: selectedFile.name, stage: 'parsing' });
     try {
@@ -139,8 +139,8 @@ export default function DataImportModal() {
         setStatus(current => ({ ...current, progress: progress.percent ?? current.progress }));
       });
       const candles = parsed.candles
-        .map(candle => ({ ...candle, time: candle.time - (parsed.timestampsAreUtc ? 0 : UTC_PLUS_3_SECONDS) }))
-        .filter(candle => customMonth === '__ALL__' || marketMonth(candle, false) === customMonth);
+        .filter(candle => customMonth === '__ALL__' || marketMonth(candle, parsed.timestampsAreUtc) === customMonth)
+        .map(candle => ({ ...candle, time: candle.time - (parsed.timestampsAreUtc ? 0 : UTC_PLUS_3_SECONDS) }));
       if (candles.length < 2) {
         throw new Error('No candles were found for ' + (customMonth === '__ALL__' ? 'this file' : customMonth) + '. The full file contains ' + parsed.candles.length.toLocaleString() + ' valid candles across ' + customMonths.length + ' month(s). Choose Full dataset or another month.');
       }
