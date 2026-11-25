@@ -8,7 +8,10 @@ const UTC_PLUS_3_SECONDS = 3 * 60 * 60;
 function defaultSpecs(symbol) {
   const code = symbol.toUpperCase();
   if (code === 'XAUUSD') return { contractSize: 100, tickSize: 0.01, precision: 2 };
-  if (code === 'EURUSD' || code.endsWith('USD') && code.length === 6) return { contractSize: 100000, tickSize: 0.00001, precision: 5 };
+  if (/^[A-Z]{6}$/.test(code)) {
+    const isJpy = code.includes('JPY');
+    return { contractSize: 100000, tickSize: isJpy ? 0.001 : 0.00001, precision: isJpy ? 3 : 5 };
+  }
   if (code.includes('JPY')) return { contractSize: 100000, tickSize: 0.001, precision: 3 };
   return { contractSize: 1, tickSize: 0.00001, precision: 5 };
 }
@@ -84,10 +87,13 @@ export default function DataImportModal() {
     setCustomParsed(null);
     setCustomMonth('__ALL__');
     if (!selectedFile) return;
-    const baseName = selectedFile.name.replace(/\.[^.]+$/, '').toUpperCase();
-    const symbolMatch = baseName.match(/(?:^|[^A-Z0-9])(XAUUSD|XAGUSD|EURUSD|GBPUSD|USDJPY|AUDUSD|NZDUSD|USDCAD|USDCHF|NAS100|US30|SPX500|GER40|UK100|BTCUSD|ETHUSD)(?:[^A-Z0-9]|$)/);
-    if (symbolMatch) {
-      const detectedSymbol = symbolMatch[1];
+    const baseName = selectedFile.name.replace(/\\.[^.]+$/, '').toUpperCase();
+    const ignoredTokens = new Set(['DATA', 'PRICE', 'OHLC', 'TICK', 'HISTORY', 'MARKET', 'CSV']);
+    const detectedSymbol = baseName.split(/[^A-Z0-9]+/).find(token =>
+      !ignoredTokens.has(token) && !/^\\d+$/.test(token) &&
+      (/^[A-Z]{6}$/.test(token) || /^(XAUUSD|XAGUSD|NAS100|US30|US100|SPX500|GER40|UK100|BTCUSD|ETHUSD)$/.test(token))
+    );
+    if (detectedSymbol) {
       setSymbol(detectedSymbol);
       const specs = defaultSpecs(detectedSymbol);
       setContractSize(String(specs.contractSize));
@@ -190,7 +196,7 @@ export default function DataImportModal() {
                   <span>Invalid rows</span><span className="text-right text-white">{status.invalidRows ?? customParsed.invalidRows ?? 0}</span>
                   <span>Duplicate rows</span><span className="text-right text-white">{status.duplicateRows ?? customParsed.duplicateRows ?? 0}</span>
                   <span>Detected columns</span><span className="text-right text-white">{(customParsed.fields || []).join(', ')}</span>
-                  <span>Data range (UTC+3)</span><span className="text-right text-white">{customParsed.candles.length ? `${new Date((customParsed.candles[0].time + (customParsed.timestampsAreUtc ? UTC_PLUS_3_SECONDS : 0)) * 1000).toISOString().slice(0, 16).replace('T', ' ')} → ${new Date((customParsed.candles.at(-1).time) * 1000).toISOString().slice(0, 16).replace('T', ' ')}` : '—'}</span>
+                  <span>Data range (UTC+3)</span><span className="text-right text-white">{customParsed.candles.length ? `${new Date((customParsed.candles[0].time + (customParsed.timestampsAreUtc ? UTC_PLUS_3_SECONDS : 0)) * 1000).toISOString().slice(0, 16).replace('T', ' ')} → ${new Date((customParsed.candles.at(-1).time + (customParsed.timestampsAreUtc ? UTC_PLUS_3_SECONDS : 0)) * 1000).toISOString().slice(0, 16).replace('T', ' ')}` : '—'}</span>
                 </div>
               </div>
             )}
