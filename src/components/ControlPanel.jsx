@@ -290,7 +290,8 @@ export default function ControlPanel() {
         </div>
         {SESSIONS.map(s => {
           const Icon = s.icon;
-          const hour = sessionTimes[s.key];
+          const hour = Number(sessionTimes[s.key] ?? ({ asian: 3, london: 11, newyork: 16 }[s.key]));
+          const endHour = Number(sessionEndTimes[s.key] ?? ({ asian: 8, london: 13, newyork: 18 }[s.key]));
           return (
             <div key={s.key} className="flex items-center gap-2 px-3 py-2 hover:bg-[#2a2e39]/40">
               <Icon size={12} className={s.color} />
@@ -310,7 +311,7 @@ export default function ControlPanel() {
                 type="number"
                 min="1"
                 max="24"
-                value={sessionEndTimes[s.key] ?? 24}
+                value={endHour}
                 onChange={(e) => setSessionEndTime(s.key, e.target.value)}
                 className="w-10 bg-[#131722] text-white text-[11px] font-mono px-1 py-0.5 rounded border border-[#2a2e39] outline-none text-center focus:border-blue-500"
                 title="Session end hour (0-24)"
