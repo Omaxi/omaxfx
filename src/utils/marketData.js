@@ -37,6 +37,8 @@ function headerScore(header, field) {
     if (new RegExp('(^|\\s)' + token + '(\\s|$)').test(normalized) &&
         !/(time|date|spread|change|percent|percentage)/.test(normalized)) return 50;
   }
+  if (field === 'date' && /(^|\\s)(date|day)(\\s|$)/.test(normalized)) return 70;
+  if (field === 'clock' && /(^|\\s)(time|clock|hour)(\\s|$)/.test(normalized)) return 70;
   if (field === 'datetime' && /(date.*time|time.*date|timestamp)/.test(normalized)) return 80;
   return 0;
 }
