@@ -221,8 +221,8 @@ export function parseMarketCsvText(text) {
   const sample = Papa.parse(sampleText, { delimiter, skipEmptyLines: 'greedy', preview: 12 });
   const info = findHeaderInfo(sample.data || []);
   const sampleRows = sample.data || [];
-  const decimalComma = delimiter !== ',' && sampleRows.some(row => Array.isArray(row) && row.some(value => typeof value === 'string' && /^-?\\d+,\\d+$/.test(value.trim())));
-  const content = raw.split(/\\r\\n|\\n|\\r/).slice(info.headerRowIndex).join('\\n');
+  const decimalComma = delimiter !== ',' && sampleRows.some(row => Array.isArray(row) && row.some(value => typeof value === 'string' && /^-?\d+,\d+$/.test(value.trim())));
+  const content = raw.split(/\r\n|\n|\r/).slice(info.headerRowIndex).join('\n');
   const full = Papa.parse(content, { delimiter, header: info.header, skipEmptyLines: 'greedy', dynamicTyping: false });
   const normalizer = createRowNormalizer(info.fields, { headerless: !info.header, delimiter, decimalComma });
   normalizer.addRows(full.data || []);
