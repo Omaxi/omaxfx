@@ -173,7 +173,7 @@ function createRowNormalizer(fields, { headerless = false, decimalComma = false,
     }
   };
   const finish = parserWarnings => {
-    if (!candles.length) throw new Error(`No valid candles found. Detected columns: ${fields.join(', ')}. Expected a timestamp (or Date + Time) and Open, High, Low, Close. Supported delimiters include comma, semicolon, tab and pipe.`);
+    if (!candles.length) throw new Error(`No valid candles found (${invalidRows} rejected rows; delimiter ${JSON.stringify(delimiter)}; decimal-comma ${decimalComma}). Detected columns: ${fields.join(', ')}. Expected a timestamp (or Date + Time) and Open, High, Low, Close. Supported delimiters include comma, semicolon, tab and pipe.`);
     if (!isChronological) candles.sort((a, b) => a.time - b.time);
     const unique = [];
     let duplicateRows = 0, lastTime = -Infinity;
