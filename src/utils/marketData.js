@@ -149,8 +149,18 @@ function parseTimestamp(row, columns) {
     const raw = String(rawDateTime).trim();
     const clockOnly = /^\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:\s*(AM|PM))?$/i.test(raw);
     if (!clockOnly) {
+      const compactDateTime = raw.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+      if (compactDateTime) {
+        const time = validUtcParts(Number(compactDateTime[1]), Number(compactDateTime[2]), Number(compactDateTime[3]), Number(compactDateTime[4]), Number(compactDateTime[5]), Number(compactDateTime[6]));
+        if (Number.isFinite(time)) return { time, isUtc: false };
+      }
+      const compactDate = raw.match(/^(\d{4})(\d{2})(\d{2})$/);
+      if (compactDate) {
+        const time = validUtcParts(Number(compactDate[1]), Number(compactDate[2]), Number(compactDate[3]));
+        if (Number.isFinite(time)) return { time, isUtc: false };
+      }
       const numeric = Number(raw);
-      if (/^\d+$/.test(raw) && Number.isFinite(numeric)) {
+      if (/^\d+(?:\.\d+)?$/.test(raw) && Number.isFinite(numeric)) {
         if (numeric >= 1e12) return { time: Math.floor(numeric / 1000), isUtc: true };
         if (numeric >= 1e9) return { time: Math.floor(numeric), isUtc: true };
         // Excel serial date (days since 1899-12-30).
@@ -271,8 +281,9 @@ export function inferSymbolFromFilename(filename = '') {
   const base = String(filename).split(/[\\/]/).pop().replace(/\.[^.]+$/, '').toUpperCase();
   const known = base.match(/(?:^|[^A-Z0-9])(XAUUSD|XAGUSD|EURUSD|GBPUSD|USDJPY|USDCHF|USDCAD|AUDUSD|NZDUSD|BTCUSD|ETHUSD|NAS100|US30|SPX500|GER40|UK100|JP225)(?:$|[^A-Z0-9])/);
   if (known) return known[1];
-  const compact = base.replace(/[^A-Z0-9]/g, '');
-  const pair = compact.match(/(XAUUSD|XAGUSD|[A-Z]{6}|[A-Z]{3,6}\d{2,5})/);
+  const index = base.match(/(?:^|[^A-Z0-9])(NAS100|US30|SPX500|GER40|UK100|JP225|DAX40|USOIL|UKOIL|WTI|BRENT)(?:$|[^A-Z0-9])/);
+  if (index) return index[1];
+  const pair = base.match(/(?:^|[^A-Z0-9])([A-Z]{6})(?:$|[^A-Z0-9])/);
   return pair ? pair[1] : '';
 }
 
