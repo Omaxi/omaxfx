@@ -297,7 +297,7 @@ export default function Chart({ chartId = 'main' }) {
     
     chartRef.current = createChart(chartContainerRef.current, {
       layout: {
-        background: { type: 'solid', color: 'transparent' },
+        background: { type: 'solid', color: t.background || '#171a27' },
         textColor: '#6b7280',
         fontSize: 9,
         attributionLogo: false,
@@ -409,7 +409,7 @@ export default function Chart({ chartId = 'main' }) {
       try {
         chartRef.current?.applyOptions({
           layout: {
-            background: { type: 'solid', color: light ? '#f8fafc' : (useStore.getState().theme?.background || '#131722') },
+            background: { type: 'solid', color: light ? '#f8fafc' : (useStore.getState().theme?.background || '#171a27') },
             textColor: light ? '#475467' : '#6b7280',
             panes: { separatorColor: light ? '#d0d5dd' : '#2a2e39', separatorHoverColor: '#3b82f6', enableResize: true },
           },
@@ -423,7 +423,7 @@ export default function Chart({ chartId = 'main' }) {
     applyUiTheme();
     window.addEventListener('omaxfx-ui-theme-change', applyUiTheme);
     return () => window.removeEventListener('omaxfx-ui-theme-change', applyUiTheme);
-  }, []);
+  }, [theme.background]);
 
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
@@ -594,8 +594,8 @@ export default function Chart({ chartId = 'main' }) {
 
       // Shade each configured trading-session window across the full chart pane.
       // Internal timestamps are stored three hours behind the broker's UTC+3 clock.
-      const sessionStarts = state.sessionTimes || { asian: 3, london: 11, newyork: 16 };
-      const sessionEnds = state.sessionEndTimes || { asian: 8, london: 13, newyork: 18 };
+      const sessionStarts = { asian: 3, london: 11, newyork: 16, ...(state.sessionTimes || {}) };
+      const sessionEnds = { asian: 8, london: 13, newyork: 18, ...(state.sessionEndTimes || {}) };
       const sessionMeta = [
         { key: 'asian', label: 'ASIA' },
         { key: 'london', label: 'LONDON' },
