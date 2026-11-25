@@ -44,7 +44,7 @@ export default function ControlPanel() {
     positions, setTimeframe, timeframe, closeAllPositions, openOrderModal,
     pendingOrders, startDrawing, isDrawingMode, drawingStep, draftPosition, clearDraft,
     symbol, setSymbol, timezone, setTimezone,
-    sessionTimes, setSessionTime, jumpToSession,
+    sessionTimes, sessionEndTimes, setSessionTime, setSessionEndTime, jumpToSession,
     chartType, setChartType, allRawDataBySymbol, replaySpeed, setReplaySpeed
   } = useStore();
 
@@ -301,8 +301,20 @@ export default function ControlPanel() {
                 max="23"
                 value={hour}
                 onChange={(e) => setSessionTime(s.key, e.target.value)}
-                className="w-12 bg-[#131722] text-white text-[11px] font-mono px-1.5 py-0.5 rounded border border-[#2a2e39] outline-none text-center focus:border-blue-500"
-                title="Hour (0-23)"
+                className="w-10 bg-[#131722] text-white text-[11px] font-mono px-1 py-0.5 rounded border border-[#2a2e39] outline-none text-center focus:border-blue-500"
+                title="Session start hour (0-23)"
+                aria-label={`${s.label} start hour`}
+              />
+              <span className="text-[10px] text-gray-500 font-mono">to</span>
+              <input
+                type="number"
+                min="1"
+                max="24"
+                value={sessionEndTimes[s.key] ?? 24}
+                onChange={(e) => setSessionEndTime(s.key, e.target.value)}
+                className="w-10 bg-[#131722] text-white text-[11px] font-mono px-1 py-0.5 rounded border border-[#2a2e39] outline-none text-center focus:border-blue-500"
+                title="Session end hour (0-24)"
+                aria-label={`${s.label} end hour`}
               />
               <span className="text-[10px] text-gray-500 font-mono">:00</span>
               <div className="flex-1" />
