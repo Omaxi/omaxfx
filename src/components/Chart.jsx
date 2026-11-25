@@ -592,6 +592,52 @@ export default function Chart({ chartId = 'main' }) {
       ctx.clip();
       const state = useStore.getState();
 
+      // Shade each configured trading-session window across the full chart pane.
+      // Internal timestamps are stored three hours behind the broker's UTC+3 clock.
+      const sessionStarts = state.sessionTimes || { asian: 3, london: 11, newyork: 16 };
+      const sessionEnds = state.sessionEndTimes || { asian: 8, london: 13, newyork: 18 };
+      const sessionMeta = [
+        { key: 'asian', label: 'ASIA' },
+        { key: 'london', label: 'LONDON' },
+        { key: 'newyork', label: 'NEW YORK' },
+      ];
+      const visibleBars = visibleDataRef.current;
+      if (visibleBars.length) {
+        const firstMarketDate = toMarketDate(Number(visibleBars[0].time));
+        const lastMarketDate = toMarketDate(Number(visibleBars[visibleBars.length - 1].time));
+        if (firstMarketDate && lastMarketDate) {
+          const firstDay = Date.UTC(firstMarketDate.getUTCFullYear(), firstMarketDate.getUTCMonth(), firstMarketDate.getUTCDate());
+          const lastDay = Date.UTC(lastMarketDate.getUTCFullYear(), lastMarketDate.getUTCMonth(), lastMarketDate.getUTCDate());
+          for (let day = firstDay; day <= lastDay; day += 86400000) {
+            sessionMeta.forEach(session => {
+              const startHour = Number(sessionStarts[session.key]);
+              const endHour = Number(sessionEnds[session.key]);
+              if (!Number.isFinite(startHour) || !Number.isFinite(endHour) || endHour <= startHour) return;
+              const startTime = day / 1000 + startHour * 3600 - 10800;
+              const endTime = day / 1000 + endHour * 3600 - 10800;
+              const x1 = timeToX(startTime);
+              const x2 = timeToX(endTime);
+              if (x1 == null || x2 == null || !Number.isFinite(x1) || !Number.isFinite(x2)) return;
+              const left = Math.max(0, Math.min(paneW, Math.min(x1, x2)));
+              const right = Math.max(0, Math.min(paneW, Math.max(x1, x2)));
+              if (right <= left) return;
+              const color = state.sessionColors?.[session.key] || '#64748b';
+              ctx.save();
+              ctx.globalAlpha = 0.10;
+              ctx.fillStyle = color;
+              ctx.fillRect(left, 0, right - left, paneH);
+              ctx.globalAlpha = 0.75;
+              ctx.fillStyle = color;
+              ctx.font = '600 9px Arial';
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'top';
+              ctx.fillText(session.label, left + 5, 5);
+              ctx.restore();
+            });
+          }
+        }
+      }
+
       // Draw Entry / SL / TP as full-width, directly draggable horizontal levels.
       // This is the classic chart-level interaction: users grab the price line
       // anywhere in the chart instead of trying to drag the filled risk box.
@@ -778,7 +824,10 @@ export default function Chart({ chartId = 'main' }) {
           state.draftPosition !== previous.draftPosition ||
           state.timeframe !== previous.timeframe ||
           state.symbol !== previous.symbol ||
-          state.currentIndex !== previous.currentIndex) scheduleDraw();
+          state.currentIndex !== previous.currentIndex ||
+          state.sessionTimes !== previous.sessionTimes ||
+          state.sessionEndTimes !== previous.sessionEndTimes ||
+          state.sessionColors !== previous.sessionColors) scheduleDraw();
     });
     const timeScale = chartRef.current?.timeScale();
     const priceScale = chartRef.current?.priceScale('right');
