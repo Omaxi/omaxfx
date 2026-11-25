@@ -53,7 +53,7 @@ export default function DataImportModal() {
   const [quoteCurrency, setQuoteCurrency] = useState('USD');
   const [quoteToAccountRate, setQuoteToAccountRate] = useState('1');
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [status, setStatus] = useState({ loading: false, error: '' });
+  const [status, setStatus] = useState({ loading: false, error: '', progress: 0, stage: '' });
 
   useEffect(() => {
     const showImporter = () => setOpen(true);
@@ -84,10 +84,25 @@ export default function DataImportModal() {
     setCustomParsed(null);
     setCustomMonth('__ALL__');
     if (!selectedFile) return;
-    setStatus({ loading: true, error: '', progress: 0, fileName: selectedFile.name, stage: 'parsing' });
+    const baseName = selectedFile.name.replace(/\.[^.]+$/, '').toUpperCase();
+    const symbolMatch = baseName.match(/(?:^|[^A-Z0-9])(XAUUSD|XAGUSD|EURUSD|GBPUSD|USDJPY|AUDUSD|NZDUSD|USDCAD|USDCHF|NAS100|US30|SPX500|GER40|UK100|BTCUSD|ETHUSD)(?:[^A-Z0-9]|$)/);
+    if (symbolMatch) {
+      const detectedSymbol = symbolMatch[1];
+      setSymbol(detectedSymbol);
+      const specs = defaultSpecs(detectedSymbol);
+      setContractSize(String(specs.contractSize));
+      setTickSize(String(specs.tickSize));
+      setPrecision(String(specs.precision));
+    }
+    setStatus({ loading: true, error: '', progress: 0, fileName: selectedFile.name, stage: 'detecting' });
     try {
       const parsed = await parseMarketCsv(selectedFile, progress => {
-        setStatus(current => ({ ...current, progress: progress.percent ?? current.progress, stage: 'parsing' }));
+        setStatus(current => ({
+          ...current,
+          progress: progress.percent ?? current.progress,
+          stage: progress.stage || current.stage,
+          detectedFormat: progress.detectedFormat || current.detectedFormat,
+        }));
       });
       setCustomParsed(parsed);
       const months = new Set(parsed.candles.map(candle => {
@@ -96,9 +111,14 @@ export default function DataImportModal() {
         return `${marketDate.getUTCFullYear()}-${String(marketDate.getUTCMonth() + 1).padStart(2, '0')}`;
       }));
       setCustomMonth([...months].sort().at(-1) || '__ALL__');
-      setStatus({ loading: false, error: '', progress: 100, fileName: selectedFile.name, stage: 'complete' });
+      setStatus({
+        loading: false, error: '', progress: 100, fileName: selectedFile.name, stage: 'verified',
+        detectedFormat: parsed.detectedFormat, candleCount: parsed.candles.length,
+        invalidRows: parsed.invalidRows, duplicateRows: parsed.duplicateRows,
+        firstTime: parsed.candles[0]?.time, lastTime: parsed.candles.at(-1)?.time,
+      });
     } catch (error) {
-      setStatus({ loading: false, error: error?.message || 'Unable to read this CSV file.' });
+      setStatus({ loading: false, error: error?.message || 'Unable to read this CSV file.', fileName: selectedFile.name, stage: 'error' });
     }
   };
 
@@ -111,8 +131,8 @@ export default function DataImportModal() {
     }
     setStatus({ loading: true, error: '', progress: 0, fileName: file.name });
     try {
-      const parsed = customParsed || await parseMarketCsv(file, (progress) => {
-        setStatus((current) => ({ ...current, progress: progress.percent ?? current.progress }));
+      const parsed = customParsed || await parseMarketCsv(file, progress => {
+        setStatus(current => ({ ...current, progress: progress.percent ?? current.progress, stage: progress.stage || current.stage }));
       });
       const candles = parsed.candles
         .map(candle => ({ ...candle, time: candle.time - (parsed.timestampsAreUtc ? 0 : UTC_PLUS_3_SECONDS) }))
@@ -158,7 +178,21 @@ export default function DataImportModal() {
                 ...customMonths.map(month => ({ value: month, label: new Date(Number(month.slice(0,4)), Number(month.slice(5,7)) - 1, 1).toLocaleString('en', { month: 'long', year: 'numeric' }) })),
               ]}/>
             </label>}
-            {file && status.loading && <p className="text-[10px] text-gray-500">Scanning CSV dates to find available months…</p>}
+            {file && status.loading && <p className="text-[11px] text-blue-300" aria-live="polite">
+              {status.stage === 'detecting' ? 'Detecting CSV format and column headings…' : 'Reading and validating market candles…'}
+            </p>}
+            {file && customParsed && status.stage === 'verified' && (
+              <div className="space-y-2 rounded-lg border border-emerald-700/60 bg-emerald-950/25 p-3 text-xs" role="status">
+                <div className="flex items-center gap-2 font-semibold text-emerald-300"><span className="h-2 w-2 rounded-full bg-emerald-400"/> CSV successfully verified</div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-gray-300">
+                  <span>Detected format</span><span className="text-right text-white">{status.detectedFormat || customParsed.detectedFormat}</span>
+                  <span>Valid candles</span><span className="text-right text-white">{(status.candleCount || customParsed.candles.length).toLocaleString()}</span>
+                  <span>Invalid rows</span><span className="text-right text-white">{status.invalidRows ?? customParsed.invalidRows ?? 0}</span>
+                  <span>Duplicate rows</span><span className="text-right text-white">{status.duplicateRows ?? customParsed.duplicateRows ?? 0}</span>
+                  <span>Detected columns</span><span className="text-right text-white">{(customParsed.fields || []).join(', ')}</span>
+                </div>
+              </div>
+            )}
             <label className="block text-xs text-gray-400">Symbol (e.g. XAUUSD, EURUSD, NAS100)
               <input className={inputClass} value={symbol} onChange={event => {
                 const code = event.target.value;
@@ -185,7 +219,7 @@ export default function DataImportModal() {
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#202938]">
                   <div className="h-full rounded-full bg-blue-500 transition-[width] duration-200" style={{ width: `${status.progress || 0}%` }} />
                 </div>
-                <p className="text-[10px] text-gray-500">Processing {status.fileName || 'CSV data'} · {status.progress || 0}%</p>
+                <p className="text-[10px] text-gray-500">{status.stage === 'detecting' ? 'Detecting file format' : 'Validating OHLC data'} · {status.fileName || 'CSV data'} · {status.progress || 0}%</p>
               </div>
             )}
           </section>
