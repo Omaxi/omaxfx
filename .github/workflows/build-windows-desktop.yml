@@ -37,6 +37,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Run automated regression tests
+        run: npm test
+
       - name: Build compressed Windows installer
         run: npm run dist:win
 
@@ -52,8 +55,8 @@ jobs:
             - Windows x64 installer
             - Automatically generated from the latest successful desktop build
 
-            Download **OmaxFX-Setup.exe** below.
-          files: release/OmaxFX-Setup.exe
+            Download **OmaxFX-Simulator.exe** below.
+          files: release/OmaxFX-Simulator.exe
           draft: false
           prerelease: false
           make_latest: true
