@@ -123,7 +123,8 @@ export const useStore = create((set, get) => ({
   symbolWarning: null,
   clearSymbolWarning: () => set({ symbolWarning: null }),
 
-  sessionTimes: { asian: 1, london: 11, newyork: 16 },
+  sessionTimes: { asian: 3, london: 11, newyork: 16 },
+  sessionEndTimes: { asian: 8, london: 13, newyork: 18 },
   sessionColors: { ...DEFAULT_SESSION_COLORS },
   setSessionColor: (key, color) => set((state) => ({
     sessionColors: { ...state.sessionColors, [key]: color },
@@ -143,6 +144,9 @@ export const useStore = create((set, get) => ({
 
   setSessionTime: (key, hour) => set((state) => ({
     sessionTimes: { ...state.sessionTimes, [key]: Math.max(0, Math.min(23, Number(hour) || 0)) }
+  })),
+  setSessionEndTime: (key, hour) => set((state) => ({
+    sessionEndTimes: { ...state.sessionEndTimes, [key]: Math.max(0, Math.min(24, Number(hour) || 0)) }
   })),
 
   setAllData: (data) => set((state) => {
