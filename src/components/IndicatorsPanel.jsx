@@ -6,7 +6,7 @@ import { useStore } from '../store';
 import { aggregateData } from '../utils/timeframe';
 import { detectFairValueGaps, formatFvgTimeframe, latestFairValueGapPair } from '../utils/fvg';
 import { getPricePrecision, getPriceTickSize } from '../utils/instrument';
-import { getMarketSession } from '../utils/marketClock';
+import { getMarketSession, toMarketDate } from '../utils/marketClock';
 
 const INDICATORS = [
   { key: 'ma', label: 'Moving Average', color: '#f59e0b', pane: 'price' },
@@ -260,6 +260,8 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
   const fvgCanvasRef = useRef(null);
   const htfCandleCanvasRef = useRef(null);
   const sessionColors = useStore(state => state.sessionColors);
+  const sessionTimes = useStore(state => state.sessionTimes);
+  const sessionEndTimes = useStore(state => state.sessionEndTimes);
   const symbol = useStore(state => state.symbol);
   const allRawData = useStore(state => state.allRawData);
   const dailyCandles = useMemo(() => aggregateData(allRawData || [], 1440), [allRawData]);
@@ -649,7 +651,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
       window.removeEventListener('wheel', draw);
       observer.disconnect();
     };
-  }, [active.sessions, chartRef, chartReady, sessionCandles, timeframe, sessionColors]);
+  }, [active.sessions, chartRef, chartReady, sessionCandles, timeframe, sessionColors, sessionTimes, sessionEndTimes]);
 
   // Include the developing HTF candle's full range in the chart autoscale.
   // The transparent one-point series contributes only the requested price range.
