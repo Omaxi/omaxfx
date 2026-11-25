@@ -230,7 +230,7 @@ export default function Chart({ chartId = 'main' }) {
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
     theme, uiTheme, snapshotDrawings, recenterToken,
     isPencilMode, pencilColor, setPencilColor,
-    chartType, symbol, contractSpecs
+    chartType, symbol, contractSpecs, sessionTimes, sessionEndTimes
   } = useStore();
 
   const lockChart = useCallback((locked) => {
@@ -1594,7 +1594,14 @@ export default function Chart({ chartId = 'main' }) {
   const currentCandle = visibleData[visibleData.length - 1] || null;
   const candleClock = currentCandle ? toMarketDate(Number(currentCandle.time)) : null;
   const candleHour = candleClock ? candleClock.getUTCHours() : -1;
-  const candleSession = candleHour >= 1 && candleHour < 11 ? 'Asian & Sydney' : candleHour >= 11 && candleHour < 16 ? 'London' : 'New York';
+  const candleSession = (() => {
+    const sessions = [
+      { key: 'asian', label: 'Asia' },
+      { key: 'london', label: 'London' },
+      { key: 'newyork', label: 'New York' },
+    ];
+    return sessions.find(session => candleHour >= Number(sessionTimes?.[session.key] ?? 0) && candleHour < Number(sessionEndTimes?.[session.key] ?? 0))?.label || 'Outside Sessions';
+  })();
   const candleDate = currentCandle ? formatMarketDateTime(Number(currentCandle.time)) : '—';
   const candlePrice = value => Number.isFinite(Number(value)) ? Number(value).toFixed(3) : '—';
 
