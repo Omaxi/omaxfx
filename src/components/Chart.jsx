@@ -1152,8 +1152,10 @@ export default function Chart({ chartId = 'main' }) {
               snapshotDrawings();
               dragRef.current = {
                 type: 'drawing',
+                drawingType: drawing.type,
                 ...drawingHit,
                 startMouse: point,
+                startScreen: { x, y },
                 originalPoints: drawing.points.map(p => ({ ...p })),
               };
             }
@@ -1288,14 +1290,35 @@ export default function Chart({ chartId = 'main' }) {
             }
           }
         } else if (drag.type === 'drawing') {
-          const point = xyToPoint(x, y);
+          let point = xyToPoint(x, y);
           if (point) {
+            const shiftSnap = e.shiftKey && drag.drawingType === 'trendline';
             if (drag.mode === 'drag-point') {
+              if (shiftSnap && drag.originalPoints.length === 2) {
+                // Shift constrains a trendline endpoint to the nearest chart axis:
+                // horizontal (same price) or vertical (same timestamp).
+                const anchorIndex = drag.pointIndex === 0 ? 1 : 0;
+                const anchor = drag.originalPoints[anchorIndex];
+                const anchorXY = pointToXY(anchor);
+                if (anchorXY) {
+                  const dx = x - anchorXY.x;
+                  const dy = y - anchorXY.y;
+                  point = xyToPoint(Math.abs(dx) >= Math.abs(dy) ? x : anchorXY.x,
+                                    Math.abs(dx) >= Math.abs(dy) ? anchorXY.y : y) || point;
+                }
+              }
               const newPoints = drag.originalPoints.map((p, i) => i === drag.pointIndex ? point : p);
               state.updateDrawing(drag.drawingId, newPoints);
             } else if (drag.mode === 'drag-body') {
-              const dTime = point.time - drag.startMouse.time;
-              const dPrice = point.price - drag.startMouse.price;
+              let dTime = point.time - drag.startMouse.time;
+              let dPrice = point.price - drag.startMouse.price;
+              if (shiftSnap && drag.startScreen) {
+                // For whole-line moves, Shift locks the translation to X or Y.
+                const dx = x - drag.startScreen.x;
+                const dy = y - drag.startScreen.y;
+                if (Math.abs(dx) >= Math.abs(dy)) dPrice = 0;
+                else dTime = 0;
+              }
               const newPoints = drag.originalPoints.map(p => ({
                 time: p.time + dTime,
                 price: p.price + dPrice,
