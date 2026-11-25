@@ -1,16 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Upload, FileText, AlertTriangle, RefreshCw, ChevronDown } from 'lucide-react';
-import { parseMarketCsv } from '../utils/marketData';
+import { Upload, FileText, AlertTriangle, RefreshCw, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { inferSymbolFromFilename, parseMarketCsv } from '../utils/marketData';
 import { useStore } from '../store';
 
 const UTC_PLUS_3_SECONDS = 3 * 60 * 60;
 
 function defaultSpecs(symbol) {
-  const code = symbol.toUpperCase();
+  const code = String(symbol || '').toUpperCase();
   if (code === 'XAUUSD') return { contractSize: 100, tickSize: 0.01, precision: 2 };
-  if (code === 'EURUSD' || code.endsWith('USD') && code.length === 6) return { contractSize: 100000, tickSize: 0.00001, precision: 5 };
-  if (code.includes('JPY')) return { contractSize: 100000, tickSize: 0.001, precision: 3 };
+  if (code === 'XAGUSD') return { contractSize: 5000, tickSize: 0.001, precision: 3 };
+  if (code.endsWith('JPY') && code.length === 6) return { contractSize: 100000, tickSize: 0.001, precision: 3 };
+  if (/^[A-Z]{6}$/.test(code)) return { contractSize: 100000, tickSize: 0.00001, precision: 5 };
+  if (/^(NAS100|US30|SPX500|GER40|UK100|JP225)$/.test(code)) return { contractSize: 1, tickSize: 0.1, precision: 1 };
+  if (/^(BTC|ETH)/.test(code)) return { contractSize: 1, tickSize: 0.01, precision: 2 };
   return { contractSize: 1, tickSize: 0.00001, precision: 5 };
+}
+
+function marketMonth(candle, timestampsAreUtc) {
+  const normalizedTime = Number(candle.time) - (timestampsAreUtc ? 0 : UTC_PLUS_3_SECONDS);
+  const marketDate = new Date((normalizedTime + UTC_PLUS_3_SECONDS) * 1000);
+  return Number.isFinite(marketDate.getTime())
+    ? marketDate.getUTCFullYear() + '-' + String(marketDate.getUTCMonth() + 1).padStart(2, '0')
+    : null;
 }
 
 function StyledSelect({ value, onChange, options }) {
@@ -41,12 +52,13 @@ function StyledSelect({ value, onChange, options }) {
     </div>
   );
 }
+
 export default function DataImportModal() {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState(null);
   const [customParsed, setCustomParsed] = useState(null);
   const [customMonth, setCustomMonth] = useState('__ALL__');
-  const [symbol, setSymbol] = useState('CUSTOM');
+  const [symbol, setSymbol] = useState('');
   const [contractSize, setContractSize] = useState('1');
   const [tickSize, setTickSize] = useState('0.00001');
   const [precision, setPrecision] = useState('5');
@@ -63,13 +75,7 @@ export default function DataImportModal() {
 
   const customMonths = useMemo(() => {
     if (!customParsed?.candles?.length) return [];
-    const months = new Set();
-    customParsed.candles.forEach(candle => {
-      const normalizedTime = Number(candle.time) - (customParsed.timestampsAreUtc ? 0 : UTC_PLUS_3_SECONDS);
-      const marketDate = new Date((normalizedTime + UTC_PLUS_3_SECONDS) * 1000);
-      if (Number.isFinite(marketDate.getTime())) months.add(`${marketDate.getUTCFullYear()}-${String(marketDate.getUTCMonth() + 1).padStart(2, '0')}`);
-    });
-    return [...months].sort();
+    return [...new Set(customParsed.candles.map(candle => marketMonth(candle, customParsed.timestampsAreUtc)).filter(Boolean))].sort();
   }, [customParsed]);
 
   const openBacktestSetup = (code, candles, spec) => {
@@ -84,19 +90,36 @@ export default function DataImportModal() {
     setCustomParsed(null);
     setCustomMonth('__ALL__');
     if (!selectedFile) return;
+    const detectedSymbol = inferSymbolFromFilename(selectedFile.name);
+    if (detectedSymbol) {
+      setSymbol(detectedSymbol);
+      const specs = defaultSpecs(detectedSymbol);
+      setContractSize(String(specs.contractSize));
+      setTickSize(String(specs.tickSize));
+      setPrecision(String(specs.precision));
+      setQuoteCurrency(detectedSymbol.slice(-3).length === 3 ? detectedSymbol.slice(-3) : 'USD');
+    }
     setStatus({ loading: true, error: '', progress: 0, fileName: selectedFile.name, stage: 'parsing' });
     try {
       const parsed = await parseMarketCsv(selectedFile, progress => {
-        setStatus(current => ({ ...current, progress: progress.percent ?? current.progress, stage: 'parsing' }));
+        setStatus(current => ({ ...current, progress: progress.percent ?? current.progress, stage: progress.stage || 'parsing' }));
       });
       setCustomParsed(parsed);
-      const months = new Set(parsed.candles.map(candle => {
-        const normalizedTime = Number(candle.time) - (parsed.timestampsAreUtc ? 0 : UTC_PLUS_3_SECONDS);
-        const marketDate = new Date((normalizedTime + UTC_PLUS_3_SECONDS) * 1000);
-        return `${marketDate.getUTCFullYear()}-${String(marketDate.getUTCMonth() + 1).padStart(2, '0')}`;
-      }));
-      setCustomMonth([...months].sort().at(-1) || '__ALL__');
-      setStatus({ loading: false, error: '', progress: 100, fileName: selectedFile.name, stage: 'complete' });
+      setCustomMonth('__ALL__');
+      setStatus({
+        loading: false,
+        error: '',
+        progress: 100,
+        fileName: selectedFile.name,
+        stage: 'complete',
+        summary: {
+          candles: parsed.candles.length,
+          invalidRows: parsed.invalidRows,
+          duplicateRows: parsed.duplicateRows,
+          months: [...new Set(parsed.candles.map(candle => marketMonth(candle, parsed.timestampsAreUtc)).filter(Boolean))].length,
+          columns: parsed.detectedColumns,
+        },
+      });
     } catch (error) {
       setStatus({ loading: false, error: error?.message || 'Unable to read this CSV file.' });
     }
@@ -104,27 +127,29 @@ export default function DataImportModal() {
 
   const submitCustom = async () => {
     if (!file) { setStatus({ loading: false, error: 'Choose your CSV file first.' }); return; }
-    const code = symbol.trim().toUpperCase().replace(/[^A-Z0-9._-]/g, '').slice(0, 20);
+    const inferred = inferSymbolFromFilename(file.name);
+    const code = (symbol.trim() || inferred || 'CUSTOM').toUpperCase().replace(/[^A-Z0-9._-]/g, '').slice(0, 20);
     if (!code) { setStatus({ loading: false, error: 'Enter a symbol for this CSV.' }); return; }
     if (!(Number(contractSize) > 0) || !(Number(tickSize) > 0) || !(Number(quoteToAccountRate) > 0)) {
       setStatus({ loading: false, error: 'Instrument settings must be greater than zero.' }); return;
     }
     setStatus({ loading: true, error: '', progress: 0, fileName: file.name });
     try {
-      const parsed = customParsed || await parseMarketCsv(file, (progress) => {
-        setStatus((current) => ({ ...current, progress: progress.percent ?? current.progress }));
+      const parsed = customParsed || await parseMarketCsv(file, progress => {
+        setStatus(current => ({ ...current, progress: progress.percent ?? current.progress }));
       });
       const candles = parsed.candles
         .map(candle => ({ ...candle, time: candle.time - (parsed.timestampsAreUtc ? 0 : UTC_PLUS_3_SECONDS) }))
-        .filter(candle => {
-          if (customMonth === '__ALL__') return true;
-          const marketDate = new Date((Number(candle.time) + UTC_PLUS_3_SECONDS) * 1000);
-          return `${marketDate.getUTCFullYear()}-${String(marketDate.getUTCMonth() + 1).padStart(2, '0')}` === customMonth;
-        });
-      if (candles.length < 2) throw new Error(`The selected month (${customMonth}) contains fewer than two valid candles. Choose another month or Full dataset.`);
+        .filter(candle => customMonth === '__ALL__' || marketMonth(candle, false) === customMonth);
+      if (candles.length < 2) {
+        throw new Error('No candles were found for ' + (customMonth === '__ALL__' ? 'this file' : customMonth) + '. The full file contains ' + parsed.candles.length.toLocaleString() + ' valid candles across ' + customMonths.length + ' month(s). Choose Full dataset or another month.');
+      }
       openBacktestSetup(code, candles, {
-        contractSize: Number(contractSize), tickSize: Number(tickSize), precision: Number(precision),
-        quoteCurrency: quoteCurrency.trim().toUpperCase(), quoteToAccountRate: Number(quoteToAccountRate),
+        contractSize: Number(contractSize),
+        tickSize: Number(tickSize),
+        precision: Number(precision),
+        quoteCurrency: quoteCurrency.trim().toUpperCase(),
+        quoteToAccountRate: Number(quoteToAccountRate),
       });
     } catch (error) {
       setStatus({ loading: false, error: error?.message || 'Unable to import this CSV.' });
@@ -141,7 +166,7 @@ export default function DataImportModal() {
       <div className="relative w-full max-w-lg bg-[#131722] border border-[#2a2e39] rounded-2xl shadow-2xl overflow-visible">
         <div className="flex items-center gap-3 border-b border-[#2a2e39] p-4">
           <div className="rounded-xl bg-blue-500/15 p-2"><Upload size={20} className="text-blue-400"/></div>
-          <div><h2 className="font-bold text-white">Load market data</h2><p className="text-xs text-gray-400">Choose a dataset to open the backtest setup · timestamps UTC+3</p></div>
+          <div><h2 className="font-bold text-white">Load market data</h2><p className="text-xs text-gray-400">Automatic format detection · broker time normalized to UTC+3</p></div>
         </div>
 
         <div className="p-4 space-y-4">
@@ -149,23 +174,34 @@ export default function DataImportModal() {
             <div className="flex items-center gap-2 text-sm font-semibold text-white"><FileText size={16} className="text-blue-400"/> Import CSV from your computer</div>
             <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-[#465064] bg-[#0b0e11] p-4 hover:border-blue-500">
               <FileText size={24} className="shrink-0 text-blue-400"/>
-              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">{file?.name || 'Choose your CSV file'}</span><span className="mt-1 block text-[11px] text-gray-500">Date/time, Open, High, Low, Close · Volume optional</span></span>
-              <input type="file" accept=".csv,text/csv" className="hidden" onChange={event => { handleCustomFile(event.target.files?.[0] || null); }}/>
+              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white">{file?.name || 'Choose your CSV file'}</span><span className="mt-1 block text-[11px] text-gray-500">Auto-detects delimiter, date/time and common OHLC header variations · Volume optional</span></span>
+              <input type="file" accept=".csv,text/csv,.txt,text/plain" className="hidden" onChange={event => handleCustomFile(event.target.files?.[0] || null)}/>
             </label>
-            {file && customParsed && <label className="block text-xs text-gray-400">Month to import
+            {file && customParsed && <div className="rounded-lg border border-emerald-800/60 bg-emerald-950/20 p-3 text-xs text-gray-300">
+              <div className="mb-1 flex items-center gap-2 font-semibold text-emerald-400"><CheckCircle2 size={14}/> CSV analyzed successfully</div>
+              <div className="grid grid-cols-2 gap-2">
+                <span>Valid candles: <b className="text-white">{customParsed.candles.length.toLocaleString()}</b></span>
+                <span>Months detected: <b className="text-white">{customMonths.length}</b></span>
+                <span>Skipped rows: <b className="text-white">{customParsed.invalidRows.toLocaleString()}</b></span>
+                <span>Duplicate times: <b className="text-white">{customParsed.duplicateRows.toLocaleString()}</b></span>
+              </div>
+              <p className="mt-1 text-[10px] text-gray-500">Detected headers: {customParsed.fields.join(', ')}</p>
+            </div>}
+            {file && customParsed && <label className="block text-xs text-gray-400">Dataset to import
               <StyledSelect value={customMonth} onChange={setCustomMonth} options={[
-                { value: '__ALL__', label: 'Full dataset (all months)' },
+                { value: '__ALL__', label: 'Full dataset · all months (' + customParsed.candles.length.toLocaleString() + ' candles)' },
                 ...customMonths.map(month => ({ value: month, label: new Date(Number(month.slice(0,4)), Number(month.slice(5,7)) - 1, 1).toLocaleString('en', { month: 'long', year: 'numeric' }) })),
               ]}/>
             </label>}
-            {file && status.loading && <p className="text-[10px] text-gray-500">Scanning CSV dates to find available months…</p>}
-            <label className="block text-xs text-gray-400">Symbol (e.g. XAUUSD, EURUSD, NAS100)
+            <label className="block text-xs text-gray-400">Instrument / symbol
               <input className={inputClass} value={symbol} onChange={event => {
-                const code = event.target.value;
+                const code = event.target.value.toUpperCase();
                 setSymbol(code);
                 const specs = defaultSpecs(code);
-                setContractSize(String(specs.contractSize)); setTickSize(String(specs.tickSize)); setPrecision(String(specs.precision));
-              }} placeholder="Enter symbol"/>
+                setContractSize(String(specs.contractSize));
+                setTickSize(String(specs.tickSize));
+                setPrecision(String(specs.precision));
+              }} placeholder="Auto-detected from filename, or enter e.g. EURUSD / XAUUSD / NAS100"/>
             </label>
             <button type="button" onClick={() => setShowAdvanced(value => !value)} className="flex w-full items-center gap-2 text-xs text-gray-400 hover:text-white">
               <ChevronDown size={14} className={showAdvanced ? 'rotate-180' : ''}/> Instrument settings {showAdvanced ? '(hide)' : '(optional)'}
@@ -180,16 +216,13 @@ export default function DataImportModal() {
             <button className={buttonClass} disabled={status.loading || !file || !customParsed} onClick={submitCustom}>
               {status.loading ? <span className="inline-flex items-center gap-2"><RefreshCw size={15} className="animate-spin"/> Importing CSV… {status.progress || 0}%</span> : 'Import CSV and continue'}
             </button>
-            {status.loading && (
-              <div className="space-y-1" aria-live="polite">
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#202938]">
-                  <div className="h-full rounded-full bg-blue-500 transition-[width] duration-200" style={{ width: `${status.progress || 0}%` }} />
-                </div>
-                <p className="text-[10px] text-gray-500">Processing {status.fileName || 'CSV data'} · {status.progress || 0}%</p>
+            {status.loading && <div className="space-y-1" aria-live="polite">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#202938]">
+                <div className="h-full rounded-full bg-blue-500 transition-[width] duration-200" style={{ width: (status.progress || 0) + '%' }} />
               </div>
-            )}
+              <p className="text-[10px] text-gray-500">{status.stage === 'downloading' ? 'Reading file' : 'Detecting format and validating candles'} · {status.progress || 0}%</p>
+            </div>}
           </section>
-
           {status.error && <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-800 bg-red-950/50 p-3 text-xs text-red-300"><AlertTriangle size={15} className="mt-0.5 shrink-0"/><span>{status.error}</span></div>}
         </div>
       </div>
