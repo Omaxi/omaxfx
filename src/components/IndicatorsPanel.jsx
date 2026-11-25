@@ -252,7 +252,7 @@ function calculateIndicators(candles, config, active, timeframe, sessionCandles 
 }
 export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, chartRef, chartReady, visibleData, displayData, timeframe, priceSeriesRef, liveCandle, rawData, currentIndex }) {
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState({ pdhPdl: true });
+  const [active, setActive] = useState({});
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const seriesRef = useRef({});
   const readyRef = useRef(false);
@@ -479,9 +479,8 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
       onIndicatorDashboard?.([]);
       return;
     }
-    // The dashboard always shows RSI and ADX, independent of whether their
-    // chart plots are enabled. ATR is calculated only from completed 1-hour bars.
-    const dashboardActive = { ...active, rsi: true, adx: true, atr: false };
+    // Only show indicator values when the user has explicitly enabled that indicator.
+    // ATR is calculated only from completed 1-hour bars.
     const calculated = calculateIndicators(visibleData, config, dashboardActive, timeframe, sessionCandles);
     Object.entries(seriesRef.current).forEach(([key, series]) => {
       try { series.setData(calculated[key] || []); } catch (e) {}
@@ -497,11 +496,11 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
     const dashboard = [];
     const rsiValue = latest(calculated.rsi);
     if (rsiValue != null) dashboard.push({ key: 'rsi', label: 'RSI', color: '#38bdf8', value: rsiValue });
-    const hourlyAtrSeries = hourlyCandles.length > 1
+    const hourlyAtrSeries = active.atr && hourlyCandles.length > 1
       ? calculateIndicators(hourlyCandles, config, { atr: true }, 60).atr
       : [];
     const hourlyAtr = latest(hourlyAtrSeries);
-    if (hourlyAtr != null) {
+    if (active.atr && hourlyAtr != null) {
       // Stop distance is exactly 0.9 × 1H ATR, in the same native units.
       // Do not divide by pip size: that conversion inflated the displayed value.
       const stopLossPips = hourlyAtr * 0.9;
