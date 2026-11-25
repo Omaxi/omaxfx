@@ -14,7 +14,7 @@ const aliases = {
 const cleanHeader = value => String(value ?? '')
   .replace(/^\uFEFF/, '').trim().toLowerCase()
   .replace(/[<>()[\]{}]/g, ' ')
-  .replace(/[._-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  .replace(/[._\/-]+/g, ' ').replace(/\s+/g, ' ').trim();
 
 function normalizeNumber(value, decimalComma) {
   if (typeof value === 'number') return value;
@@ -126,7 +126,7 @@ function makeKeys(fields) {
   return result;
 }
 
-function createRowNormalizer(fields, { headerless = false, hasSeparateDateTime = false, decimalComma = false, delimiter = ',' } = {}) {
+function createRowNormalizer(fields, { headerless = false, decimalComma = false, delimiter = ',' } = {}) {
   if (!fields.length) throw new Error('The CSV has no readable columns.');
   const keys = makeKeys(fields);
   const candles = [];
@@ -202,17 +202,19 @@ async function inspectCsv(file) {
 export function parseMarketCsvText(text) {
   const sample = Papa.parse(String(text).slice(0, 256 * 1024), { skipEmptyLines: 'greedy', preview: 12 });
   const info = findHeaderInfo(sample.data || []);
+  const delimiter = sample.meta?.delimiter || ',';
+  const sampleRows = sample.data || [];
+  const decimalComma = delimiter !== ',' && sampleRows.some(row => Array.isArray(row) && row.some(value => typeof value === 'string' && /^-?\\d+,\\d+$/.test(value.trim())));
   const full = Papa.parse(String(text), {
-    delimiter: info.delimiter || sample.meta?.delimiter,
+    delimiter,
     header: info.header,
     skipEmptyLines: 'greedy',
   });
   if (info.headerRowIndex > 0) full.data = full.data.slice(info.headerRowIndex);
   const normalizer = createRowNormalizer(info.fields, {
     headerless: !info.header,
-    hasSeparateDateTime: info.hasSeparateDateTime,
-    delimiter: full.meta?.delimiter || sample.meta?.delimiter || ',',
-    decimalComma: info.decimalComma,
+    delimiter: full.meta?.delimiter || delimiter,
+    decimalComma,
   });
   normalizer.addRows(full.data);
   return normalizer.finish(full.errors?.length || 0);
