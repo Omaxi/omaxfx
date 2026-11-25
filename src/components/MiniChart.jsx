@@ -102,8 +102,8 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
     const chart = createChart(container, {
       width: container.clientWidth,
       height: container.clientHeight,
-      layout: { background: { type: 'solid', color: uiTheme === 'light' ? '#f8fafc' : (theme?.background || '#131722') }, textColor: uiTheme === 'light' ? '#475467' : '#6b7280', fontSize: 10, attributionLogo: false },
-      grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+      layout: { background: { type: 'solid', color: uiTheme === 'light' ? '#f8fafc' : (theme?.background || '#171a27') }, textColor: uiTheme === 'light' ? '#475467' : '#6b7280', fontSize: 10, attributionLogo: false },
+      grid: { vertLines: { visible: true, color: '#202433' }, horzLines: { visible: true, color: '#202433' } },
       rightPriceScale: { borderVisible: false },
       timeScale: { timeVisible: true, secondsVisible: false, borderVisible: false, rightOffset: 3, tickMarkFormatter: (time, type) => formatMarketTick(time, type) },
       localization: { timeFormatter: time => formatMarketDateTime(time) },
@@ -113,10 +113,10 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
     lastTimeframeRef.current = null;
     const state = useStore.getState();
     const series = chart.addSeries(CandlestickSeries, {
-      upColor: theme?.upBody || '#26a69a',
-      downColor: theme?.downBody || '#ef5350',
-      wickUpColor: theme?.upWick || '#26a69a',
-      wickDownColor: theme?.downWick || '#ef5350',
+      upColor: theme?.upBody || '#0897a7',
+      downColor: theme?.downBody || '#59616e',
+      wickUpColor: theme?.upWick || '#0897a7',
+      wickDownColor: theme?.downWick || '#59616e',
       borderVisible: false,
       priceLineVisible: false,
       priceFormat: { type: 'price', precision: getPricePrecision(symbol, state.contractSpecs), minMove: getPriceTickSize(symbol, state.contractSpecs) },
@@ -176,7 +176,7 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
   }, [chartId, candles]);
 
   return (
-    <div className="absolute inset-0" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : (theme?.background || '#131722') }}>
+    <div className="absolute inset-0" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : (theme?.background || '#171a27') }}>
       <div ref={containerRef} className="absolute inset-0" />
       <MiniChartDrawingLayer chartRef={chartRef} seriesRef={seriesRef} chartReady={chartReady} chartId={chartId} candles={candles} timeframe={timeframe} containerRef={containerRef} />
       <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={candles} displayData={aggregatedData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={rawData[currentIndex] || null} rawData={rawData} currentIndex={currentIndex} />
