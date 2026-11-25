@@ -176,15 +176,14 @@ function createRowNormalizer(fields, { headerless = false, decimalComma = false,
 
 export function normalizeMarketRows(parsed) {
   const data = parsed?.data || [];
-  const sample = data.slice(0, 12);
-  const info = findHeaderInfo(sample);
-  const rows = info.header ? data.slice(info.headerRowIndex + 1) : data;
-  const normalizer = createRowNormalizer(info.fields, {
-    headerless: !info.header,
-    hasSeparateDateTime: info.hasSeparateDateTime,
-    delimiter: parsed?.meta?.delimiter || ',',
-    decimalComma: (parsed?.meta?.delimiter || ',') !== ',' && rows.some(row => Array.isArray(row) && row.some(value => typeof value === 'string' && /^-?\d+,\d+$/.test(value.trim()))),
-  });
+  const delimiter = parsed?.meta?.delimiter || ',';
+  const suppliedFields = parsed?.meta?.fields;
+  const info = suppliedFields?.length
+    ? { header: true, fields: suppliedFields }
+    : findHeaderInfo(data.slice(0, 12));
+  const rows = info.header && !suppliedFields ? data.slice(info.headerRowIndex + 1) : data;
+  const decimalComma = delimiter !== ',' && rows.some(row => Array.isArray(row) && row.some(value => typeof value === 'string' && /^-?\\d+,\\d+$/.test(value.trim())));
+  const normalizer = createRowNormalizer(info.fields, { headerless: !info.header, delimiter, decimalComma });
   normalizer.addRows(rows);
   return normalizer.finish(parsed?.errors?.length || 0);
 }
@@ -246,7 +245,7 @@ export function parseMarketCsv(file, onProgress = () => {}) {
             try {
               if (!normalizer) normalizer = createRowNormalizer(
                 info.fields,
-                { headerless: !info.header, hasSeparateDateTime: info.hasSeparateDateTime, decimalComma: info.decimalComma, delimiter: info.delimiter },
+                { headerless: !info.header, decimalComma: info.decimalComma, delimiter: info.delimiter },
               );
               normalizer.addRows(results.data || []);
               parserWarnings += results.errors?.length || 0;
