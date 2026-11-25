@@ -16,6 +16,8 @@ export default function StylePanel({ selectedId, onClose }) {
   const currentBorder = drawing.borderColor || drawing.color || '#3b82f6';
   const currentFill = drawing.fillColor || (currentBorder + '33');
   const currentWidth = drawing.lineWidth ?? 1;
+  const lineStyle = drawing.lineStyle || 'solid';
+  const isAxisLine = ['horizontal', 'vertical'].includes(drawing.type);
   const showBorder = drawing.showBorder === true;
   const isText = drawing.type === 'text';
   const fontSize = drawing.fontSize || 14;
@@ -167,6 +169,36 @@ export default function StylePanel({ selectedId, onClose }) {
               </div>
             </div>
 
+            {/* Horizontal/vertical line controls */}
+            {isAxisLine && (
+              <div>
+                <div className="text-[10px] text-gray-400 uppercase font-bold mb-1.5">Line Style</div>
+                <div className="grid grid-cols-3 gap-1">
+                  {[
+                    { value: 'solid', label: 'Solid', dash: 'none' },
+                    { value: 'dashed', label: 'Dashed', dash: '7 4' },
+                    { value: 'dotted', label: 'Dotted', dash: '2 3' },
+                  ].map(option => (
+                    <button
+                      key={option.value}
+                      onClick={() => commit({ lineStyle: option.value })}
+                      className={`py-1.5 rounded text-[10px] font-bold transition-colors ${
+                        lineStyle === option.value
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-[#1e222d] text-gray-400 hover:bg-[#2a2e39]'
+                      }`}
+                      title={option.label}
+                    >
+                      <svg viewBox="0 0 36 8" className="w-full h-2 mb-1" aria-hidden="true">
+                        <line x1="1" y1="4" x2="35" y2="4" stroke="currentColor" strokeWidth="1.8" strokeDasharray={option.dash} />
+                      </svg>
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Fill color — only for shapes */}
             {supportsFill && (
               <div>
@@ -210,10 +242,10 @@ export default function StylePanel({ selectedId, onClose }) {
             )}
 
             {/* Line width — only show if border is enabled */}
-            {showBorder && (
+            {(showBorder || isAxisLine) && (
               <div>
                 <div className="text-[10px] text-gray-400 uppercase font-bold mb-1.5">
-                  Line Width — {currentWidth}px
+                  Line Thickness — {currentWidth}px
                 </div>
                 <div className="flex items-center gap-2">
                   <input
