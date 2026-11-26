@@ -485,8 +485,16 @@ export const useStore = create((set, get) => ({
     // Keep one complete previous UTC+3 market day on the chart as drawing
     // context. The replay cursor begins at the first candle in the chosen period.
     const selectedMarketDayStart = Math.floor((Number(from) + 3 * 3600) / 86400) * 86400 - 3 * 3600;
-    const previousMarketDayStart = selectedMarketDayStart - 86400;
-    const contextCandles = symbolData.filter(c => c.time >= previousMarketDayStart && c.time < selectedMarketDayStart);
+    let previousTradingDayKey = null;
+    for (let i = symbolData.length - 1; i >= 0; i--) {
+      if (Number(symbolData[i].time) < selectedMarketDayStart) {
+        previousTradingDayKey = getDayKey(symbolData[i].time);
+        break;
+      }
+    }
+    const contextCandles = previousTradingDayKey
+      ? symbolData.filter(c => getDayKey(c.time) === previousTradingDayKey)
+      : [];
     const replayData = [...contextCandles, ...filtered];
 
     if (filtered.length < 2) {
