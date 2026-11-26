@@ -160,32 +160,8 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, isSelected) => {
       const y2 = Math.max(pts[0].y, pts[1].y);
       ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
-      // Eight high-contrast TradingView-style grips: four corners and the
-      // midpoint of each edge. Keep these on top of the fill/border so they
-      // remain visible even when the rectangle has a transparent fill.
-      if (drawing.type === 'rectangle') {
-        const midX = (x1 + x2) / 2;
-        const midY = (y1 + y2) / 2;
-        const handles = [
-          { x: x1, y: y1, size: 9 }, { x: midX, y: y1, size: 8 },
-          { x: x2, y: y1, size: 9 }, { x: x2, y: midY, size: 8 },
-          { x: x2, y: y2, size: 9 }, { x: midX, y: y2, size: 8 },
-          { x: x1, y: y2, size: 9 }, { x: x1, y: midY, size: 8 },
-        ];
-        ctx.save();
-        ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-        ctx.shadowBlur = 3;
-        handles.forEach(({ x: hx, y: hy, size }) => {
-          ctx.fillStyle = '#ffffff';
-          ctx.strokeStyle = '#2563eb';
-          ctx.lineWidth = 1.5;
-          ctx.fillRect(hx - size / 2, hy - size / 2, size, size);
-          ctx.strokeRect(hx - size / 2, hy - size / 2, size, size);
-        });
-        ctx.restore();
-      }
+      // Selected rectangle resize controls are rendered as DOM buttons above
+      // the chart so they stay crisp, white, and reliably pointer-interactive.
     }
 
     ctx.setLineDash([]);
@@ -259,6 +235,7 @@ export default function Chart({ chartId = 'main' }) {
   const [pendingBtnPos, setPendingBtnPos] = useState([]);
   const [positionBtnPos, setPositionBtnPos] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [drawingHandleTick, setDrawingHandleTick] = useState(0);
   const [chartReady, setChartReady] = useState(false);
   const [startupViewReady, setStartupViewReady] = useState(false);
   const [textInput, setTextInput] = useState(null);
@@ -272,7 +249,7 @@ export default function Chart({ chartId = 'main' }) {
     rawData, displayData, currentIndex, positions, pendingOrders, 
     draftPosition, timeframe, cancelPendingOrder, closePosition, activeDrawingTool,
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
-    theme, uiTheme, snapshotDrawings, recenterToken,
+    theme, uiTheme, snapshotDrawings, recenterToken, drawings,
     isPencilMode, pencilColor, setPencilColor,
     chartType, symbol, contractSpecs, sessionTimes, sessionEndTimes, chartOptions
   } = useStore();
@@ -2043,11 +2020,105 @@ export default function Chart({ chartId = 'main' }) {
     };
   }, [chartReady, timeframe, symbol, chartOptions?.crosshairVerticalVisible, chartOptions?.crosshairHorizontalVisible]);
 
+  const selectedRectangleDrawing = selectedItem?.type === 'drawing'
+    ? drawings.find(d => d.id === selectedItem.id && d.type === 'rectangle' && d.points?.length === 2)
+    : null;
+
+  useEffect(() => {
+    if (!selectedRectangleDrawing || !chartRef.current) return;
+    const refreshHandles = () => setDrawingHandleTick(value => value + 1);
+    const timeScale = chartRef.current.timeScale();
+    const priceScale = chartRef.current.priceScale('right');
+    timeScale?.subscribeVisibleLogicalRangeChange(refreshHandles);
+    priceScale?.subscribeVisiblePriceRangeChange?.(refreshHandles);
+    chartRef.current.subscribeSizeChange?.(refreshHandles);
+    window.addEventListener('resize', refreshHandles);
+    return () => {
+      timeScale?.unsubscribeVisibleLogicalRangeChange(refreshHandles);
+      priceScale?.unsubscribeVisiblePriceRangeChange?.(refreshHandles);
+      chartRef.current?.unsubscribeSizeChange?.(refreshHandles);
+      window.removeEventListener('resize', refreshHandles);
+    };
+  }, [selectedRectangleDrawing?.id, chartReady]);
+
   return (
     <div className="chart-root relative w-full h-full" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : theme.background, visibility: startupViewReady ? 'visible' : 'hidden' }}>
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none', cursor: isPencilMode ? 'crosshair' : 'default' }} />
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
       <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 25 }} aria-hidden="true" />
+
+      {selectedRectangleDrawing && !isPencilMode && (() => {
+        const pts = selectedRectangleDrawing.points.map(pointToXY);
+        if (pts.some(point => !point)) return null;
+        const leftIndex = pts[0].x <= pts[1].x ? 0 : 1;
+        const rightIndex = 1 - leftIndex;
+        const topIndex = pts[0].y <= pts[1].y ? 0 : 1;
+        const bottomIndex = 1 - topIndex;
+        const handles = [
+          { key: 'top-left', x: pts[leftIndex].x, y: pts[topIndex].y, mode: 'resize-corner', corner: 'top-left', timeIndex: leftIndex, priceIndex: topIndex, cursor: 'nwse-resize' },
+          { key: 'top', x: (pts[0].x + pts[1].x) / 2, y: pts[topIndex].y, mode: 'resize-edge', edge: 'top', priceIndex: topIndex, cursor: 'ns-resize' },
+          { key: 'top-right', x: pts[rightIndex].x, y: pts[topIndex].y, mode: 'resize-corner', corner: 'top-right', timeIndex: rightIndex, priceIndex: topIndex, cursor: 'nesw-resize' },
+          { key: 'right', x: pts[rightIndex].x, y: (pts[0].y + pts[1].y) / 2, mode: 'resize-edge', edge: 'right', timeIndex: rightIndex, cursor: 'ew-resize' },
+          { key: 'bottom-right', x: pts[rightIndex].x, y: pts[bottomIndex].y, mode: 'resize-corner', corner: 'bottom-right', timeIndex: rightIndex, priceIndex: bottomIndex, cursor: 'nwse-resize' },
+          { key: 'bottom', x: (pts[0].x + pts[1].x) / 2, y: pts[bottomIndex].y, mode: 'resize-edge', edge: 'bottom', priceIndex: bottomIndex, cursor: 'ns-resize' },
+          { key: 'bottom-left', x: pts[leftIndex].x, y: pts[bottomIndex].y, mode: 'resize-corner', corner: 'bottom-left', timeIndex: leftIndex, priceIndex: bottomIndex, cursor: 'nesw-resize' },
+          { key: 'left', x: pts[leftIndex].x, y: (pts[0].y + pts[1].y) / 2, mode: 'resize-edge', edge: 'left', timeIndex: leftIndex, cursor: 'ew-resize' },
+        ];
+        return handles.map(handle => (
+          <button
+            key={handle.key}
+            type="button"
+            aria-label={`Resize rectangle ${handle.key}`}
+            title={`Drag to extend rectangle ${handle.key}`}
+            onPointerDown={e => {
+              if (e.button !== 0) return;
+              e.preventDefault();
+              e.stopPropagation();
+              const rect = chartContainerRef.current?.getBoundingClientRect();
+              if (!rect) return;
+              const x = e.clientX - rect.left;
+              const y = e.clientY - rect.top;
+              const point = xyToPoint(x, y);
+              if (!point) return;
+              snapshotDrawings();
+              const selection = { type: 'drawing', id: selectedRectangleDrawing.id };
+              selectedItemRef.current = selection;
+              setSelectedItem(selection);
+              lockChart(true);
+              dragRef.current = {
+                type: 'drawing',
+                drawingType: 'rectangle',
+                drawingId: selectedRectangleDrawing.id,
+                mode: handle.mode,
+                edge: handle.edge,
+                corner: handle.corner,
+                timeIndex: handle.timeIndex,
+                priceIndex: handle.priceIndex,
+                startMouse: point,
+                startScreen: { x, y },
+                originalPoints: selectedRectangleDrawing.points.map(p => ({ ...p })),
+              };
+              try { chartContainerRef.current?.setPointerCapture(e.pointerId); } catch (error) {}
+            }}
+            style={{
+              position: 'absolute',
+              left: handle.x,
+              top: handle.y,
+              width: handle.mode === 'resize-corner' ? 13 : 12,
+              height: handle.mode === 'resize-corner' ? 13 : 12,
+              transform: 'translate(-50%, -50%)',
+              zIndex: 28,
+              cursor: handle.cursor,
+              background: '#ffffff',
+              border: '2px solid #2563eb',
+              borderRadius: 3,
+              boxShadow: '0 1px 5px rgba(0,0,0,.9)',
+              padding: 0,
+              touchAction: 'none',
+            }}
+          />
+        ));
+      })()}
 
       {gameStarted && !chartUiPanelsHidden && <div className="live-information-panel absolute top-2 right-[72px] left-auto z-[10] w-[min(230px,calc(100%-5rem))] rounded-lg border border-[#343b49] p-3 text-[9px] leading-4 text-gray-300 shadow-lg pointer-events-auto font-mono" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : theme.background }}>
         <button type="button" onClick={() => setDashboardCollapsed(value => !value)}
