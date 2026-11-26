@@ -790,12 +790,20 @@ export default function Chart({ chartId = 'main' }) {
           ctx.textBaseline = 'middle';
           const pnlText = `${trade.pnl >= 0 ? '+' : '-'}${Math.abs(Number(trade.pnl) || 0).toFixed(2)}`;
           const labelGap = 14;
-          const aboveY = minY_Result - labelGap;
-          const belowY = maxY_Result + labelGap;
-          // Place realized PnL above a winning marker or below a losing marker,
-          // centered on that marker. Flip sides when the preferred side reaches
-          // the chart edge; never clamp the label back into the marker itself.
-          const labelY = aboveY >= 10 ? aboveY : belowY <= paneH - 10 ? belowY : Math.max(10, Math.min(paneH - 10, aboveY));
+          const markerTop = Math.min(yEntry, yExit, ySL ?? yEntry, yTP ?? yEntry);
+          const markerBottom = Math.max(yEntry, yExit, ySL ?? yEntry, yTP ?? yEntry);
+          const aboveY = markerTop - labelGap;
+          const belowY = markerBottom + labelGap;
+          // Place realized PnL outside the full SL/TP risk-reward marker,
+          // not merely outside the entry-to-exit result fill. Center it on the
+          // marker and flip sides when the preferred side reaches the pane edge.
+          const preferredY = trade.pnl >= 0 ? aboveY : belowY;
+          const alternateY = trade.pnl >= 0 ? belowY : aboveY;
+          const labelY = preferredY >= 10 && preferredY <= paneH - 10
+            ? preferredY
+            : alternateY >= 10 && alternateY <= paneH - 10
+              ? alternateY
+              : Math.max(10, Math.min(paneH - 10, preferredY));
           const labelX = Math.max(4, Math.min(paneW - 4, (minX + maxX) / 2));
           ctx.textAlign = 'center';
           ctx.fillText(pnlText, labelX, labelY);
