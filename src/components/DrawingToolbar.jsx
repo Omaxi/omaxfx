@@ -1,5 +1,5 @@
 import { useStore } from '../store';
-import { Minus, Square, MoveVertical, Trash2, Undo2, Redo2, Pencil, Type, ArrowUpRight, ChartNoAxesCombined } from 'lucide-react';
+import { Minus, Square, MoveVertical, Trash2, Undo2, Redo2, Pencil, Type, ArrowUpRight } from 'lucide-react';
 
 const TrendlineIcon = ({ size = 14 }) => (
   <svg
@@ -18,13 +18,22 @@ const TrendlineIcon = ({ size = 14 }) => (
   </svg>
 );
 
+const FibonacciIcon = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+    <path d="M4 5h16M4 11h16M4 19h16" />
+    <path d="M6 19 18 5" strokeWidth="1.5" />
+    <circle cx="6" cy="19" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="18" cy="5" r="1.2" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 const TOOLS = [
   { key: 'horizontal',    label: 'Horizontal',     icon: Minus },
   { key: 'vertical',      label: 'Vertical',       icon: MoveVertical },
   { key: 'trendline',     label: 'Trendline',      icon: TrendlineIcon },
   { key: 'arrow',         label: 'Continuous Arrow', icon: ArrowUpRight },
   { key: 'rectangle',     label: 'Rectangle',      icon: Square },
-  { key: 'fibonacci',     label: 'Fibonacci Retracement', icon: ChartNoAxesCombined },
+  { key: 'fibonacci',     label: 'Fibonacci Retracement', icon: FibonacciIcon },
   { key: 'text',          label: 'Text Note',      icon: Type },
 ];
 
