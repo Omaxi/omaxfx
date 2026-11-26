@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig(({ command }) => ({
-  base: command === 'serve' ? '/' : '/omaxfx/',
+  base: command === 'serve' ? '/' : (process.env.TRADEPAST_DESKTOP === '1' ? './' : '/omaxfx/'),
   plugins: [
     react(),
     tailwindcss(),
