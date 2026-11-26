@@ -1,15 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { createChart, CandlestickSeries } from 'lightweight-charts';
 import { getTradeCandleWindow } from '../utils/tradeScreenshots';
-import { useStore } from '../store';
 
 // Interactive journal preview: the saved JPEG remains available for download,
 // while this chart supports normal Lightweight Charts zoom, pan and axis scaling.
 export default function TradeScreenshotChart({ trade, candles, timeframe = 1 }) {
   const hostRef = useRef(null);
   const overlayRef = useRef(null);
-  const uiTheme = useStore(state => state.uiTheme);
-  const light = uiTheme === 'light';
 
   useEffect(() => {
     const host = hostRef.current;
@@ -21,8 +18,8 @@ export default function TradeScreenshotChart({ trade, candles, timeframe = 1 }) 
       width: host.clientWidth || 600,
       height: host.clientHeight || 260,
       layout: {
-        background: { type: 'solid', color: light ? '#ffffff' : '#0d1117' },
-        textColor: light ? '#667085' : '#9aa4b2',
+        background: { type: 'solid', color: #0d1117 },
+        textColor: #9aa4b2,
         fontSize: 10,
       },
       // Historical trade charts intentionally have no background grid.
