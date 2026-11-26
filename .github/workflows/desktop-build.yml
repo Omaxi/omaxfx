@@ -43,31 +43,31 @@ jobs:
           $env:TRADEPAST_DESKTOP = '1'
           npm run build
 
-      - name: Package standalone TradePast.exe
-        run: npx electron-builder --win portable --x64 --config electron-builder.json
+      - name: Build Windows installer
+        run: npx electron-builder --win nsis --x64 --config electron-builder.json
 
-      - name: Verify executable
+      - name: Verify installer
         shell: pwsh
         run: |
-          if (!(Test-Path 'release/TradePast.exe')) { throw 'TradePast.exe was not produced' }
-          $file = Get-Item 'release/TradePast.exe'
-          if ($file.Length -lt 50000000) { throw 'TradePast.exe is unexpectedly small' }
+          if (!(Test-Path 'release/TradePast-Setup.exe')) { throw 'TradePast-Setup.exe was not produced' }
+          $file = Get-Item 'release/TradePast-Setup.exe'
+          if ($file.Length -lt 50000000) { throw 'TradePast-Setup.exe is unexpectedly small' }
           Write-Host "Verified $($file.Name) ($($file.Length) bytes)"
 
-      - name: Upload executable artifact
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TradePast-Windows-x64
-          path: release/TradePast.exe
+          name: TradePast-Windows-Installer-x64
+          path: release/TradePast-Setup.exe
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish direct download release
+      - name: Publish installer release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: tradepast-desktop-build-${{ github.run_number }}
-          name: TradePast Desktop Build ${{ github.run_number }}
+          tag_name: tradepast-installer-${{ github.run_number }}
+          name: TradePast Windows Installer ${{ github.run_number }}
           target_commitish: main
-          files: release/TradePast.exe
+          files: release/TradePast-Setup.exe
           fail_on_unmatched_files: true
           make_latest: true
