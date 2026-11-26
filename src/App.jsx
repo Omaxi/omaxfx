@@ -308,7 +308,7 @@ function App() {
         <div className="flex min-w-0 items-center gap-2 flex-shrink-0 justify-self-start">
           <h1 className="flex items-center gap-2 whitespace-nowrap">
             <img
-              src={`${import.meta.env.BASE_URL}tradepast-logo.svg?v=2`}
+              src={`${import.meta.env.BASE_URL}tradepast-logo.svg?v=3`}
               alt="TradePast"
               className="h-9 w-12 object-contain"
               draggable="false"
