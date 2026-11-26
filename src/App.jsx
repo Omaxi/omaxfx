@@ -61,9 +61,52 @@ function App() {
   }, []);
 
   useEffect(() => {
-    document.documentElement.dataset.uiTheme = 'dark';
-    window.dispatchEvent(new CustomEvent('omaxfx-ui-theme-change', { detail: 'dark' }));
-    try { localStorage.removeItem('omaxfx-ui-theme'); } catch {}
+    const preferenceKey = 'tradepast-appearance-v1';
+    try {
+      const saved = JSON.parse(localStorage.getItem(preferenceKey) || '{}');
+      const legacyTheme = localStorage.getItem('omaxfx-ui-theme');
+      useStore.setState(state => ({
+        ...(saved.theme && typeof saved.theme === 'object' ? { theme: { ...state.theme, ...saved.theme } } : {}),
+        ...(saved.chartOptions && typeof saved.chartOptions === 'object' ? { chartOptions: { ...state.chartOptions, ...saved.chartOptions } } : {}),
+        ...(saved.sessionColors && typeof saved.sessionColors === 'object' ? { sessionColors: { ...state.sessionColors, ...saved.sessionColors } } : {}),
+        ...(saved.sessionTimes && typeof saved.sessionTimes === 'object' ? { sessionTimes: { ...state.sessionTimes, ...saved.sessionTimes } } : {}),
+        ...(saved.sessionEndTimes && typeof saved.sessionEndTimes === 'object' ? { sessionEndTimes: { ...state.sessionEndTimes, ...saved.sessionEndTimes } } : {}),
+        ...(saved.drawingStyles && typeof saved.drawingStyles === 'object' ? { drawingStyles: { ...state.drawingStyles, ...saved.drawingStyles } } : {}),
+        ...(typeof saved.sessionLabelsVisible === 'boolean' ? { sessionLabelsVisible: saved.sessionLabelsVisible } : {}),
+        uiTheme: saved.uiTheme === 'light' || saved.uiTheme === 'dark' ? saved.uiTheme : (legacyTheme === 'light' ? 'light' : 'dark'),
+      }));
+    } catch {}
+    const applyUiTheme = (value = useStore.getState().uiTheme) => {
+      const themeName = value === 'light' ? 'light' : 'dark';
+      document.documentElement.dataset.uiTheme = themeName;
+      window.dispatchEvent(new CustomEvent('omaxfx-ui-theme-change', { detail: themeName }));
+    };
+    applyUiTheme();
+    const unsubscribe = useStore.subscribe((state, previous) => {
+      if (state.uiTheme !== previous.uiTheme) applyUiTheme(state.uiTheme);
+      if (state.theme !== previous.theme ||
+          state.chartOptions !== previous.chartOptions ||
+          state.uiTheme !== previous.uiTheme ||
+          state.sessionColors !== previous.sessionColors ||
+          state.sessionTimes !== previous.sessionTimes ||
+          state.sessionEndTimes !== previous.sessionEndTimes ||
+          state.sessionLabelsVisible !== previous.sessionLabelsVisible ||
+          state.drawingStyles !== previous.drawingStyles) {
+        try {
+          localStorage.setItem(preferenceKey, JSON.stringify({
+            theme: state.theme,
+            chartOptions: state.chartOptions,
+            uiTheme: state.uiTheme,
+            sessionColors: state.sessionColors,
+            sessionTimes: state.sessionTimes,
+            sessionEndTimes: state.sessionEndTimes,
+            sessionLabelsVisible: state.sessionLabelsVisible,
+            drawingStyles: state.drawingStyles,
+          }));
+        } catch {}
+      }
+    });
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
@@ -219,7 +262,7 @@ function App() {
     stopSoundtrack();
     window.close();
     window.setTimeout(() => {
-      if (!window.closed) window.alert('Please close this browser tab to exit OmaxFX.');
+      if (!window.closed) window.alert('Please close this browser tab to exit TradePast.');
     }, 80);
   };
 
@@ -237,12 +280,12 @@ function App() {
         <div className="flex min-w-0 items-center gap-2 flex-shrink-0 justify-self-start">
           <h1 className="flex items-center gap-2 whitespace-nowrap">
             <img
-              src={`${import.meta.env.BASE_URL}omaxfx-logo.svg`}
-              alt="OmaxFX"
+              src={`${import.meta.env.BASE_URL}tradepast-logo.svg?v=1`}
+              alt="TradePast"
               className="h-8 w-8 object-contain"
               draggable="false"
             />
-            <span className="hidden sm:inline text-sm font-bold tracking-wider text-gray-400">Simulator</span>
+            <span className="hidden sm:inline text-sm font-bold tracking-wider"><span className="text-gray-400">Trade</span><span className="text-white">Past</span></span>
           </h1>
           {positions.length > 0 && (
             <span className="bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded text-[10px] font-bold hidden md:inline">
@@ -291,7 +334,7 @@ function App() {
             title={enableFireworks ? 'Disable Fireworks' : 'Enable Fireworks'}>
             <Sparkles size={13} />
           </button>
-          <button onClick={handleExitPlatform} className="app-header-action w-7 h-7 bg-[#1e222d] border border-red-900/50 hover:bg-red-900/40 text-red-400 rounded flex items-center justify-center" title="Save and exit OmaxFX">
+          <button onClick={handleExitPlatform} className="app-header-action w-7 h-7 bg-[#1e222d] border border-red-900/50 hover:bg-red-900/40 text-red-400 rounded flex items-center justify-center" title="Save and exit TradePast">
             <LogOut size={13}/>
           </button>
           <button onClick={openInfo} className="app-header-action header-action-guide w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 rounded flex items-center justify-center" style={{ color: "#3b82f6" }} title="Quick guide">
