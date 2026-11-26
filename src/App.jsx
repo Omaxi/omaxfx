@@ -34,9 +34,43 @@ function App() {
   } = useStore();
   const soundtrackStarted = useRef(false);
   useEffect(() => {
-    document.documentElement.dataset.uiTheme = 'dark';
-    window.dispatchEvent(new CustomEvent('omaxfx-ui-theme-change', { detail: 'dark' }));
-    try { localStorage.removeItem('omaxfx-ui-theme'); } catch {}
+    const preferenceKey = 'tradepast-appearance-v1';
+    try {
+      const saved = JSON.parse(localStorage.getItem(preferenceKey) || '{}');
+      const legacyTheme = localStorage.getItem('omaxfx-ui-theme');
+      useStore.setState(state => ({
+        ...(saved.theme && typeof saved.theme === 'object' ? { theme: { ...state.theme, ...saved.theme } } : {}),
+        ...(saved.sessionColors && typeof saved.sessionColors === 'object' ? { sessionColors: { ...state.sessionColors, ...saved.sessionColors } } : {}),
+        ...(saved.drawingStyles && typeof saved.drawingStyles === 'object' ? { drawingStyles: { ...state.drawingStyles, ...saved.drawingStyles } } : {}),
+        ...(typeof saved.sessionLabelsVisible === 'boolean' ? { sessionLabelsVisible: saved.sessionLabelsVisible } : {}),
+        uiTheme: saved.uiTheme === 'light' || saved.uiTheme === 'dark' ? saved.uiTheme : (legacyTheme === 'light' ? 'light' : 'dark'),
+      }));
+    } catch {}
+    const applyUiTheme = (value = useStore.getState().uiTheme) => {
+      const themeName = value === 'light' ? 'light' : 'dark';
+      document.documentElement.dataset.uiTheme = themeName;
+      window.dispatchEvent(new CustomEvent('omaxfx-ui-theme-change', { detail: themeName }));
+    };
+    applyUiTheme();
+    const unsubscribe = useStore.subscribe((state, previous) => {
+      if (state.uiTheme !== previous.uiTheme) applyUiTheme(state.uiTheme);
+      if (state.theme !== previous.theme ||
+          state.uiTheme !== previous.uiTheme ||
+          state.sessionColors !== previous.sessionColors ||
+          state.sessionLabelsVisible !== previous.sessionLabelsVisible ||
+          state.drawingStyles !== previous.drawingStyles) {
+        try {
+          localStorage.setItem(preferenceKey, JSON.stringify({
+            theme: state.theme,
+            uiTheme: state.uiTheme,
+            sessionColors: state.sessionColors,
+            sessionLabelsVisible: state.sessionLabelsVisible,
+            drawingStyles: state.drawingStyles,
+          }));
+        } catch {}
+      }
+    });
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
@@ -201,12 +235,12 @@ function App() {
         <div className="flex items-center gap-2 flex-shrink-0">
           <h1 className="flex items-center gap-2 whitespace-nowrap">
             <img
-              src={`${import.meta.env.BASE_URL}omaxfx-logo.svg?v=8`}
-              alt="OmaxFX"
+              src={`${import.meta.env.BASE_URL}tradepast-logo.svg?v=1`}
+              alt="TradePast"
               className="h-8 w-8 object-contain"
               draggable="false"
             />
-            <span className="hidden sm:inline text-sm font-bold tracking-wider text-gray-400">Simulator</span>
+            <span className="hidden sm:inline text-sm font-bold tracking-wider"><span className="text-gray-400">Trade</span><span className="text-white">Past</span></span>
           </h1>
           {positions.length > 0 && (
             <span className="bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded text-[10px] font-bold hidden md:inline">
