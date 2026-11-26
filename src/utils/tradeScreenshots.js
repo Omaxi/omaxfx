@@ -88,7 +88,8 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = '
   const windowData = getTradeCandleWindow(trade, candles, timeframe);
   if (!windowData || typeof document === 'undefined') return null;
   const { data, entryIndex, exitIndex } = windowData;
-  const palette = { background: '#0d1117', text: '#9aa4b2' };
+  const light = uiTheme === 'light';
+  const palette = { background: light ? '#ffffff' : '#0d1117', text: light ? '#667085' : '#9aa4b2' };
   const width = 1280, height = 640;
   const canvas = document.createElement('canvas');
   canvas.width = width; canvas.height = height;
@@ -96,7 +97,6 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = '
   if (!ctx) return null;
   const left = 76, right = 108, top = 34, bottom = 58;
   const plotW = width - left - right, plotH = height - top - bottom;
-  void uiTheme;
   const entry = Number(trade.entryPrice), sl = trade.sl == null ? NaN : Number(trade.sl), tp = trade.tp == null ? NaN : Number(trade.tp);
   const drawings = [
     ...(Array.isArray(drawingSnapshot.drawings) ? drawingSnapshot.drawings : []),
