@@ -703,7 +703,7 @@ export default function Chart({ chartId = 'main' }) {
           ctx.fillText(tag, Math.max(0, paneW - tagWidth / 2), y);
           ctx.restore();
         });
-        const entryY = seriesRef.current.priceToCoordinate(entry);
+        // Reuse the entry coordinate calculated above for the translucent risk/reward zones.
         if (entryY != null && Number.isFinite(entryY)) {
           ctx.save();
           ctx.font = '600 10px Arial';
