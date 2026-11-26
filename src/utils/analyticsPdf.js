@@ -307,7 +307,7 @@ h1,h2,h3,.report-title,.range-line b,.section h2,.summary-card b,.journal-date,.
 .empty,.no-image{background:#f8fafc!important;border-color:#d0d5dd!important;color:#667085!important}
 .curve-dd-badge{background:#fef3f2!important}
 .month-hist-plot,.month-hist-total{background:linear-gradient(to bottom,transparent 49.5%,#98a2b3 49.5%,#98a2b3 50.5%,transparent 50.5%)!important}
-@media print{html,body{background:#ffffff!important;color:#344054!important}}` : ''}</style></head><body>
+@page{background:#ffffff!important}@media print{html,body{background:#ffffff!important;color:#344054!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}` : ''}</style></head><body>
     <header class="cover"><h1>${escapeHtml(reportTitle)}</h1><div class="range-line"><b>Backtest range</b><span>${escapeHtml(backtestRange?.from || "—")}</span><span>TO</span><span>${escapeHtml(backtestRange?.to || "—")}</span><span class="range-duration">${escapeHtml(backtestRange?.elapsed || "")}</span></div><div class="meta"><span>Symbol: <b>${escapeHtml(symbol||'—')}</b></span><span>Timezone: ${escapeHtml(timezone||'UTC+3')}</span><span>Generated: ${escapeHtml(generated)}</span></div></header>
     <div class="top-metrics">${summaryCards.map(([label,value,tone])=>`<div class="summary-card"><small>${escapeHtml(label)}</small><b class="${tone}">${escapeHtml(value)}</b></div>`).join('')}</div>
     <section class="section"><div class="section-heading-row"><h2>Profit and loss · Over time</h2>${buildCurveDrawdownLabel(curve)}</div><div class="curve">${buildCurveSvg(curve, uiTheme)}</div></section>
