@@ -28,14 +28,14 @@ export default function TradeDayModal({ date, trades, onClose, sessionId, candle
       // valid historical screenshot with a drawing-free render.
       const stored = await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
       if (trade.drawingSnapshot) {
-        const captured = renderTradeScreenshot(trade, candles, timeframe, trade.drawingSnapshot);
+        const captured = renderTradeScreenshot(trade, candles, timeframe, 'dark', trade.drawingSnapshot);
         if (captured) {
           await saveTradeScreenshot(trade.id, captured, sessionId || 'unsaved-session').catch(() => false);
           return [String(trade.id), captured];
         }
       }
       if (stored) return [String(trade.id), stored];
-      const image = renderTradeScreenshot(trade, candles, timeframe, {});
+      const image = renderTradeScreenshot(trade, candles, timeframe, 'dark', {});
       if (image) await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
       return [String(trade.id), image];
     })).then(entries => { if (active) setImages(Object.fromEntries(entries)); });
