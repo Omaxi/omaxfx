@@ -159,6 +159,9 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, isSelected) => {
       const y1 = Math.min(pts[0].y, pts[1].y);
       const y2 = Math.max(pts[0].y, pts[1].y);
       ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+      // Selected rectangle resize controls are rendered as DOM buttons above
+      // the chart so they stay crisp, white, and reliably pointer-interactive.
     }
 
     ctx.setLineDash([]);
@@ -232,6 +235,7 @@ export default function Chart({ chartId = 'main' }) {
   const [pendingBtnPos, setPendingBtnPos] = useState([]);
   const [positionBtnPos, setPositionBtnPos] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [drawingHandleTick, setDrawingHandleTick] = useState(0);
   const [chartReady, setChartReady] = useState(false);
   const [startupViewReady, setStartupViewReady] = useState(false);
   const [textInput, setTextInput] = useState(null);
@@ -245,7 +249,7 @@ export default function Chart({ chartId = 'main' }) {
     rawData, displayData, currentIndex, positions, pendingOrders, 
     draftPosition, timeframe, cancelPendingOrder, closePosition, activeDrawingTool,
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
-    theme, uiTheme, snapshotDrawings, recenterToken,
+    theme, uiTheme, snapshotDrawings, recenterToken, drawings,
     isPencilMode, pencilColor, setPencilColor,
     chartType, symbol, contractSpecs, sessionTimes, sessionEndTimes, chartOptions
   } = useStore();
@@ -945,9 +949,40 @@ export default function Chart({ chartId = 'main' }) {
           }
         }
 
-        for (let j = 0; j < pts.length; j++) {
-          if (Math.hypot(x - pts[j].x, y - pts[j].y) < HANDLE_TOL) {
-            return { drawingId: d.id, mode: 'drag-point', pointIndex: j };
+        // A selected rectangle has four visible corner grips. Each grip
+        // edits the appropriate time and price anchors independently, so the
+        // diagonally opposite corner remains stationary.
+        const selectedDrawingId = selectedItemRef.current?.type === 'drawing'
+          ? selectedItemRef.current.id : null;
+        if (d.type === 'rectangle' && pts.length === 2 && selectedDrawingId === d.id) {
+          const leftIndex = pts[0].x <= pts[1].x ? 0 : 1;
+          const rightIndex = 1 - leftIndex;
+          const topIndex = pts[0].y <= pts[1].y ? 0 : 1;
+          const bottomIndex = 1 - topIndex;
+          const midX = (pts[0].x + pts[1].x) / 2;
+          const midY = (pts[0].y + pts[1].y) / 2;
+          const handles = [
+            { mode: 'resize-corner', corner: 'top-left', x: pts[leftIndex].x, y: pts[topIndex].y, timeIndex: leftIndex, priceIndex: topIndex },
+            { mode: 'resize-edge', edge: 'top', x: midX, y: pts[topIndex].y, priceIndex: topIndex },
+            { mode: 'resize-corner', corner: 'top-right', x: pts[rightIndex].x, y: pts[topIndex].y, timeIndex: rightIndex, priceIndex: topIndex },
+            { mode: 'resize-edge', edge: 'right', x: pts[rightIndex].x, y: midY, timeIndex: rightIndex },
+            { mode: 'resize-corner', corner: 'bottom-right', x: pts[rightIndex].x, y: pts[bottomIndex].y, timeIndex: rightIndex, priceIndex: bottomIndex },
+            { mode: 'resize-edge', edge: 'bottom', x: midX, y: pts[bottomIndex].y, priceIndex: bottomIndex },
+            { mode: 'resize-corner', corner: 'bottom-left', x: pts[leftIndex].x, y: pts[bottomIndex].y, timeIndex: leftIndex, priceIndex: bottomIndex },
+            { mode: 'resize-edge', edge: 'left', x: pts[leftIndex].x, y: midY, timeIndex: leftIndex },
+          ];
+          for (const handle of handles) {
+            if (Math.hypot(x - handle.x, y - handle.y) <= 14) {
+              return { drawingId: d.id, ...handle };
+            }
+          }
+        }
+
+        if (d.type !== 'rectangle' || selectedDrawingId !== d.id) {
+          for (let j = 0; j < pts.length; j++) {
+            if (Math.hypot(x - pts[j].x, y - pts[j].y) < HANDLE_TOL) {
+              return { drawingId: d.id, mode: 'drag-point', pointIndex: j };
+            }
           }
         }
         if (d.type === 'horizontal' && pts[0]) {
@@ -1205,6 +1240,35 @@ export default function Chart({ chartId = 'main' }) {
         return;
       }
 
+      // Rectangles can be moved directly from their filled interior with a
+      // single click-drag. Corner hits on an already-selected rectangle are
+      // still handled by the selected-item path below as resize-corner.
+      if (drawingHit?.mode === 'drag-body') {
+        const hitDrawing = state.drawings.find(d => d.id === drawingHit.drawingId);
+        if (hitDrawing?.type === 'rectangle') {
+          const point = xyToPoint(x, y);
+          if (point) {
+            e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+            snapshotDrawings();
+            const drawingSelection = { type: 'drawing', id: hitDrawing.id };
+            selectedItemRef.current = drawingSelection;
+            setSelectedItem(drawingSelection);
+            dragRef.current = {
+              type: 'drawing',
+              drawingType: hitDrawing.type,
+              ...drawingHit,
+              startMouse: point,
+              startScreen: { x, y },
+              originalPoints: hitDrawing.points.map(p => ({ ...p })),
+            };
+            lockChart(true);
+            try { container.setPointerCapture(e.pointerId); } catch (error) {}
+            lastTapRef.current = { time: now, x, y };
+            return;
+          }
+        }
+      }
+
       if (sel) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
 
@@ -1247,6 +1311,7 @@ export default function Chart({ chartId = 'main' }) {
                 startScreen: { x, y },
                 originalPoints: drawing.points.map(p => ({ ...p })),
               };
+              try { container.setPointerCapture(e.pointerId); } catch (error) {}
             }
           }
         } else if (sel.type === 'trade') {
@@ -1398,6 +1463,21 @@ export default function Chart({ chartId = 'main' }) {
               }
               const newPoints = drag.originalPoints.map((p, i) => i === drag.pointIndex ? point : p);
               state.updateDrawing(drag.drawingId, newPoints);
+            } else if (drag.mode === 'resize-corner' && drag.drawingType === 'rectangle' &&
+                       drag.originalPoints.length === 2) {
+              const newPoints = drag.originalPoints.map(p => ({ ...p }));
+              newPoints[drag.timeIndex] = { ...newPoints[drag.timeIndex], time: point.time };
+              newPoints[drag.priceIndex] = { ...newPoints[drag.priceIndex], price: point.price };
+              state.updateDrawing(drag.drawingId, newPoints);
+            } else if (drag.mode === 'resize-edge' && drag.drawingType === 'rectangle' &&
+                       drag.originalPoints.length === 2) {
+              const newPoints = drag.originalPoints.map(p => ({ ...p }));
+              if (drag.edge === 'top' || drag.edge === 'bottom') {
+                newPoints[drag.priceIndex] = { ...newPoints[drag.priceIndex], price: point.price };
+              } else if (drag.edge === 'left' || drag.edge === 'right') {
+                newPoints[drag.timeIndex] = { ...newPoints[drag.timeIndex], time: point.time };
+              }
+              state.updateDrawing(drag.drawingId, newPoints);
             } else if (drag.mode === 'drag-body') {
               let dTime = point.time - drag.startMouse.time;
               let dPrice = point.price - drag.startMouse.price;
@@ -1442,7 +1522,24 @@ export default function Chart({ chartId = 'main' }) {
         return;
       }
 
-      if (state.activeDrawingTool || state.isDrawingMode || state.isPencilMode) {
+      const selected = selectedItemRef.current;
+      if (selected?.type === 'drawing') {
+        const selectedDrawing = state.drawings.find(d => d.id === selected.id);
+        if (selectedDrawing?.type === 'rectangle') {
+          const hit = hitTestDrawings(x, y);
+          if (hit?.drawingId === selected.id && hit.mode === 'resize-corner') {
+            container.style.cursor = hit.corner === 'top-left' || hit.corner === 'bottom-right'
+              ? 'nwse-resize' : 'nesw-resize';
+          } else if (hit?.drawingId === selected.id && hit.mode === 'resize-edge') {
+            container.style.cursor = hit.edge === 'top' || hit.edge === 'bottom'
+              ? 'ns-resize' : 'ew-resize';
+          } else if (hit?.drawingId === selected.id) {
+            container.style.cursor = 'move';
+          } else {
+            container.style.cursor = 'default';
+          }
+        }
+      } else if (state.activeDrawingTool || state.isDrawingMode || state.isPencilMode) {
         container.style.cursor = 'crosshair';
       }
     };
@@ -1765,23 +1862,6 @@ export default function Chart({ chartId = 'main' }) {
   const candleDate = currentCandle ? formatMarketDateTime(Number(currentCandle.time)) : '—';
   const candlePrice = value => Number.isFinite(Number(value)) ? Number(value).toFixed(3) : '—';
 
-  // The replay cursor is the authoritative market clock. For higher chart
-  // timeframes, show how much source-data time remains before this candle's
-  // timeframe bucket closes. The countdown freezes naturally when replay is paused.
-  const candleCountdown = (() => {
-    const minutes = Number(timeframe);
-    const sourceCandle = rawData?.[currentIndex];
-    if (!sourceCandle || !Number.isFinite(minutes) || minutes <= 1) return null;
-    const bucketStart = getTimeframeBucketStart(Number(sourceCandle.time), minutes);
-    const remaining = Math.max(0, bucketStart + minutes * 60 - (Number(sourceCandle.time) + 60));
-    const hours = Math.floor(remaining / 3600);
-    const mins = Math.floor((remaining % 3600) / 60);
-    const seconds = Math.floor(remaining % 60);
-    return hours > 0
-      ? `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-      : `${String(mins).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  })();
-
   const resetChartView = useCallback(() => {
     const chart = chartRef.current;
     if (!chart || !visibleData.length) return;
@@ -1940,11 +2020,115 @@ export default function Chart({ chartId = 'main' }) {
     };
   }, [chartReady, timeframe, symbol, chartOptions?.crosshairVerticalVisible, chartOptions?.crosshairHorizontalVisible]);
 
+  const selectedRectangleDrawing = selectedItem?.type === 'drawing'
+    ? drawings.find(d => d.id === selectedItem.id && d.type === 'rectangle' && d.points?.length === 2)
+    : null;
+
+  useEffect(() => {
+    if (!selectedRectangleDrawing || !chartRef.current) return;
+    const refreshHandles = () => setDrawingHandleTick(value => value + 1);
+    const timeScale = chartRef.current.timeScale();
+    const priceScale = chartRef.current.priceScale('right');
+    timeScale?.subscribeVisibleLogicalRangeChange(refreshHandles);
+    priceScale?.subscribeVisiblePriceRangeChange?.(refreshHandles);
+    chartRef.current.subscribeSizeChange?.(refreshHandles);
+    window.addEventListener('resize', refreshHandles);
+    return () => {
+      timeScale?.unsubscribeVisibleLogicalRangeChange(refreshHandles);
+      priceScale?.unsubscribeVisiblePriceRangeChange?.(refreshHandles);
+      chartRef.current?.unsubscribeSizeChange?.(refreshHandles);
+      window.removeEventListener('resize', refreshHandles);
+    };
+  }, [selectedRectangleDrawing?.id, chartReady]);
+
   return (
     <div className="chart-root relative w-full h-full" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : theme.background, visibility: startupViewReady ? 'visible' : 'hidden' }}>
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none', cursor: isPencilMode ? 'crosshair' : 'default' }} />
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
       <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 25 }} aria-hidden="true" />
+
+      {selectedRectangleDrawing && !isPencilMode && (() => {
+        const pts = selectedRectangleDrawing.points.map(pointToXY);
+        if (pts.some(point => !point)) return null;
+        const leftIndex = pts[0].x <= pts[1].x ? 0 : 1;
+        const rightIndex = 1 - leftIndex;
+        const topIndex = pts[0].y <= pts[1].y ? 0 : 1;
+        const bottomIndex = 1 - topIndex;
+        const handles = [
+          { key: 'top-left', x: pts[leftIndex].x, y: pts[topIndex].y, mode: 'resize-corner', corner: 'top-left', timeIndex: leftIndex, priceIndex: topIndex, cursor: 'nwse-resize' },
+          { key: 'top', x: (pts[0].x + pts[1].x) / 2, y: pts[topIndex].y, mode: 'resize-edge', edge: 'top', priceIndex: topIndex, cursor: 'ns-resize' },
+          { key: 'top-right', x: pts[rightIndex].x, y: pts[topIndex].y, mode: 'resize-corner', corner: 'top-right', timeIndex: rightIndex, priceIndex: topIndex, cursor: 'nesw-resize' },
+          { key: 'right', x: pts[rightIndex].x, y: (pts[0].y + pts[1].y) / 2, mode: 'resize-edge', edge: 'right', timeIndex: rightIndex, cursor: 'ew-resize' },
+          { key: 'bottom-right', x: pts[rightIndex].x, y: pts[bottomIndex].y, mode: 'resize-corner', corner: 'bottom-right', timeIndex: rightIndex, priceIndex: bottomIndex, cursor: 'nwse-resize' },
+          { key: 'bottom', x: (pts[0].x + pts[1].x) / 2, y: pts[bottomIndex].y, mode: 'resize-edge', edge: 'bottom', priceIndex: bottomIndex, cursor: 'ns-resize' },
+          { key: 'bottom-left', x: pts[leftIndex].x, y: pts[bottomIndex].y, mode: 'resize-corner', corner: 'bottom-left', timeIndex: leftIndex, priceIndex: bottomIndex, cursor: 'nesw-resize' },
+          { key: 'left', x: pts[leftIndex].x, y: (pts[0].y + pts[1].y) / 2, mode: 'resize-edge', edge: 'left', timeIndex: leftIndex, cursor: 'ew-resize' },
+        ];
+        return (
+          <div
+            className="rectangle-resize-handles"
+            style={{ position: 'absolute', inset: 0, zIndex: 1000, pointerEvents: 'none' }}
+          >
+            {handles.map(handle => (
+          <button
+            key={handle.key}
+            type="button"
+            aria-label={`Resize rectangle ${handle.key}`}
+            title={`Drag to extend rectangle ${handle.key}`}
+            data-handle-tick={drawingHandleTick}
+            onPointerDown={e => {
+              if (e.button !== 0) return;
+              e.preventDefault();
+              e.stopPropagation();
+              const rect = chartContainerRef.current?.getBoundingClientRect();
+              if (!rect) return;
+              const x = e.clientX - rect.left;
+              const y = e.clientY - rect.top;
+              const point = xyToPoint(x, y);
+              if (!point) return;
+              snapshotDrawings();
+              const selection = { type: 'drawing', id: selectedRectangleDrawing.id };
+              selectedItemRef.current = selection;
+              setSelectedItem(selection);
+              lockChart(true);
+              dragRef.current = {
+                type: 'drawing',
+                drawingType: 'rectangle',
+                drawingId: selectedRectangleDrawing.id,
+                mode: handle.mode,
+                edge: handle.edge,
+                corner: handle.corner,
+                timeIndex: handle.timeIndex,
+                priceIndex: handle.priceIndex,
+                startMouse: point,
+                startScreen: { x, y },
+                originalPoints: selectedRectangleDrawing.points.map(p => ({ ...p })),
+              };
+              try { chartContainerRef.current?.setPointerCapture(e.pointerId); } catch (error) {}
+            }}
+            style={{
+              display: 'block',
+              position: 'absolute',
+              left: handle.x,
+              top: handle.y,
+              width: handle.mode === 'resize-corner' ? 13 : 12,
+              height: handle.mode === 'resize-corner' ? 13 : 12,
+              transform: 'translate(-50%, -50%)',
+              zIndex: 28,
+              cursor: handle.cursor,
+              background: '#ffffff',
+              border: '2px solid #2563eb',
+              borderRadius: 3,
+              boxShadow: '0 1px 5px rgba(0,0,0,.9)',
+              padding: 0,
+              touchAction: 'none',
+              pointerEvents: 'auto',
+            }}
+          />
+            ))}
+          </div>
+        );
+      })()}
 
       {gameStarted && !chartUiPanelsHidden && <div className="live-information-panel absolute top-2 right-[72px] left-auto z-[10] w-[min(230px,calc(100%-5rem))] rounded-lg border border-[#343b49] p-3 text-[9px] leading-4 text-gray-300 shadow-lg pointer-events-auto font-mono" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : theme.background }}>
         <button type="button" onClick={() => setDashboardCollapsed(value => !value)}
@@ -1964,10 +2148,7 @@ export default function Chart({ chartId = 'main' }) {
             <span className="text-gray-500">Close</span><span className="text-right text-white">{candlePrice(currentCandle?.close)}</span>
             <span className="text-gray-500">Datetime</span><span className="text-right text-white">{candleDate}</span>
             <span className="text-gray-500">Session</span><span className="text-right text-white">{candleSession}</span>
-            {candleCountdown !== null && <>
-              <span className="text-gray-500">Candle closes in</span>
-              <span className="text-right font-semibold tabular-nums text-amber-400">{candleCountdown}</span>
-            </>}
+
           </div>
           {htfDashboard && <div className="mt-2 border-t border-[#2a2e39] pt-2">
             <div className="mb-1 flex items-center justify-between">

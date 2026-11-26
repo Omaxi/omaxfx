@@ -322,19 +322,14 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
   }, [active.pdhPdl, config.pdhPdl, rawData, currentIndex, dailyCandles, priceSeriesRef, chartReady, symbol, contractSpecs]);
 
 
+  // Session ranges always use the exact 1-minute source candles reached by
+  // replay, regardless of the chart's displayed timeframe. This prevents
+  // higher-timeframe candles that straddle session boundaries from inflating
+  // the session's high/low range or exposing unreached future data.
   const sessionCandles = useMemo(() => {
-    const candles = [...(visibleData || [])];
-    if (!liveCandle || !Number.isFinite(Number(liveCandle.time))) return candles;
-    const interval = Math.max(1, Number(timeframe) || 1) * 60;
-    const bucketTime = Math.floor(Number(liveCandle.time) / interval) * interval;
-    // Chart.jsx already supplies the replay-aggregated developing candle.
-    // Never overwrite its accumulated HTF high/low with the latest 1m OHLC.
-    if (!candles.some(candle => Number(candle.time) === bucketTime)) {
-      candles.push({ ...liveCandle, time: bucketTime });
-      candles.sort((a, b) => Number(a.time) - Number(b.time));
-    }
-    return candles;
-  }, [visibleData, liveCandle, timeframe]);
+    if (!Array.isArray(rawData) || !Number.isFinite(Number(currentIndex))) return [];
+    return rawData.slice(0, Math.max(0, Number(currentIndex) + 1));
+  }, [rawData, currentIndex]);
 
   const hourlyCandles = useMemo(() => {
     const replayCandles = (rawData || []).slice(0, Math.max(0, Number(currentIndex) + 1));
@@ -524,12 +519,15 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
     onIndicatorDashboard?.(dashboard);
   }, [chartRef, visibleData, sessionCandles, hourlyCandles, config, active, chartReady, timeframe, onIndicatorDashboard, symbol, contractSpecs]);
 
-  // One Sessions indicator: translucent vertical bands limited to each
-  // configured UTC+3 session window. No candle-high/low range rectangles.
+  // Sessions are replay-aware price-range boxes. A session is not drawn until
+  // the replay cursor reaches its configured start. While it is active, its
+  // right edge and high/low bounds grow only from candles already reached.
+  // Completed sessions retain their final intraday high-to-low range.
   useEffect(() => {
     const canvas = sessionCanvasRef.current;
     const chart = chartReady ? chartRef.current : null;
-    if (!canvas || !chart) return undefined;
+    const priceSeries = priceSeriesRef?.current;
+    if (!canvas || !chart || !priceSeries) return undefined;
     let frame = null;
     const draw = () => {
       if (frame !== null) return;
@@ -545,39 +543,46 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
         ctx.clearRect(0, 0, rect.width, rect.height);
         if (!active.sessions) return;
 
-        const data = sessionCandles;
-        if (!data?.length) return;
+        const data = sessionCandles || [];
+        if (!data.length) return;
+        const cursorTime = Number(data[data.length - 1]?.time);
+        if (!Number.isFinite(cursorTime)) return;
         const state = useStore.getState();
         const defs = [
-          { key: 'asian', colorKey: 'asia', label: 'ASIA', color: state.sessionColors?.asia || '#f59e0b' },
-          { key: 'london', colorKey: 'london', label: 'LONDON', color: state.sessionColors?.london || '#38bdf8' },
-          { key: 'newyork', colorKey: 'newyork', label: 'NEW YORK', color: state.sessionColors?.newyork || '#fb7185' },
+          { key: 'asian', label: 'ASIA', color: state.sessionColors?.asia || '#f59e0b' },
+          { key: 'london', label: 'LONDON', color: state.sessionColors?.london || '#38bdf8' },
+          { key: 'newyork', label: 'NEW YORK', color: state.sessionColors?.newyork || '#fb7185' },
         ];
         const starts = { asian: 3, london: 11, newyork: 16, ...(state.sessionTimes || {}) };
         const ends = { asian: 8, london: 13, newyork: 18, ...(state.sessionEndTimes || {}) };
-
-        // Match the visible data's market dates, then convert each UTC+3
-        // session boundary to the simulator's UTC timestamps.
         const firstDate = toMarketDate(Number(data[0].time));
-        const lastDate = toMarketDate(Number(data[data.length - 1].time));
-        if (!firstDate || !lastDate) return;
+        const cursorDate = toMarketDate(cursorTime);
+        if (!firstDate || !cursorDate) return;
         const firstDay = Date.UTC(firstDate.getUTCFullYear(), firstDate.getUTCMonth(), firstDate.getUTCDate());
-        const lastDay = Date.UTC(lastDate.getUTCFullYear(), lastDate.getUTCMonth(), lastDate.getUTCDate());
+        const cursorDay = Date.UTC(cursorDate.getUTCFullYear(), cursorDate.getUTCMonth(), cursorDate.getUTCDate());
 
+        const chartData = visibleData || [];
+        if (!chartData.length) return;
         const timeScale = chart.timeScale();
         const barSpacing = Math.max(1, Number(timeScale.options().barSpacing) || 6);
+        // Position the session box against actual displayed chart bars, while
+        // its vertical bounds continue to come from source 1-minute candles.
         const timeToX = timestamp => {
-          let lo = 0, hi = data.length - 1;
-          if (timestamp <= Number(data[0].time)) hi = 1;
-          else if (timestamp >= Number(data[hi].time)) lo = hi - 1;
+          let lo = 0, hi = chartData.length - 1;
+          if (timestamp <= Number(chartData[0].time)) hi = Math.min(1, chartData.length - 1);
+          else if (timestamp >= Number(chartData[hi].time)) lo = Math.max(0, hi - 1);
           else {
             while (hi - lo > 1) {
               const mid = Math.floor((lo + hi) / 2);
-              if (Number(data[mid].time) < timestamp) lo = mid;
+              if (Number(chartData[mid].time) < timestamp) lo = mid;
               else hi = mid;
             }
           }
-          const t1 = Number(data[lo].time), t2 = Number(data[hi].time);
+          if (lo === hi) {
+            const x = timeScale.timeToCoordinate(Number(chartData[lo].time));
+            return x == null || !Number.isFinite(x) ? null : x;
+          }
+          const t1 = Number(chartData[lo].time), t2 = Number(chartData[hi].time);
           const x1 = timeScale.timeToCoordinate(t1), x2 = timeScale.timeToCoordinate(t2);
           if ([x1, x2].some(value => value == null || !Number.isFinite(value)) || t2 === t1) return null;
           return x1 + (x2 - x1) * ((timestamp - t1) / (t2 - t1));
@@ -593,12 +598,13 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
           else if (timeAxisHeight > 0) paneHeight -= timeAxisHeight;
         } catch {}
 
+        const candleInterval = 60; // replay cursor advances in source 1-minute candles
         ctx.save();
         ctx.beginPath();
         ctx.rect(0, 0, paneWidth, paneHeight);
         ctx.clip();
 
-        for (let day = firstDay; day <= lastDay; day += 86400000) {
+        for (let day = firstDay; day <= cursorDay; day += 86400000) {
           defs.forEach(session => {
             const startHour = Number(starts[session.key]);
             const endHour = Number(ends[session.key]);
@@ -606,24 +612,57 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
 
             const startTime = day / 1000 + startHour * 3600 - 3 * 3600;
             const endTime = day / 1000 + endHour * 3600 - 3 * 3600;
+
+            // Do not render a future session, even as an empty shaded band.
+            if (startTime > cursorTime) return;
+
+            // Only candles reached by the replay cursor contribute to this
+            // session's range. The current developing candle is included.
+            const reachedCandles = data.filter(candle => {
+              const time = Number(candle.time);
+              return time >= startTime && time < endTime && time <= cursorTime;
+            });
+            if (!reachedCandles.length) return;
+
+            let sessionHigh = -Infinity;
+            let sessionLow = Infinity;
+            reachedCandles.forEach(candle => {
+              const high = Number(candle.high);
+              const low = Number(candle.low);
+              if (Number.isFinite(high)) sessionHigh = Math.max(sessionHigh, high);
+              if (Number.isFinite(low)) sessionLow = Math.min(sessionLow, low);
+            });
+            if (!Number.isFinite(sessionHigh) || !Number.isFinite(sessionLow)) return;
+
+            // A live session ends at the right edge of the current candle.
+            // Once its configured end is reached, freeze the box at session end.
+            const rangeEndTime = Math.min(endTime, cursorTime + candleInterval);
             const x1 = timeToX(startTime);
-            const x2 = timeToX(endTime);
-            if (x1 == null || x2 == null || !Number.isFinite(x1) || !Number.isFinite(x2)) return;
+            const x2 = timeToX(rangeEndTime);
+            const topY = priceSeries.priceToCoordinate(sessionHigh);
+            const bottomY = priceSeries.priceToCoordinate(sessionLow);
+            if ([x1, x2, topY, bottomY].some(value => value == null || !Number.isFinite(value))) return;
 
             const left = Math.max(0, Math.min(paneWidth, Math.min(x1, x2) - barSpacing / 2));
             const right = Math.max(0, Math.min(paneWidth, Math.max(x1, x2) - barSpacing / 2));
-            if (right <= left) return;
+            // Intersect the true price-range rectangle with the pane. Do not
+            // clamp both bounds independently: doing so stretches an off-screen
+            // high/low to the chart edge and can make a session look full-height.
+            const top = Math.max(0, Math.min(topY, bottomY));
+            const bottom = Math.min(paneHeight, Math.max(topY, bottomY));
+            if (right <= left || bottom <= top) return;
 
             ctx.save();
             ctx.globalAlpha = 0.11;
             ctx.fillStyle = session.color;
-            ctx.fillRect(left, 0, right - left, paneHeight);
+            ctx.fillRect(left, top, right - left, Math.max(1, bottom - top));
             ctx.globalAlpha = 0.95;
             ctx.fillStyle = session.color;
             ctx.font = '600 10px Arial';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
-            ctx.fillText(session.label, left + 5, 6);
+            const labelY = Math.max(3, top - 15);
+            ctx.fillText(session.label, left + 5, labelY);
             ctx.restore();
           });
         }
@@ -650,7 +689,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
       window.removeEventListener('wheel', draw);
       observer.disconnect();
     };
-  }, [active.sessions, chartRef, chartReady, sessionCandles, timeframe, sessionColors, sessionTimes, sessionEndTimes]);
+  }, [active.sessions, chartRef, chartReady, priceSeriesRef, sessionCandles, visibleData, timeframe, sessionColors, sessionTimes, sessionEndTimes]);
 
   // Include the developing HTF candle's full range in the chart autoscale.
   // The transparent one-point series contributes only the requested price range.
@@ -756,21 +795,22 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
           { value: Number(htfViewerCandle.close), y: yClose, x: originX('closeIndex'), color, label: 'C' },
           { value: Number(htfViewerCandle.low), y: yLow, x: originX('lowIndex'), color: '#94a3b8', label: 'L' },
         ];
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
+        // Render literal 1x1 CSS-pixel dots instead of Canvas dash patterns.
+        // Dashed strokes can be antialiased into long-looking segments at
+        // fractional Y coordinates or non-1 device-pixel ratios. Integer
+        // pixel dots keep the HTF guides visibly dotted at every zoom level.
         levels.forEach(level => {
           // Start exactly at the source candle's right wick/body edge and
           // finish at the HTF candle's left body edge. Do not draw a detached
           // stub if the originating candle is outside the visible viewport.
           if (level.x == null || level.x >= guideEndX) return;
-          ctx.strokeStyle = level.color;
+          ctx.fillStyle = level.color;
           ctx.globalAlpha = 0.82;
-          ctx.beginPath();
-          ctx.moveTo(level.x, level.y);
-          ctx.lineTo(guideEndX, level.y);
-          ctx.stroke();
+          const dotY = Math.round(level.y);
+          for (let dotX = Math.ceil(level.x); dotX <= guideEndX; dotX += 4) {
+            ctx.fillRect(dotX, dotY, 1, 1);
+          }
         });
-        ctx.setLineDash([]);
         ctx.globalAlpha = 1;
 
         ctx.strokeStyle = color;
