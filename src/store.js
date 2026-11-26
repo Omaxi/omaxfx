@@ -658,9 +658,11 @@ export const useStore = create((set, get) => ({
     const isBuy = pos.type === 'buy';
     const priceDiff = isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice;
     const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
-    const pnl = priceDiff * contractSize * pos.size;
+    const remainingPnl = priceDiff * contractSize * pos.size;
+    const realizedPartialPnl = Number(pos.realizedPnl) || 0;
+    const pnl = realizedPartialPnl + remainingPnl;
     if (state.soundEnabled) playPositionClosed();
-    const newBalance = state.balance + pnl;
+    const newBalance = state.balance + remainingPnl;
     const newPeak = Math.max(state.peakBalance, newBalance);
     const violation = checkRuleViolations(state, newBalance, newPeak, state.dailyLoss);
     const newGameState = violation
@@ -670,7 +672,7 @@ export const useStore = create((set, get) => ({
       balance: newBalance,
       peakBalance: newPeak,
       positions: state.positions.filter(p => p.id !== id),
-      tradeHistory: [...state.tradeHistory, { ...pos, exitPrice, pnl, reason: 'MANUAL', closeTime: currentCandle.time, drawingSnapshot: cloneTradeDrawingSnapshot(state) }],
+      tradeHistory: [...state.tradeHistory, { ...pos, size: pos.initialSize ?? pos.size, remainingSizeAtExit: pos.size, realizedPartialPnl, exitPrice, pnl, reason: 'MANUAL', closeTime: currentCandle.time, drawingSnapshot: cloneTradeDrawingSnapshot(state) }],
       gameState: newGameState,
       isPlaying: newGameState.isOver ? false : state.isPlaying,
     };
@@ -686,9 +688,11 @@ export const useStore = create((set, get) => ({
       const isBuy = pos.type === 'buy';
       const priceDiff = isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice;
       const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
-      const pnl = priceDiff * contractSize * pos.size;
-      newBalance += pnl;
-      newHistory.push({ ...pos, exitPrice, pnl, reason: 'MANUAL', closeTime: currentCandle.time, drawingSnapshot: cloneTradeDrawingSnapshot(state) });
+      const remainingPnl = priceDiff * contractSize * pos.size;
+      const realizedPartialPnl = Number(pos.realizedPnl) || 0;
+      const pnl = realizedPartialPnl + remainingPnl;
+      newBalance += remainingPnl;
+      newHistory.push({ ...pos, size: pos.initialSize ?? pos.size, remainingSizeAtExit: pos.size, realizedPartialPnl, exitPrice, pnl, reason: 'MANUAL', closeTime: currentCandle.time, drawingSnapshot: cloneTradeDrawingSnapshot(state) });
     });
     if (state.soundEnabled) playPositionClosed();
     const newPeak = Math.max(state.peakBalance, newBalance);
@@ -779,9 +783,11 @@ export const useStore = create((set, get) => ({
           if (hitSl) {
             const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
             const exitPrice = getStopLossFillPrice(pos.type, pos.sl, candle);
-            const pnl = (isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice) * contractSize * pos.size;
-            newBalance += pnl;
-            newHistory.push({ ...pos, exitPrice, pnl, reason: 'SL', closeTime: candle.time, drawingSnapshot: cloneTradeDrawingSnapshot(state) });
+            const remainingPnl = (isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice) * contractSize * pos.size;
+            const realizedPartialPnl = Number(pos.realizedPnl) || 0;
+            const pnl = realizedPartialPnl + remainingPnl;
+            newBalance += remainingPnl;
+            newHistory.push({ ...pos, size: pos.initialSize ?? pos.size, remainingSizeAtExit: pos.size, realizedPartialPnl, exitPrice, pnl, reason: 'SL', closeTime: candle.time, drawingSnapshot: cloneTradeDrawingSnapshot(state) });
             closed = true; slHit = true;
           }
         }
@@ -790,21 +796,52 @@ export const useStore = create((set, get) => ({
           if (hitTp) {
             const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
             const exitPrice = getTakeProfitFillPrice(pos.type, pos.tp, candle);
-            const pnl = (isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice) * contractSize * pos.size;
-            newBalance += pnl;
-            newHistory.push({ ...pos, exitPrice, pnl, reason: 'TP', closeTime: candle.time, drawingSnapshot: cloneTradeDrawingSnapshot(state) });
+            const remainingPnl = (isBuy ? exitPrice - pos.entryPrice : pos.entryPrice - exitPrice) * contractSize * pos.size;
+            const realizedPartialPnl = Number(pos.realizedPnl) || 0;
+            const pnl = realizedPartialPnl + remainingPnl;
+            newBalance += remainingPnl;
+            newHistory.push({ ...pos, size: pos.initialSize ?? pos.size, remainingSizeAtExit: pos.size, realizedPartialPnl, exitPrice, pnl, reason: 'TP', closeTime: candle.time, drawingSnapshot: cloneTradeDrawingSnapshot(state) });
             closed = true; tpHit = true;
           }
         }
-        // Conservative intrabar handling: test the original SL/TP first. If neither
-        // was hit, arm breakeven for the next candle after price reaches +1R.
+        // SL/TP have priority when OHLC cannot reveal intrabar order. Management
+        // triggers are evaluated only if the original protective levels survived.
         let updatedPosition = pos;
-        if (!closed && pos.breakevenEnabled && !pos.breakevenDone && pos.sl != null) {
-          const initialRisk = pos.initialRiskDistance ?? Math.abs(pos.entryPrice - pos.sl);
-          const oneRPrice = isBuy ? pos.entryPrice + initialRisk : pos.entryPrice - initialRisk;
-          const reachedOneR = isBuy ? candle.high >= oneRPrice : candle.low <= oneRPrice;
-          if (initialRisk > 0 && reachedOneR) {
-            updatedPosition = { ...pos, sl: pos.entryPrice, breakevenDone: true };
+        const initialRisk = Number(pos.initialRiskDistance ?? Math.abs(pos.entryPrice - pos.sl));
+        if (!closed && pos.partialTakeProfitEnabled && !pos.partialTakeProfitDone &&
+            initialRisk > 0 && Number(pos.partialClosePercent) > 0 && Number(pos.partialClosePercent) < 100) {
+          const partialTriggerR = Number(pos.partialTriggerR) > 0 ? Number(pos.partialTriggerR) : 1;
+          const partialTriggerPrice = isBuy
+            ? pos.entryPrice + initialRisk * partialTriggerR
+            : pos.entryPrice - initialRisk * partialTriggerR;
+          const reachedPartial = isBuy ? candle.high >= partialTriggerPrice : candle.low <= partialTriggerPrice;
+          if (reachedPartial) {
+            const contractSize = getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs);
+            const partialExitPrice = getTakeProfitFillPrice(pos.type, partialTriggerPrice, candle);
+            const partialSize = pos.size * (Number(pos.partialClosePercent) / 100);
+            const remainingSize = pos.size - partialSize;
+            const partialPnl = (isBuy ? partialExitPrice - pos.entryPrice : pos.entryPrice - partialExitPrice) * contractSize * partialSize;
+            newBalance += partialPnl;
+            updatedPosition = {
+              ...updatedPosition,
+              size: remainingSize,
+              initialSize: pos.initialSize ?? pos.size,
+              realizedPnl: (Number(pos.realizedPnl) || 0) + partialPnl,
+              partialTakeProfitDone: true,
+              partialClosePrice: partialExitPrice,
+              partialCloseTime: candle.time,
+              partialClosedSize: (Number(pos.partialClosedSize) || 0) + partialSize,
+            };
+          }
+        }
+        if (!closed && pos.breakevenEnabled && !pos.breakevenDone && pos.sl != null && initialRisk > 0) {
+          const triggerR = Number(pos.breakevenTriggerR) > 0 ? Number(pos.breakevenTriggerR) : 1;
+          const triggerPrice = isBuy
+            ? pos.entryPrice + initialRisk * triggerR
+            : pos.entryPrice - initialRisk * triggerR;
+          const reachedTrigger = isBuy ? candle.high >= triggerPrice : candle.low <= triggerPrice;
+          if (reachedTrigger) {
+            updatedPosition = { ...updatedPosition, sl: pos.entryPrice, breakevenDone: true };
           }
         }
         if (!closed) stillOpen.push(updatedPosition);
@@ -851,6 +888,7 @@ export const useStore = create((set, get) => ({
             riskAmount: riskDistance * contractSize * recalculatedLots,
             riskPercent: state.balance > 0 ? (riskDistance * contractSize * recalculatedLots / state.balance) * 100 : 0,
             initialRiskDistance: riskDistance,
+            initialSize: recalculatedLots,
             isPending: false,
             openTime: candle.time,
           };
@@ -932,7 +970,7 @@ export const useStore = create((set, get) => ({
   
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
 
-  placeOrder: ({ side, type, riskPercent, entryPrice, slPrice, tpPrice, riskAmount, breakevenEnabled = false }) => set((state) => {
+  placeOrder: ({ side, type, riskPercent, entryPrice, slPrice, tpPrice, riskAmount, breakevenEnabled = false, breakevenTriggerR = 1, partialTakeProfitEnabled = false, partialTriggerR = 1, partialClosePercent = 50 }) => set((state) => {
     const candle = state.rawData?.[state.currentIndex];
     if (state.gameState.isOver || !candle || !['buy', 'sell'].includes(side) ||
         !['market', 'limit', 'stop'].includes(type)) return state;
@@ -971,8 +1009,15 @@ export const useStore = create((set, get) => ({
       entryPrice: actualEntry,
       sl: stop, tp: target,
       breakevenEnabled: !!breakevenEnabled,
+      breakevenTriggerR: Number(breakevenTriggerR) > 0 ? Number(breakevenTriggerR) : 1,
       breakevenDone: false,
+      partialTakeProfitEnabled: !!partialTakeProfitEnabled,
+      partialTriggerR: Number(partialTriggerR) > 0 ? Number(partialTriggerR) : 1,
+      partialClosePercent: Number(partialClosePercent) > 0 && Number(partialClosePercent) < 100 ? Number(partialClosePercent) : 50,
+      partialTakeProfitDone: false,
+      realizedPnl: 0,
       initialRiskDistance: riskDistance,
+      initialSize: roundedLots,
       size: roundedLots,
       riskPercent: actualRiskPercent, riskAmount: actualRisk,
       isPending: type !== 'market',

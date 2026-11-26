@@ -38,6 +38,10 @@ export default function OrderModal() {
   const [riskReward, setRiskReward] = useState('2');
   const [entryPrice, setEntryPrice] = useState(0);
   const [breakevenEnabled, setBreakevenEnabled] = useState(false);
+  const [breakevenTriggerR, setBreakevenTriggerR] = useState('1');
+  const [partialTakeProfitEnabled, setPartialTakeProfitEnabled] = useState(false);
+  const [partialTriggerR, setPartialTriggerR] = useState('1');
+  const [partialClosePercent, setPartialClosePercent] = useState('50');
 
   const currentPrice = getExecutionCandle(rawData, useStore.getState().displayData, currentIndex, useStore.getState().timeframe)?.close || 0;
   const riskAmount = balance * (riskPercent / 100);
@@ -152,9 +156,29 @@ export default function OrderModal() {
     if (propFirmEnabled && riskPercent > maxRisk) {
       errors.push(`Risk ${riskPercent}% exceeds game rule (max ${maxRisk}%)`);
     }
+    if (breakevenEnabled && (!Number.isFinite(Number(breakevenTriggerR)) || Number(breakevenTriggerR) <= 0)) {
+      errors.push('Breakeven trigger must be greater than 0R');
+    }
+    if (partialTakeProfitEnabled) {
+      const trigger = Number(partialTriggerR);
+      const closePercent = Number(partialClosePercent);
+      if (!Number.isFinite(trigger) || trigger <= 0) errors.push('Partial take-profit trigger must be greater than 0R');
+      if (!Number.isFinite(closePercent) || closePercent <= 0 || closePercent >= 100) {
+        errors.push('Partial close percentage must be between 1% and 99%');
+      }
+      if (riskReward === 'none') {
+        errors.push('Partial take profit requires a Take Profit target for the remaining position');
+      } else {
+        const initialRisk = Math.abs(effectiveEntry - Number(slPrice));
+        const targetR = initialRisk > 0 ? Math.abs(Number(tpPrice) - effectiveEntry) / initialRisk : 0;
+        if (trigger > 0 && Number.isFinite(trigger) && targetR > 0 && trigger >= targetR) {
+          errors.push('Partial take-profit trigger must be reached before the final Take Profit');
+        }
+      }
+    }
 
     return { errors, isValid: errors.length === 0, effectiveEntry };
-  }, [orderSide, entryPrice, slPrice, tpPrice, orderType, currentPrice, riskPercent, maxRisk, riskReward, propFirmEnabled, positions, pendingOrders]);
+  }, [orderSide, entryPrice, slPrice, tpPrice, orderType, currentPrice, riskPercent, maxRisk, riskReward, propFirmEnabled, positions, pendingOrders, breakevenEnabled, breakevenTriggerR, partialTakeProfitEnabled, partialTriggerR, partialClosePercent]);
 
   const { estimatedLoss, estimatedProfit } = useMemo(() => {
     const entry = validation.effectiveEntry;
@@ -179,6 +203,10 @@ export default function OrderModal() {
       tpPrice: riskReward === 'none' ? null : tpPrice,
       riskAmount,
       breakevenEnabled,
+      breakevenTriggerR: Number(breakevenTriggerR),
+      partialTakeProfitEnabled,
+      partialTriggerR: Number(partialTriggerR),
+      partialClosePercent: Number(partialClosePercent),
     });
   };
 
@@ -199,7 +227,7 @@ export default function OrderModal() {
           <button onClick={handleCancel} className="p-1 hover:bg-[#2a2e39] rounded"><X size={20}/></button>
         </div>
 
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="bg-[#1e222d] mx-3 mt-2 p-2.5 rounded-lg flex justify-between">
             <div>
               <p className="text-[11px] text-gray-400">Estimated Loss</p>
@@ -247,10 +275,45 @@ export default function OrderModal() {
               </div>
             </div>
 
-            <label className="flex items-center gap-2 rounded bg-[#1e222d] px-2.5 py-1.5 text-[10px] text-gray-300">
-              <input type="checkbox" checked={breakevenEnabled} onChange={(e) => setBreakevenEnabled(e.target.checked)} className="accent-blue-500"/>
-              Automatically move Stop Loss to breakeven at +1R
-            </label>
+            <div className="rounded-lg bg-[#1e222d] px-2.5 py-2 space-y-2">
+              <label className="flex items-center gap-2 text-[11px] text-gray-200">
+                <input type="checkbox" checked={breakevenEnabled} onChange={(e) => setBreakevenEnabled(e.target.checked)} className="accent-blue-500"/>
+                Move Stop Loss to breakeven
+              </label>
+              {breakevenEnabled && (
+                <div className="flex items-center gap-2 pl-5">
+                  <label className="text-[10px] text-gray-400 flex-1">Trigger when price reaches</label>
+                  <div className="flex items-center gap-1 rounded border border-[#343a49] bg-[#131722] px-2 py-1">
+                    <input type="number" min="0.1" step="0.1" value={breakevenTriggerR} onChange={e => setBreakevenTriggerR(e.target.value)} className="w-14 bg-transparent text-right text-xs text-white outline-none"/>
+                    <span className="text-[10px] text-gray-400">R</span>
+                  </div>
+                </div>
+              )}
+              <div className="border-t border-[#343a49] pt-2 space-y-2">
+                <label className="flex items-center gap-2 text-[11px] text-gray-200">
+                  <input type="checkbox" checked={partialTakeProfitEnabled} onChange={(e) => setPartialTakeProfitEnabled(e.target.checked)} className="accent-blue-500"/>
+                  Take partial profit and let the rest run to TP
+                </label>
+                {partialTakeProfitEnabled && (
+                  <div className="grid grid-cols-2 gap-2 pl-5">
+                    <div>
+                      <label className="block text-[10px] text-gray-400 mb-1">Trigger at</label>
+                      <div className="flex items-center gap-1 rounded border border-[#343a49] bg-[#131722] px-2 py-1">
+                        <input type="number" min="0.1" step="0.1" value={partialTriggerR} onChange={e => setPartialTriggerR(e.target.value)} className="w-full bg-transparent text-xs text-white outline-none"/>
+                        <span className="text-[10px] text-gray-400">R</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-400 mb-1">Close position</label>
+                      <div className="flex items-center gap-1 rounded border border-[#343a49] bg-[#131722] px-2 py-1">
+                        <input type="number" min="1" max="99" step="1" value={partialClosePercent} onChange={e => setPartialClosePercent(e.target.value)} className="w-full bg-transparent text-xs text-white outline-none"/>
+                        <span className="text-[10px] text-gray-400">%</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>

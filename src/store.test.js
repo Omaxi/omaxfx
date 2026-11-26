@@ -345,3 +345,66 @@ test('custom CSV import keeps UTC+3 timestamps unchanged', () => {
     useStore.setState(original, true);
   }
 });
+
+
+test('moves stop to breakeven at the configured R trigger', () => {
+  const restore = configureStore({
+    gameStarted: true,
+    rawData: [
+      { time: 60, open: 100, high: 100.5, low: 99.5, close: 100 },
+      { time: 120, open: 100, high: 101, low: 99.5, close: 100.5 },
+      { time: 180, open: 100.5, high: 101, low: 100, close: 100.5 },
+    ],
+    positions: [{
+      id: 'be-half-r', type: 'buy', entryPrice: 100, sl: 98, tp: 106,
+      size: 0.001, initialSize: 0.001, initialRiskDistance: 2,
+      breakevenEnabled: true, breakevenTriggerR: 0.5, breakevenDone: false,
+      symbol: 'EURUSD',
+    }],
+  });
+  try {
+    useStore.getState().stepForward();
+    const position = useStore.getState().positions[0];
+    assert.equal(position.sl, 100);
+    assert.equal(position.breakevenDone, true);
+  } finally { restore(); }
+});
+
+test('takes a configured partial profit once and includes it in final trade P&L', () => {
+  const restore = configureStore({
+    gameStarted: true,
+    rawData: [
+      { time: 60, open: 100, high: 100.5, low: 99.5, close: 100 },
+      { time: 120, open: 100, high: 102.2, low: 99.5, close: 102 },
+      { time: 180, open: 102, high: 104.5, low: 101.5, close: 104 },
+    ],
+    positions: [{
+      id: 'partial-50', type: 'buy', entryPrice: 100, sl: 98, tp: 104,
+      size: 0.001, initialSize: 0.001, initialRiskDistance: 2,
+      partialTakeProfitEnabled: true, partialTriggerR: 1,
+      partialClosePercent: 50, partialTakeProfitDone: false,
+      realizedPnl: 0, riskAmount: 200, symbol: 'EURUSD',
+    }],
+  });
+  try {
+    useStore.getState().stepForward();
+    let state = useStore.getState();
+    assert.equal(state.positions.length, 1);
+    assert.equal(state.positions[0].size, 0.0005);
+    assert.equal(state.positions[0].partialTakeProfitDone, true);
+    assert.equal(state.positions[0].partialClosePrice, 102);
+    assert.equal(state.positions[0].realizedPnl, 100);
+    assert.equal(state.balance, 10100);
+
+    useStore.getState().stepForward();
+    state = useStore.getState();
+    assert.equal(state.positions.length, 0);
+    assert.equal(state.tradeHistory.length, 1);
+    assert.equal(state.tradeHistory[0].reason, 'TP');
+    assert.equal(state.tradeHistory[0].size, 0.001);
+    assert.equal(state.tradeHistory[0].remainingSizeAtExit, 0.0005);
+    assert.equal(state.tradeHistory[0].realizedPartialPnl, 100);
+    assert.equal(state.tradeHistory[0].pnl, 300);
+    assert.equal(state.balance, 10300);
+  } finally { restore(); }
+});

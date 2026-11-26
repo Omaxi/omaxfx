@@ -116,53 +116,6 @@ export default function AnalyticsModal() {
     return { date, timestamp, tradeNumber: index + 1, pnl: cumulative, label: date.slice(5) + ' ' + hh + ':' + mm };
   });
 
-  // Calculate a same-capital buy-and-hold benchmark from the selected symbol's
-  // actual OHLC data, using the first available close at/before the first entry.
-  const benchmarkCandles = (screenshotCandles || []).filter(candle =>
-    Number.isFinite(Number(candle?.time)) &&
-    Number.isFinite(Number(candle?.close)) &&
-    Number(candle.close) > 0
-  );
-  const firstTradeOpen = trades.length
-    ? Math.min(...trades.map(trade => Number(trade.openTime)).filter(Number.isFinite))
-    : null;
-  let benchmarkStartIndex = -1;
-  if (benchmarkCandles.length && Number.isFinite(firstTradeOpen)) {
-    for (let i = 0; i < benchmarkCandles.length; i++) {
-      if (Number(benchmarkCandles[i].time) > firstTradeOpen) break;
-      benchmarkStartIndex = i;
-    }
-    if (benchmarkStartIndex < 0) benchmarkStartIndex = 0;
-  }
-  const benchmarkStartPrice = benchmarkStartIndex >= 0
-    ? Number(benchmarkCandles[benchmarkStartIndex].close)
-    : 0;
-  let benchmarkCandleIndex = Math.max(0, benchmarkStartIndex);
-  // Shared origin: strategy and buy-and-hold both start at zero P&L
-  // (the same initial account equity) at the first trade's opening time.
-  const curveWithBenchmark = [
-    ...(curve.length && Number.isFinite(firstTradeOpen) ? [{
-      date: dateKey(firstTradeOpen),
-      timestamp: firstTradeOpen,
-      tradeNumber: 0,
-      pnl: 0,
-      ...(benchmarkStartPrice > 0 && benchmarkStartIndex >= 0 ? { benchmarkPnl: 0 } : {}),
-      label: 'Start',
-    }] : []),
-    ...curve.map(point => {
-      if (!(benchmarkStartPrice > 0) || benchmarkStartIndex < 0) return point;
-      while (
-        benchmarkCandleIndex + 1 < benchmarkCandles.length &&
-        Number(benchmarkCandles[benchmarkCandleIndex + 1].time) <= Number(point.timestamp)
-      ) benchmarkCandleIndex++;
-      const marketPrice = Number(benchmarkCandles[benchmarkCandleIndex]?.close);
-      const benchmarkPnl = Number.isFinite(marketPrice)
-        ? Number((startBalance * (marketPrice / benchmarkStartPrice - 1)).toFixed(2))
-        : 0;
-      return { ...point, benchmarkPnl };
-    }),
-  ];
-
   const year = monthCursor.getFullYear();
   const month = monthCursor.getMonth();
   const monthName = monthCursor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
@@ -270,7 +223,7 @@ export default function AnalyticsModal() {
         trades,
         metrics,
         dailyEntries,
-        curve: curveWithBenchmark,
+        curve,
         screenshots,
       });
       writeAnalyticsPrintWindow(printWindow, html);

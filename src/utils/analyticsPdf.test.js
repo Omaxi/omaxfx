@@ -57,7 +57,7 @@ test('builds the analytics PDF when the trade-by-trade curve contains a drawdown
   assert.match(html, /<div class="section-heading-row"><h2>Profit and loss · Over time<\/h2><span class="curve-dd-badge">Max DD \$150\.00 · 20m<\/span><\/div>/);
   const equitySvg = html.match(/<svg[\s\S]*?<\/svg>/)?.[0] || '';
   assert.doesNotMatch(equitySvg, /Max DD/);
-  assert.match(html, /Buy &amp; Hold/);
+  assert.doesNotMatch(html, /Buy &amp; Hold|benchmarkPnl|benchmark curve/i);
   assert.doesNotMatch(html, /Use your browser's Print dialog/);
   assert.match(html, /Profit and loss · Over time/);
 });
