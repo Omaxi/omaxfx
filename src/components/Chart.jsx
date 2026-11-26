@@ -227,6 +227,7 @@ export default function Chart({ chartId = 'main' }) {
   const selectedItemRef = useRef(null);
   const currentPencilRef = useRef(null);
   const scheduleDrawRef = useRef(() => {});
+  const lastCrosshairParamRef = useRef(null);
 
   const [pendingBtnPos, setPendingBtnPos] = useState([]);
   const [positionBtnPos, setPositionBtnPos] = useState([]);
@@ -649,6 +650,29 @@ export default function Chart({ chartId = 'main' }) {
         if (!Number.isFinite(entry)) return;
         const long = tool.type === 'buy';
         const precision = getPricePrecision(state.symbol, state.contractSpecs);
+        const entryY = seriesRef.current.priceToCoordinate(entry);
+        const slY = tool.sl == null ? null : seriesRef.current.priceToCoordinate(Number(tool.sl));
+        const tpY = tool.tp == null ? null : seriesRef.current.priceToCoordinate(Number(tool.tp));
+        const startTime = Number(tool.startTime ?? tool.openTime ?? state.rawData?.[state.currentIndex]?.time);
+        const latestTime = Number(visibleDataRef.current[visibleDataRef.current.length - 1]?.time ?? state.rawData?.[state.currentIndex]?.time);
+        const startX = Number.isFinite(startTime) ? timeToX(startTime) : null;
+        const endX = Number.isFinite(latestTime) ? timeToX(latestTime) : null;
+        if (startX != null && endX != null && Number.isFinite(entryY) && endX > startX) {
+          const left = Math.max(0, Math.min(paneW, startX));
+          const right = Math.max(0, Math.min(paneW, endX));
+          if (right > left) {
+            ctx.save();
+            if (Number.isFinite(slY)) {
+              ctx.fillStyle = 'rgba(239, 83, 80, 0.35)';
+              ctx.fillRect(left, Math.min(entryY, slY), right - left, Math.max(1, Math.abs(slY - entryY)));
+            }
+            if (Number.isFinite(tpY)) {
+              ctx.fillStyle = 'rgba(38, 166, 154, 0.35)';
+              ctx.fillRect(left, Math.min(entryY, tpY), right - left, Math.max(1, Math.abs(tpY - entryY)));
+            }
+            ctx.restore();
+          }
+        }
         const levels = [
           { type: 'entry', price: entry, color: '#3b82f6', label: 'ENTRY' },
           { type: 'sl', price: tool.sl == null ? NaN : Number(tool.sl), color: '#ef5350', label: 'SL' },
@@ -1790,6 +1814,7 @@ export default function Chart({ chartId = 'main' }) {
       canvas.style.height = `${rect.height}px`;
     };
     const drawCrosshair = (param) => {
+      lastCrosshairParamRef.current = param;
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         const rect = container.getBoundingClientRect();
@@ -1848,6 +1873,7 @@ export default function Chart({ chartId = 'main' }) {
     const observer = new ResizeObserver(resize);
     observer.observe(container);
     chart.subscribeCrosshairMove(drawCrosshair);
+    if (lastCrosshairParamRef.current) drawCrosshair(lastCrosshairParamRef.current);
     return () => {
       cancelAnimationFrame(frame);
       chart.unsubscribeCrosshairMove(drawCrosshair);
@@ -1855,7 +1881,7 @@ export default function Chart({ chartId = 'main' }) {
       const ctx = canvas.getContext('2d');
       if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
-  }, [chartReady, timeframe, symbol]);
+  }, [chartReady, timeframe, symbol, chartOptions?.crosshairVerticalVisible, chartOptions?.crosshairHorizontalVisible]);
 
   return (
     <div className="chart-root relative w-full h-full" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : theme.background, visibility: startupViewReady ? 'visible' : 'hidden' }}>
