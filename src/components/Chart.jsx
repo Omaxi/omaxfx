@@ -159,6 +159,19 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, isSelected) => {
       const y1 = Math.min(pts[0].y, pts[1].y);
       const y2 = Math.max(pts[0].y, pts[1].y);
       ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+      // TradingView-style corner grips make rectangle resizing discoverable.
+      if (drawing.type === 'rectangle') {
+        const handleSize = 8;
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 1.25;
+        [[x1, y1], [x2, y1], [x1, y2], [x2, y2]].forEach(([hx, hy]) => {
+          ctx.fillRect(hx - handleSize / 2, hy - handleSize / 2, handleSize, handleSize);
+          ctx.strokeRect(hx - handleSize / 2, hy - handleSize / 2, handleSize, handleSize);
+        });
+      }
     }
 
     ctx.setLineDash([]);
@@ -945,9 +958,34 @@ export default function Chart({ chartId = 'main' }) {
           }
         }
 
-        for (let j = 0; j < pts.length; j++) {
-          if (Math.hypot(x - pts[j].x, y - pts[j].y) < HANDLE_TOL) {
-            return { drawingId: d.id, mode: 'drag-point', pointIndex: j };
+        // A selected rectangle has four visible corner grips. Each grip
+        // edits the appropriate time and price anchors independently, so the
+        // diagonally opposite corner remains stationary.
+        const selectedDrawingId = selectedItemRef.current?.type === 'drawing'
+          ? selectedItemRef.current.id : null;
+        if (d.type === 'rectangle' && pts.length === 2 && selectedDrawingId === d.id) {
+          const leftIndex = pts[0].x <= pts[1].x ? 0 : 1;
+          const rightIndex = 1 - leftIndex;
+          const topIndex = pts[0].y <= pts[1].y ? 0 : 1;
+          const bottomIndex = 1 - topIndex;
+          const corners = [
+            { corner: 'top-left', x: pts[leftIndex].x, y: pts[topIndex].y, timeIndex: leftIndex, priceIndex: topIndex },
+            { corner: 'top-right', x: pts[rightIndex].x, y: pts[topIndex].y, timeIndex: rightIndex, priceIndex: topIndex },
+            { corner: 'bottom-left', x: pts[leftIndex].x, y: pts[bottomIndex].y, timeIndex: leftIndex, priceIndex: bottomIndex },
+            { corner: 'bottom-right', x: pts[rightIndex].x, y: pts[bottomIndex].y, timeIndex: rightIndex, priceIndex: bottomIndex },
+          ];
+          for (const handle of corners) {
+            if (Math.hypot(x - handle.x, y - handle.y) <= 12) {
+              return { drawingId: d.id, mode: 'resize-corner', ...handle };
+            }
+          }
+        }
+
+        if (d.type !== 'rectangle' || selectedDrawingId !== d.id) {
+          for (let j = 0; j < pts.length; j++) {
+            if (Math.hypot(x - pts[j].x, y - pts[j].y) < HANDLE_TOL) {
+              return { drawingId: d.id, mode: 'drag-point', pointIndex: j };
+            }
           }
         }
         if (d.type === 'horizontal' && pts[0]) {
@@ -1398,6 +1436,12 @@ export default function Chart({ chartId = 'main' }) {
               }
               const newPoints = drag.originalPoints.map((p, i) => i === drag.pointIndex ? point : p);
               state.updateDrawing(drag.drawingId, newPoints);
+            } else if (drag.mode === 'resize-corner' && drag.drawingType === 'rectangle' &&
+                       drag.originalPoints.length === 2) {
+              const newPoints = drag.originalPoints.map(p => ({ ...p }));
+              newPoints[drag.timeIndex] = { ...newPoints[drag.timeIndex], time: point.time };
+              newPoints[drag.priceIndex] = { ...newPoints[drag.priceIndex], price: point.price };
+              state.updateDrawing(drag.drawingId, newPoints);
             } else if (drag.mode === 'drag-body') {
               let dTime = point.time - drag.startMouse.time;
               let dPrice = point.price - drag.startMouse.price;
@@ -1442,7 +1486,21 @@ export default function Chart({ chartId = 'main' }) {
         return;
       }
 
-      if (state.activeDrawingTool || state.isDrawingMode || state.isPencilMode) {
+      const selected = selectedItemRef.current;
+      if (selected?.type === 'drawing') {
+        const selectedDrawing = state.drawings.find(d => d.id === selected.id);
+        if (selectedDrawing?.type === 'rectangle') {
+          const hit = hitTestDrawings(x, y);
+          if (hit?.drawingId === selected.id && hit.mode === 'resize-corner') {
+            container.style.cursor = hit.corner === 'top-left' || hit.corner === 'bottom-right'
+              ? 'nwse-resize' : 'nesw-resize';
+          } else if (hit?.drawingId === selected.id) {
+            container.style.cursor = 'move';
+          } else {
+            container.style.cursor = 'default';
+          }
+        }
+      } else if (state.activeDrawingTool || state.isDrawingMode || state.isPencilMode) {
         container.style.cursor = 'crosshair';
       }
     };
