@@ -7,7 +7,8 @@
   "files": [
     "dist/**/*",
     "electron/main.cjs",
-    "package.json"
+    "package.json",
+    "build/tradepast.png"
   ],
   "asar": true,
   "compression": "maximum",
