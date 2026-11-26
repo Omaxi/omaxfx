@@ -245,7 +245,7 @@ export default function Chart({ chartId = 'main' }) {
     rawData, displayData, currentIndex, positions, pendingOrders, 
     draftPosition, timeframe, cancelPendingOrder, closePosition, activeDrawingTool,
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
-    theme, uiTheme, snapshotDrawings, recenterToken, drawings,
+    theme, snapshotDrawings, recenterToken, drawings,
     isPencilMode, pencilColor, setPencilColor,
     chartType, symbol, contractSpecs, sessionTimes, sessionEndTimes, chartOptions
   } = useStore();
@@ -310,7 +310,6 @@ export default function Chart({ chartId = 'main' }) {
     if (!chartContainerRef.current) return;
     const t = useStore.getState().theme;
     const ct = useStore.getState().chartType;
-    const lightUi = useStore.getState().uiTheme === 'light';
     
     chartRef.current = createChart(chartContainerRef.current, {
       layout: {
@@ -319,7 +318,7 @@ export default function Chart({ chartId = 'main' }) {
         fontSize: 9,
         attributionLogo: false,
         panes: {
-          separatorColor: lightUi ? '#d0d5dd' : '#2a2e39',
+          separatorColor: '#2a2e39',
           separatorHoverColor: '#3b82f6',
           enableResize: true,
         },
@@ -331,7 +330,7 @@ export default function Chart({ chartId = 'main' }) {
         locale: 'en-GB',
         timeFormatter: (time) => formatMarketDateTime(time),
       },
-      grid: { vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: uiTheme === 'light' ? '#e4e7ec' : '#202433' }, horzLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: uiTheme === 'light' ? '#e4e7ec' : '#202433' } },
+      grid: { vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: '#202433' }, horzLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: '#202433' } },
       timeScale: { 
         timeVisible: true, secondsVisible: false,
         borderVisible: false, barSpacing: 6, rightOffset: 60,
@@ -412,12 +411,12 @@ export default function Chart({ chartId = 'main' }) {
     try {
       chartRef.current.applyOptions({
         grid: {
-          vertLines: { visible: chartOptions?.gridVisible ?? true, color: uiTheme === 'light' ? '#e4e7ec' : '#202433' },
-          horzLines: { visible: chartOptions?.gridVisible ?? true, color: uiTheme === 'light' ? '#e4e7ec' : '#202433' },
+          vertLines: { visible: chartOptions?.gridVisible ?? true, color: '#202433' },
+          horzLines: { visible: chartOptions?.gridVisible ?? true, color: '#202433' },
         },
       });
     } catch (e) {}
-  }, [chartOptions?.gridVisible, uiTheme]);
+  }, [chartOptions?.gridVisible]);
 
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
@@ -431,28 +430,6 @@ export default function Chart({ chartId = 'main' }) {
       lineSeriesRef.current.applyOptions({ color: theme.upBody });
     } catch (e) {}
   }, [theme]);
-
-  useEffect(() => {
-    const applyUiTheme = (event) => {
-      const light = (event?.detail || document.documentElement.dataset.uiTheme) === 'light';
-      try {
-        chartRef.current?.applyOptions({
-          layout: {
-            background: { type: 'solid', color: light ? '#f8fafc' : (useStore.getState().theme?.background || '#171a27') },
-            textColor: light ? '#475467' : '#6b7280',
-            panes: { separatorColor: light ? '#d0d5dd' : '#2a2e39', separatorHoverColor: '#3b82f6', enableResize: true },
-          },
-          grid: {
-            vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: light ? '#e4e7ec' : '#202433' },
-            horzLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: light ? '#e4e7ec' : '#202433' },
-          },
-        });
-      } catch (e) {}
-    };
-    applyUiTheme();
-    window.addEventListener('omaxfx-ui-theme-change', applyUiTheme);
-    return () => window.removeEventListener('omaxfx-ui-theme-change', applyUiTheme);
-  }, [theme.background]);
 
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
@@ -2038,7 +2015,7 @@ export default function Chart({ chartId = 'main' }) {
   }, [selectedRectangleDrawing?.id, chartReady]);
 
   return (
-    <div className="chart-root relative w-full h-full" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : theme.background, visibility: startupViewReady ? 'visible' : 'hidden' }}>
+    <div className="chart-root relative w-full h-full" style={{ backgroundColor: theme.background, visibility: startupViewReady ? 'visible' : 'hidden' }}>
       <div ref={chartContainerRef} className="absolute inset-0 chart-no-touch" style={{ zIndex: 1, touchAction: 'none', cursor: isPencilMode ? 'crosshair' : 'default' }} />
       <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 2 }} />
       <canvas ref={crosshairCanvasRef} className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%', zIndex: 25 }} aria-hidden="true" />
@@ -2126,7 +2103,7 @@ export default function Chart({ chartId = 'main' }) {
         );
       })()}
 
-      {gameStarted && !chartUiPanelsHidden && <div className="live-information-panel absolute top-2 right-[72px] left-auto z-[10] w-[min(230px,calc(100%-5rem))] rounded-lg border border-[#343b49] p-3 text-[9px] leading-4 text-gray-300 shadow-lg pointer-events-auto font-mono" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : theme.background }}>
+      {gameStarted && !chartUiPanelsHidden && <div className="live-information-panel absolute top-2 right-[72px] left-auto z-[10] w-[min(230px,calc(100%-5rem))] rounded-lg border border-[#343b49] p-3 text-[9px] leading-4 text-gray-300 shadow-lg pointer-events-auto font-mono" style={{ backgroundColor: theme.background }}>
         <button type="button" onClick={() => setDashboardCollapsed(value => !value)}
           aria-expanded={!dashboardCollapsed}
           className="mb-1 flex w-full items-center justify-between gap-2 rounded text-left hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500">
