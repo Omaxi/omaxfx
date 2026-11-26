@@ -84,12 +84,11 @@ export function getTradeCandleWindow(trade, candles, timeframe = 1) {
 
 // Render a deterministic historical chart for exactly one trade. The live chart
 // canvas is never reused, so a batch of closures cannot receive one shared image.
-export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = 'dark', drawingSnapshot = {}) {
+export function renderTradeScreenshot(trade, candles, timeframe = 1, drawingSnapshot = {}) {
   const windowData = getTradeCandleWindow(trade, candles, timeframe);
   if (!windowData || typeof document === 'undefined') return null;
   const { data, entryIndex, exitIndex } = windowData;
-  const light = uiTheme === 'light';
-  const palette = { background: light ? '#ffffff' : '#0d1117', text: light ? '#667085' : '#9aa4b2' };
+  const palette = { background: '#0d1117', text: '#9aa4b2' };
   const width = 1280, height = 640;
   const canvas = document.createElement('canvas');
   canvas.width = width; canvas.height = height;
@@ -196,7 +195,7 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = '
   if (smallTradeLevels) {
     const guides = [
       { label: 'ENTRY', price: entry, color: '#60a5fa' },
-      { label: 'EXIT', price: Number(trade.exitPrice), color: light ? '#475467' : '#e5e7eb' },
+      { label: 'EXIT', price: Number(trade.exitPrice), color: '#e5e7eb' },
       { label: 'SL', price: sl, color: '#ef5350' },
       { label: 'TP', price: tp, color: '#26a69a' },
     ].filter(level => Number.isFinite(level.price));
