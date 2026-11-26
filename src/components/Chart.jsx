@@ -330,7 +330,7 @@ export default function Chart({ chartId = 'main' }) {
         locale: 'en-GB',
         timeFormatter: (time) => formatMarketDateTime(time),
       },
-      grid: { vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? false, color: '#202433' }, horzLines: { visible: initialState.chartOptions?.gridVisible ?? false, color: '#202433' } },
+      grid: { vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? false, color: '#202433' }, horzLines: { visible: useStore.getState().chartOptions?.gridVisible ?? false, color: '#202433' } },
       timeScale: { 
         timeVisible: true, secondsVisible: false,
         borderVisible: false, barSpacing: 6, rightOffset: 60,
@@ -419,7 +419,7 @@ export default function Chart({ chartId = 'main' }) {
   }, [chartOptions?.gridVisible]);
 
   useEffect(() => {
-    const candle = visibleDataRef.current[visibleDataRef.current.length - 1];
+    const candle = visibleDataRef.current[visibleDataRef.current.length - 1] || rawData?.[currentIndex];
     const isUp = candle ? Number(candle.close) >= Number(candle.open) : true;
     const currentColor = isUp ? theme.upBody : theme.downBody;
     const options = {
@@ -433,7 +433,7 @@ export default function Chart({ chartId = 'main' }) {
       seriesRef.current?.applyOptions(options);
       lineSeriesRef.current?.applyOptions({ ...options, priceLineColor: currentColor });
     } catch (e) {}
-  }, [chartOptions?.lastPriceLineVisible, currentIndex, displayData, theme]);
+  }, [chartOptions?.lastPriceLineVisible, currentIndex, displayData, rawData, theme]);
 
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
