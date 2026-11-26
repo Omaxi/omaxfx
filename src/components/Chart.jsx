@@ -637,20 +637,34 @@ export default function Chart({ chartId = 'main' }) {
         const slY = tool.sl == null ? null : seriesRef.current.priceToCoordinate(Number(tool.sl));
         const tpY = tool.tp == null ? null : seriesRef.current.priceToCoordinate(Number(tool.tp));
         const startTime = Number(tool.startTime ?? tool.openTime ?? state.rawData?.[state.currentIndex]?.time);
-        const latestTime = Number(visibleDataRef.current[visibleDataRef.current.length - 1]?.time ?? state.rawData?.[state.currentIndex]?.time);
+        const latestCandle = visibleDataRef.current[visibleDataRef.current.length - 1] ?? state.rawData?.[state.currentIndex];
+        const latestTime = Number(latestCandle?.time);
+        const livePrice = Number(latestCandle?.close ?? latestCandle?.value);
         const startX = Number.isFinite(startTime) ? timeToX(startTime) : null;
         const endX = Number.isFinite(latestTime) ? timeToX(latestTime) : null;
         if (startX != null && endX != null && Number.isFinite(entryY) && endX > startX) {
           const left = Math.max(0, Math.min(paneW, startX));
           const right = Math.max(0, Math.min(paneW, endX));
           if (right > left) {
+            // Keep the TradingView-style risk/reward blocks very subtle at rest.
+            // As the live trade moves toward TP or SL, only the relevant zone
+            // gains a little opacity so progress is visible without a solid fill.
+            const riskDistance = Math.abs(entry - Number(tool.sl));
+            const rewardDistance = Math.abs(Number(tool.tp) - entry);
+            const favorableMove = long ? livePrice - entry : entry - livePrice;
+            const adverseMove = long ? entry - livePrice : livePrice - entry;
+            const progress = (move, distance) => Number.isFinite(move) && Number.isFinite(distance) && distance > 0
+              ? Math.max(0, Math.min(1, move / distance)) : 0;
+            const isLivePosition = target === 'position' && Number.isFinite(livePrice);
+            const greenAlpha = isLivePosition ? 0.08 + 0.08 * progress(favorableMove, rewardDistance) : 0.08;
+            const redAlpha = isLivePosition ? 0.08 + 0.08 * progress(adverseMove, riskDistance) : 0.08;
             ctx.save();
             if (Number.isFinite(slY)) {
-              ctx.fillStyle = 'rgba(239, 83, 80, 0.20)';
+              ctx.fillStyle = `rgba(239, 83, 80, ${redAlpha.toFixed(3)})`;
               ctx.fillRect(left, Math.min(entryY, slY), right - left, Math.max(1, Math.abs(slY - entryY)));
             }
             if (Number.isFinite(tpY)) {
-              ctx.fillStyle = 'rgba(38, 166, 154, 0.20)';
+              ctx.fillStyle = `rgba(38, 166, 154, ${greenAlpha.toFixed(3)})`;
               ctx.fillRect(left, Math.min(entryY, tpY), right - left, Math.max(1, Math.abs(tpY - entryY)));
             }
             ctx.restore();
@@ -667,10 +681,10 @@ export default function Chart({ chartId = 'main' }) {
           if (y == null || !Number.isFinite(y) || y < -2 || y > paneH + 2) return;
           ctx.save();
           ctx.strokeStyle = level.color;
-          ctx.lineWidth = level.type === 'entry' ? 1.5 : 1.25;
-          // Once an order is filled and becomes an open position, show its
-          // Entry / SL / TP guides as dashed lines to distinguish triggered trades.
-          ctx.setLineDash(target === 'position' ? [6, 4] : []);
+          ctx.lineWidth = 1;
+          // Keep every trade level crisp and unobtrusive, matching the dotted
+          // Entry / SL / TP guides in the reference position tool.
+          ctx.setLineDash([2, 3]);
           ctx.beginPath();
           ctx.moveTo(0, y);
           ctx.lineTo(paneW, y);
@@ -720,9 +734,16 @@ export default function Chart({ chartId = 'main' }) {
 
         const isWin = trade.pnl >= 0;
         const resultColor = isWin ? '#26a69a' : '#ef5350';
-        const resultBgColor = isWin ? 'rgba(38, 166, 154, 0.20)' : 'rgba(239, 83, 80, 0.20)';
-        const slBgColor = 'rgba(239, 83, 80, 0.20)';
-        const tpBgColor = 'rgba(38, 166, 154, 0.20)';
+        const tradeRisk = Math.abs(Number(trade.entryPrice) - Number(trade.sl));
+        const realizedMove = Math.abs(Number(trade.exitPrice) - Number(trade.entryPrice));
+        const outcomeProgress = Number.isFinite(tradeRisk) && tradeRisk > 0 && Number.isFinite(realizedMove)
+          ? Math.max(0, Math.min(1, realizedMove / tradeRisk)) : 0;
+        const resultAlpha = 0.08 + 0.08 * outcomeProgress;
+        const resultBgColor = isWin
+          ? `rgba(38, 166, 154, ${resultAlpha.toFixed(3)})`
+          : `rgba(239, 83, 80, ${resultAlpha.toFixed(3)})`;
+        const slBgColor = 'rgba(239, 83, 80, 0.08)';
+        const tpBgColor = 'rgba(38, 166, 154, 0.08)';
 
         const minX = Math.min(x1, x2);
         const maxX = Math.max(x1, x2);
