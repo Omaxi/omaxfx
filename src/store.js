@@ -440,6 +440,9 @@ export const useStore = create((set, get) => ({
   enableFireworks: true,
   toggleFireworks: () => set((state) => ({ enableFireworks: !state.enableFireworks })),
 
+  chartOptions: { gridVisible: false, lastPriceLineVisible: true, crosshairVerticalVisible: false, crosshairHorizontalVisible: false },
+  setChartOptions: (patch) => set((state) => ({ chartOptions: { ...state.chartOptions, ...patch } })),
+
   theme: { ...DEFAULT_THEME },
   setTheme: (patch) => set((state) => ({ theme: { ...state.theme, ...patch } })),
   resetTheme: () => set({ theme: { ...DEFAULT_THEME } }),
