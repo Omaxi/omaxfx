@@ -19,7 +19,7 @@ import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
 import { fetchDataCatalog, loadBundledCsvFiles } from './utils/dataCatalog';
 import { getPnlMultiplier } from './utils/instrument';
-import { Info, Sparkles, AlertTriangle, LogOut, Square, Columns2, CheckCircle2, TrendingUp, X, Settings, Sun, Moon } from 'lucide-react';
+import { Info, Sparkles, AlertTriangle, LogOut, Square, Columns2, CheckCircle2, TrendingUp, X, Settings, Plus } from 'lucide-react';
 
 function ThreeChartLayoutIcon({ size = 14 }) { return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1" y="1" width="5.5" height="14" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="9.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/></svg>; }
 
@@ -59,7 +59,7 @@ function App() {
     isPlaying, stepForward, currentIndex, rawData, replaySpeed, balance, positions, 
     musicEnabled, gameStarted,
     gameState,
-    loadingState, isInfoOpen, openInfo, openHistory, openAnalytics, theme, uiTheme, setUiTheme,
+    loadingState, isInfoOpen, openInfo, openHistory, openAnalytics, theme,
     enableFireworks, toggleFireworks,
     symbolWarning, clearSymbolWarning, tradeNotifications, dismissTradeNotification,
   } = useStore();
@@ -97,7 +97,6 @@ function App() {
       const saved = JSON.parse(localStorage.getItem(key) || '{}');
       useStore.setState(state => ({
         ...(saved.theme && typeof saved.theme === 'object' ? { theme: { ...state.theme, ...saved.theme } } : {}),
-        ...(saved.uiTheme === 'light' || saved.uiTheme === 'dark' ? { uiTheme: saved.uiTheme } : {}),
         ...(saved.chartOptions && typeof saved.chartOptions === 'object' ? { chartOptions: { ...state.chartOptions, ...saved.chartOptions } } : {}),
         ...(saved.drawingStyles && typeof saved.drawingStyles === 'object' ? {
           drawingStyles: Object.fromEntries(Object.entries({ ...state.drawingStyles, ...saved.drawingStyles }).map(([name, style]) => [name, { ...(state.drawingStyles[name] || {}), ...style }]))
@@ -109,18 +108,10 @@ function App() {
         ...(saved.chartType ? { chartType: saved.chartType } : {}),
       }));
     } catch {}
-    const initialUiTheme = useStore.getState().uiTheme || 'dark';
-    document.documentElement.dataset.uiTheme = initialUiTheme;
-    document.documentElement.style.colorScheme = initialUiTheme;
-    window.dispatchEvent(new CustomEvent('omaxfx-ui-theme-change', { detail: initialUiTheme }));
+    document.documentElement.dataset.uiTheme = 'dark';
+    document.documentElement.style.colorScheme = 'dark';
     const unsubscribe = useStore.subscribe((state, previous) => {
-      if (state.uiTheme !== previous.uiTheme) {
-        document.documentElement.dataset.uiTheme = state.uiTheme;
-        document.documentElement.style.colorScheme = state.uiTheme;
-        window.dispatchEvent(new CustomEvent('omaxfx-ui-theme-change', { detail: state.uiTheme }));
-      }
-      if (state.uiTheme !== previous.uiTheme ||
-          state.theme !== previous.theme ||
+      if (state.theme !== previous.theme ||
           state.chartOptions !== previous.chartOptions ||
           state.drawingStyles !== previous.drawingStyles ||
           state.sessionColors !== previous.sessionColors ||
@@ -131,7 +122,6 @@ function App() {
         try {
           localStorage.setItem(key, JSON.stringify({
             theme: state.theme,
-            uiTheme: state.uiTheme,
             chartOptions: state.chartOptions,
             drawingStyles: state.drawingStyles,
             sessionColors: state.sessionColors,
@@ -300,12 +290,12 @@ function App() {
     stopSoundtrack();
     window.close();
     window.setTimeout(() => {
-      if (!window.closed) window.alert('Please close this browser tab to exit OmaxFX.');
+      if (!window.closed) window.alert('Please close this browser tab to exit the application.');
     }, 80);
   };
 
   return (
-    <div className={`flex flex-col h-dvh overflow-hidden ${isInfoOpen ? 'quick-guide-open' : ''}`} style={{ backgroundColor: uiTheme === 'light' ? '#ffffff' : theme.background, color: uiTheme === 'light' ? '#172033' : '#ffffff' }}>
+    <div className={`flex flex-col h-dvh overflow-hidden ${isInfoOpen ? 'quick-guide-open' : ''}`} style={{ backgroundColor: theme.background, color: '#ffffff' }}>
       {/* Hidden audio element — preloaded by the browser at page load. */}
       <audio
         id="sfx-tphit"
@@ -362,7 +352,7 @@ function App() {
               ${fmtMoney(unrealisedPnl)}
             </span>
           </div>
-          <button type="button" onClick={() => setUiTheme(uiTheme === 'light' ? 'dark' : 'light')} className="app-header-action w-7 h-7 rounded border border-[#2a2e39] bg-[#1e222d] text-gray-300 hover:bg-[#2a2e39] flex items-center justify-center" aria-label={uiTheme === 'light' ? 'Switch to dark theme' : 'Switch to white theme'} aria-pressed={uiTheme === 'light'}>{uiTheme === 'light' ? <Moon size={13}/> : <Sun size={13}/>}</button>
+          <button type="button" onClick={() => useStore.getState().openPeriodModal()} className="app-header-action header-action-new-session w-7 h-7 rounded border border-cyan-900/50 bg-[#1e222d] text-cyan-400 hover:bg-cyan-900/30 flex items-center justify-center" title="New backtest" aria-label="Start a new backtest"><Plus size={14}/></button>
           <SoundToggle />
           <button onClick={toggleFireworks}
             className={`app-header-action w-7 h-7 border rounded flex items-center justify-center transition-colors ${
@@ -373,7 +363,7 @@ function App() {
             title={enableFireworks ? 'Disable Fireworks' : 'Enable Fireworks'}>
             <Sparkles size={13} />
           </button>
-          <button onClick={handleExitPlatform} className="app-header-action w-7 h-7 bg-[#1e222d] border border-red-900/50 hover:bg-red-900/40 text-red-400 rounded flex items-center justify-center" title="Save and exit OmaxFX">
+          <button onClick={handleExitPlatform} className="app-header-action w-7 h-7 bg-[#1e222d] border border-red-900/50 hover:bg-red-900/40 text-red-400 rounded flex items-center justify-center" title="Exit application">
             <LogOut size={13}/>
           </button>
           <button onClick={openInfo} className="app-header-action header-action-guide w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 rounded flex items-center justify-center" style={{ color: "#3b82f6" }} title="Quick guide">
