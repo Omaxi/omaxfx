@@ -18,7 +18,7 @@ import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
 import { fetchDataCatalog, loadBundledCsvFiles } from './utils/dataCatalog';
 import { getPnlMultiplier } from './utils/instrument';
-import { Info, Sparkles, AlertTriangle, LogOut, Square, Columns2 } from 'lucide-react';
+import { Info, Sparkles, AlertTriangle, LogOut, Square, Columns2, CheckCircle2, TrendingUp, X } from 'lucide-react';
 
 function ThreeChartLayoutIcon({ size = 14 }) { return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1" y="1" width="5.5" height="14" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="9.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/></svg>; }
 
@@ -29,7 +29,7 @@ function App() {
     gameState,
     loadingState, isInfoOpen, openInfo, openHistory, openAnalytics, theme,
     enableFireworks, toggleFireworks,
-    symbolWarning, clearSymbolWarning,
+    symbolWarning, clearSymbolWarning, tradeNotifications, dismissTradeNotification,
   } = useStore();
   const soundtrackStarted = useRef(false);
   // Disable native browser hover tooltips across the entire application.
@@ -69,6 +69,15 @@ function App() {
     const t = setTimeout(() => clearSymbolWarning(), 5000);
     return () => clearTimeout(t);
   }, [symbolWarning, clearSymbolWarning]);
+
+  // Keep trade-management confirmations visible long enough to read, then dismiss.
+  useEffect(() => {
+    if (!tradeNotifications.length) return undefined;
+    const timers = tradeNotifications.map(({ id }) =>
+      window.setTimeout(() => dismissTradeNotification(id), 5500)
+    );
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [tradeNotifications, dismissTradeNotification]);
 
   useEffect(() => {
     if (!loadingState.isActive) {
@@ -301,6 +310,48 @@ function App() {
         {gameStarted && <ChartWorkspace />}
       </main>
       <TradeScreenshotCapture />
+
+      {tradeNotifications.length > 0 && (
+        <div className="fixed top-[68px] right-4 z-[300] flex w-[min(380px,calc(100vw-32px))] flex-col gap-2 pointer-events-none" aria-live="polite" aria-atomic="false">
+          {tradeNotifications.map((notification) => {
+            const isPartial = notification.type === 'partial';
+            const Icon = isPartial ? TrendingUp : CheckCircle2;
+            const amount = Number(notification.amount) || 0;
+            return (
+              <div
+                key={notification.id}
+                role="status"
+                className="pointer-events-auto flex items-start gap-3 rounded-xl border border-emerald-500/40 bg-[#111923]/[.98] px-4 py-3 shadow-2xl shadow-black/50 backdrop-blur-md animate-in slide-in-from-top-2"
+              >
+                <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400">
+                  <Icon size={18} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-emerald-300">
+                    {isPartial ? 'Partial profit taken' : 'Breakeven set successfully'}
+                  </p>
+                  {isPartial ? (
+                    <p className="mt-1 text-sm font-semibold text-white">
+                      {amount < 0 ? '-' : '+'}${fmtMoney(Math.abs(amount))} <span className="font-normal text-gray-300">profit · {Number(notification.closePercent).toLocaleString(undefined, { maximumFractionDigits: 2 })}% of position closed</span>
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-gray-300">Stop loss moved to entry price.</p>
+                  )}
+                  {notification.symbol && <p className="mt-1 text-[10px] font-medium uppercase tracking-wider text-gray-500">{notification.symbol}</p>}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => dismissTradeNotification(notification.id)}
+                  className="rounded p-1 text-gray-500 transition-colors hover:bg-white/10 hover:text-white"
+                  aria-label="Dismiss notification"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
       
       <ControlPanel />
       <DataImportModal />
