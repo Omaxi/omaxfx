@@ -413,7 +413,7 @@ export default function Chart({ chartId = 'main' }) {
       chartRef.current.applyOptions({
         grid: {
           vertLines: { visible: chartOptions?.gridVisible ?? true, color: '#202433' },
-          horzLines: { visible: !!chartOptions?.gridVisible, color: '#202433' },
+          horzLines: { visible: chartOptions?.gridVisible ?? true, color: '#202433' },
         },
       });
     } catch (e) {}
