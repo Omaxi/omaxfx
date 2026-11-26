@@ -352,7 +352,7 @@ function App() {
               ${fmtMoney(unrealisedPnl)}
             </span>
           </div>
-          <button type="button" onClick={() => useStore.getState().openPeriodModal()} className="app-header-action header-action-new-session w-7 h-7 rounded border border-cyan-900/50 bg-[#1e222d] text-cyan-400 hover:bg-cyan-900/30 flex items-center justify-center" title="New backtest" aria-label="Start a new backtest"><Plus size={14}/></button>
+          <button type="button" onClick={() => useStore.getState().openPeriodModal()} className="app-header-action header-action-new-session h-7 px-2 rounded border border-cyan-900/50 bg-[#1e222d] text-cyan-400 hover:bg-cyan-900/30 flex items-center justify-center gap-1" title="New backtest" aria-label="Start a new backtest"><Plus size={14}/><span className="hidden xl:inline text-[10px] font-semibold">New Backtest</span></button>
           <SoundToggle />
           <button onClick={toggleFireworks}
             className={`app-header-action w-7 h-7 border rounded flex items-center justify-center transition-colors ${
