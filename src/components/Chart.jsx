@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useMemo, useState, useCallback } from 'react';
-import { createChart, CandlestickSeries, LineSeries } from 'lightweight-charts';
+import { createChart, CandlestickSeries, LineSeries, LineStyle } from 'lightweight-charts';
 import { useStore } from '../store';
 import { getPricePrecision, getPriceTickSize } from '../utils/instrument';
 import { aggregateData, getTimeframeBucketStart } from '../utils/timeframe';
@@ -227,6 +227,7 @@ export default function Chart({ chartId = 'main' }) {
   const selectedItemRef = useRef(null);
   const currentPencilRef = useRef(null);
   const scheduleDrawRef = useRef(() => {});
+  const lastCrosshairParamRef = useRef(null);
 
   const [pendingBtnPos, setPendingBtnPos] = useState([]);
   const [positionBtnPos, setPositionBtnPos] = useState([]);
@@ -246,7 +247,7 @@ export default function Chart({ chartId = 'main' }) {
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
     theme, uiTheme, snapshotDrawings, recenterToken,
     isPencilMode, pencilColor, setPencilColor,
-    chartType, symbol, contractSpecs, sessionTimes, sessionEndTimes
+    chartType, symbol, contractSpecs, sessionTimes, sessionEndTimes, chartOptions
   } = useStore();
 
   const lockChart = useCallback((locked) => {
@@ -330,7 +331,7 @@ export default function Chart({ chartId = 'main' }) {
         locale: 'en-GB',
         timeFormatter: (time) => formatMarketDateTime(time),
       },
-      grid: { vertLines: { visible: true, color: '#202433' }, horzLines: { visible: true, color: '#202433' } },
+      grid: { vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? false, color: '#202433' }, horzLines: { visible: useStore.getState().chartOptions?.gridVisible ?? false, color: '#202433' } },
       timeScale: { 
         timeVisible: true, secondsVisible: false,
         borderVisible: false, barSpacing: 6, rightOffset: 60,
@@ -407,6 +408,35 @@ export default function Chart({ chartId = 'main' }) {
   }, [symbol, contractSpecs]);
 
   useEffect(() => {
+    if (!chartRef.current) return;
+    try {
+      chartRef.current.applyOptions({
+        grid: {
+          vertLines: { visible: !!chartOptions?.gridVisible, color: '#202433' },
+          horzLines: { visible: !!chartOptions?.gridVisible, color: '#202433' },
+        },
+      });
+    } catch (e) {}
+  }, [chartOptions?.gridVisible]);
+
+  useEffect(() => {
+    const candle = visibleDataRef.current[visibleDataRef.current.length - 1] || rawData?.[currentIndex];
+    const isUp = candle ? Number(candle.close) >= Number(candle.open) : true;
+    const currentColor = isUp ? theme.upBody : theme.downBody;
+    const options = {
+      priceLineVisible: chartOptions?.lastPriceLineVisible !== false,
+      priceLineColor: currentColor,
+      priceLineStyle: LineStyle.Dotted,
+      priceLineWidth: 1,
+      lastValueVisible: true,
+    };
+    try {
+      seriesRef.current?.applyOptions(options);
+      lineSeriesRef.current?.applyOptions({ ...options, priceLineColor: currentColor });
+    } catch (e) {}
+  }, [chartOptions?.lastPriceLineVisible, currentIndex, displayData, rawData, theme]);
+
+  useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
     try {
       seriesRef.current.applyOptions({
@@ -430,8 +460,8 @@ export default function Chart({ chartId = 'main' }) {
             panes: { separatorColor: light ? '#d0d5dd' : '#2a2e39', separatorHoverColor: '#3b82f6', enableResize: true },
           },
           grid: {
-            vertLines: { visible: true, color: '#202433' },
-            horzLines: { visible: true, color: '#202433' },
+            vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? false, color: '#202433' },
+            horzLines: { visible: useStore.getState().chartOptions?.gridVisible ?? false, color: '#202433' },
           },
         });
       } catch (e) {}
@@ -620,6 +650,29 @@ export default function Chart({ chartId = 'main' }) {
         if (!Number.isFinite(entry)) return;
         const long = tool.type === 'buy';
         const precision = getPricePrecision(state.symbol, state.contractSpecs);
+        const entryY = seriesRef.current.priceToCoordinate(entry);
+        const slY = tool.sl == null ? null : seriesRef.current.priceToCoordinate(Number(tool.sl));
+        const tpY = tool.tp == null ? null : seriesRef.current.priceToCoordinate(Number(tool.tp));
+        const startTime = Number(tool.startTime ?? tool.openTime ?? state.rawData?.[state.currentIndex]?.time);
+        const latestTime = Number(visibleDataRef.current[visibleDataRef.current.length - 1]?.time ?? state.rawData?.[state.currentIndex]?.time);
+        const startX = Number.isFinite(startTime) ? timeToX(startTime) : null;
+        const endX = Number.isFinite(latestTime) ? timeToX(latestTime) : null;
+        if (startX != null && endX != null && Number.isFinite(entryY) && endX > startX) {
+          const left = Math.max(0, Math.min(paneW, startX));
+          const right = Math.max(0, Math.min(paneW, endX));
+          if (right > left) {
+            ctx.save();
+            if (Number.isFinite(slY)) {
+              ctx.fillStyle = 'rgba(239, 83, 80, 0.35)';
+              ctx.fillRect(left, Math.min(entryY, slY), right - left, Math.max(1, Math.abs(slY - entryY)));
+            }
+            if (Number.isFinite(tpY)) {
+              ctx.fillStyle = 'rgba(38, 166, 154, 0.35)';
+              ctx.fillRect(left, Math.min(entryY, tpY), right - left, Math.max(1, Math.abs(tpY - entryY)));
+            }
+            ctx.restore();
+          }
+        }
         const levels = [
           { type: 'entry', price: entry, color: '#3b82f6', label: 'ENTRY' },
           { type: 'sl', price: tool.sl == null ? NaN : Number(tool.sl), color: '#ef5350', label: 'SL' },
@@ -650,7 +703,7 @@ export default function Chart({ chartId = 'main' }) {
           ctx.fillText(tag, Math.max(0, paneW - tagWidth / 2), y);
           ctx.restore();
         });
-        const entryY = seriesRef.current.priceToCoordinate(entry);
+        // Reuse the entry coordinate calculated above for the translucent risk/reward zones.
         if (entryY != null && Number.isFinite(entryY)) {
           ctx.save();
           ctx.font = '600 10px Arial';
@@ -684,9 +737,9 @@ export default function Chart({ chartId = 'main' }) {
 
         const isWin = trade.pnl >= 0;
         const resultColor = isWin ? '#26a69a' : '#ef5350';
-        const resultBgColor = isWin ? 'rgba(38, 166, 154, 0.25)' : 'rgba(239, 83, 80, 0.25)';
-        const slBgColor = 'rgba(239, 83, 80, 0.15)';
-        const tpBgColor = 'rgba(38, 166, 154, 0.15)';
+        const resultBgColor = isWin ? 'rgba(38, 166, 154, 0.35)' : 'rgba(239, 83, 80, 0.35)';
+        const slBgColor = 'rgba(239, 83, 80, 0.35)';
+        const tpBgColor = 'rgba(38, 166, 154, 0.35)';
 
         const minX = Math.min(x1, x2);
         const maxX = Math.max(x1, x2);
@@ -1761,6 +1814,7 @@ export default function Chart({ chartId = 'main' }) {
       canvas.style.height = `${rect.height}px`;
     };
     const drawCrosshair = (param) => {
+      lastCrosshairParamRef.current = param;
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         const rect = container.getBoundingClientRect();
@@ -1785,8 +1839,13 @@ export default function Chart({ chartId = 'main' }) {
         ctx.strokeStyle = 'rgba(190,198,210,0.78)';
         ctx.lineWidth = 1;
         ctx.setLineDash([3, 4]);
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, paneHeight); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(paneWidth, y); ctx.stroke();
+        const crosshairOptions = useStore.getState().chartOptions || {};
+        if (crosshairOptions.crosshairVerticalVisible) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, paneHeight); ctx.stroke();
+        }
+        if (crosshairOptions.crosshairHorizontalVisible) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(paneWidth, y); ctx.stroke();
+        }
         ctx.setLineDash([]);
         ctx.font = '500 9px Arial';
         ctx.textBaseline = 'middle';
@@ -1814,6 +1873,7 @@ export default function Chart({ chartId = 'main' }) {
     const observer = new ResizeObserver(resize);
     observer.observe(container);
     chart.subscribeCrosshairMove(drawCrosshair);
+    if (lastCrosshairParamRef.current) drawCrosshair(lastCrosshairParamRef.current);
     return () => {
       cancelAnimationFrame(frame);
       chart.unsubscribeCrosshairMove(drawCrosshair);
@@ -1821,7 +1881,7 @@ export default function Chart({ chartId = 'main' }) {
       const ctx = canvas.getContext('2d');
       if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
-  }, [chartReady, timeframe, symbol]);
+  }, [chartReady, timeframe, symbol, chartOptions?.crosshairVerticalVisible, chartOptions?.crosshairHorizontalVisible]);
 
   return (
     <div className="chart-root relative w-full h-full" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : theme.background, visibility: startupViewReady ? 'visible' : 'hidden' }}>

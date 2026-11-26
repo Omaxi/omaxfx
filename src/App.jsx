@@ -5,6 +5,7 @@ import HistoryModal from './components/HistoryModal';
 import AnalyticsModal from './components/AnalyticsModal';
 import InfoModal from './components/InfoModal';
 import SoundToggle from './components/SoundToggle';
+import SettingsModal from './components/SettingsModal';
 import PeriodModal from './components/PeriodModal';
 import GameOverModal from './components/GameOverModal';
 import EquityModal from './components/EquityModal';
@@ -13,12 +14,12 @@ import LoadingScreen from './components/LoadingScreen';
 import TradeScreenshotCapture from './components/TradeScreenshotCapture';
 import DataImportModal from './components/DataImportModal';
 import { useStore } from './store';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
 import { fetchDataCatalog, loadBundledCsvFiles } from './utils/dataCatalog';
 import { getPnlMultiplier } from './utils/instrument';
-import { Info, Sparkles, AlertTriangle, LogOut, Square, Columns2, CheckCircle2, TrendingUp, X } from 'lucide-react';
+import { Info, Sparkles, AlertTriangle, LogOut, Square, Columns2, CheckCircle2, TrendingUp, X, Settings } from 'lucide-react';
 
 function ThreeChartLayoutIcon({ size = 14 }) { return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1" y="1" width="5.5" height="14" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="9.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/></svg>; }
 
@@ -32,6 +33,7 @@ function App() {
     symbolWarning, clearSymbolWarning, tradeNotifications, dismissTradeNotification,
   } = useStore();
   const soundtrackStarted = useRef(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   // Disable native browser hover tooltips across the entire application.
   // Watch the DOM so title attributes added by dynamically rendered controls are removed too.
   useEffect(() => {
@@ -232,7 +234,7 @@ function App() {
       />
 
       <header className="app-header px-2 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-2">
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex min-w-0 items-center gap-2 flex-shrink-0">
           <h1 className="flex items-center gap-2 whitespace-nowrap">
             <img
               src={`${import.meta.env.BASE_URL}omaxfx-logo.svg`}
@@ -247,23 +249,24 @@ function App() {
               {positions.length}
             </span>
           )}
-
         </div>
 
+        {gameStarted && <div className="hidden lg:flex items-center gap-1.5 flex-shrink-0">
+          <button onClick={() => setSettingsOpen(true)} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39] flex items-center gap-1.5">
+            <Settings size={12}/> Settings
+          </button>
+          <button onClick={openHistory} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">History</button>
+          <button onClick={openAnalytics} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Analytics</button>
+          <button onClick={() => window.dispatchEvent(new Event('omaxfx:reset-chart'))} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Reset Chart</button>
+        </div>}
+
         {gameStarted && <div className="hidden md:flex items-center gap-1 rounded-lg border border-[#2a2e39] bg-[#0f131c] p-0.5 flex-shrink-0" aria-label="Chart layout">
-          <span className="px-1 text-[8px] font-bold uppercase tracking-wide text-gray-500">Layout</span>
           {[{ value: 1, label: 'Single chart', Icon: Square }, { value: 2, label: 'Two charts', Icon: Columns2 }, { value: 3, label: 'Three charts', Icon: ThreeChartLayoutIcon }].map(({ value, label, Icon }) => (
             <button key={value} type="button" onClick={() => useStore.getState().setChartLayout(value)} title={label} aria-label={label} aria-pressed={useStore.getState().chartLayout === value}
               className={`flex h-7 w-7 items-center justify-center rounded ${useStore.getState().chartLayout === value ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-[#2a2e39]'}`}>
               <Icon size={14}/>
             </button>
           ))}
-        </div>}
-
-        {gameStarted && <div className="hidden lg:flex items-center gap-1.5 flex-shrink-0">
-          <button onClick={openHistory} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">History</button>
-          <button onClick={openAnalytics} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Analytics</button>
-          <button onClick={() => window.dispatchEvent(new Event('omaxfx:reset-chart'))} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Reset Chart</button>
         </div>}
 
         <div className="flex items-center gap-2 text-[11px] flex-shrink-0">
@@ -278,29 +281,19 @@ function App() {
             </span>
           </div>
           <SoundToggle />
-          
-          <button
-            onClick={toggleFireworks}
+          <button onClick={toggleFireworks}
             className={`app-header-action w-7 h-7 border rounded flex items-center justify-center transition-colors ${
               enableFireworks
                 ? 'bg-yellow-900/30 border-yellow-600/50 text-yellow-400 hover:bg-yellow-900/50'
                 : 'bg-[#1e222d] border-[#2a2e39] text-gray-500 hover:text-gray-300'
             }`}
-            title={enableFireworks ? 'Disable Fireworks' : 'Enable Fireworks'}
-          >
+            title={enableFireworks ? 'Disable Fireworks' : 'Enable Fireworks'}>
             <Sparkles size={13} />
           </button>
-
           <button onClick={handleExitPlatform} className="app-header-action w-7 h-7 bg-[#1e222d] border border-red-900/50 hover:bg-red-900/40 text-red-400 rounded flex items-center justify-center" title="Save and exit OmaxFX">
             <LogOut size={13}/>
           </button>
-
-          <button 
-            onClick={openInfo}
-            className="app-header-action header-action-guide w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 rounded flex items-center justify-center"
-            style={{ color: "#3b82f6" }}
-            title="Quick guide"
-          >
+          <button onClick={openInfo} className="app-header-action header-action-guide w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 rounded flex items-center justify-center" style={{ color: "#3b82f6" }} title="Quick guide">
             <Info size={13} />
           </button>
         </div>
@@ -360,6 +353,7 @@ function App() {
       <HistoryModal />
       <AnalyticsModal />
       <InfoModal />
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <PeriodModal />
       <GameOverModal />
       <EquityModal />

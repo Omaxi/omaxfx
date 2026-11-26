@@ -440,6 +440,9 @@ export const useStore = create((set, get) => ({
   enableFireworks: true,
   toggleFireworks: () => set((state) => ({ enableFireworks: !state.enableFireworks })),
 
+  chartOptions: { gridVisible: false, lastPriceLineVisible: true, crosshairVerticalVisible: false, crosshairHorizontalVisible: false },
+  setChartOptions: (patch) => set((state) => ({ chartOptions: { ...state.chartOptions, ...patch } })),
+
   theme: { ...DEFAULT_THEME },
   setTheme: (patch) => set((state) => ({ theme: { ...state.theme, ...patch } })),
   resetTheme: () => set({ theme: { ...DEFAULT_THEME } }),
@@ -574,10 +577,10 @@ export const useStore = create((set, get) => ({
     };
   }),
 
-  startDrawing: (side) => set({ 
+  startDrawing: (side) => set((state) => ({
     isDrawingMode: true, drawingSide: side, drawingStep: 'entry',
-    draftPosition: { type: side, entry: null, sl: null, tp: null }
-  }),
+    draftPosition: { type: side, entry: null, sl: null, tp: null, startTime: state.rawData?.[state.currentIndex]?.time ?? null }
+  })),
   
   setDraftPrice: (price) => set((state) => {
     if (!state.draftPosition) return state;
