@@ -125,7 +125,7 @@ export default function StylePanel({ selectedId, onClose }) {
         ) : (
           <>
             {/* Show Border Toggle — only applies to filled shapes */}
-            {!isLineDrawing && <div className="flex items-center justify-between">
+            {!isLineDrawing && drawing.type !== 'fibonacci' && <div className="flex items-center justify-between">
               <div className="text-[10px] text-gray-400 uppercase font-bold">Show Border Line</div>
               <button
                 onClick={() => commit({ showBorder: !showBorder })}
