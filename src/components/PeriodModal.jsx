@@ -122,10 +122,10 @@ export default function PeriodModal() {
                 <Calendar size={14} className="text-white" />
               </div>
               <h1 className="text-base font-bold tracking-wider">
-                <span className="text-white">OmaxFX Simulator</span>
+                <span className="text-white">TradePast</span>
               </h1>
             </div>
-            <p className="text-[10px] text-gray-400">Configure your trading setup</p>
+            <p className="text-[10px] text-gray-400">{gameStarted ? 'Start a fresh backtest. Current trades and drawings will be cleared; sessions are not saved.' : 'Configure your trading setup'}</p>
           </div>
           <div className="flex items-center gap-1">
             <button type="button" onClick={() => window.dispatchEvent(new Event('omaxfx:open-data-import'))}
@@ -291,7 +291,7 @@ export default function PeriodModal() {
             className="theme-action-contrast flex-[2] py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-sm text-white flex items-center justify-center gap-1.5 transition-colors"
           >
             <Play size={14} fill="currentColor" />
-            Start {activePreset?.name} Simulation
+            {gameStarted ? 'Start New Backtest' : `Start ${activePreset?.name} Backtest`}
           </button>
         </div>
       </div>
