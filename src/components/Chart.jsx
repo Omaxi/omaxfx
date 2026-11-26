@@ -2064,7 +2064,12 @@ export default function Chart({ chartId = 'main' }) {
           { key: 'bottom-left', x: pts[leftIndex].x, y: pts[bottomIndex].y, mode: 'resize-corner', corner: 'bottom-left', timeIndex: leftIndex, priceIndex: bottomIndex, cursor: 'nesw-resize' },
           { key: 'left', x: pts[leftIndex].x, y: (pts[0].y + pts[1].y) / 2, mode: 'resize-edge', edge: 'left', timeIndex: leftIndex, cursor: 'ew-resize' },
         ];
-        return handles.map(handle => (
+        return (
+          <div
+            className="rectangle-resize-handles"
+            style={{ position: 'absolute', inset: 0, zIndex: 1000, pointerEvents: 'none' }}
+          >
+            {handles.map(handle => (
           <button
             key={handle.key}
             type="button"
@@ -2116,9 +2121,12 @@ export default function Chart({ chartId = 'main' }) {
               boxShadow: '0 1px 5px rgba(0,0,0,.9)',
               padding: 0,
               touchAction: 'none',
+              pointerEvents: 'auto',
             }}
           />
-        ));
+            ))}
+          </div>
+        );
       })()}
 
       {gameStarted && !chartUiPanelsHidden && <div className="live-information-panel absolute top-2 right-[72px] left-auto z-[10] w-[min(230px,calc(100%-5rem))] rounded-lg border border-[#343b49] p-3 text-[9px] leading-4 text-gray-300 shadow-lg pointer-events-auto font-mono" style={{ backgroundColor: uiTheme === 'light' ? '#f8fafc' : theme.background }}>
