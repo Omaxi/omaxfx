@@ -331,7 +331,7 @@ export default function Chart({ chartId = 'main' }) {
         locale: 'en-GB',
         timeFormatter: (time) => formatMarketDateTime(time),
       },
-      grid: { vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: '#202433' }, horzLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: '#202433' } },
+      grid: { vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: lightUi ? '#e4e7ec' : '#202433' }, horzLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: lightUi ? '#e4e7ec' : '#202433' } },
       timeScale: { 
         timeVisible: true, secondsVisible: false,
         borderVisible: false, barSpacing: 6, rightOffset: 60,
@@ -412,12 +412,12 @@ export default function Chart({ chartId = 'main' }) {
     try {
       chartRef.current.applyOptions({
         grid: {
-          vertLines: { visible: chartOptions?.gridVisible ?? true, color: '#202433' },
-          horzLines: { visible: chartOptions?.gridVisible ?? true, color: '#202433' },
+          vertLines: { visible: chartOptions?.gridVisible ?? true, color: lightUi ? '#e4e7ec' : '#202433' },
+          horzLines: { visible: chartOptions?.gridVisible ?? true, color: lightUi ? '#e4e7ec' : '#202433' },
         },
       });
     } catch (e) {}
-  }, [chartOptions?.gridVisible]);
+  }, [chartOptions?.gridVisible, uiTheme]);
 
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
@@ -443,8 +443,8 @@ export default function Chart({ chartId = 'main' }) {
             panes: { separatorColor: light ? '#d0d5dd' : '#2a2e39', separatorHoverColor: '#3b82f6', enableResize: true },
           },
           grid: {
-            vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: '#202433' },
-            horzLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: '#202433' },
+            vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: lightUi ? '#e4e7ec' : '#202433' },
+            horzLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: lightUi ? '#e4e7ec' : '#202433' },
           },
         });
       } catch (e) {}
