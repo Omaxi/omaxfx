@@ -32,7 +32,10 @@ jobs:
         run: npm test
 
       - name: Install desktop packaging tools
-        run: npm install --no-save electron@latest electron-builder@latest
+        run: npm install --no-save electron@latest electron-builder@latest sharp png-to-ico
+
+      - name: Generate TradePast application icon
+        run: node electron/generate-icon.mjs
 
       - name: Build desktop-ready web application
         shell: pwsh
