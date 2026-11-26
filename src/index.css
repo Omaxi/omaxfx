@@ -237,3 +237,9 @@ html[data-ui-theme="light"] .theme-menu-surface { background-color: #f2f4f7 !imp
 html[data-ui-theme="light"] .text-green-400 { color: #079455 !important; }
 html[data-ui-theme="light"] .text-red-400 { color: #d92d20 !important; }
 html[data-ui-theme="light"] .text-blue-400 { color: #175cd3 !important; }
+
+html[data-ui-theme="light"] [class~="bg-blue-600"][class~="text-white"],
+html[data-ui-theme="light"] [class~="bg-blue-500"][class~="text-white"],
+html[data-ui-theme="light"] [class~="bg-green-600"][class~="text-white"],
+html[data-ui-theme="light"] [class~="bg-red-600"][class~="text-white"],
+html[data-ui-theme="light"] [class~="bg-emerald-600"][class~="text-white"] { color: #ffffff !important; }
