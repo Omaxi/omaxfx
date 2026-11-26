@@ -1,5 +1,5 @@
 import { useStore } from '../store';
-import { Minus, Square, Layers, MoveVertical, Trash2, Undo2, Redo2, Pencil, Type, ArrowUpRight, ChartNoAxesCombined } from 'lucide-react';
+import { Minus, Square, MoveVertical, Trash2, Undo2, Redo2, Pencil, Type, ArrowUpRight, ChartNoAxesCombined } from 'lucide-react';
 
 const TrendlineIcon = ({ size = 14 }) => (
   <svg
