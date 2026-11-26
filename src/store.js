@@ -84,7 +84,7 @@ const DEFAULT_THEME = {
   upWick: '#26a69a',
   downWick: '#ef5350',
 };
-const DEFAULT_SESSION_COLORS = { asia: '#f59e0b', london: '#38bdf8', newyork: '#fb7185' };
+const DEFAULT_SESSION_COLORS = { asia: '#a78bfa', london: '#38bdf8', newyork: '#f59e0b' };
 const DEFAULT_DRAWING_STYLES = {
   vertical: { color: '#3b82f6', lineWidth: 1 },
   horizontal: { color: '#3b82f6', lineWidth: 1 },
@@ -125,6 +125,8 @@ export const useStore = create((set, get) => ({
 
   sessionTimes: { asian: 1, london: 11, newyork: 16 },
   sessionColors: { ...DEFAULT_SESSION_COLORS },
+  sessionLabelsVisible: false,
+  setSessionLabelsVisible: (visible) => set({ sessionLabelsVisible: !!visible }),
   setSessionColor: (key, color) => set((state) => ({
     sessionColors: { ...state.sessionColors, [key]: color },
   })),
@@ -357,7 +359,8 @@ export const useStore = create((set, get) => ({
       id: Date.now() + Math.random(),
       color: drawing.color || '#3b82f6',
       borderColor: drawing.borderColor || drawing.color || '#3b82f6',
-      fillColor: drawing.fillColor || '#3b82f633',
+      fillColor: drawing.type === 'fibonacci' ? 'transparent' : (drawing.fillColor || '#3b82f633'),
+      ...(drawing.type === 'fibonacci' ? { levels: Array.isArray(drawing.levels) ? drawing.levels : [0, 0.5, 1] } : {}),
       lineWidth: drawing.lineWidth ?? state.drawingStyles?.[drawing.type]?.lineWidth ?? 1,
       ...(drawing.type === 'vertical' || drawing.type === 'horizontal'
         ? { color: state.drawingStyles?.[drawing.type]?.color || drawing.color || '#3b82f6',
@@ -425,6 +428,8 @@ export const useStore = create((set, get) => ({
   enableFireworks: true,
   toggleFireworks: () => set((state) => ({ enableFireworks: !state.enableFireworks })),
 
+  uiTheme: 'dark',
+  setUiTheme: (uiTheme) => set({ uiTheme: uiTheme === 'light' ? 'light' : 'dark' }),
   theme: { ...DEFAULT_THEME },
   setTheme: (patch) => set((state) => ({ theme: { ...state.theme, ...patch } })),
   resetTheme: () => set({ theme: { ...DEFAULT_THEME } }),
@@ -450,6 +455,13 @@ export const useStore = create((set, get) => ({
 
     const filtered = symbolData.filter(c => c.time >= from && c.time <= to);
 
+    // Keep the entire previous UTC+3 market day in the chart as read-only
+    // visual context. Replay starts at the first selected-period candle.
+    const selectedMarketDayStart = Math.floor((Number(from) + 3 * 3600) / 86400) * 86400 - 3 * 3600;
+    const previousMarketDayStart = selectedMarketDayStart - 86400;
+    const contextCandles = symbolData.filter(c => c.time >= previousMarketDayStart && c.time < selectedMarketDayStart);
+    const replayData = [...contextCandles, ...filtered];
+
     if (filtered.length < 2) {
       console.warn(`[startGame] period contains ${filtered.length} candle(s); need >= 2. From=${from} To=${to}`);
       return state;
@@ -458,14 +470,14 @@ export const useStore = create((set, get) => ({
     const startBal = rules.startingBalance;
     const startDay = filtered[0] ? getDayKey(filtered[0].time) : null;
     return {
-      rawData: filtered,
-      displayData: aggregateData(filtered, state.timeframe),
+      rawData: replayData,
+      displayData: aggregateData(replayData, state.timeframe),
       gamePeriod: { from, to },
       gameStarted: true,
       isPeriodModalOpen: false,
       rules: { ...rules, propFirmEnabled: rules.propFirmEnabled !== false },
       sessionId: null,
-      currentIndex: 0,
+      currentIndex: contextCandles.length,
       isPlaying: false,
       balance: startBal,
       positions: [],
