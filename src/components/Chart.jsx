@@ -783,7 +783,14 @@ export default function Chart({ chartId = 'main' }) {
           ctx.textBaseline = 'middle';
           const pnlText = `${trade.pnl >= 0 ? '+' : '-'}${Math.abs(Number(trade.pnl) || 0).toFixed(2)}`;
           const labelY = trade.pnl >= 0 ? minY_Result - 10 : maxY_Result + 10;
-          ctx.fillText(pnlText, minX + 5, Math.max(10, Math.min(paneH - 10, labelY)));
+          const labelWidth = ctx.measureText(pnlText).width;
+          // Keep realized PnL outside the historical risk/reward rectangle.
+          // Prefer the right side; flip left when the trade closes near the chart edge.
+          const rightLabelX = maxX + 8;
+          const placeRight = rightLabelX + labelWidth <= paneW - 4;
+          const labelX = placeRight ? rightLabelX : Math.max(labelWidth + 4, minX - 8);
+          ctx.textAlign = placeRight ? 'left' : 'right';
+          ctx.fillText(pnlText, labelX, Math.max(10, Math.min(paneH - 10, labelY)));
           ctx.restore();
         }
       });
