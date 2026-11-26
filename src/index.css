@@ -243,3 +243,15 @@ html[data-ui-theme="light"] [class~="bg-blue-500"][class~="text-white"],
 html[data-ui-theme="light"] [class~="bg-green-600"][class~="text-white"],
 html[data-ui-theme="light"] [class~="bg-red-600"][class~="text-white"],
 html[data-ui-theme="light"] [class~="bg-emerald-600"][class~="text-white"] { color: #ffffff !important; }
+
+/* Additional dark surfaces used by chart controls, alerts and nested panels. */
+html[data-ui-theme="light"] [class*="bg-[#111722]"],
+html[data-ui-theme="light"] [class*="bg-[#111923]"],
+html[data-ui-theme="light"] [class*="bg-[#171e2b]"] { background-color: #ffffff !important; }
+html[data-ui-theme="light"] [class*="bg-[#1a2130]"],
+html[data-ui-theme="light"] [class*="bg-[#202433]"],
+html[data-ui-theme="light"] [class*="bg-[#2b3548]"] { background-color: #f2f4f7 !important; }
+html[data-ui-theme="light"] [class*="border-[#293142]"],
+html[data-ui-theme="light"] [class*="border-[#252f40]"],
+html[data-ui-theme="light"] [class*="border-[#2b3548]"] { border-color: #d0d5dd !important; }
+html[data-ui-theme="light"] [class*="bg-[#292116]"] { background-color: #fffaeb !important; }
