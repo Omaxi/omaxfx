@@ -196,7 +196,7 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = '
   if (smallTradeLevels) {
     const guides = [
       { label: 'ENTRY', price: entry, color: '#60a5fa' },
-      { label: 'EXIT', price: Number(trade.exitPrice), color: '#e5e7eb' },
+      { label: 'EXIT', price: Number(trade.exitPrice), color: light ? '#475467' : '#e5e7eb' },
       { label: 'SL', price: sl, color: '#ef5350' },
       { label: 'TP', price: tp, color: '#26a69a' },
     ].filter(level => Number.isFinite(level.price));
