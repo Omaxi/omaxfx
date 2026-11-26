@@ -304,7 +304,7 @@ function App() {
         style={{ display: 'none' }}
       />
 
-      <header className="app-header px-2 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+      <header className="app-header px-2 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex items-center gap-4">
         <div className="flex min-w-0 items-center gap-2 flex-shrink-0 justify-self-start">
           <h1 className="flex items-center gap-2 whitespace-nowrap">
             <img
@@ -322,8 +322,8 @@ function App() {
           )}
         </div>
 
-        {gameStarted && <div className="justify-self-center flex min-w-0 items-center gap-2">
-          <div className="hidden lg:flex items-center gap-1.5 flex-shrink-0">
+        {gameStarted && <div className="header-main-controls flex min-w-0 flex-1 items-center justify-between gap-4">
+          <div className="header-primary-controls flex min-w-0 items-center justify-center gap-2"><div className="hidden lg:flex items-center gap-1.5 flex-shrink-0">
             <button onClick={() => setSettingsOpen(true)} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39] flex items-center gap-1.5">
               <Settings size={12}/> Settings
             </button>
@@ -341,7 +341,7 @@ function App() {
           </div>
         </div>}
 
-        <div className="flex items-center gap-2 text-[11px] flex-shrink-0 justify-self-end whitespace-nowrap tabular-nums">
+        </div><div className="header-status-controls flex items-center gap-2 text-[11px] flex-shrink-0 whitespace-nowrap tabular-nums">
           <div className="flex items-baseline gap-1">
             <span className="text-gray-400">Bal:</span>
             <span className="inline-block w-[84px] text-right text-green-400 font-bold tabular-nums">${fmtMoney(balance, 0)}</span>
