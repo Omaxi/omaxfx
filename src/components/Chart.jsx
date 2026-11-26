@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { createChart, CandlestickSeries, LineSeries, LineStyle } from 'lightweight-charts';
 import { useStore } from '../store';
-import { getPricePrecision, getPriceTickSize } from '../utils/instrument';
+import { getPricePrecision, getPriceTickSize, getPnlMultiplier } from '../utils/instrument';
 import { aggregateData, getTimeframeBucketStart } from '../utils/timeframe';
 import { toMarketDate, formatMarketDateTime, formatMarketTick } from '../utils/marketClock';
 import { X, Trash2, Lock, ChevronDown } from 'lucide-react';
@@ -331,7 +331,7 @@ export default function Chart({ chartId = 'main' }) {
         locale: 'en-GB',
         timeFormatter: (time) => formatMarketDateTime(time),
       },
-      grid: { vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? false, color: '#202433' }, horzLines: { visible: useStore.getState().chartOptions?.gridVisible ?? false, color: '#202433' } },
+      grid: { vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: '#202433' }, horzLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: '#202433' } },
       timeScale: { 
         timeVisible: true, secondsVisible: false,
         borderVisible: false, barSpacing: 6, rightOffset: 60,
@@ -412,7 +412,7 @@ export default function Chart({ chartId = 'main' }) {
     try {
       chartRef.current.applyOptions({
         grid: {
-          vertLines: { visible: !!chartOptions?.gridVisible, color: '#202433' },
+          vertLines: { visible: chartOptions?.gridVisible ?? true, color: '#202433' },
           horzLines: { visible: !!chartOptions?.gridVisible, color: '#202433' },
         },
       });
@@ -443,8 +443,8 @@ export default function Chart({ chartId = 'main' }) {
             panes: { separatorColor: light ? '#d0d5dd' : '#2a2e39', separatorHoverColor: '#3b82f6', enableResize: true },
           },
           grid: {
-            vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? false, color: '#202433' },
-            horzLines: { visible: useStore.getState().chartOptions?.gridVisible ?? false, color: '#202433' },
+            vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: '#202433' },
+            horzLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: '#202433' },
           },
         });
       } catch (e) {}
@@ -656,8 +656,14 @@ export default function Chart({ chartId = 'main' }) {
             const progress = (move, distance) => Number.isFinite(move) && Number.isFinite(distance) && distance > 0
               ? Math.max(0, Math.min(1, move / distance)) : 0;
             const isLivePosition = target === 'position' && Number.isFinite(livePrice);
-            const greenAlpha = isLivePosition ? 0.08 + 0.08 * progress(favorableMove, rewardDistance) : 0.08;
-            const redAlpha = isLivePosition ? 0.08 + 0.08 * progress(adverseMove, riskDistance) : 0.08;
+            // Base risk/reward zones stay softly visible across the full marker.
+            // A second, slightly stronger layer tracks only the live move from
+            // entry to the latest candle, using the matching profit/loss color.
+            const baseAlpha = 0.10;
+            const progress = (move, distance) => Number.isFinite(move) && Number.isFinite(distance) && distance > 0
+              ? Math.max(0, Math.min(1, move / distance)) : 0;
+            const greenAlpha = baseAlpha;
+            const redAlpha = baseAlpha;
             ctx.save();
             if (Number.isFinite(slY)) {
               ctx.fillStyle = `rgba(239, 83, 80, ${redAlpha.toFixed(3)})`;
@@ -666,6 +672,16 @@ export default function Chart({ chartId = 'main' }) {
             if (Number.isFinite(tpY)) {
               ctx.fillStyle = `rgba(38, 166, 154, ${greenAlpha.toFixed(3)})`;
               ctx.fillRect(left, Math.min(entryY, tpY), right - left, Math.max(1, Math.abs(tpY - entryY)));
+            }
+            if (isLivePosition && Number.isFinite(livePrice)) {
+              const liveY = seriesRef.current.priceToCoordinate(livePrice);
+              if (Number.isFinite(liveY) && Math.abs(liveY - entryY) > 0.5) {
+                const inProfit = favorableMove > 0;
+                ctx.fillStyle = inProfit
+                  ? 'rgba(38, 166, 154, 0.19)'
+                  : 'rgba(239, 83, 80, 0.19)';
+                ctx.fillRect(left, Math.min(entryY, liveY), right - left, Math.max(1, Math.abs(liveY - entryY)));
+              }
             }
             ctx.restore();
           }
@@ -700,7 +716,26 @@ export default function Chart({ chartId = 'main' }) {
           ctx.fillText(tag, Math.max(0, paneW - tagWidth / 2), y);
           ctx.restore();
         });
-        // Reuse the entry coordinate calculated above for the translucent risk/reward zones.
+        // Keep the current unrealized PnL outside the filled position marker.
+        if (target === 'position' && Number.isFinite(livePrice) && Number.isFinite(entryY)) {
+          const multiplier = Number(getPnlMultiplier(tool.symbol || state.symbol, state.contractSpecs)) || 1;
+          const size = Number(tool.size) || 0;
+          const unrealizedPnl = (long ? livePrice - entry : entry - livePrice) * multiplier * size + (Number(tool.realizedPnl) || 0);
+          const markerTop = Math.min(entryY, Number.isFinite(slY) ? slY : entryY, Number.isFinite(tpY) ? tpY : entryY);
+          const markerBottom = Math.max(entryY, Number.isFinite(slY) ? slY : entryY, Number.isFinite(tpY) ? tpY : entryY);
+          const pnlY = unrealizedPnl >= 0 ? markerTop - 10 : markerBottom + 10;
+          ctx.save();
+          ctx.font = 'bold 11px Arial';
+          ctx.fillStyle = unrealizedPnl >= 0 ? '#26a69a' : '#ef5350';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+          ctx.shadowBlur = 3;
+          const pnlText = `${unrealizedPnl >= 0 ? '+' : '-'}${Math.abs(unrealizedPnl).toFixed(2)}`;
+          ctx.fillText(pnlText, Math.max(4, Math.min(paneW - ctx.measureText(pnlText).width - 4, (startX ?? 4) + 4)), Math.max(10, Math.min(paneH - 10, pnlY)));
+          ctx.restore();
+        }
+        // Keep the compact direction / RRR hint at entry, outside the colored zones.
         if (entryY != null && Number.isFinite(entryY)) {
           ctx.save();
           ctx.font = '600 10px Arial';
@@ -771,11 +806,15 @@ export default function Chart({ chartId = 'main' }) {
         ctx.fillStyle = resultBgColor;
         ctx.fillRect(minX, minY_Result, w, h_Result);
 
-        if (w > 40) {
+        if (w > 12) {
+          ctx.save();
           ctx.fillStyle = resultColor;
-          ctx.font = 'bold 9px monospace';
-          const pnlText = `${isWin ? '+' : ''}${trade.pnl.toFixed(1)}`;
-          ctx.fillText(pnlText, minX + 5, minY_Result + 12);
+          ctx.font = 'bold 10px monospace';
+          ctx.textBaseline = 'middle';
+          const pnlText = `${trade.pnl >= 0 ? '+' : '-'}${Math.abs(Number(trade.pnl) || 0).toFixed(2)}`;
+          const labelY = trade.pnl >= 0 ? minY_Result - 10 : maxY_Result + 10;
+          ctx.fillText(pnlText, minX + 5, Math.max(10, Math.min(paneH - 10, labelY)));
+          ctx.restore();
         }
       });
 
