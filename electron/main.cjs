@@ -14,6 +14,7 @@ function createWindow() {
     autoHideMenuBar: true,
     backgroundColor: '#0b0e11',
     title: 'TradePast',
+    icon: path.join(__dirname, '..', 'build', 'tradepast.png'),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
