@@ -1742,22 +1742,52 @@ export default function Chart({ chartId = 'main' }) {
         const chartWidth = container ? container.clientWidth : 800;
         const priceAxisW = chartRef.current.priceScale('right').width();
         const paneWidth = Math.max(100, chartWidth - priceAxisW);
-        const targetBarSpacing = 6;
-        const visibleBars = Math.max(20, Math.floor(paneWidth / targetBarSpacing));
-        const halfBars = Math.floor(visibleBars / 2);
         const len = visibleData.length;
-        
-        timeScale.applyOptions({ 
-          barSpacing: targetBarSpacing,
-          rightOffset: halfBars,
-          fixLeftEdge: false,
-          fixRightEdge: false,
-        });
-        
-        const from = len - 1 - halfBars;
-        const to = len - 1 + halfBars;
-        timeScale.setVisibleLogicalRange({ from, to });
-        
+
+        if (firstDataLoad || jumpChanged) {
+          // On startup/new backtest, show the complete preceding broker day
+          // as chart context. Market-day boundaries follow the app's UTC+3 clock.
+          const lastTime = Number(visibleData[len - 1]?.time);
+          const marketDayStart = Math.floor((lastTime + 3 * 3600) / 86400) * 86400 - 3 * 3600;
+          const contextDayStart = marketDayStart - 86400;
+          let lo = 0, hi = len;
+          while (lo < hi) {
+            const mid = Math.floor((lo + hi) / 2);
+            if (Number(visibleData[mid]?.time) < contextDayStart) lo = mid + 1;
+            else hi = mid;
+          }
+
+          // Fit one full market day into the available chart width while
+          // preserving a small right-side breathing space after the cursor.
+          const contextBars = Math.max(1, len - lo);
+          const rightPadding = Math.max(4, Math.round(contextBars * 0.04));
+          const barSpacing = Math.max(0.8, paneWidth / (contextBars + rightPadding));
+          timeScale.applyOptions({
+            barSpacing,
+            rightOffset: rightPadding,
+            fixLeftEdge: false,
+            fixRightEdge: false,
+          });
+          timeScale.setVisibleLogicalRange({
+            from: lo,
+            to: len - 1 + rightPadding,
+          });
+        } else {
+          const targetBarSpacing = 6;
+          const visibleBars = Math.max(20, Math.floor(paneWidth / targetBarSpacing));
+          const halfBars = Math.floor(visibleBars / 2);
+          timeScale.applyOptions({
+            barSpacing: targetBarSpacing,
+            rightOffset: halfBars,
+            fixLeftEdge: false,
+            fixRightEdge: false,
+          });
+          timeScale.setVisibleLogicalRange({
+            from: len - 1 - halfBars,
+            to: len - 1 + halfBars,
+          });
+        }
+
         chartRef.current.priceScale('right').applyOptions({ autoScale: true });
       } catch (e) {
         try { timeScale.fitContent(); } catch (e2) {}
