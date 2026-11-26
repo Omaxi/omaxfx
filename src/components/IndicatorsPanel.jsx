@@ -694,7 +694,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
       window.removeEventListener('wheel', draw);
       observer.disconnect();
     };
-  }, [active.sessions, chartRef, chartReady, priceSeriesRef, sessionCandles, visibleData, timeframe, sessionColors, sessionTimes, sessionEndTimes, sessionColors, sessionLabelsVisible]);
+  }, [active.sessions, chartRef, chartReady, priceSeriesRef, sessionCandles, visibleData, timeframe, sessionColors, sessionTimes, sessionEndTimes, sessionLabelsVisible]);
 
   // Include the developing HTF candle's full range in the chart autoscale.
   // The transparent one-point series contributes only the requested price range.
