@@ -305,7 +305,7 @@ function App() {
   };
 
   return (
-    <div className={`flex flex-col h-dvh overflow-hidden ${isInfoOpen ? 'quick-guide-open' : ''}`} style={{ backgroundColor: theme.background, color: '#ffffff' }}>
+    <div className={`flex flex-col h-dvh overflow-hidden ${isInfoOpen ? 'quick-guide-open' : ''}`} style={{ backgroundColor: uiTheme === 'light' ? '#ffffff' : theme.background, color: uiTheme === 'light' ? '#172033' : '#ffffff' }}>
       {/* Hidden audio element — preloaded by the browser at page load. */}
       <audio
         id="sfx-tphit"
