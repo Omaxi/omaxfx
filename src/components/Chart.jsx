@@ -160,17 +160,31 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, isSelected) => {
       const y2 = Math.max(pts[0].y, pts[1].y);
       ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
-      // TradingView-style corner grips make rectangle resizing discoverable.
+      // Eight high-contrast TradingView-style grips: four corners and the
+      // midpoint of each edge. Keep these on top of the fill/border so they
+      // remain visible even when the rectangle has a transparent fill.
       if (drawing.type === 'rectangle') {
-        const handleSize = 8;
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        const handles = [
+          { x: x1, y: y1, size: 9 }, { x: midX, y: y1, size: 8 },
+          { x: x2, y: y1, size: 9 }, { x: x2, y: midY, size: 8 },
+          { x: x2, y: y2, size: 9 }, { x: midX, y: y2, size: 8 },
+          { x: x1, y: y2, size: 9 }, { x: x1, y: midY, size: 8 },
+        ];
+        ctx.save();
         ctx.setLineDash([]);
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 1.25;
-        [[x1, y1], [x2, y1], [x1, y2], [x2, y2]].forEach(([hx, hy]) => {
-          ctx.fillRect(hx - handleSize / 2, hy - handleSize / 2, handleSize, handleSize);
-          ctx.strokeRect(hx - handleSize / 2, hy - handleSize / 2, handleSize, handleSize);
+        ctx.globalAlpha = 1;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+        ctx.shadowBlur = 3;
+        handles.forEach(({ x: hx, y: hy, size }) => {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#2563eb';
+          ctx.lineWidth = 1.5;
+          ctx.fillRect(hx - size / 2, hy - size / 2, size, size);
+          ctx.strokeRect(hx - size / 2, hy - size / 2, size, size);
         });
+        ctx.restore();
       }
     }
 
@@ -968,15 +982,21 @@ export default function Chart({ chartId = 'main' }) {
           const rightIndex = 1 - leftIndex;
           const topIndex = pts[0].y <= pts[1].y ? 0 : 1;
           const bottomIndex = 1 - topIndex;
-          const corners = [
-            { corner: 'top-left', x: pts[leftIndex].x, y: pts[topIndex].y, timeIndex: leftIndex, priceIndex: topIndex },
-            { corner: 'top-right', x: pts[rightIndex].x, y: pts[topIndex].y, timeIndex: rightIndex, priceIndex: topIndex },
-            { corner: 'bottom-left', x: pts[leftIndex].x, y: pts[bottomIndex].y, timeIndex: leftIndex, priceIndex: bottomIndex },
-            { corner: 'bottom-right', x: pts[rightIndex].x, y: pts[bottomIndex].y, timeIndex: rightIndex, priceIndex: bottomIndex },
+          const midX = (pts[0].x + pts[1].x) / 2;
+          const midY = (pts[0].y + pts[1].y) / 2;
+          const handles = [
+            { mode: 'resize-corner', corner: 'top-left', x: pts[leftIndex].x, y: pts[topIndex].y, timeIndex: leftIndex, priceIndex: topIndex },
+            { mode: 'resize-edge', edge: 'top', x: midX, y: pts[topIndex].y, priceIndex: topIndex },
+            { mode: 'resize-corner', corner: 'top-right', x: pts[rightIndex].x, y: pts[topIndex].y, timeIndex: rightIndex, priceIndex: topIndex },
+            { mode: 'resize-edge', edge: 'right', x: pts[rightIndex].x, y: midY, timeIndex: rightIndex },
+            { mode: 'resize-corner', corner: 'bottom-right', x: pts[rightIndex].x, y: pts[bottomIndex].y, timeIndex: rightIndex, priceIndex: bottomIndex },
+            { mode: 'resize-edge', edge: 'bottom', x: midX, y: pts[bottomIndex].y, priceIndex: bottomIndex },
+            { mode: 'resize-corner', corner: 'bottom-left', x: pts[leftIndex].x, y: pts[bottomIndex].y, timeIndex: leftIndex, priceIndex: bottomIndex },
+            { mode: 'resize-edge', edge: 'left', x: pts[leftIndex].x, y: midY, timeIndex: leftIndex },
           ];
-          for (const handle of corners) {
-            if (Math.hypot(x - handle.x, y - handle.y) <= 12) {
-              return { drawingId: d.id, mode: 'resize-corner', ...handle };
+          for (const handle of handles) {
+            if (Math.hypot(x - handle.x, y - handle.y) <= 14) {
+              return { drawingId: d.id, ...handle };
             }
           }
         }
@@ -1314,6 +1334,7 @@ export default function Chart({ chartId = 'main' }) {
                 startScreen: { x, y },
                 originalPoints: drawing.points.map(p => ({ ...p })),
               };
+              try { container.setPointerCapture(e.pointerId); } catch (error) {}
             }
           }
         } else if (sel.type === 'trade') {
@@ -1471,6 +1492,15 @@ export default function Chart({ chartId = 'main' }) {
               newPoints[drag.timeIndex] = { ...newPoints[drag.timeIndex], time: point.time };
               newPoints[drag.priceIndex] = { ...newPoints[drag.priceIndex], price: point.price };
               state.updateDrawing(drag.drawingId, newPoints);
+            } else if (drag.mode === 'resize-edge' && drag.drawingType === 'rectangle' &&
+                       drag.originalPoints.length === 2) {
+              const newPoints = drag.originalPoints.map(p => ({ ...p }));
+              if (drag.edge === 'top' || drag.edge === 'bottom') {
+                newPoints[drag.priceIndex] = { ...newPoints[drag.priceIndex], price: point.price };
+              } else if (drag.edge === 'left' || drag.edge === 'right') {
+                newPoints[drag.timeIndex] = { ...newPoints[drag.timeIndex], time: point.time };
+              }
+              state.updateDrawing(drag.drawingId, newPoints);
             } else if (drag.mode === 'drag-body') {
               let dTime = point.time - drag.startMouse.time;
               let dPrice = point.price - drag.startMouse.price;
@@ -1523,6 +1553,9 @@ export default function Chart({ chartId = 'main' }) {
           if (hit?.drawingId === selected.id && hit.mode === 'resize-corner') {
             container.style.cursor = hit.corner === 'top-left' || hit.corner === 'bottom-right'
               ? 'nwse-resize' : 'nesw-resize';
+          } else if (hit?.drawingId === selected.id && hit.mode === 'resize-edge') {
+            container.style.cursor = hit.edge === 'top' || hit.edge === 'bottom'
+              ? 'ns-resize' : 'ew-resize';
           } else if (hit?.drawingId === selected.id) {
             container.style.cursor = 'move';
           } else {
