@@ -29,8 +29,6 @@ const fmtPct = (value) => `${value.toFixed(1)}%`;
 export default function AnalyticsModal() {
   const store = useStore();
   const { isAnalyticsOpen, closeAnalytics } = store;
-  const uiTheme = store.uiTheme || 'dark';
-  const isLight = uiTheme === 'light';
   const tradeHistory = store.tradeHistory;
   const balance = store.balance;
   const rules = store.rules;
@@ -183,10 +181,10 @@ export default function AnalyticsModal() {
     // screenshot images are being loaded from IndexedDB.
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      window.alert('Please allow pop-ups for OmaxFX to export the analytics PDF.');
+      window.alert('Please allow pop-ups to export the analytics PDF.');
       return;
     }
-    printWindow.document.write('<!doctype html><title>Preparing TradePast report</title><body style="font:14px Arial;padding:32px;background:' + (uiTheme === 'light' ? '#ffffff' : '#0b0e11') + ';color:' + (uiTheme === 'light' ? '#344054' : '#d5d9e2') + '">Preparing your analytics report and loading trade screenshots…</body>');
+    printWindow.document.write('<!doctype html><title>Preparing TradePast report</title><body style="font:14px Arial;padding:32px;background:#0b0e11;color:#d5d9e2">Preparing your analytics report and loading trade screenshots…</body>');
     setIsExportingPdf(true);
     try {
       const screenshots = {};
@@ -194,13 +192,13 @@ export default function AnalyticsModal() {
         const key = String(trade.id);
         // Prefer the immutable image captured at trade close; later drawing edits
         // must not rewrite the historical journal screenshot.
-        const saved = uiTheme === 'light' ? null : await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
-        const image = saved || renderTradeScreenshot(trade, screenshotCandles, timeframe, uiTheme, {
+        const saved = await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
+        const image = saved || renderTradeScreenshot(trade, screenshotCandles, timeframe, {
           drawings: trade.drawingSnapshot?.drawings || [],
           chartDrawings: trade.drawingSnapshot?.chartDrawings || {},
           pencilStrokes: trade.drawingSnapshot?.pencilStrokes || [],
         });
-        if (uiTheme !== 'light' && !saved && image) await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
+        if (!saved && image) await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
         if (image) screenshots[key] = image;
       }));
       const metrics = {
@@ -225,7 +223,6 @@ export default function AnalyticsModal() {
         dailyEntries,
         curve,
         screenshots,
-        uiTheme,
       });
       writeAnalyticsPrintWindow(printWindow, html);
     } catch (error) {
@@ -241,7 +238,7 @@ export default function AnalyticsModal() {
     <div className="fixed inset-0 z-[300] bg-[#0b0e11] p-1.5 sm:p-2" onClick={closeAnalytics}>
       <div className="h-full w-full overflow-hidden rounded-lg border border-[#2a2e39] bg-[#131722] text-white flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="h-8 shrink-0 flex items-center justify-between px-3 border-b border-[#2a2e39]">
-          <div className="flex items-center gap-2 text-xs font-bold"><BarChart3 size={14} className="text-blue-400"/> OmaxFX <span className="text-gray-400 font-medium">Performance analytics</span></div>
+          <div className="flex items-center gap-2 text-xs font-bold"><BarChart3 size={14} className="text-blue-400"/> TradePast <span className="text-gray-400 font-medium">Performance analytics</span></div>
           <div className="flex items-center gap-2">
             <button onClick={exportAnalyticsPdf} disabled={isExportingPdf} className="theme-action-contrast inline-flex items-center gap-1.5 rounded bg-blue-600 px-2.5 py-1 text-[10px] font-semibold text-white hover:bg-blue-500 disabled:cursor-wait disabled:opacity-60"><Download size={12}/>{isExportingPdf ? 'Preparing PDF…' : 'Export PDF'}</button>
             <button onClick={closeAnalytics} className="rounded p-1 text-gray-400 hover:bg-[#2a2e39] hover:text-white" aria-label="Close analytics"><X size={15}/></button>
@@ -272,7 +269,7 @@ export default function AnalyticsModal() {
                     <CartesianGrid vertical={false} horizontal={false}/>
                     <XAxis dataKey="label" tick={{ fill: '#777d84', fontSize: 8 }} axisLine={false} tickLine={false} minTickGap={20}/>
                     <YAxis tick={{ fill: '#777d84', fontSize: 8 }} axisLine={false} tickLine={false} width={38} tickFormatter={v => v === 0 ? '$0' : `$${(v / 1000).toFixed(0)}k`}/>
-                    <Tooltip contentStyle={{ background: isLight ? '#ffffff' : '#131722', border: '1px solid ' + (isLight ? '#d0d5dd' : '#2a2e39'), borderRadius: 5, fontSize: 10, color: isLight ? '#172033' : '#f3f4f6' }} labelStyle={{ color: isLight ? '#667085' : '#aab0b6' }} formatter={v => [money(v), 'Cumulative P&L']}/>
+                    <Tooltip contentStyle={{ background: '#131722', border: '1px solid #2a2e39', borderRadius: 5, fontSize: 10, color: '#f3f4f6' }} labelStyle={{ color: '#aab0b6' }} formatter={v => [money(v), 'Cumulative P&L']}/>
                     <Area type="monotone" dataKey="pnl" stroke="#2c67c5" strokeWidth={2.5} fill="url(#analyticsPnlFill)" isAnimationActive={false}/>
                   </AreaChart>
                 </ResponsiveContainer> : <Empty text="Close trades to build your P&L curve"/>}
@@ -321,7 +318,7 @@ export default function AnalyticsModal() {
                     {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="rounded bg-[#1e222d] text-center text-[9px] leading-5 font-semibold text-gray-400">{d}</div>)}
                   </div>
                   <div className="grid grid-cols-7 grid-rows-6 gap-1 flex-1 min-h-0">
-                    {cells.map((d, i) => <CalendarDay key={d?.key || `empty-${i}`} day={d} selected={selectedDate === d?.key} uiTheme={uiTheme} onClick={() => d && setSelectedDate(d.key)}/>)}
+                    {cells.map((d, i) => <CalendarDay key={d?.key || `empty-${i}`} day={d} selected={selectedDate === d?.key} onClick={() => d && setSelectedDate(d.key)}/>)}
                   </div>
                 </div>
                 <div className="min-h-0 flex flex-col pt-6 gap-1">
@@ -340,7 +337,7 @@ export default function AnalyticsModal() {
           </section>
         </div>
       </div>
-      {selectedDate && <TradeDayModal date={selectedDate} trades={selectedDayTrades} sessionId={sessionId} candles={rawData} timeframe={timeframe} uiTheme={uiTheme} onClose={() => setSelectedDate(null)} />}
+      {selectedDate && <TradeDayModal date={selectedDate} trades={selectedDayTrades} sessionId={sessionId} candles={rawData} timeframe={timeframe} onClose={() => setSelectedDate(null)} />}
     </div>
   );
 }
@@ -360,22 +357,19 @@ function Metric({ title, value, color, detail, gauge, ring, streak }) {
 function Stat({ label, value, color = 'text-gray-200' }) {
   return <div className="flex items-center justify-between gap-1 text-[9px] border-b border-[#2a2e39]/70 py-0.5"><span className="text-gray-500 truncate">{label}</span><b className={`font-mono ${color}`}>{value}</b></div>;
 }
-function CalendarDay({ day, selected, uiTheme = 'dark', onClick }) {
+function CalendarDay({ day, selected, onClick }) {
   if (!day) return <div className="analytics-calendar-empty rounded"/>;
   const positive = day.pnl > 0, negative = day.pnl < 0;
   const active = day.trades > 0;
-  const light = uiTheme === 'light';
-  const background = light
-    ? (!active ? '#f8fafc' : positive ? '#d1fae5' : negative ? '#fee2e2' : '#dbeafe')
-    : (!active ? '#1e222d' : positive ? '#003a2b' : negative ? '#551b1b' : '#1d2d4b');
-  const border = light ? (selected ? '#3b82f6' : '#e4e7ec') : (selected ? '#60a5fa' : !active ? '#2a2e39' : positive ? '#087b5a' : negative ? '#a33b3b' : '#4268ad');
-  const primary = light ? (positive ? '#047857' : negative ? '#b42318' : '#175cd3') : (positive ? '#6ee7b7' : negative ? '#fca5a5' : '#bfdbfe');
-  return <button type="button" onClick={onClick} title={day.trades + ' trades · click to open day journal'} className="analytics-calendar-day rounded border min-w-0 p-1 flex flex-col items-end overflow-hidden text-left hover:brightness-95 focus:outline-none focus:ring-1 focus:ring-blue-400" style={{ background, borderColor: border, color: light ? '#344054' : '#d1d5db' }}>
-    <span style={{ color: light ? '#667085' : '#9ca3af' }} className="text-[8px]">{day.day}</span>
+  const background = !active ? '#1e222d' : positive ? '#003a2b' : negative ? '#551b1b' : '#1d2d4b';
+  const border = selected ? '#60a5fa' : !active ? '#2a2e39' : positive ? '#087b5a' : negative ? '#a33b3b' : '#4268ad';
+  const primary = positive ? '#6ee7b7' : negative ? '#fca5a5' : '#bfdbfe';
+  return <button type="button" onClick={onClick} title={day.trades + ' trades · click to open day journal'} className="analytics-calendar-day rounded border min-w-0 p-1 flex flex-col items-end overflow-hidden text-left hover:brightness-95 focus:outline-none focus:ring-1 focus:ring-blue-400" style={{ background, borderColor: border, color: '#d1d5db' }}>
+    <span style={{ color: '#9ca3af' }} className="text-[8px]">{day.day}</span>
     {active && <div className="mt-auto mb-auto w-full text-center min-w-0">
       <b style={{ color: primary }} className="block text-[10px] leading-3 truncate">{day.pnl >= 0 ? '' : '-'}{money(day.pnl)}</b>
-      <span style={{ color: light ? '#344054' : '#d1d5db' }} className="block text-[8px]">{day.trades} {day.trades === 1 ? 'trade' : 'trades'}</span>
-      <span style={{ color: light ? '#667085' : '#9ca3af' }} className="block text-[7px]">{Math.round(day.wins / day.trades * 100)}% win</span>
+      <span style={{ color: '#d1d5db' }} className="block text-[8px]">{day.trades} {day.trades === 1 ? 'trade' : 'trades'}</span>
+      <span style={{ color: '#9ca3af' }} className="block text-[7px]">{Math.round(day.wins / day.trades * 100)}% win</span>
     </div>}
   </button>;
 }
