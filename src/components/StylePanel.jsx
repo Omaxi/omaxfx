@@ -9,7 +9,7 @@ const PRESET_COLORS = [
 ];
 
 export default function StylePanel({ selectedId, onClose }) {
-  const { drawings, updateDrawing, snapshotDrawings } = useStore();
+  const { drawings, updateDrawing, snapshotDrawings, setDrawingToolStyle } = useStore();
   const drawing = drawings.find(d => d.id === selectedId);
   if (!drawing) return null;
 
@@ -25,6 +25,8 @@ export default function StylePanel({ selectedId, onClose }) {
   const commit = (patch) => {
     snapshotDrawings();
     updateDrawing(selectedId, patch);
+    // Keep the selected tool's latest visual style as its default for the next drawing.
+    setDrawingToolStyle?.(drawing.type, patch);
   };
 
   return createPortal(
