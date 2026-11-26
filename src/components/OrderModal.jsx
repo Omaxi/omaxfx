@@ -227,7 +227,7 @@ export default function OrderModal() {
           <button onClick={handleCancel} className="p-1 hover:bg-[#2a2e39] rounded"><X size={20}/></button>
         </div>
 
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="bg-[#1e222d] mx-3 mt-2 p-2.5 rounded-lg flex justify-between">
             <div>
               <p className="text-[11px] text-gray-400">Estimated Loss</p>
