@@ -28,7 +28,7 @@ export default defineConfig(({ command }) => ({
         start_url: './',
         scope: './',
         icons: [
-          { src: 'tradepast-logo.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: 'tradepast-logo.svg?v=3', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
       },
       workbox: {
