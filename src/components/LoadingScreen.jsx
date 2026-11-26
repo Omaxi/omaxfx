@@ -11,17 +11,19 @@ export default function LoadingScreen() {
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#131722] text-white">
-      {/* Logo / Brand */}
-      <div className="mb-8 flex flex-col items-center animate-pulse">
+      {/* TradePast logo and brand */}
+      <div className="mb-8 flex flex-col items-center">
         <img
-          src={`${import.meta.env.BASE_URL}omaxfx-logo.svg`}
-          alt="OmaxFX"
-          className="w-28 h-28 mb-4 object-contain"
+          src={`${import.meta.env.BASE_URL}tradepast-logo.svg?v=3`}
+          alt="TradePast"
+          className="w-36 h-36 mb-3 object-contain"
           draggable="false"
           onError={(e) => { e.currentTarget.style.display = 'none'; }}
         />
-        <h1 className="text-2xl font-bold tracking-widest text-white">OMAXFX</h1>
-        <p className="text-sm text-gray-400 mt-1 tracking-wider uppercase">Simulator</p>
+        <h1 className="text-2xl font-bold tracking-widest">
+          <span className="text-gray-400">Trade</span><span className="text-white">Past</span>
+        </h1>
+        <p className="text-sm text-gray-400 mt-1 tracking-wider uppercase">Trading Replay Simulator</p>
       </div>
 
       {/* Progress Bar */}
