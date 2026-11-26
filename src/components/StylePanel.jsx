@@ -209,6 +209,27 @@ export default function StylePanel({ selectedId, onClose }) {
               </div>
             )}
 
+            {drawing.type === 'fibonacci' && (
+              <div>
+                <div className="mb-1.5 text-[10px] font-bold uppercase text-gray-400">Retracement Levels</div>
+                <div className="space-y-1">
+                  {(drawing.levels || [0, 0.5, 1]).map((level, index) => <div key={index} className="flex items-center gap-1">
+                    <input aria-label="Fibonacci level" type="number" min="0" max="1" step="0.001" value={level}
+                      onChange={event => {
+                        const next = [...(drawing.levels || [0, 0.5, 1])];
+                        next[index] = Math.max(0, Math.min(1, Number(event.target.value) || 0));
+                        commit({ levels: next });
+                      }}
+                      className="min-w-0 flex-1 rounded border border-[#2a2e39] bg-[#1e222d] px-2 py-1 text-[10px] font-mono text-white"/>
+                    <button type="button" onClick={() => commit({ levels: (drawing.levels || [0, 0.5, 1]).filter((_, i) => i !== index) })}
+                      className="px-1 text-red-400" title="Remove level">×</button>
+                  </div>)}
+                </div>
+                <button type="button" onClick={() => commit({ levels: [...(drawing.levels || [0, 0.5, 1]), 0.618].sort((a, b) => a - b) })}
+                  className="mt-2 text-[10px] font-semibold text-blue-400">+ Add 0.618 level</button>
+              </div>
+            )}
+
             {/* Line width — only show if border is enabled */}
             {showBorder && (
               <div>
