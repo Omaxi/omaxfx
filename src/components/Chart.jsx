@@ -420,23 +420,6 @@ export default function Chart({ chartId = 'main' }) {
   }, [chartOptions?.gridVisible]);
 
   useEffect(() => {
-    const candle = visibleDataRef.current[visibleDataRef.current.length - 1] || rawData?.[currentIndex];
-    const isUp = candle ? Number(candle.close) >= Number(candle.open) : true;
-    const currentColor = isUp ? theme.upBody : theme.downBody;
-    const options = {
-      priceLineVisible: chartOptions?.lastPriceLineVisible !== false,
-      priceLineColor: currentColor,
-      priceLineStyle: LineStyle.Dotted,
-      priceLineWidth: 1,
-      lastValueVisible: true,
-    };
-    try {
-      seriesRef.current?.applyOptions(options);
-      lineSeriesRef.current?.applyOptions({ ...options, priceLineColor: currentColor });
-    } catch (e) {}
-  }, [chartOptions?.lastPriceLineVisible, currentIndex, displayData, rawData, theme]);
-
-  useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
     try {
       seriesRef.current.applyOptions({
@@ -663,11 +646,11 @@ export default function Chart({ chartId = 'main' }) {
           if (right > left) {
             ctx.save();
             if (Number.isFinite(slY)) {
-              ctx.fillStyle = 'rgba(239, 83, 80, 0.35)';
+              ctx.fillStyle = 'rgba(239, 83, 80, 0.20)';
               ctx.fillRect(left, Math.min(entryY, slY), right - left, Math.max(1, Math.abs(slY - entryY)));
             }
             if (Number.isFinite(tpY)) {
-              ctx.fillStyle = 'rgba(38, 166, 154, 0.35)';
+              ctx.fillStyle = 'rgba(38, 166, 154, 0.20)';
               ctx.fillRect(left, Math.min(entryY, tpY), right - left, Math.max(1, Math.abs(tpY - entryY)));
             }
             ctx.restore();
@@ -1565,6 +1548,27 @@ export default function Chart({ chartId = 'main' }) {
     return completed;
   }, [displayData, rawData, currentIndex, timeframe]);
 
+  // Use the exact final candle from the data rendered on the chart. Reading
+  // visibleDataRef here caused a one-render lag because that ref is updated by
+  // the data effect below, so the dotted last-price line could keep the prior
+  // candle's color when the latest candle changed direction.
+  useEffect(() => {
+    const candle = visibleData[visibleData.length - 1];
+    const isUp = candle ? Number(candle.close) >= Number(candle.open) : true;
+    const currentColor = isUp ? theme.upBody : theme.downBody;
+    const options = {
+      priceLineVisible: chartOptions?.lastPriceLineVisible !== false,
+      priceLineColor: currentColor,
+      priceLineStyle: LineStyle.Dotted,
+      priceLineWidth: 1,
+      lastValueVisible: true,
+    };
+    try {
+      seriesRef.current?.applyOptions(options);
+      lineSeriesRef.current?.applyOptions({ ...options, priceLineColor: currentColor });
+    } catch (e) {}
+  }, [chartOptions?.lastPriceLineVisible, visibleData, theme]);
+
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current || !chartRef.current) return;
     if (visibleData.length === 0) {
@@ -2011,18 +2015,18 @@ export default function Chart({ chartId = 'main' }) {
         {pendingBtnPos.map(p => (
           <button key={`p-${p.id}`} onClick={() => cancelPendingOrder(p.id)}
             style={{ top: p.y, right: X_BUTTON_OFFSET_FROM_RIGHT }}
-            className="absolute pointer-events-auto -translate-y-1/2 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400"
+            className="absolute pointer-events-auto -translate-y-1/2 w-5 h-5 rounded-full bg-red-600/30 hover:bg-red-600/40 active:bg-red-600/50 text-red-400 flex items-center justify-center border border-red-500/30 transition-colors"
             title="Cancel this order">
-            <X size={12} strokeWidth={3.5} />
+            <X size={12} strokeWidth={2.5} />
           </button>
         ))}
 
         {positionBtnPos.map(p => (
           <button key={`pos-${p.id}`} onClick={() => closePosition(p.id)}
             style={{ top: p.y, right: X_BUTTON_OFFSET_FROM_RIGHT }}
-            className="absolute pointer-events-auto -translate-y-1/2 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/50 border border-red-400"
+            className="absolute pointer-events-auto -translate-y-1/2 w-5 h-5 rounded-full bg-red-600/30 hover:bg-red-600/40 active:bg-red-600/50 text-red-400 flex items-center justify-center border border-red-500/30 transition-colors"
             title="Close this position">
-            <X size={12} strokeWidth={3.5} />
+            <X size={12} strokeWidth={2.5} />
           </button>
         ))}
       </div>
