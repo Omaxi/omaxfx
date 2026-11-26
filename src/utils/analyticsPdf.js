@@ -26,9 +26,9 @@ const duration = trade => {
 const percent = value => `${(Number(value) || 0).toFixed(2)}%`;
 
 
-function buildCurveSvg(curve, benchmarkLabel = 'Buy & Hold') {
+function buildCurveSvg(curve) {
   const width=1100,height=330,left=76,right=24,top=48,bottom=52;
-  const values=curve.flatMap(point=>[Number(point.pnl)||0, Number.isFinite(Number(point.benchmarkPnl))?Number(point.benchmarkPnl):null]).filter(value=>value!==null);
+  const values=curve.map(point=>Number(point.pnl)||0);
   if(!values.length)return '<div class="empty">No closed trades yet — the equity curve will appear after trades are closed.</div>';
   const equityValues=curve.map(point=>Number(point.pnl)||0);
   const min=Math.min(0,...values),max=Math.max(0,...values),span=Math.max(max-min,1);
@@ -48,8 +48,7 @@ function buildCurveSvg(curve, benchmarkLabel = 'Buy & Hold') {
   const linePath=makePath(coords);
   const areaBottom=height-bottom;
   const areaPath=linePath+' L '+coords[coords.length-1].x.toFixed(1)+' '+areaBottom+' L '+coords[0].x.toFixed(1)+' '+areaBottom+' Z';
-  const benchmarkCoords=curve.map((point,i)=>Number.isFinite(Number(point.benchmarkPnl))?({x:x(i),y:y(Number(point.benchmarkPnl))}):null).filter(Boolean);
-  const benchmarkPath=benchmarkCoords.length>1?makePath(benchmarkCoords):'';
+
   let peak=equityValues[0],peakIndex=0,worst=null;
   equityValues.forEach((value,index)=>{if(value>peak){peak=value;peakIndex=index;}const depth=peak-value;if(!worst||depth>worst.depth)worst={depth,peakIndex,troughIndex:index,peak};});
   let recoveryIndex=worst?.troughIndex??0;
@@ -65,8 +64,8 @@ function buildCurveSvg(curve, benchmarkLabel = 'Buy & Hold') {
   // The drawdown badge is rendered as normal HTML above the SVG, never
   // inside the plotting coordinate system where it could cover the curve.
   const ddAnnotation=ddRect?'<rect x="'+ddRect.x+'" y="'+top+'" width="'+ddRect.width+'" height="'+(height-top-bottom)+'" fill="url(#drawdownFill)" stroke="none"/>':'';
-  const legend='<g transform="translate('+(left+10)+',14)"><line x1="0" y1="0" x2="22" y2="0" stroke="#2563eb" stroke-width="3"/><text x="28" y="4" fill="#d5d9e2" font-size="10">Strategy equity</text>'+(benchmarkPath?'<line x1="142" y1="0" x2="164" y2="0" stroke="#f5b84b" stroke-width="2.5" stroke-dasharray="5 3"/><text x="170" y="4" fill="#d5d9e2" font-size="10">'+escapeHtml(benchmarkLabel)+'</text>':'')+'</g>';
-  return '<svg viewBox="0 0 '+width+' '+height+'" role="img" aria-label="Trade-by-trade equity curve with buy and hold benchmark"><defs><linearGradient id="equityBlueFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2563eb" stop-opacity=".34"/><stop offset="100%" stop-color="#0b0e11" stop-opacity=".18"/></linearGradient><linearGradient id="drawdownFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b42318" stop-opacity=".20"/><stop offset="100%" stop-color="#ff6969" stop-opacity=".18"/></linearGradient></defs>'+legend+grid+ddAnnotation+'<path d="'+areaPath+'" fill="url(#equityBlueFill)" stroke="none"/>'+(benchmarkPath?'<path d="'+benchmarkPath+'" fill="none" stroke="#f5b84b" stroke-width="2.5" stroke-dasharray="6 4" stroke-linejoin="round" stroke-linecap="round"/>':'')+'<path d="'+linePath+'" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>'+coords.map(p=>'<circle cx="'+p.x+'" cy="'+p.y+'" r="2.5" fill="#2563eb"/>').join('')+xLabels+'</svg>';
+  const legend='<g transform="translate('+(left+10)+',14)"><line x1="0" y1="0" x2="22" y2="0" stroke="#2563eb" stroke-width="3"/><text x="28" y="4" fill="#d5d9e2" font-size="10">Strategy equity</text></g>';
+  return '<svg viewBox="0 0 '+width+' '+height+'" role="img" aria-label="Trade-by-trade strategy equity curve"><defs><linearGradient id="equityBlueFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2563eb" stop-opacity=".34"/><stop offset="100%" stop-color="#0b0e11" stop-opacity=".18"/></linearGradient><linearGradient id="drawdownFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b42318" stop-opacity=".20"/><stop offset="100%" stop-color="#ff6969" stop-opacity=".18"/></linearGradient></defs>'+legend+grid+ddAnnotation+'<path d="'+areaPath+'" fill="url(#equityBlueFill)" stroke="none"/><path d="'+linePath+'" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>'+coords.map(p=>'<circle cx="'+p.x+'" cy="'+p.y+'" r="2.5" fill="#2563eb"/>').join('')+xLabels+'</svg>';
 }
 
 function buildCurveDrawdownLabel(curve) {
