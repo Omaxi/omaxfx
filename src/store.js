@@ -125,6 +125,11 @@ export const useStore = create((set, get) => ({
 
   symbolWarning: null,
   clearSymbolWarning: () => set({ symbolWarning: null }),
+  tradeNotifications: [],
+  dismissTradeNotification: (id) => set((state) => ({
+    tradeNotifications: state.tradeNotifications.filter((notification) => notification.id !== id),
+  })),
+  clearTradeNotifications: () => set({ tradeNotifications: [] }),
 
   sessionTimes: { ...DEFAULT_SESSION_TIMES },
   sessionEndTimes: { ...DEFAULT_SESSION_END_TIMES },
@@ -761,6 +766,7 @@ export const useStore = create((set, get) => ({
     let newPeak = state.peakBalance;
     let newDailyLoss = { ...state.dailyLoss };
     let tpHit = false, slHit = false, pendingTriggered = false;
+    const newTradeNotifications = [...(state.tradeNotifications || [])];
     let gameOverReason = null, gameOverMessage = '';
     let lastEquity = state.balance;
 
@@ -822,6 +828,14 @@ export const useStore = create((set, get) => ({
             const remainingSize = pos.size - partialSize;
             const partialPnl = (isBuy ? partialExitPrice - pos.entryPrice : pos.entryPrice - partialExitPrice) * contractSize * partialSize;
             newBalance += partialPnl;
+            newTradeNotifications.push({
+              id: `partial-${pos.id}-${candle.time}`,
+              type: 'partial',
+              amount: partialPnl,
+              closePercent: Number(pos.partialClosePercent),
+              symbol: pos.symbol || state.symbol,
+              time: candle.time,
+            });
             updatedPosition = {
               ...updatedPosition,
               size: remainingSize,
@@ -841,6 +855,12 @@ export const useStore = create((set, get) => ({
             : pos.entryPrice - initialRisk * triggerR;
           const reachedTrigger = isBuy ? candle.high >= triggerPrice : candle.low <= triggerPrice;
           if (reachedTrigger) {
+            newTradeNotifications.push({
+              id: `breakeven-${pos.id}-${candle.time}`,
+              type: 'breakeven',
+              symbol: pos.symbol || state.symbol,
+              time: candle.time,
+            });
             updatedPosition = { ...updatedPosition, sl: pos.entryPrice, breakevenDone: true };
           }
         }
@@ -958,7 +978,8 @@ export const useStore = create((set, get) => ({
     return { 
       currentIndex: nextIndex, 
       balance: newBalance, 
-      positions: newPositions, 
+      positions: newPositions,
+      tradeNotifications: newTradeNotifications.slice(-8),
       tradeHistory: newHistory, 
       pendingOrders: newPendingOrders,
       peakBalance: newPeak,
