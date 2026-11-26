@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useStore } from '../store';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
@@ -10,6 +11,7 @@ const PRESET_COLORS = [
 
 export default function StylePanel({ selectedId, onClose }) {
   const { drawings, updateDrawing, snapshotDrawings, setDrawingToolStyle } = useStore();
+  const [newFibLevel, setNewFibLevel] = useState('0.618');
   const drawing = drawings.find(d => d.id === selectedId);
   if (!drawing) return null;
 
@@ -227,8 +229,19 @@ export default function StylePanel({ selectedId, onClose }) {
                       className="px-1 text-red-400" title="Remove level">×</button>
                   </div>)}
                 </div>
-                <button type="button" onClick={() => commit({ levels: [...(drawing.levels || [0, 0.5, 1]), 0.618].sort((a, b) => a - b) })}
-                  className="mt-2 text-[10px] font-semibold text-blue-400">+ Add 0.618 level</button>
+                <div className="mt-2 flex items-center gap-1">
+                  <input aria-label="New Fibonacci level" type="number" min="0" max="1" step="0.001"
+                    value={newFibLevel} onChange={event => setNewFibLevel(event.target.value)}
+                    className="min-w-0 flex-1 rounded border border-[#2a2e39] bg-[#1e222d] px-2 py-1 text-[10px] font-mono text-white"/>
+                  <button type="button" onClick={() => {
+                    const value = Number(newFibLevel);
+                    if (!Number.isFinite(value) || value < 0 || value > 1) return;
+                    const levels = drawing.levels || [0, 0.5, 1];
+                    if (!levels.some(level => Math.abs(Number(level) - value) < 0.000001)) {
+                      commit({ levels: [...levels, value].sort((a, b) => a - b) });
+                    }
+                  }} className="rounded bg-blue-600 px-2 py-1 text-[10px] font-semibold text-white hover:bg-blue-500">Add</button>
+                </div>
               </div>
             )}
 
