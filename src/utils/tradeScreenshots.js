@@ -84,7 +84,7 @@ export function getTradeCandleWindow(trade, candles, timeframe = 1) {
 
 // Render a deterministic historical chart for exactly one trade. The live chart
 // canvas is never reused, so a batch of closures cannot receive one shared image.
-export function renderTradeScreenshot(trade, candles, timeframe = 1, drawingSnapshot = {}) {
+export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = 'dark', drawingSnapshot = {}) {
   const windowData = getTradeCandleWindow(trade, candles, timeframe);
   if (!windowData || typeof document === 'undefined') return null;
   const { data, entryIndex, exitIndex } = windowData;
