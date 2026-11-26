@@ -233,8 +233,8 @@ function App() {
         style={{ display: 'none' }}
       />
 
-      <header className="app-header px-2 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 flex justify-between items-center gap-2">
-        <div className="flex min-w-0 items-center gap-2 flex-shrink-0">
+      <header className="app-header px-2 py-1 bg-[#131722] border-b border-[#2a2e39] flex-shrink-0 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2 flex-shrink-0 justify-self-start">
           <h1 className="flex items-center gap-2 whitespace-nowrap">
             <img
               src={`${import.meta.env.BASE_URL}omaxfx-logo.svg`}
@@ -251,32 +251,33 @@ function App() {
           )}
         </div>
 
-        {gameStarted && <div className="hidden lg:flex items-center gap-1.5 flex-shrink-0">
-          <button onClick={() => setSettingsOpen(true)} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39] flex items-center gap-1.5">
-            <Settings size={12}/> Settings
-          </button>
-          <button onClick={openHistory} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">History</button>
-          <button onClick={openAnalytics} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Analytics</button>
-          <button onClick={() => window.dispatchEvent(new Event('omaxfx:reset-chart'))} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Reset Chart</button>
-        </div>}
-
-        {gameStarted && <div className="hidden md:flex items-center gap-1 rounded-lg border border-[#2a2e39] bg-[#0f131c] p-0.5 flex-shrink-0" aria-label="Chart layout">
-          {[{ value: 1, label: 'Single chart', Icon: Square }, { value: 2, label: 'Two charts', Icon: Columns2 }, { value: 3, label: 'Three charts', Icon: ThreeChartLayoutIcon }].map(({ value, label, Icon }) => (
-            <button key={value} type="button" onClick={() => useStore.getState().setChartLayout(value)} title={label} aria-label={label} aria-pressed={useStore.getState().chartLayout === value}
-              className={`flex h-7 w-7 items-center justify-center rounded ${useStore.getState().chartLayout === value ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-[#2a2e39]'}`}>
-              <Icon size={14}/>
+        {gameStarted && <div className="justify-self-center flex min-w-0 items-center gap-2">
+          <div className="hidden lg:flex items-center gap-1.5 flex-shrink-0">
+            <button onClick={() => setSettingsOpen(true)} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39] flex items-center gap-1.5">
+              <Settings size={12}/> Settings
             </button>
-          ))}
+            <button onClick={openHistory} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">History</button>
+            <button onClick={openAnalytics} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Analytics</button>
+            <button onClick={() => window.dispatchEvent(new Event('omaxfx:reset-chart'))} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Reset Chart</button>
+          </div>
+          <div className="hidden md:flex items-center gap-1 rounded-lg border border-[#2a2e39] bg-[#0f131c] p-0.5 flex-shrink-0" aria-label="Chart layout">
+            {[{ value: 1, label: 'Single chart', Icon: Square }, { value: 2, label: 'Two charts', Icon: Columns2 }, { value: 3, label: 'Three charts', Icon: ThreeChartLayoutIcon }].map(({ value, label, Icon }) => (
+              <button key={value} type="button" onClick={() => useStore.getState().setChartLayout(value)} title={label} aria-label={label} aria-pressed={useStore.getState().chartLayout === value}
+                className={'flex h-7 w-7 items-center justify-center rounded ' + (useStore.getState().chartLayout === value ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-[#2a2e39]')}>
+                <Icon size={14}/>
+              </button>
+            ))}
+          </div>
         </div>}
 
-        <div className="flex items-center gap-2 text-[11px] flex-shrink-0">
+        <div className="flex items-center gap-2 text-[11px] flex-shrink-0 justify-self-end whitespace-nowrap tabular-nums">
           <div className="flex items-baseline gap-1">
             <span className="text-gray-400">Bal:</span>
-            <span className="text-green-400 font-bold">${fmtMoney(balance, 0)}</span>
+            <span className="inline-block w-[84px] text-right text-green-400 font-bold tabular-nums">${fmtMoney(balance, 0)}</span>
           </div>
           <div className="flex items-baseline gap-1">
             <span className="text-gray-400 hidden sm:inline">PnL:</span>
-            <span className={`font-bold ${unrealisedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <span className={`inline-block w-[104px] text-right font-bold tabular-nums ${unrealisedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               ${fmtMoney(unrealisedPnl)}
             </span>
           </div>
