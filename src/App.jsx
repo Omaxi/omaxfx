@@ -23,6 +23,37 @@ import { Info, Sparkles, AlertTriangle, LogOut, Square, Columns2, CheckCircle2, 
 
 function ThreeChartLayoutIcon({ size = 14 }) { return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1" y="1" width="5.5" height="14" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="9.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/></svg>; }
 
+function startWithHistoricalContext(state) {
+  const data = state.allRawDataBySymbol?.[state.symbol] || state.allRawData || [];
+  if (!Array.isArray(data) || data.length < 2) {
+    state.openPeriodModal();
+    return;
+  }
+  const days = new Map();
+  for (const candle of data) {
+    const time = Number(candle.time);
+    if (!Number.isFinite(time)) continue;
+    const dayStart = Math.floor((time + 3 * 3600) / 86400) * 86400 - 3 * 3600;
+    const bucket = days.get(dayStart) || { first: time, last: time, count: 0 };
+    bucket.first = Math.min(bucket.first, time);
+    bucket.last = Math.max(bucket.last, time);
+    bucket.count += 1;
+    days.set(dayStart, bucket);
+  }
+  const ordered = [...days.entries()].filter(([, bucket]) => bucket.count >= 2).sort((a, b) => a[0] - b[0]);
+  if (!ordered.length) {
+    state.openPeriodModal();
+    return;
+  }
+  const [from, selected] = ordered[ordered.length - 1];
+  const previous = ordered.length > 1 ? ordered[ordered.length - 2] : null;
+  state.startGame(from, selected.last, state.rules, {
+    contextFrom: previous?.[0],
+    contextTo: previous?.[1]?.last,
+    startAtEnd: !previous,
+  });
+}
+
 function App() {
   const { 
     isPlaying, stepForward, currentIndex, rawData, replaySpeed, balance, positions, 
@@ -61,9 +92,48 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const key = 'tradepast-appearance-v2';
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || '{}');
+      useStore.setState(state => ({
+        ...(saved.theme && typeof saved.theme === 'object' ? { theme: { ...state.theme, ...saved.theme } } : {}),
+        ...(saved.chartOptions && typeof saved.chartOptions === 'object' ? { chartOptions: { ...state.chartOptions, ...saved.chartOptions } } : {}),
+        ...(saved.drawingStyles && typeof saved.drawingStyles === 'object' ? {
+          drawingStyles: Object.fromEntries(Object.entries({ ...state.drawingStyles, ...saved.drawingStyles }).map(([name, style]) => [name, { ...(state.drawingStyles[name] || {}), ...style }]))
+        } : {}),
+        ...(saved.sessionColors && typeof saved.sessionColors === 'object' ? { sessionColors: { ...state.sessionColors, ...saved.sessionColors } } : {}),
+        ...(saved.sessionTimes && typeof saved.sessionTimes === 'object' ? { sessionTimes: { ...state.sessionTimes, ...saved.sessionTimes } } : {}),
+        ...(saved.sessionEndTimes && typeof saved.sessionEndTimes === 'object' ? { sessionEndTimes: { ...state.sessionEndTimes, ...saved.sessionEndTimes } } : {}),
+        ...(typeof saved.sessionLabelsVisible === 'boolean' ? { sessionLabelsVisible: saved.sessionLabelsVisible } : {}),
+        ...(saved.chartType ? { chartType: saved.chartType } : {}),
+      }));
+    } catch {}
     document.documentElement.dataset.uiTheme = 'dark';
     window.dispatchEvent(new CustomEvent('omaxfx-ui-theme-change', { detail: 'dark' }));
-    try { localStorage.removeItem('omaxfx-ui-theme'); } catch {}
+    const unsubscribe = useStore.subscribe((state, previous) => {
+      if (state.theme !== previous.theme ||
+          state.chartOptions !== previous.chartOptions ||
+          state.drawingStyles !== previous.drawingStyles ||
+          state.sessionColors !== previous.sessionColors ||
+          state.sessionTimes !== previous.sessionTimes ||
+          state.sessionEndTimes !== previous.sessionEndTimes ||
+          state.sessionLabelsVisible !== previous.sessionLabelsVisible ||
+          state.chartType !== previous.chartType) {
+        try {
+          localStorage.setItem(key, JSON.stringify({
+            theme: state.theme,
+            chartOptions: state.chartOptions,
+            drawingStyles: state.drawingStyles,
+            sessionColors: state.sessionColors,
+            sessionTimes: state.sessionTimes,
+            sessionEndTimes: state.sessionEndTimes,
+            sessionLabelsVisible: state.sessionLabelsVisible,
+            chartType: state.chartType,
+          }));
+        } catch {}
+      }
+    });
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
@@ -95,7 +165,7 @@ function App() {
       const state = useStore.getState();
       if (state.allRawData?.length > 1) {
         state.setLoadingState({ isActive: false, loaded: 0, total: 0, error: null });
-        state.openPeriodModal();
+        startWithHistoricalContext(state);
         return;
       }
 
@@ -127,6 +197,7 @@ function App() {
           quoteToAccountRate: 1,
         });
         useStore.getState().setLoadingState({ isActive: false, loaded: 100, total: 100, error: null });
+        startWithHistoricalContext(useStore.getState());
       } catch (error) {
         if (cancelled) return;
         console.error('[startup] Unable to load bundled XAUUSD data:', error);
@@ -237,12 +308,12 @@ function App() {
         <div className="flex min-w-0 items-center gap-2 flex-shrink-0 justify-self-start">
           <h1 className="flex items-center gap-2 whitespace-nowrap">
             <img
-              src={`${import.meta.env.BASE_URL}omaxfx-logo.svg`}
-              alt="OmaxFX"
-              className="h-8 w-8 object-contain"
+              src={`${import.meta.env.BASE_URL}tradepast-logo.svg?v=2`}
+              alt="TradePast"
+              className="h-9 w-12 object-contain"
               draggable="false"
             />
-            <span className="hidden sm:inline text-sm font-bold tracking-wider text-gray-400">Simulator</span>
+            <span className="hidden sm:inline text-sm font-bold tracking-wider"><span className="text-gray-400">Trade</span><span className="text-white">Past</span></span>
           </h1>
           {positions.length > 0 && (
             <span className="bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded text-[10px] font-bold hidden md:inline">
