@@ -10,16 +10,16 @@ export default defineConfig(({ command }) => ({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['omaxfx-logo.svg', 'sounds/*.mp3'],
+      includeAssets: ['tradepast-logo.svg', 'sounds/*.mp3'],
       devOptions: {
         enabled: true,
         type: 'module',
         navigateFallback: 'index.html',
       },
       manifest: {
-        name: 'OmaxFX Simulator',
-        short_name: 'OmaxFX',
-        description: 'Professional trading simulator and replay engine for XAUUSD. Replay markets, test strategies, master your edge.',
+        name: 'TradePast',
+        short_name: 'TradePast',
+        description: 'TradePast trading simulator and market replay engine.',
         theme_color: '#0b0e11',
         background_color: '#0b0e11',
         display: 'standalone',
@@ -28,7 +28,7 @@ export default defineConfig(({ command }) => ({
         start_url: './',
         scope: './',
         icons: [
-          { src: 'omaxfx-logo.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: 'tradepast-logo.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
         ],
       },
       workbox: {
