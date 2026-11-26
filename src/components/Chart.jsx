@@ -649,19 +649,12 @@ export default function Chart({ chartId = 'main' }) {
             // Keep the TradingView-style risk/reward blocks very subtle at rest.
             // As the live trade moves toward TP or SL, only the relevant zone
             // gains a little opacity so progress is visible without a solid fill.
-            const riskDistance = Math.abs(entry - Number(tool.sl));
-            const rewardDistance = Math.abs(Number(tool.tp) - entry);
             const favorableMove = long ? livePrice - entry : entry - livePrice;
-            const adverseMove = long ? entry - livePrice : livePrice - entry;
-            const progress = (move, distance) => Number.isFinite(move) && Number.isFinite(distance) && distance > 0
-              ? Math.max(0, Math.min(1, move / distance)) : 0;
             const isLivePosition = target === 'position' && Number.isFinite(livePrice);
             // Base risk/reward zones stay softly visible across the full marker.
             // A second, slightly stronger layer tracks only the live move from
             // entry to the latest candle, using the matching profit/loss color.
             const baseAlpha = 0.10;
-            const progress = (move, distance) => Number.isFinite(move) && Number.isFinite(distance) && distance > 0
-              ? Math.max(0, Math.min(1, move / distance)) : 0;
             const greenAlpha = baseAlpha;
             const redAlpha = baseAlpha;
             ctx.save();
