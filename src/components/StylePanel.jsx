@@ -9,7 +9,7 @@ const PRESET_COLORS = [
 ];
 
 export default function StylePanel({ selectedId, onClose }) {
-  const { drawings, updateDrawing, snapshotDrawings } = useStore();
+  const { drawings, updateDrawing, snapshotDrawings, setDrawingToolStyle } = useStore();
   const drawing = drawings.find(d => d.id === selectedId);
   if (!drawing) return null;
 
@@ -22,11 +22,13 @@ export default function StylePanel({ selectedId, onClose }) {
   const isText = drawing.type === 'text';
   const fontSize = drawing.fontSize || 14;
 
-  const supportsFill = ['rectangle', 'fibonacci', 'volumeProfile'].includes(drawing.type);
+  const supportsFill = ['rectangle', 'volumeProfile'].includes(drawing.type);
 
   const commit = (patch) => {
     snapshotDrawings();
     updateDrawing(selectedId, patch);
+    // Save this style as the default for the next drawing of the same tool.
+    setDrawingToolStyle?.(drawing.type, patch);
   };
 
   return createPortal(
@@ -238,6 +240,27 @@ export default function StylePanel({ selectedId, onClose }) {
                     className="flex-1 bg-[#1e222d] text-white text-[11px] font-mono px-2 py-1 rounded border border-[#2a2e39] outline-none"
                   />
                 </div>
+              </div>
+            )}
+
+            {drawing.type === 'fibonacci' && (
+              <div>
+                <div className="mb-1.5 text-[10px] font-bold uppercase text-gray-400">Retracement Levels</div>
+                <div className="space-y-1">
+                  {(drawing.levels || [0, 0.5, 1]).map((level, index) => <div key={index} className="flex items-center gap-1">
+                    <input aria-label="Fibonacci level" type="number" min="0" max="1" step="0.001" value={level}
+                      onChange={event => {
+                        const next = [...(drawing.levels || [0, 0.5, 1])];
+                        next[index] = Math.max(0, Math.min(1, Number(event.target.value) || 0));
+                        commit({ levels: next });
+                      }}
+                      className="min-w-0 flex-1 rounded border border-[#2a2e39] bg-[#1e222d] px-2 py-1 text-[10px] font-mono text-white"/>
+                    <button type="button" onClick={() => commit({ levels: (drawing.levels || [0, 0.5, 1]).filter((_, i) => i !== index) })}
+                      className="px-1 text-red-400" title="Remove level">×</button>
+                  </div>)}
+                </div>
+                <button type="button" onClick={() => commit({ levels: [...(drawing.levels || [0, 0.5, 1]), 0.618].sort((a, b) => a - b) })}
+                  className="mt-2 text-[10px] font-semibold text-blue-400">+ Add 0.618 level</button>
               </div>
             )}
 
