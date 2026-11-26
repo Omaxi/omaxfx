@@ -693,16 +693,23 @@ export default function Chart({ chartId = 'main' }) {
           const unrealizedPnl = (long ? livePrice - entry : entry - livePrice) * multiplier * size + (Number(tool.realizedPnl) || 0);
           const markerTop = Math.min(entryY, Number.isFinite(slY) ? slY : entryY, Number.isFinite(tpY) ? tpY : entryY);
           const markerBottom = Math.max(entryY, Number.isFinite(slY) ? slY : entryY, Number.isFinite(tpY) ? tpY : entryY);
-          const pnlY = unrealizedPnl >= 0 ? markerTop - 10 : markerBottom + 10;
+          const labelGap = 14;
+          const aboveY = markerTop - labelGap;
+          const belowY = markerBottom + labelGap;
+          const pnlText = `${unrealizedPnl >= 0 ? '+' : '-'}${Math.abs(unrealizedPnl).toFixed(2)}`;
           ctx.save();
           ctx.font = 'bold 11px Arial';
           ctx.fillStyle = unrealizedPnl >= 0 ? '#26a69a' : '#ef5350';
-          ctx.textAlign = 'left';
+          ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
           ctx.shadowBlur = 3;
-          const pnlText = `${unrealizedPnl >= 0 ? '+' : '-'}${Math.abs(unrealizedPnl).toFixed(2)}`;
-          ctx.fillText(pnlText, Math.max(4, Math.min(paneW - ctx.measureText(pnlText).width - 4, (startX ?? 4) + 4)), Math.max(10, Math.min(paneH - 10, pnlY)));
+          // Anchor the label to the horizontal center of its own marker and
+          // keep it completely outside the risk/reward block. If the preferred
+          // side is clipped by the pane edge, flip it to the other side.
+          const labelY = aboveY >= 10 ? aboveY : belowY <= paneH - 10 ? belowY : Math.max(10, Math.min(paneH - 10, aboveY));
+          const labelX = Math.max(4, Math.min(paneW - 4, ((startX ?? 4) + (endX ?? startX ?? 4)) / 2));
+          ctx.fillText(pnlText, labelX, labelY);
           ctx.restore();
         }
         // Keep the compact direction / RRR hint at entry, outside the colored zones.
@@ -782,15 +789,16 @@ export default function Chart({ chartId = 'main' }) {
           ctx.font = 'bold 10px monospace';
           ctx.textBaseline = 'middle';
           const pnlText = `${trade.pnl >= 0 ? '+' : '-'}${Math.abs(Number(trade.pnl) || 0).toFixed(2)}`;
-          const labelY = trade.pnl >= 0 ? minY_Result - 10 : maxY_Result + 10;
-          const labelWidth = ctx.measureText(pnlText).width;
-          // Keep realized PnL outside the historical risk/reward rectangle.
-          // Prefer the right side; flip left when the trade closes near the chart edge.
-          const rightLabelX = maxX + 8;
-          const placeRight = rightLabelX + labelWidth <= paneW - 4;
-          const labelX = placeRight ? rightLabelX : Math.max(labelWidth + 4, minX - 8);
-          ctx.textAlign = placeRight ? 'left' : 'right';
-          ctx.fillText(pnlText, labelX, Math.max(10, Math.min(paneH - 10, labelY)));
+          const labelGap = 14;
+          const aboveY = minY_Result - labelGap;
+          const belowY = maxY_Result + labelGap;
+          // Place realized PnL above a winning marker or below a losing marker,
+          // centered on that marker. Flip sides when the preferred side reaches
+          // the chart edge; never clamp the label back into the marker itself.
+          const labelY = aboveY >= 10 ? aboveY : belowY <= paneH - 10 ? belowY : Math.max(10, Math.min(paneH - 10, aboveY));
+          const labelX = Math.max(4, Math.min(paneW - 4, (minX + maxX) / 2));
+          ctx.textAlign = 'center';
+          ctx.fillText(pnlText, labelX, labelY);
           ctx.restore();
         }
       });
