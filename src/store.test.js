@@ -326,6 +326,62 @@ test('autoplay minute mode advances one source candle while the chart is set to 
   } finally { restore(); }
 });
 
+test('new backtest starts with the complete preceding market day as chart context', () => {
+  const original = useStore.getState();
+  const dayStart = Math.floor(Date.UTC(2026, 0, 2) / 1000) - 3 * 3600;
+  const candles = [
+    { time: dayStart - 86400, open: 1, high: 1.1, low: 0.9, close: 1 },
+    { time: dayStart - 43200, open: 1, high: 1.2, low: 0.95, close: 1.1 },
+    { time: dayStart - 60, open: 1.1, high: 1.2, low: 1, close: 1.15 },
+    { time: dayStart, open: 1.15, high: 1.25, low: 1.1, close: 1.2 },
+    { time: dayStart + 60, open: 1.2, high: 1.3, low: 1.15, close: 1.25 },
+  ];
+  try {
+    useStore.setState({
+      symbol: 'TEST', timezone: 'UTC+3', timeframe: 1,
+      allRawData: candles, allRawDataBySymbol: { TEST: candles },
+    });
+    useStore.getState().startGame(dayStart, dayStart + 3600, {
+      startingBalance: 10000, maxRiskPerTrade: 1, maxDailyLoss: 5, maxDrawdown: 10,
+    });
+    const state = useStore.getState();
+    assert.equal(state.rawData.length, 5);
+    assert.equal(state.currentIndex, 3);
+    assert.equal(state.rawData[state.currentIndex].time, dayStart);
+    assert.equal(state.gamePeriod.from, dayStart);
+  } finally {
+    useStore.setState(original, true);
+  }
+});
+
+test('when CSV begins on the selected start date, its first day becomes context and replay starts on the next data day', () => {
+  const original = useStore.getState();
+  const firstDayStart = Math.floor(Date.UTC(2026, 0, 2) / 1000) - 3 * 3600;
+  const secondDayStart = firstDayStart + 86400;
+  const candles = [
+    { time: firstDayStart, open: 1, high: 1.1, low: 0.9, close: 1 },
+    { time: firstDayStart + 43200, open: 1, high: 1.2, low: 0.95, close: 1.1 },
+    { time: secondDayStart, open: 1.1, high: 1.2, low: 1, close: 1.15 },
+    { time: secondDayStart + 60, open: 1.15, high: 1.25, low: 1.1, close: 1.2 },
+  ];
+  try {
+    useStore.setState({
+      symbol: 'TEST', timezone: 'UTC+3', timeframe: 1,
+      allRawData: candles, allRawDataBySymbol: { TEST: candles },
+    });
+    useStore.getState().startGame(firstDayStart, secondDayStart + 3600, {
+      startingBalance: 10000, maxRiskPerTrade: 1, maxDailyLoss: 5, maxDrawdown: 10,
+    });
+    const state = useStore.getState();
+    assert.equal(state.rawData.length, 4);
+    assert.equal(state.currentIndex, 2);
+    assert.equal(state.rawData[state.currentIndex].time, secondDayStart);
+    assert.equal(state.gamePeriod.from, secondDayStart);
+  } finally {
+    useStore.setState(original, true);
+  }
+});
+
 test('custom CSV import keeps UTC+3 timestamps unchanged', () => {
   const original = useStore.getState();
   const candles = [
