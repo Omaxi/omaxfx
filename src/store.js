@@ -88,6 +88,11 @@ const DEFAULT_SESSION_COLORS = { asia: '#a78bfa', london: '#38bdf8', newyork: '#
 const DEFAULT_DRAWING_STYLES = {
   vertical: { color: '#3b82f6', lineWidth: 1 },
   horizontal: { color: '#3b82f6', lineWidth: 1 },
+  trendline: { color: '#3b82f6', borderColor: '#3b82f6', lineWidth: 1 },
+  arrow: { color: '#3b82f6', borderColor: '#3b82f6', lineWidth: 1 },
+  rectangle: { color: '#3b82f6', borderColor: '#3b82f6', fillColor: '#3b82f633', lineWidth: 1, showBorder: false },
+  fibonacci: { color: '#3b82f6', borderColor: '#3b82f6', fillColor: '#00000000', lineWidth: 1, showBorder: false, levels: [0, 0.5, 1] },
+  text: { color: '#ffffff', borderColor: '#ffffff', fontSize: 14 },
 };
 
 const DEFAULT_RULES = {
@@ -141,6 +146,9 @@ export const useStore = create((set, get) => ({
       ...(patch.color ? { color: patch.color, borderColor: patch.color } : {}),
       ...(patch.lineWidth != null ? { lineWidth: patch.lineWidth } : {}),
     } : d),
+  })),
+  setDrawingToolStyle: (key, patch) => set((state) => ({
+    drawingStyles: { ...state.drawingStyles, [key]: { ...state.drawingStyles[key], ...patch } },
   })),
 
   setSessionTime: (key, hour) => set((state) => ({
@@ -354,19 +362,16 @@ export const useStore = create((set, get) => ({
   }),
 
   addDrawing: (drawing) => set((state) => {
-    const newDrawing = { 
-      ...drawing, 
+    const toolStyle = state.drawingStyles?.[drawing.type] || {};
+    const newDrawing = {
+      ...drawing,
       id: Date.now() + Math.random(),
-      color: drawing.color || '#3b82f6',
-      borderColor: drawing.borderColor || drawing.color || '#3b82f6',
-      fillColor: drawing.type === 'fibonacci' ? '#00000000' : (drawing.fillColor || '#3b82f633'),
-      ...(drawing.type === 'fibonacci' ? { levels: Array.isArray(drawing.levels) ? drawing.levels : [0, 0.5, 1] } : {}),
-      lineWidth: drawing.lineWidth ?? state.drawingStyles?.[drawing.type]?.lineWidth ?? 1,
-      ...(drawing.type === 'vertical' || drawing.type === 'horizontal'
-        ? { color: state.drawingStyles?.[drawing.type]?.color || drawing.color || '#3b82f6',
-            borderColor: state.drawingStyles?.[drawing.type]?.color || drawing.borderColor || drawing.color || '#3b82f6' }
-        : {}),
-      showBorder: drawing.showBorder === true,
+      color: drawing.color || toolStyle.color || '#3b82f6',
+      borderColor: drawing.borderColor || toolStyle.borderColor || drawing.color || toolStyle.color || '#3b82f6',
+      fillColor: drawing.type === 'fibonacci' ? '#00000000' : (drawing.fillColor || toolStyle.fillColor || '#3b82f633'),
+      ...(drawing.type === 'fibonacci' ? { levels: Array.isArray(drawing.levels) ? drawing.levels : (toolStyle.levels || [0, 0.5, 1]) } : {}),
+      lineWidth: drawing.lineWidth ?? toolStyle.lineWidth ?? 1,
+      showBorder: drawing.showBorder ?? toolStyle.showBorder ?? false,
       symbol: state.symbol,
       timeframe: state.timeframe,
     };
