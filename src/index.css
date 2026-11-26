@@ -213,3 +213,27 @@ html[data-ui-theme="dark"] .indicators-panel .text-gray-200,
 html[data-ui-theme="dark"] .indicators-panel .text-gray-300 {
   color: #6b7280 !important;
 }
+
+/* Complete white application theme: remap fixed dark surfaces across the UI. */
+html[data-ui-theme="light"], html[data-ui-theme="light"] body, html[data-ui-theme="light"] #root { color-scheme: light !important; background: #ffffff !important; color: #172033 !important; }
+html[data-ui-theme="light"] body { color: #172033 !important; }
+html[data-ui-theme="light"] ::-webkit-scrollbar-track, html[data-ui-theme="light"] ::-webkit-scrollbar-corner { background: #f2f4f7 !important; }
+html[data-ui-theme="light"] ::-webkit-scrollbar-thumb { background: #c5ccd6 !important; }
+html[data-ui-theme="light"] * { scrollbar-color: #c5ccd6 #f2f4f7; }
+html[data-ui-theme="light"] [class~="bg-[#0b0e11]"], html[data-ui-theme="light"] [class~="bg-[#131722]"], html[data-ui-theme="light"] [class~="bg-[#171a27]"] { background-color: #ffffff !important; }
+html[data-ui-theme="light"] [class~="bg-[#1e222d]"], html[data-ui-theme="light"] [class~="bg-[#0f131c]"] { background-color: #f2f4f7 !important; }
+html[data-ui-theme="light"] [class~="bg-[#2a2e39]"], html[data-ui-theme="light"] [class~="bg-[#343b49]"] { background-color: #e4e7ec !important; }
+html[data-ui-theme="light"] [class~="border-[#2a2e39]"], html[data-ui-theme="light"] [class~="border-[#343b49]"], html[data-ui-theme="light"] [class~="border-[#3a4050]"] { border-color: #d0d5dd !important; }
+html[data-ui-theme="light"] [class~="text-white"], html[data-ui-theme="light"] [class~="text-gray-50"], html[data-ui-theme="light"] [class~="text-gray-100"], html[data-ui-theme="light"] [class~="text-gray-200"], html[data-ui-theme="light"] [class~="text-gray-300"], html[data-ui-theme="light"] [class~="text-slate-50"], html[data-ui-theme="light"] [class~="text-slate-100"] { color: #344054 !important; }
+html[data-ui-theme="light"] [class~="text-gray-400"], html[data-ui-theme="light"] [class~="text-gray-500"], html[data-ui-theme="light"] [class~="text-gray-600"], html[data-ui-theme="light"] [class~="text-slate-400"], html[data-ui-theme="light"] [class~="text-slate-500"] { color: #667085 !important; }
+html[data-ui-theme="light"] [class~="bg-black/85"], html[data-ui-theme="light"] [class~="bg-black/80"], html[data-ui-theme="light"] [class~="bg-black/70"] { background-color: rgb(248 250 252 / 96%) !important; }
+html[data-ui-theme="light"] select, html[data-ui-theme="light"] input:not([type="color"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]), html[data-ui-theme="light"] textarea { color-scheme: light !important; background-color: #ffffff !important; color: #172033 !important; border-color: #d0d5dd !important; }
+html[data-ui-theme="light"] select option { background: #ffffff !important; color: #172033 !important; }
+html[data-ui-theme="light"] .app-header, html[data-ui-theme="light"] .history-modal-shell, html[data-ui-theme="light"] .indicators-panel, html[data-ui-theme="light"] .drawing-style-panel { background-color: #ffffff !important; color: #172033 !important; border-color: #d0d5dd !important; }
+html[data-ui-theme="light"] .app-header .header-utility-action, html[data-ui-theme="light"] .app-header .app-header-action { background-color: #f2f4f7 !important; border-color: #d0d5dd !important; color: #344054 !important; }
+html[data-ui-theme="light"] .chart-root { background-color: #ffffff !important; }
+html[data-ui-theme="light"] .live-information-panel { background-color: rgb(255 255 255 / 96%) !important; border-color: #d0d5dd !important; color: #344054 !important; }
+html[data-ui-theme="light"] .theme-menu-surface { background-color: #f2f4f7 !important; border-color: #d0d5dd !important; }
+html[data-ui-theme="light"] .text-green-400 { color: #079455 !important; }
+html[data-ui-theme="light"] .text-red-400 { color: #d92d20 !important; }
+html[data-ui-theme="light"] .text-blue-400 { color: #175cd3 !important; }
