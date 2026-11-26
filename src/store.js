@@ -577,10 +577,10 @@ export const useStore = create((set, get) => ({
     };
   }),
 
-  startDrawing: (side) => set({ 
+  startDrawing: (side) => set((state) => ({
     isDrawingMode: true, drawingSide: side, drawingStep: 'entry',
-    draftPosition: { type: side, entry: null, sl: null, tp: null }
-  }),
+    draftPosition: { type: side, entry: null, sl: null, tp: null, startTime: state.rawData?.[state.currentIndex]?.time ?? null }
+  })),
   
   setDraftPrice: (price) => set((state) => {
     if (!state.draftPosition) return state;
