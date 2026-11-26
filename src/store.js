@@ -141,7 +141,7 @@ export const useStore = create((set, get) => ({
   setSessionColor: (key, color) => set((state) => ({
     sessionColors: { ...state.sessionColors, [key]: color },
   })),
-  sessionLabelsVisible: false,
+  sessionLabelsVisible: true,
   setSessionLabelsVisible: (visible) => set({ sessionLabelsVisible: !!visible }),
   drawingStyles: Object.fromEntries(Object.entries(DEFAULT_DRAWING_STYLES).map(([key, style]) => [key, { ...style }])),
   setDrawingToolStyle: (key, patch) => set((state) => ({
