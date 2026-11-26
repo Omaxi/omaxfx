@@ -32,7 +32,7 @@ export default function SettingsModal({ open, onClose }) {
 
   const reset = () => {
     setTheme({ background: '#171a27', upBody: '#0897a7', downBody: '#59616e', upWick: '#0897a7', downWick: '#59616e' });
-    setChartOptions({ gridVisible: false, lastPriceLineVisible: true, crosshairVerticalVisible: false, crosshairHorizontalVisible: false });
+    setChartOptions({ gridVisible: true, lastPriceLineVisible: true, crosshairVerticalVisible: false, crosshairHorizontalVisible: false });
   };
 
   return (
@@ -59,7 +59,7 @@ export default function SettingsModal({ open, onClose }) {
           <section className="space-y-2">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-blue-400">Chart appearance</h3>
             <ColorField label="Background color" value={theme.background} onChange={v => setTheme({ background: v })}/>
-            <Toggle label="Background grid" description="Show horizontal and vertical chart grid lines" checked={chartOptions?.gridVisible ?? false} onChange={v => setChartOptions({ gridVisible: v })}/>
+            <Toggle label="Background grid" description="Show horizontal and vertical chart grid lines" checked={chartOptions?.gridVisible ?? true} onChange={v => setChartOptions({ gridVisible: v })}/>
             <Toggle label="Last price line" description="Dotted line from the latest candle to the price axis" checked={chartOptions?.lastPriceLineVisible ?? true} onChange={v => setChartOptions({ lastPriceLineVisible: v })}/>
           </section>
           <section className="space-y-2">
