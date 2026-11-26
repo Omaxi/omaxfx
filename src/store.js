@@ -470,10 +470,51 @@ export const useStore = create((set, get) => ({
       return state;
     }
 
-    const filtered = symbolData.filter(c => c.time >= from && c.time <= to);
-    const contextCandles = Number.isFinite(Number(options.contextFrom)) && Number.isFinite(Number(options.contextTo))
+    // Always preload one complete preceding market day for chart context.
+    // This is especially important after CSV imports, where startGame is called
+    // without the optional context range used by the bundled-data startup path.
+    const offsetSeconds = (TZ_OFFSETS[state.timezone || 'UTC+3'] ?? 180) * 60;
+    const selectedDayStart = Math.floor((Number(from) + offsetSeconds) / 86400) * 86400 - offsetSeconds;
+    const hasExplicitContext = Number.isFinite(Number(options.contextFrom)) && Number.isFinite(Number(options.contextTo));
+    let contextCandles = hasExplicitContext
       ? symbolData.filter(c => c.time >= Number(options.contextFrom) && c.time <= Number(options.contextTo))
       : [];
+    let effectiveFrom = Number(from);
+
+    if (!hasExplicitContext || contextCandles.length === 0) {
+      const dayBuckets = new Map();
+      for (const candle of symbolData) {
+        const time = Number(candle.time);
+        if (!Number.isFinite(time)) continue;
+        const dayStart = Math.floor((time + offsetSeconds) / 86400) * 86400 - offsetSeconds;
+        if (!dayBuckets.has(dayStart)) dayBuckets.set(dayStart, []);
+        dayBuckets.get(dayStart).push(candle);
+      }
+
+      const previousDay = [...dayBuckets.entries()]
+        .filter(([dayStart, candles]) => dayStart < selectedDayStart && candles.length >= 2)
+        .sort((a, b) => b[0] - a[0])[0];
+
+      if (previousDay) {
+        contextCandles = previousDay[1];
+      } else {
+        // If the chosen start date is the first date in the imported file,
+        // use that first available day as context and begin replay on the
+        // next available market day. This avoids a one-candle initial chart.
+        const firstDay = [...dayBuckets.entries()]
+          .filter(([, candles]) => candles.length >= 2)
+          .sort((a, b) => a[0] - b[0])[0];
+        const nextDay = firstDay && [...dayBuckets.entries()]
+          .filter(([dayStart, candles]) => dayStart > firstDay[0] && candles.length >= 2)
+          .sort((a, b) => a[0] - b[0])[0];
+        if (firstDay && nextDay && selectedDayStart <= firstDay[0] && effectiveFrom <= firstDay[1][firstDay[1].length - 1].time) {
+          contextCandles = firstDay[1];
+          effectiveFrom = nextDay[0];
+        }
+      }
+    }
+
+    const filtered = symbolData.filter(c => c.time >= effectiveFrom && c.time <= to);
     const replayData = [...contextCandles, ...filtered];
 
     if (filtered.length < 2) {
@@ -486,7 +527,7 @@ export const useStore = create((set, get) => ({
     return {
       rawData: replayData,
       displayData: aggregateData(replayData, state.timeframe),
-      gamePeriod: { from, to },
+      gamePeriod: { from: effectiveFrom, to },
       gameStarted: true,
       isPeriodModalOpen: false,
       rules: { ...rules, propFirmEnabled: rules.propFirmEnabled !== false },
