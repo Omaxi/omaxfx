@@ -84,13 +84,17 @@ const DEFAULT_THEME = {
   upWick: '#0897a7',
   downWick: '#59616e',
 };
-const DEFAULT_SESSION_COLORS = { asia: '#737373', london: '#38bdf8', newyork: '#fb7185' };
+const DEFAULT_SESSION_COLORS = { asia: '#737373', london: '#38bdf8', newyork: '#f59e0b' };
 export const DEFAULT_SESSION_TIMES = { asian: 3, london: 11, newyork: 16 };
 export const DEFAULT_SESSION_END_TIMES = { asian: 8, london: 13, newyork: 18 };
 const DEFAULT_DRAWING_STYLES = {
-  vertical: { color: '#3b82f6', lineWidth: 1, lineStyle: 'solid' },
-  horizontal: { color: '#3b82f6', lineWidth: 1, lineStyle: 'solid' },
-  trendline: { color: '#3b82f6', lineWidth: 1, lineStyle: 'solid' },
+  vertical: { color: '#3b82f6', borderColor: '#3b82f6', lineWidth: 1, lineStyle: 'solid' },
+  horizontal: { color: '#3b82f6', borderColor: '#3b82f6', lineWidth: 1, lineStyle: 'solid' },
+  trendline: { color: '#3b82f6', borderColor: '#3b82f6', lineWidth: 1, lineStyle: 'solid' },
+  arrow: { color: '#3b82f6', borderColor: '#3b82f6', lineWidth: 1, lineStyle: 'solid' },
+  rectangle: { color: '#3b82f6', borderColor: '#3b82f6', fillColor: '#3b82f633', lineWidth: 1, showBorder: false },
+  fibonacci: { color: '#3b82f6', borderColor: '#3b82f6', fillColor: '#00000000', lineWidth: 1, showBorder: true, levels: [0, 0.5, 1] },
+  text: { color: '#ffffff', borderColor: '#ffffff', fontSize: 14 },
 };
 
 const DEFAULT_RULES = {
@@ -137,11 +141,10 @@ export const useStore = create((set, get) => ({
   setSessionColor: (key, color) => set((state) => ({
     sessionColors: { ...state.sessionColors, [key]: color },
   })),
-  drawingStyles: {
-    vertical: { ...DEFAULT_DRAWING_STYLES.vertical },
-    horizontal: { ...DEFAULT_DRAWING_STYLES.horizontal },
-    trendline: { ...DEFAULT_DRAWING_STYLES.trendline },
-  },
+  drawingStyles: Object.fromEntries(Object.entries(DEFAULT_DRAWING_STYLES).map(([key, style]) => [key, { ...style }])),
+  setDrawingToolStyle: (key, patch) => set((state) => ({
+    drawingStyles: { ...state.drawingStyles, [key]: { ...(state.drawingStyles[key] || {}), ...patch } },
+  })),
   setDrawingStyle: (key, patch) => set((state) => ({
     drawingStyles: { ...state.drawingStyles, [key]: { ...state.drawingStyles[key], ...patch } },
     drawings: state.drawings.map(d => d.type === key ? {
@@ -366,19 +369,18 @@ export const useStore = create((set, get) => ({
   }),
 
   addDrawing: (drawing) => set((state) => {
-    const newDrawing = { 
-      ...drawing, 
+    const toolStyle = state.drawingStyles?.[drawing.type] || {};
+    const selectedColor = drawing.color || toolStyle.color || '#3b82f6';
+    const newDrawing = {
+      ...drawing,
       id: Date.now() + Math.random(),
-      color: drawing.color || '#3b82f6',
-      borderColor: drawing.borderColor || drawing.color || '#3b82f6',
-      fillColor: drawing.fillColor || '#3b82f633',
-      lineWidth: drawing.lineWidth ?? state.drawingStyles?.[drawing.type]?.lineWidth ?? 1,
-      lineStyle: drawing.lineStyle ?? state.drawingStyles?.[drawing.type]?.lineStyle ?? 'solid',
-      ...(drawing.type === 'vertical' || drawing.type === 'horizontal' || drawing.type === 'trendline'
-        ? { color: state.drawingStyles?.[drawing.type]?.color || drawing.color || '#3b82f6',
-            borderColor: state.drawingStyles?.[drawing.type]?.color || drawing.borderColor || drawing.color || '#3b82f6' }
-        : {}),
-      showBorder: drawing.showBorder === true,
+      color: selectedColor,
+      borderColor: drawing.borderColor || toolStyle.borderColor || selectedColor,
+      fillColor: drawing.type === 'fibonacci' ? '#00000000' : (drawing.fillColor || toolStyle.fillColor || '#3b82f633'),
+      lineWidth: drawing.lineWidth ?? toolStyle.lineWidth ?? 1,
+      lineStyle: drawing.lineStyle ?? toolStyle.lineStyle ?? 'solid',
+      showBorder: drawing.showBorder ?? toolStyle.showBorder ?? false,
+      ...(drawing.type === 'fibonacci' ? { levels: drawing.levels || toolStyle.levels || [0, 0.5, 1] } : {}),
       symbol: state.symbol,
       timeframe: state.timeframe,
     };
@@ -458,7 +460,7 @@ export const useStore = create((set, get) => ({
   // - Prevents the "instant period_end" bug that showed the GameOver modal
   //   immediately after starting a session.
   // =========================================================================
-  startGame: (from, to, rules) => set((state) => {
+  startGame: (from, to, rules, options = {}) => set((state) => {
     const symbolData = state.allRawDataBySymbol[state.symbol] || state.allRawData;
 
     if (!symbolData || symbolData.length === 0) {
@@ -467,6 +469,10 @@ export const useStore = create((set, get) => ({
     }
 
     const filtered = symbolData.filter(c => c.time >= from && c.time <= to);
+    const contextCandles = Number.isFinite(Number(options.contextFrom)) && Number.isFinite(Number(options.contextTo))
+      ? symbolData.filter(c => c.time >= Number(options.contextFrom) && c.time <= Number(options.contextTo))
+      : [];
+    const replayData = [...contextCandles, ...filtered];
 
     if (filtered.length < 2) {
       console.warn(`[startGame] period contains ${filtered.length} candle(s); need >= 2. From=${from} To=${to}`);
@@ -476,14 +482,14 @@ export const useStore = create((set, get) => ({
     const startBal = rules.startingBalance;
     const startDay = filtered[0] ? getDayKey(filtered[0].time) : null;
     return {
-      rawData: filtered,
-      displayData: aggregateData(filtered, state.timeframe),
+      rawData: replayData,
+      displayData: aggregateData(replayData, state.timeframe),
       gamePeriod: { from, to },
       gameStarted: true,
       isPeriodModalOpen: false,
       rules: { ...rules, propFirmEnabled: rules.propFirmEnabled !== false },
       sessionId: null,
-      currentIndex: 0,
+      currentIndex: options.startAtEnd ? replayData.length - 1 : contextCandles.length,
       isPlaying: false,
       balance: startBal,
       positions: [],
