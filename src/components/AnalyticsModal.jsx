@@ -193,7 +193,7 @@ export default function AnalyticsModal() {
         // Prefer the immutable image captured at trade close; later drawing edits
         // must not rewrite the historical journal screenshot.
         const saved = await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
-        const image = saved || renderTradeScreenshot(trade, screenshotCandles, timeframe, {
+        const image = saved || renderTradeScreenshot(trade, screenshotCandles, timeframe, 'dark', {
           drawings: trade.drawingSnapshot?.drawings || [],
           chartDrawings: trade.drawingSnapshot?.chartDrawings || {},
           pencilStrokes: trade.drawingSnapshot?.pencilStrokes || [],
