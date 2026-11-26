@@ -314,7 +314,7 @@ h1,h2,h3,.report-title,.range-line b,.section h2,.summary-card b,.journal-date,.
     <section class="dashboard-panel calendar-report-panel"><h2>Trading calendar · All active months</h2><p class="muted">Daily realized net P&amp;L and closed trade count · UTC+3</p><div class="calendar-wrap ${new Set(dailyEntries.map(([key])=>key.slice(0,7))).size===1?'single-month':''}">${buildCalendar(dailyEntries)}</div></section>
     ${performanceSections}
     <section class="page-break"><h2>Daily trade journal · All trades and chart screenshots</h2><p class="muted">${trades.length} closed trades across ${dailyEntries.length} active trading days.</p>${tradePages||'<div class="empty">No closed trades in this session.</div>'}</section>
-    <div class="footer">OmaxFX · Report generated ${escapeHtml(generated)} · Values are based on the current trade history.</div>
+    <div class="footer">TradePast · Report generated ${escapeHtml(generated)} · Values are based on the current trade history.</div>
     <script>window.addEventListener('load',()=>{const imgs=[...document.images];Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=resolve;img.onerror=resolve}))).then(()=>setTimeout(()=>{document.querySelector('.print-hint')?.classList.add('ready')},150));});</script>
     </body></html>`;
 }
