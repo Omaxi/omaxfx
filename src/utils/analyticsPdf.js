@@ -26,8 +26,7 @@ const duration = trade => {
 const percent = value => `${(Number(value) || 0).toFixed(2)}%`;
 
 
-function buildCurveSvg(curve, uiTheme = 'dark') {
-  const light = uiTheme === 'light';
+function buildCurveSvg(curve) {
   const width=1100,height=330,left=76,right=24,top=48,bottom=52;
   const values=curve.map(point=>Number(point.pnl)||0);
   if(!values.length)return '<div class="empty">No closed trades yet — the equity curve will appear after trades are closed.</div>';
@@ -59,14 +58,14 @@ function buildCurveSvg(curve, uiTheme = 'dark') {
   const startTime=Number(curve[ddStart]?.timestamp||0),endTime=Number(curve[ddEnd]?.timestamp||curve[curve.length-1]?.timestamp||0),elapsedSeconds=Math.max(0,endTime-startTime);
   const elapsed=elapsedSeconds>=86400?Math.floor(elapsedSeconds/86400)+'d '+Math.floor(elapsedSeconds%86400/3600)+'h':elapsedSeconds>=3600?Math.floor(elapsedSeconds/3600)+'h '+Math.floor(elapsedSeconds%3600/60)+'m':Math.floor(elapsedSeconds/60)+'m';
   const ticks=Array.from({length:5},(_,i)=>min+(max-min)*i/4);
-  const grid=ticks.map(value=>{const yy=y(value);return '<line x1="'+left+'" y1="'+yy+'" x2="'+(width-right)+'" y2="'+yy+'" stroke="'+(light?'#e4e7ec':'#354052')+'" stroke-dasharray="4 5"/><text x="'+(left-10)+'" y="'+(yy+4)+'" text-anchor="end" fill="'+(light?'#667085':'#929db0')+'" font-size="12">'+money(value)+'</text>';}).join('');
+  const grid=ticks.map(value=>{const yy=y(value);return '<line x1="'+left+'" y1="'+yy+'" x2="'+(width-right)+'" y2="'+yy+'" stroke="'+#354052+'" stroke-dasharray="4 5"/><text x="'+(left-10)+'" y="'+(yy+4)+'" text-anchor="end" fill="'+#929db0+'" font-size="12">'+money(value)+'</text>';}).join('');
   const labels=curve.map((point,index)=>({point,index})).filter(({index})=>curve.length<=12||index%Math.ceil(curve.length/10)===0||index===curve.length-1);
-  const xLabels=labels.map(({point,index})=>'<text x="'+x(index)+'" y="'+(height-18)+'" text-anchor="middle" fill="'+(light?'#667085':'#929db0')+'" font-size="10">'+escapeHtml(point.label||point.date?.slice(5)||'')+'</text>').join('');
+  const xLabels=labels.map(({point,index})=>'<text x="'+x(index)+'" y="'+(height-18)+'" text-anchor="middle" fill="'+#929db0+'" font-size="10">'+escapeHtml(point.label||point.date?.slice(5)||'')+'</text>').join('');
   // The drawdown badge is rendered as normal HTML above the SVG, never
   // inside the plotting coordinate system where it could cover the curve.
   const ddAnnotation=ddRect?'<rect x="'+ddRect.x+'" y="'+top+'" width="'+ddRect.width+'" height="'+(height-top-bottom)+'" fill="url(#drawdownFill)" stroke="none"/>':'';
-  const legend='<g transform="translate('+(left+10)+',14)"><line x1="0" y1="0" x2="22" y2="0" stroke="#2563eb" stroke-width="3"/><text x="28" y="4" fill="'+(light?'#475467':'#d5d9e2')+'" font-size="10">Strategy equity</text></g>';
-  return '<svg viewBox="0 0 '+width+' '+height+'" role="img" aria-label="Trade-by-trade strategy equity curve"><defs><linearGradient id="equityBlueFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2563eb" stop-opacity=".34"/><stop offset="100%" stop-color="'+(light?'#ffffff':'#0b0e11')+'" stop-opacity=".18"/></linearGradient><linearGradient id="drawdownFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b42318" stop-opacity=".20"/><stop offset="100%" stop-color="#ff6969" stop-opacity=".18"/></linearGradient></defs>'+legend+grid+ddAnnotation+'<path d="'+areaPath+'" fill="url(#equityBlueFill)" stroke="none"/><path d="'+linePath+'" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>'+coords.map(p=>'<circle cx="'+p.x+'" cy="'+p.y+'" r="2.5" fill="#2563eb"/>').join('')+xLabels+'</svg>';
+  const legend='<g transform="translate('+(left+10)+',14)"><line x1="0" y1="0" x2="22" y2="0" stroke="#2563eb" stroke-width="3"/><text x="28" y="4" fill="'+#d5d9e2+'" font-size="10">Strategy equity</text></g>';
+  return '<svg viewBox="0 0 '+width+' '+height+'" role="img" aria-label="Trade-by-trade strategy equity curve"><defs><linearGradient id="equityBlueFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2563eb" stop-opacity=".34"/><stop offset="100%" stop-color="'+#0b0e11+'" stop-opacity=".18"/></linearGradient><linearGradient id="drawdownFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b42318" stop-opacity=".20"/><stop offset="100%" stop-color="#ff6969" stop-opacity=".18"/></linearGradient></defs>'+legend+grid+ddAnnotation+'<path d="'+areaPath+'" fill="url(#equityBlueFill)" stroke="none"/><path d="'+linePath+'" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>'+coords.map(p=>'<circle cx="'+p.x+'" cy="'+p.y+'" r="2.5" fill="#2563eb"/>').join('')+xLabels+'</svg>';
 }
 
 function buildCurveDrawdownLabel(curve) {
@@ -133,8 +132,7 @@ function buildCalendar(dailyEntries) {
   return months.join('');
 }
 
-export function buildAnalyticsPrintHtml({ traderName, symbol, startBalance, balance, timezone, backtestRange, trades, metrics, dailyEntries, curve, screenshots, uiTheme = 'dark' }) {
-  const light = uiTheme === 'light';
+export function buildAnalyticsPrintHtml({ traderName, symbol, startBalance, balance, timezone, backtestRange, trades, metrics, dailyEntries, curve, screenshots }) {
   const traderLabel = String(traderName || '').trim() || 'Trader';
   const reportTitle = `${traderLabel} - Performance Reports`;
   const generated = new Date().toLocaleString();
@@ -295,22 +293,10 @@ export function buildAnalyticsPrintHtml({ traderName, symbol, startBalance, bala
     .month-histogram{display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:7px;min-height:172px;padding:12px 10px 8px}.month-hist-item{min-width:0;display:grid;grid-template-rows:18px 1fr 14px 12px;gap:4px;text-align:center;position:relative;z-index:1}.month-hist-value{font-size:8px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.month-hist-plot{height:100%;min-height:88px;display:flex;align-items:center;justify-content:center;position:relative;background:linear-gradient(to bottom,transparent 49.5%,#657084 49.5%,#657084 50.5%,transparent 50.5%)}.month-hist-bar{display:block;width:58%;height:var(--bar-height);position:absolute;bottom:50%;max-height:50%;border-radius:3px 3px 0 0}.month-hist-bar.gain-bar{background:#20bd89;box-shadow:0 0 8px #20bd8933}.month-hist-bar.loss-bar{background:#ef5350;border-radius:0 0 3px 3px;bottom:auto;top:50%}.month-hist-item b{font-size:8px;color:#aeb8ca}.month-hist-item small{font-size:6px;color:#8993a5}.month-hist-ytd{border-left:1px solid #2c67c5;padding-left:6px}.month-hist-total{height:100%;min-height:88px;display:flex;align-items:center;justify-content:center;background:linear-gradient(to bottom,transparent 49.5%,#657084 49.5%,#657084 50.5%,transparent 50.5%)}.month-hist-total span{display:block;width:58%;height:5px;border-radius:3px;background:#20bd89}.month-hist-total span.loss-bar{background:#ef5350}
     .page-break{break-before:page}.footer{margin-top:12px;border-top:1px solid #293142;padding-top:6px;color:#8993a5;font-size:7px}
     @media print{html,body{background:#0b0e11!important;color:#d5d9e2!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.dashboard-grid{grid-template-columns:34% 1fr}.trade-card,.month-card{break-inside:avoid}.month-histogram{min-height:155px}.month-hist-plot,.month-hist-total{min-height:76px}}
-    @media screen{body{max-width:1400px;margin:20px auto;padding:0 20px}}${light ? `html,body{background:#ffffff!important;color:#344054!important;color-scheme:light!important}
-h1,h2,h3,.report-title,.range-line b,.section h2,.summary-card b,.journal-date,.journal-value,.trade-grid b,.compact-stat b,.legend-stats b,.day-row>b{color:#172033!important}
-.muted,small,.meta,.summary-card small,.month-heading span,.week-item span,.calendar th,.calendar td,.calendar td b,.trade-grid small,.compact-stat span,.legend-stats span,.day-row>span,.day-row small,.footer{color:#667085!important}
-.range-line,.summary-card,.dashboard-panel,.month-card,.week-item,.calendar td,.curve,.trade-card,.trade-grid>div,.day-track,.expectancy-track,.donut:after,.month-hist-plot,.month-hist-total{background:#f8fafc!important;border-color:#d0d5dd!important}
-.calendar td.positive{background:#ecfdf3!important;border-color:#abefc6!important;color:#067647!important}
-.calendar td.negative{background:#fef3f2!important;border-color:#fecdca!important;color:#b42318!important}
-.calendar td.flat{background:#eff8ff!important;border-color:#b2ddff!important;color:#175cd3!important}
-.calendar td.blank{background:transparent!important;border-color:transparent!important}
-.week-item{background:#f2f4f7!important}.trade-image{background:#ffffff!important;border-color:#d0d5dd!important}
-.empty,.no-image{background:#f8fafc!important;border-color:#d0d5dd!important;color:#667085!important}
-.curve-dd-badge{background:#fef3f2!important}
-.month-hist-plot,.month-hist-total{background:linear-gradient(to bottom,transparent 49.5%,#98a2b3 49.5%,#98a2b3 50.5%,transparent 50.5%)!important}
-@page{background:#ffffff!important}@media print{html,body{background:#ffffff!important;color:#344054!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}` : ''}</style></head><body>
+    @media screen{body{max-width:1400px;margin:20px auto;padding:0 20px}}</style></head><body>
     <header class="cover"><h1>${escapeHtml(reportTitle)}</h1><div class="range-line"><b>Backtest range</b><span>${escapeHtml(backtestRange?.from || "—")}</span><span>TO</span><span>${escapeHtml(backtestRange?.to || "—")}</span><span class="range-duration">${escapeHtml(backtestRange?.elapsed || "")}</span></div><div class="meta"><span>Symbol: <b>${escapeHtml(symbol||'—')}</b></span><span>Timezone: ${escapeHtml(timezone||'UTC+3')}</span><span>Generated: ${escapeHtml(generated)}</span></div></header>
     <div class="top-metrics">${summaryCards.map(([label,value,tone])=>`<div class="summary-card"><small>${escapeHtml(label)}</small><b class="${tone}">${escapeHtml(value)}</b></div>`).join('')}</div>
-    <section class="section"><div class="section-heading-row"><h2>Profit and loss · Over time</h2>${buildCurveDrawdownLabel(curve)}</div><div class="curve">${buildCurveSvg(curve, uiTheme)}</div></section>
+    <section class="section"><div class="section-heading-row"><h2>Profit and loss · Over time</h2>${buildCurveDrawdownLabel(curve)}</div><div class="curve">${buildCurveSvg(curve)}</div></section>
     <section class="dashboard-panel calendar-report-panel"><h2>Trading calendar · All active months</h2><p class="muted">Daily realized net P&amp;L and closed trade count · UTC+3</p><div class="calendar-wrap ${new Set(dailyEntries.map(([key])=>key.slice(0,7))).size===1?'single-month':''}">${buildCalendar(dailyEntries)}</div></section>
     ${performanceSections}
     <section class="page-break"><h2>Daily trade journal · All trades and chart screenshots</h2><p class="muted">${trades.length} closed trades across ${dailyEntries.length} active trading days.</p>${tradePages||'<div class="empty">No closed trades in this session.</div>'}</section>
