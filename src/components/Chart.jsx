@@ -2107,6 +2107,7 @@ export default function Chart({ chartId = 'main' }) {
               try { chartContainerRef.current?.setPointerCapture(e.pointerId); } catch (error) {}
             }}
             style={{
+              display: 'block',
               position: 'absolute',
               left: handle.x,
               top: handle.y,
