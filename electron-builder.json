@@ -20,7 +20,8 @@
         ]
       }
     ],
-    "artifactName": "TradePast.exe"
+    "artifactName": "TradePast.exe",
+    "icon": "build/tradepast.ico"
   },
   "portable": {
     "artifactName": "TradePast.exe"
