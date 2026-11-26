@@ -322,19 +322,14 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
   }, [active.pdhPdl, config.pdhPdl, rawData, currentIndex, dailyCandles, priceSeriesRef, chartReady, symbol, contractSpecs]);
 
 
+  // Session ranges always use the exact 1-minute source candles reached by
+  // replay, regardless of the chart's displayed timeframe. This prevents
+  // higher-timeframe candles that straddle session boundaries from inflating
+  // the session's high/low range or exposing unreached future data.
   const sessionCandles = useMemo(() => {
-    const candles = [...(visibleData || [])];
-    if (!liveCandle || !Number.isFinite(Number(liveCandle.time))) return candles;
-    const interval = Math.max(1, Number(timeframe) || 1) * 60;
-    const bucketTime = Math.floor(Number(liveCandle.time) / interval) * interval;
-    // Chart.jsx already supplies the replay-aggregated developing candle.
-    // Never overwrite its accumulated HTF high/low with the latest 1m OHLC.
-    if (!candles.some(candle => Number(candle.time) === bucketTime)) {
-      candles.push({ ...liveCandle, time: bucketTime });
-      candles.sort((a, b) => Number(a.time) - Number(b.time));
-    }
-    return candles;
-  }, [visibleData, liveCandle, timeframe]);
+    if (!Array.isArray(rawData) || !Number.isFinite(Number(currentIndex))) return [];
+    return rawData.slice(0, Math.max(0, Number(currentIndex) + 1));
+  }, [rawData, currentIndex]);
 
   const hourlyCandles = useMemo(() => {
     const replayCandles = (rawData || []).slice(0, Math.max(0, Number(currentIndex) + 1));
@@ -566,20 +561,28 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
         const firstDay = Date.UTC(firstDate.getUTCFullYear(), firstDate.getUTCMonth(), firstDate.getUTCDate());
         const cursorDay = Date.UTC(cursorDate.getUTCFullYear(), cursorDate.getUTCMonth(), cursorDate.getUTCDate());
 
+        const chartData = visibleData || [];
+        if (!chartData.length) return;
         const timeScale = chart.timeScale();
         const barSpacing = Math.max(1, Number(timeScale.options().barSpacing) || 6);
+        // Position the session box against actual displayed chart bars, while
+        // its vertical bounds continue to come from source 1-minute candles.
         const timeToX = timestamp => {
-          let lo = 0, hi = data.length - 1;
-          if (timestamp <= Number(data[0].time)) hi = 1;
-          else if (timestamp >= Number(data[hi].time)) lo = hi - 1;
+          let lo = 0, hi = chartData.length - 1;
+          if (timestamp <= Number(chartData[0].time)) hi = Math.min(1, chartData.length - 1);
+          else if (timestamp >= Number(chartData[hi].time)) lo = Math.max(0, hi - 1);
           else {
             while (hi - lo > 1) {
               const mid = Math.floor((lo + hi) / 2);
-              if (Number(data[mid].time) < timestamp) lo = mid;
+              if (Number(chartData[mid].time) < timestamp) lo = mid;
               else hi = mid;
             }
           }
-          const t1 = Number(data[lo].time), t2 = Number(data[hi].time);
+          if (lo === hi) {
+            const x = timeScale.timeToCoordinate(Number(chartData[lo].time));
+            return x == null || !Number.isFinite(x) ? null : x;
+          }
+          const t1 = Number(chartData[lo].time), t2 = Number(chartData[hi].time);
           const x1 = timeScale.timeToCoordinate(t1), x2 = timeScale.timeToCoordinate(t2);
           if ([x1, x2].some(value => value == null || !Number.isFinite(value)) || t2 === t1) return null;
           return x1 + (x2 - x1) * ((timestamp - t1) / (t2 - t1));
@@ -595,7 +598,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
           else if (timeAxisHeight > 0) paneHeight -= timeAxisHeight;
         } catch {}
 
-        const candleInterval = Math.max(1, Number(timeframe) || 1) * 60;
+        const candleInterval = 60; // replay cursor advances in source 1-minute candles
         ctx.save();
         ctx.beginPath();
         ctx.rect(0, 0, paneWidth, paneHeight);
@@ -642,8 +645,11 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
 
             const left = Math.max(0, Math.min(paneWidth, Math.min(x1, x2) - barSpacing / 2));
             const right = Math.max(0, Math.min(paneWidth, Math.max(x1, x2) - barSpacing / 2));
-            const top = Math.max(0, Math.min(paneHeight, Math.min(topY, bottomY)));
-            const bottom = Math.max(0, Math.min(paneHeight, Math.max(topY, bottomY)));
+            // Intersect the true price-range rectangle with the pane. Do not
+            // clamp both bounds independently: doing so stretches an off-screen
+            // high/low to the chart edge and can make a session look full-height.
+            const top = Math.max(0, Math.min(topY, bottomY));
+            const bottom = Math.min(paneHeight, Math.max(topY, bottomY));
             if (right <= left || bottom <= top) return;
 
             ctx.save();
