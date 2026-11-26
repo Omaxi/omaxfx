@@ -76,7 +76,7 @@ export default function EquityModal() {
     URL.revokeObjectURL(url);
   };
 
-  const shareText = `Check out my OmaxFX Simulator report! Return: ${pnlPercent.toFixed(2)}%, Total P&L: $${fmtMoney(currentPnl)}`;
+  const shareText = `Check out my TradePast report! Return: ${pnlPercent.toFixed(2)}%, Total P&L: $${fmtMoney(currentPnl)}`;
 
   const shareImage = async (platform) => {
     setIsCapturing(true);
@@ -87,7 +87,7 @@ export default function EquityModal() {
       const file = new File([blob], `${safeName}-simulator.png`, { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
-          await navigator.share({ files: [file], title: 'OmaxFX Simulator', text: shareText });
+          await navigator.share({ files: [file], title: 'TradePast', text: shareText });
           return;
         } catch (err) { if (err.name === 'AbortError') return; }
       }
@@ -95,7 +95,7 @@ export default function EquityModal() {
       if (platform === 'email') {
         showToast('Image saved. Opening email...');
         setTimeout(() => {
-          window.location.href = `mailto:?subject=${encodeURIComponent('My OmaxFX Simulator Report')}&body=${encodeURIComponent(shareText)}`;
+          window.location.href = `mailto:?subject=${encodeURIComponent('My TradePast Report')}&body=${encodeURIComponent(shareText)}`;
         }, 800);
       } else {
         showToast('Image saved! Open your app and attach it.');
@@ -275,7 +275,7 @@ export default function EquityModal() {
 
             <div style={{ textAlign: 'center', marginTop: '8px' }}>
               <div style={{ fontSize: '8px', color: '#6b7280' }}>
-                Session Report • OmaxFX Simulator
+                Session Report • TradePast
               </div>
             </div>
           </div>
