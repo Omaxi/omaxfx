@@ -449,6 +449,8 @@ export const useStore = create((set, get) => ({
 
   theme: { ...DEFAULT_THEME },
   setTheme: (patch) => set((state) => ({ theme: { ...state.theme, ...patch } })),
+  uiTheme: 'dark',
+  setUiTheme: (uiTheme) => set({ uiTheme: uiTheme === 'light' ? 'light' : 'dark' }),
   resetTheme: () => set({ theme: { ...DEFAULT_THEME } }),
 
   soundEnabled: true,
