@@ -795,8 +795,10 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
           { value: Number(htfViewerCandle.close), y: yClose, x: originX('closeIndex'), color, label: 'C' },
           { value: Number(htfViewerCandle.low), y: yLow, x: originX('lowIndex'), color: '#94a3b8', label: 'L' },
         ];
+        // TradingView-style fine dotted OHLC guides: exactly 1px.
         ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
+        ctx.lineCap = 'round';
+        ctx.setLineDash([1, 3]);
         levels.forEach(level => {
           // Start exactly at the source candle's right wick/body edge and
           // finish at the HTF candle's left body edge. Do not draw a detached
@@ -810,6 +812,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
           ctx.stroke();
         });
         ctx.setLineDash([]);
+        ctx.lineCap = 'butt';
         ctx.globalAlpha = 1;
 
         ctx.strokeStyle = color;
