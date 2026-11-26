@@ -28,14 +28,14 @@ export default function TradeDayModal({ date, trades, onClose, sessionId, candle
       // valid historical screenshot with a drawing-free render.
       const stored = await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
       if (trade.drawingSnapshot) {
-        const captured = renderTradeScreenshot(trade, candles, timeframe, 'dark', trade.drawingSnapshot);
+        const captured = renderTradeScreenshot(trade, candles, timeframe, trade.drawingSnapshot);
         if (captured) {
           await saveTradeScreenshot(trade.id, captured, sessionId || 'unsaved-session').catch(() => false);
           return [String(trade.id), captured];
         }
       }
       if (stored) return [String(trade.id), stored];
-      const image = renderTradeScreenshot(trade, candles, timeframe, 'dark', {});
+      const image = renderTradeScreenshot(trade, candles, timeframe, {});
       if (image) await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
       return [String(trade.id), image];
     })).then(entries => { if (active) setImages(Object.fromEntries(entries)); });
@@ -102,7 +102,7 @@ export default function TradeDayModal({ date, trades, onClose, sessionId, candle
                   </div>
                   <div className="shrink-0 flex justify-end border-t border-[#303744] p-1.5">
                     {image ? (
-                      <a href={image} download={'omaxfx-trade-' + trade.id + '.jpg'} className="inline-flex items-center gap-1 rounded bg-[#2a2e39] px-2 py-1 text-[10px] hover:bg-[#394253]"><Download size={12}/> Download screenshot</a>
+                      <a href={image} download={'tradepast-trade-' + trade.id + '.jpg'} className="inline-flex items-center gap-1 rounded bg-[#2a2e39] px-2 py-1 text-[10px] hover:bg-[#394253]"><Download size={12}/> Download screenshot</a>
                     ) : (
                       <button disabled={savingId === String(trade.id)} onClick={() => captureForTrade(trade)} className="inline-flex items-center gap-1 rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold hover:bg-blue-500 disabled:opacity-50"><Camera size={13}/>{savingId === String(trade.id) ? 'Saving screenshot…' : 'Save screenshot'}</button>
                     )}
