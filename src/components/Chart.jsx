@@ -720,9 +720,9 @@ export default function Chart({ chartId = 'main' }) {
 
         const isWin = trade.pnl >= 0;
         const resultColor = isWin ? '#26a69a' : '#ef5350';
-        const resultBgColor = isWin ? 'rgba(38, 166, 154, 0.35)' : 'rgba(239, 83, 80, 0.35)';
-        const slBgColor = 'rgba(239, 83, 80, 0.35)';
-        const tpBgColor = 'rgba(38, 166, 154, 0.35)';
+        const resultBgColor = isWin ? 'rgba(38, 166, 154, 0.20)' : 'rgba(239, 83, 80, 0.20)';
+        const slBgColor = 'rgba(239, 83, 80, 0.20)';
+        const tpBgColor = 'rgba(38, 166, 154, 0.20)';
 
         const minX = Math.min(x1, x2);
         const maxX = Math.max(x1, x2);
