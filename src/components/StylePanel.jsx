@@ -20,7 +20,7 @@ export default function StylePanel({ selectedId, onClose }) {
   const isText = drawing.type === 'text';
   const fontSize = drawing.fontSize || 14;
 
-  const supportsFill = ['rectangle', 'fibonacci', 'volumeProfile'].includes(drawing.type);
+  const supportsFill = ['rectangle', 'volumeProfile'].includes(drawing.type);
 
   const commit = (patch) => {
     snapshotDrawings();
