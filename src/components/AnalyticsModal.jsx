@@ -186,7 +186,7 @@ export default function AnalyticsModal() {
       window.alert('Please allow pop-ups for OmaxFX to export the analytics PDF.');
       return;
     }
-    printWindow.document.write('<!doctype html><title>Preparing OmaxFX report</title><body style="font:14px Arial;padding:32px;background:#0b0e11;color:#d5d9e2">Preparing your analytics report and loading trade screenshots…</body>');
+    printWindow.document.write('<!doctype html><title>Preparing OmaxFX report</title><body style="font:14px Arial;padding:32px;background:${uiTheme === 'light' ? '#ffffff' : '#0b0e11'};color:${uiTheme === 'light' ? '#344054' : '#d5d9e2'}">Preparing your analytics report and loading trade screenshots…</body>');
     setIsExportingPdf(true);
     try {
       const screenshots = {};
@@ -194,13 +194,13 @@ export default function AnalyticsModal() {
         const key = String(trade.id);
         // Prefer the immutable image captured at trade close; later drawing edits
         // must not rewrite the historical journal screenshot.
-        const saved = await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
-        const image = saved || renderTradeScreenshot(trade, screenshotCandles, timeframe, 'dark', {
+        const saved = uiTheme === 'light' ? null : await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
+        const image = saved || renderTradeScreenshot(trade, screenshotCandles, timeframe, uiTheme, {
           drawings: trade.drawingSnapshot?.drawings || [],
           chartDrawings: trade.drawingSnapshot?.chartDrawings || {},
           pencilStrokes: trade.drawingSnapshot?.pencilStrokes || [],
         });
-        if (!saved && image) await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
+        if (uiTheme !== 'light' && !saved && image) await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
         if (image) screenshots[key] = image;
       }));
       const metrics = {
@@ -225,6 +225,7 @@ export default function AnalyticsModal() {
         dailyEntries,
         curve,
         screenshots,
+        uiTheme,
       });
       writeAnalyticsPrintWindow(printWindow, html);
     } catch (error) {
