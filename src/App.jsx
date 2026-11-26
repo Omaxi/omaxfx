@@ -23,6 +23,40 @@ import { Info, Sparkles, AlertTriangle, LogOut, Square, Columns2 } from 'lucide-
 
 function ThreeChartLayoutIcon({ size = 14 }) { return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1" y="1" width="5.5" height="14" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="9.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/></svg>; }
 
+function startWithLatestHistoricalDay(state) {
+  const data = state.allRawDataBySymbol?.[state.symbol] || state.allRawData || [];
+  if (!Array.isArray(data) || data.length < 2) {
+    state.openPeriodModal();
+    return;
+  }
+
+  // Choose the latest UTC+3 market day containing at least two candles.
+  // startGame automatically prepends the complete preceding market day as
+  // read-only chart context, leaving the replay cursor at the selected day.
+  const dayBuckets = new Map();
+  for (const candle of data) {
+    const time = Number(candle.time);
+    if (!Number.isFinite(time)) continue;
+    const dayStart = Math.floor((time + 3 * 3600) / 86400) * 86400 - 3 * 3600;
+    const bucket = dayBuckets.get(dayStart) || { first: time, last: time, count: 0 };
+    bucket.first = Math.min(bucket.first, time);
+    bucket.last = Math.max(bucket.last, time);
+    bucket.count += 1;
+    dayBuckets.set(dayStart, bucket);
+  }
+
+  const selected = [...dayBuckets.entries()]
+    .filter(([, bucket]) => bucket.count >= 2)
+    .sort((a, b) => b[0] - a[0])[0];
+  if (!selected) {
+    state.openPeriodModal();
+    return;
+  }
+
+  const [from, bucket] = selected;
+  state.startGame(from, bucket.last, state.rules);
+}
+
 function App() {
   const { 
     isPlaying, stepForward, currentIndex, rawData, replaySpeed, balance, positions, 
@@ -93,7 +127,7 @@ function App() {
       const state = useStore.getState();
       if (state.allRawData?.length > 1) {
         state.setLoadingState({ isActive: false, loaded: 0, total: 0, error: null });
-        state.openPeriodModal();
+        startWithLatestHistoricalDay(state);
         return;
       }
 
@@ -125,6 +159,7 @@ function App() {
           quoteToAccountRate: 1,
         });
         useStore.getState().setLoadingState({ isActive: false, loaded: 100, total: 100, error: null });
+        startWithLatestHistoricalDay(useStore.getState());
       } catch (error) {
         if (cancelled) return;
         console.error('[startup] Unable to load bundled XAUUSD data:', error);
