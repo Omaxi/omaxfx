@@ -1243,6 +1243,35 @@ export default function Chart({ chartId = 'main' }) {
         return;
       }
 
+      // Rectangles can be moved directly from their filled interior with a
+      // single click-drag. Corner hits on an already-selected rectangle are
+      // still handled by the selected-item path below as resize-corner.
+      if (drawingHit?.mode === 'drag-body') {
+        const hitDrawing = state.drawings.find(d => d.id === drawingHit.drawingId);
+        if (hitDrawing?.type === 'rectangle') {
+          const point = xyToPoint(x, y);
+          if (point) {
+            e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+            snapshotDrawings();
+            const drawingSelection = { type: 'drawing', id: hitDrawing.id };
+            selectedItemRef.current = drawingSelection;
+            setSelectedItem(drawingSelection);
+            dragRef.current = {
+              type: 'drawing',
+              drawingType: hitDrawing.type,
+              ...drawingHit,
+              startMouse: point,
+              startScreen: { x, y },
+              originalPoints: hitDrawing.points.map(p => ({ ...p })),
+            };
+            lockChart(true);
+            try { container.setPointerCapture(e.pointerId); } catch (error) {}
+            lastTapRef.current = { time: now, x, y };
+            return;
+          }
+        }
+      }
+
       if (sel) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
 
