@@ -15,8 +15,8 @@ export default function InfoModal() {
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-base font-bold">
-                <span className="text-blue-500">Omax</span>
-                <span className="text-white">FX Simulator</span>
+                <span className="text-blue-500">Trade</span>
+                <span className="text-white">Past</span>
               </h2>
               <p className="text-[10px] text-gray-500 italic">Trading Replay Engine</p>
             </div>
@@ -105,7 +105,7 @@ export default function InfoModal() {
           </Section>
 
           <div className="text-center text-[10px] text-gray-500 pt-2 border-t border-[#2a2e39]">
-            OmaxFX Simulator • v1.0
+            TradePast • v1.0
           </div>
         </div>
       </div>
