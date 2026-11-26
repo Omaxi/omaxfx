@@ -1,0 +1,70 @@
+name: Build TradePast Windows Desktop
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tradepast-desktop-build
+  cancel-in-progress: false
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout latest TradePast source
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install web app dependencies
+        run: npm ci
+
+      - name: Run application tests
+        run: npm test
+
+      - name: Install desktop packaging tools
+        run: npm install --no-save electron@latest electron-builder@latest
+
+      - name: Build desktop-ready web application
+        shell: pwsh
+        run: |
+          $env:TRADEPAST_DESKTOP = '1'
+          npm run build
+
+      - name: Package standalone TradePast.exe
+        run: npx electron-builder --win portable --x64 --config electron-builder.json
+
+      - name: Verify executable
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'release/TradePast.exe')) { throw 'TradePast.exe was not produced' }
+          $file = Get-Item 'release/TradePast.exe'
+          if ($file.Length -lt 50000000) { throw 'TradePast.exe is unexpectedly small' }
+          Write-Host "Verified $($file.Name) ($($file.Length) bytes)"
+
+      - name: Upload executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TradePast-Windows-x64
+          path: release/TradePast.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish direct download release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: tradepast-desktop-build-${{ github.run_number }}
+          name: TradePast Desktop Build ${{ github.run_number }}
+          target_commitish: main
+          files: release/TradePast.exe
+          fail_on_unmatched_files: true
+          make_latest: true
