@@ -662,7 +662,7 @@ export const useStore = create((set, get) => ({
     const realizedPartialPnl = Number(pos.realizedPnl) || 0;
     const pnl = realizedPartialPnl + remainingPnl;
     if (state.soundEnabled) playPositionClosed();
-    const newBalance = state.balance + pnl;
+    const newBalance = state.balance + remainingPnl;
     const newPeak = Math.max(state.peakBalance, newBalance);
     const violation = checkRuleViolations(state, newBalance, newPeak, state.dailyLoss);
     const newGameState = violation
