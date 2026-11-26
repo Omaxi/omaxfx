@@ -29,8 +29,8 @@ export default function InfoModal() {
         <div className="overflow-y-auto flex-1 p-3 space-y-3 text-[11px] text-gray-300 leading-relaxed">
           
           <Section icon={<Sparkles size={12}/>} title="What is this?">
-            A professional replay and trading simulator for XAUUSD. Replay historical
-            markets, place trades with realistic rules, test strategies, and analyze performance.
+            A professional replay and trading simulator for forex, commodities, indices, and other supported markets. Replay historical
+            price data, place trades with realistic rules, test strategies, and analyze performance.
           </Section>
 
           <Section icon={<Play size={12}/>} title="Playback">
