@@ -1,0 +1,28 @@
+{
+  "appId": "com.tradepast.desktop",
+  "productName": "TradePast",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist/**/*",
+    "electron/main.cjs",
+    "package.json"
+  ],
+  "asar": true,
+  "compression": "maximum",
+  "win": {
+    "target": [
+      {
+        "target": "portable",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "artifactName": "TradePast.exe"
+  },
+  "portable": {
+    "artifactName": "TradePast.exe"
+  }
+}
