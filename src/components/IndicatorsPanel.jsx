@@ -618,8 +618,8 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
           ctx.fillRect(left, top, right - left, boxHeight);
           if (sessionLabelsVisible) {
             ctx.save();
-            ctx.globalAlpha = 0.24;
-            ctx.font = '600 10px Arial';
+            ctx.globalAlpha = 0.10;
+            ctx.font = '600 9px Arial';
             ctx.textAlign = 'center';
             ctx.fillStyle = item.color;
             ctx.fillText(item.label, Math.max(36, Math.min(paneWidth - 36, (left + right) / 2)), Math.max(11, top - 5));
