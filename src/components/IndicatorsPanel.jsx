@@ -795,24 +795,22 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
           { value: Number(htfViewerCandle.close), y: yClose, x: originX('closeIndex'), color, label: 'C' },
           { value: Number(htfViewerCandle.low), y: yLow, x: originX('lowIndex'), color: '#94a3b8', label: 'L' },
         ];
-        // TradingView-style fine dotted OHLC guides: exactly 1px.
-        ctx.lineWidth = 1;
-        ctx.lineCap = 'round';
-        ctx.setLineDash([1, 3]);
+        // Render literal 1x1 CSS-pixel dots instead of Canvas dash patterns.
+        // Dashed strokes can be antialiased into long-looking segments at
+        // fractional Y coordinates or non-1 device-pixel ratios. Integer
+        // pixel dots keep the HTF guides visibly dotted at every zoom level.
         levels.forEach(level => {
           // Start exactly at the source candle's right wick/body edge and
           // finish at the HTF candle's left body edge. Do not draw a detached
           // stub if the originating candle is outside the visible viewport.
           if (level.x == null || level.x >= guideEndX) return;
-          ctx.strokeStyle = level.color;
+          ctx.fillStyle = level.color;
           ctx.globalAlpha = 0.82;
-          ctx.beginPath();
-          ctx.moveTo(level.x, level.y);
-          ctx.lineTo(guideEndX, level.y);
-          ctx.stroke();
+          const dotY = Math.round(level.y);
+          for (let dotX = Math.ceil(level.x); dotX <= guideEndX; dotX += 4) {
+            ctx.fillRect(dotX, dotY, 1, 1);
+          }
         });
-        ctx.setLineDash([]);
-        ctx.lineCap = 'butt';
         ctx.globalAlpha = 1;
 
         ctx.strokeStyle = color;
