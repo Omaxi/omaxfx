@@ -15,16 +15,25 @@
   "win": {
     "target": [
       {
-        "target": "portable",
+        "target": "nsis",
         "arch": [
           "x64"
         ]
       }
     ],
-    "artifactName": "TradePast.exe",
+    "artifactName": "TradePast-Setup.exe",
     "icon": "build/tradepast.ico"
   },
-  "portable": {
-    "artifactName": "TradePast.exe"
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "TradePast",
+    "uninstallDisplayName": "TradePast",
+    "installerIcon": "build/tradepast.ico",
+    "uninstallerIcon": "build/tradepast.ico",
+    "installerHeaderIcon": "build/tradepast.ico"
   }
 }
