@@ -84,13 +84,17 @@ const DEFAULT_THEME = {
   upWick: '#0897a7',
   downWick: '#59616e',
 };
-const DEFAULT_SESSION_COLORS = { asia: '#737373', london: '#38bdf8', newyork: '#fb7185' };
+const DEFAULT_SESSION_COLORS = { asia: '#737373', london: '#38bdf8', newyork: '#f59e0b' };
 export const DEFAULT_SESSION_TIMES = { asian: 3, london: 11, newyork: 16 };
 export const DEFAULT_SESSION_END_TIMES = { asian: 8, london: 13, newyork: 18 };
 const DEFAULT_DRAWING_STYLES = {
   vertical: { color: '#3b82f6', lineWidth: 1, lineStyle: 'solid' },
   horizontal: { color: '#3b82f6', lineWidth: 1, lineStyle: 'solid' },
-  trendline: { color: '#3b82f6', lineWidth: 1, lineStyle: 'solid' },
+  trendline: { color: '#3b82f6', borderColor: '#3b82f6', lineWidth: 1, lineStyle: 'solid' },
+  arrow: { color: '#3b82f6', borderColor: '#3b82f6', lineWidth: 1, lineStyle: 'solid' },
+  rectangle: { color: '#3b82f6', borderColor: '#3b82f6', fillColor: '#3b82f633', lineWidth: 1, showBorder: false },
+  fibonacci: { color: '#3b82f6', borderColor: '#3b82f6', fillColor: '#00000000', lineWidth: 1, showBorder: false, levels: [0, 0.5, 1] },
+  text: { color: '#ffffff', borderColor: '#ffffff', fontSize: 14 },
 };
 
 const DEFAULT_RULES = {
@@ -134,6 +138,8 @@ export const useStore = create((set, get) => ({
   sessionTimes: { ...DEFAULT_SESSION_TIMES },
   sessionEndTimes: { ...DEFAULT_SESSION_END_TIMES },
   sessionColors: { ...DEFAULT_SESSION_COLORS },
+  sessionLabelsVisible: false,
+  setSessionLabelsVisible: (visible) => set({ sessionLabelsVisible: !!visible }),
   setSessionColor: (key, color) => set((state) => ({
     sessionColors: { ...state.sessionColors, [key]: color },
   })),
@@ -141,6 +147,10 @@ export const useStore = create((set, get) => ({
     vertical: { ...DEFAULT_DRAWING_STYLES.vertical },
     horizontal: { ...DEFAULT_DRAWING_STYLES.horizontal },
     trendline: { ...DEFAULT_DRAWING_STYLES.trendline },
+    arrow: { ...DEFAULT_DRAWING_STYLES.arrow },
+    rectangle: { ...DEFAULT_DRAWING_STYLES.rectangle },
+    fibonacci: { ...DEFAULT_DRAWING_STYLES.fibonacci },
+    text: { ...DEFAULT_DRAWING_STYLES.text },
   },
   setDrawingStyle: (key, patch) => set((state) => ({
     drawingStyles: { ...state.drawingStyles, [key]: { ...state.drawingStyles[key], ...patch } },
@@ -150,6 +160,9 @@ export const useStore = create((set, get) => ({
       ...(patch.lineWidth != null ? { lineWidth: patch.lineWidth } : {}),
       ...(patch.lineStyle ? { lineStyle: patch.lineStyle } : {}),
     } : d),
+  })),
+  setDrawingToolStyle: (key, patch) => set((state) => ({
+    drawingStyles: { ...state.drawingStyles, [key]: { ...state.drawingStyles[key], ...patch } },
   })),
 
   setSessionTime: (key, hour) => set((state) => ({
@@ -366,19 +379,18 @@ export const useStore = create((set, get) => ({
   }),
 
   addDrawing: (drawing) => set((state) => {
-    const newDrawing = { 
-      ...drawing, 
+    const toolStyle = state.drawingStyles?.[drawing.type] || {};
+    const newDrawing = {
+      ...drawing,
       id: Date.now() + Math.random(),
-      color: drawing.color || '#3b82f6',
-      borderColor: drawing.borderColor || drawing.color || '#3b82f6',
-      fillColor: drawing.fillColor || '#3b82f633',
-      lineWidth: drawing.lineWidth ?? state.drawingStyles?.[drawing.type]?.lineWidth ?? 1,
-      lineStyle: drawing.lineStyle ?? state.drawingStyles?.[drawing.type]?.lineStyle ?? 'solid',
-      ...(drawing.type === 'vertical' || drawing.type === 'horizontal' || drawing.type === 'trendline'
-        ? { color: state.drawingStyles?.[drawing.type]?.color || drawing.color || '#3b82f6',
-            borderColor: state.drawingStyles?.[drawing.type]?.color || drawing.borderColor || drawing.color || '#3b82f6' }
-        : {}),
-      showBorder: drawing.showBorder === true,
+      color: drawing.color || toolStyle.color || '#3b82f6',
+      borderColor: drawing.borderColor || toolStyle.borderColor || drawing.color || toolStyle.color || '#3b82f6',
+      fillColor: drawing.type === 'fibonacci' ? '#00000000' : (drawing.fillColor || toolStyle.fillColor || '#3b82f633'),
+      ...(drawing.type === 'fibonacci' ? { levels: Array.isArray(drawing.levels) ? drawing.levels : (toolStyle.levels || [0, 0.5, 1]) } : {}),
+      ...(drawing.type === 'text' ? { fontSize: drawing.fontSize || toolStyle.fontSize || 14 } : {}),
+      lineWidth: drawing.lineWidth ?? toolStyle.lineWidth ?? 1,
+      lineStyle: drawing.lineStyle ?? toolStyle.lineStyle ?? 'solid',
+      showBorder: drawing.showBorder ?? toolStyle.showBorder ?? false,
       symbol: state.symbol,
       timeframe: state.timeframe,
     };
@@ -443,6 +455,8 @@ export const useStore = create((set, get) => ({
   chartOptions: { gridVisible: true, lastPriceLineVisible: true, crosshairVerticalVisible: false, crosshairHorizontalVisible: false },
   setChartOptions: (patch) => set((state) => ({ chartOptions: { ...state.chartOptions, ...patch } })),
 
+  uiTheme: 'dark',
+  setUiTheme: (uiTheme) => set({ uiTheme: uiTheme === 'light' ? 'light' : 'dark' }),
   theme: { ...DEFAULT_THEME },
   setTheme: (patch) => set((state) => ({ theme: { ...state.theme, ...patch } })),
   resetTheme: () => set({ theme: { ...DEFAULT_THEME } }),
@@ -468,6 +482,21 @@ export const useStore = create((set, get) => ({
 
     const filtered = symbolData.filter(c => c.time >= from && c.time <= to);
 
+    // Keep one complete previous UTC+3 market day on the chart as drawing
+    // context. The replay cursor begins at the first candle in the chosen period.
+    const selectedMarketDayStart = Math.floor((Number(from) + 3 * 3600) / 86400) * 86400 - 3 * 3600;
+    let previousTradingDayKey = null;
+    for (let i = symbolData.length - 1; i >= 0; i--) {
+      if (Number(symbolData[i].time) < selectedMarketDayStart) {
+        previousTradingDayKey = getDayKey(symbolData[i].time);
+        break;
+      }
+    }
+    const contextCandles = previousTradingDayKey
+      ? symbolData.filter(c => getDayKey(c.time) === previousTradingDayKey)
+      : [];
+    const replayData = [...contextCandles, ...filtered];
+
     if (filtered.length < 2) {
       console.warn(`[startGame] period contains ${filtered.length} candle(s); need >= 2. From=${from} To=${to}`);
       return state;
@@ -476,14 +505,14 @@ export const useStore = create((set, get) => ({
     const startBal = rules.startingBalance;
     const startDay = filtered[0] ? getDayKey(filtered[0].time) : null;
     return {
-      rawData: filtered,
-      displayData: aggregateData(filtered, state.timeframe),
+      rawData: replayData,
+      displayData: aggregateData(replayData, state.timeframe),
       gamePeriod: { from, to },
       gameStarted: true,
       isPeriodModalOpen: false,
       rules: { ...rules, propFirmEnabled: rules.propFirmEnabled !== false },
       sessionId: null,
-      currentIndex: 0,
+      currentIndex: contextCandles.length,
       isPlaying: false,
       balance: startBal,
       positions: [],

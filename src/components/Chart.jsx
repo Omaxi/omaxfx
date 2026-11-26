@@ -98,31 +98,28 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, isSelected) => {
     ctx.fillRect(x, y, w, h);
     if (showBorder) ctx.strokeRect(x, y, w, h);
   } else if (drawing.type === 'fibonacci' && pts.length === 2) {
-    const levels = [0, 0.5, 0.618, 0.764, 1];
+    const levels = (Array.isArray(drawing.levels) ? drawing.levels : [0, 0.5, 1])
+      .map(Number).filter(level => Number.isFinite(level) && level >= 0 && level <= 1)
+      .sort((a, b) => a - b);
     const y1 = pts[0].y, y2 = pts[1].y;
     const x1 = pts[0].x, x2 = pts[1].x;
     const xMin = Math.min(x1, x2);
     const xMax = Math.max(x1, x2);
-    ctx.fillStyle = fillColor;
-    ctx.fillRect(xMin, Math.min(y1, y2), xMax - xMin, Math.abs(y2 - y1));
+    // Fibonacci retracements use clean 1px levels with no background fill.
     levels.forEach(level => {
-      if (!showBorder) return;
       const y = y1 + (y2 - y1) * level;
-      const isKey = level === 0.5 || level === 0.618;
       ctx.beginPath();
-      ctx.strokeStyle = isKey ? borderColor : borderColor + 'aa';
-      ctx.setLineDash(isKey ? [] : [3, 3]);
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([]);
       ctx.moveTo(xMin, y);
       ctx.lineTo(xMax, y);
       ctx.stroke();
-      ctx.setLineDash([]);
       ctx.fillStyle = borderColor;
       ctx.font = 'bold 10px monospace';
-      const pct = (level * 100).toFixed(1);
       const price = drawing.points[0].price + (drawing.points[1].price - drawing.points[0].price) * level;
-      ctx.fillText(`${pct}%  ${price.toFixed(getPricePrecision(useStore.getState().symbol, useStore.getState().contractSpecs))}`, xMax + 4, y + 3);
+      ctx.fillText(`${Number(level.toFixed(4))}  ${price.toFixed(getPricePrecision(useStore.getState().symbol, useStore.getState().contractSpecs))}`, xMax + 4, y + 3);
     });
-
   }
 
   if (isSelected) {
