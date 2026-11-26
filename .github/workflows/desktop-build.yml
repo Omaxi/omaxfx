@@ -44,7 +44,7 @@ jobs:
           npm run build
 
       - name: Build Windows installer
-        run: npx electron-builder --win nsis --x64 --config electron-builder.json
+        run: npx electron-builder --win nsis --x64 --config electron-builder.json --publish never
 
       - name: Verify installer
         shell: pwsh
