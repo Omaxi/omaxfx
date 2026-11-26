@@ -177,14 +177,15 @@ export default function AnalyticsModal() {
   const streakText = latestTrade ? (latestTrade.pnl > 0 ? 'Winning' : latestTrade.pnl < 0 ? 'Losing' : 'Flat') : 'No streak';
 
   const exportAnalyticsPdf = async () => {
-    // Open synchronously in the click handler to avoid popup blockers while
-    // screenshot images are being loaded from IndexedDB.
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      window.alert('Please allow pop-ups to export the analytics PDF.');
+    // The installed desktop app uses Electron's native Save As dialog.
+    // Keep the print-window fallback for browser/PWA users.
+    const isDesktop = Boolean(window.tradePastDesktop?.isElectron);
+    const printWindow = isDesktop ? null : window.open('', '_blank');
+    if (!isDesktop && !printWindow) {
+      window.alert('The report window was blocked. Allow pop-ups or use the installed desktop app to save the PDF directly.');
       return;
     }
-    printWindow.document.write('<!doctype html><title>Preparing TradePast report</title><body style="font:14px Arial;padding:32px;background:#0b0e11;color:#d5d9e2">Preparing your analytics report and loading trade screenshots…</body>');
+    if (printWindow) printWindow.document.write('<!doctype html><title>Preparing TradePast report</title><body style="font:14px Arial;padding:32px;background:#0b0e11;color:#d5d9e2">Preparing your analytics report and loading trade screenshots…</body>');
     setIsExportingPdf(true);
     try {
       const screenshots = {};
@@ -224,10 +225,15 @@ export default function AnalyticsModal() {
         curve,
         screenshots,
       });
-      writeAnalyticsPrintWindow(printWindow, html);
+      if (isDesktop) {
+        const result = await window.tradePastDesktop.exportAnalyticsPdf(html);
+        if (!result?.canceled) window.alert('Analytics PDF saved successfully.');
+      } else {
+        writeAnalyticsPrintWindow(printWindow, html);
+      }
     } catch (error) {
-      printWindow.close();
-      window.alert('The analytics PDF could not be prepared. Please try again.');
+      if (printWindow && !printWindow.closed) printWindow.close();
+      window.alert(error?.message || 'The analytics PDF could not be prepared. Please try again.');
       console.error('Analytics PDF export failed:', error);
     } finally {
       setIsExportingPdf(false);
