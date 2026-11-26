@@ -260,6 +260,9 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
   const fvgCanvasRef = useRef(null);
   const htfCandleCanvasRef = useRef(null);
   const sessionColors = useStore(state => state.sessionColors);
+  const sessionLabelsVisible = useStore(state => state.sessionLabelsVisible);
+  const setSessionLabelsVisible = useStore(state => state.setSessionLabelsVisible);
+  const setSessionColor = useStore(state => state.setSessionColor);
   const symbol = useStore(state => state.symbol);
   const allRawData = useStore(state => state.allRawData);
   const dailyCandles = useMemo(() => aggregateData(allRawData || [], 1440), [allRawData]);
@@ -553,7 +556,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
         const defs = [
           { key: 'asia', label: 'Asian', color: sessionColors?.asia || '#f59e0b' },
           { key: 'london', label: 'London', color: sessionColors?.london || '#38bdf8' },
-          { key: 'newyork', label: 'New York', color: sessionColors?.newyork || '#fb7185' },
+          { key: 'newyork', label: 'New York', color: sessionColors?.newyork || '#f59e0b' },
         ];
         const defsByKey = Object.fromEntries(defs.map(def => [def.key, def]));
         const groups = new Map();
@@ -611,12 +614,17 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
           const bottom = Math.min(paneHeight, Math.max(y1, y2));
           if (right <= left || bottom <= top) return;
           const boxHeight = Math.max(3, bottom - top);
-          ctx.fillStyle = item.color + '18';
+          ctx.fillStyle = item.color + '0c';
           ctx.fillRect(left, top, right - left, boxHeight);
-          ctx.font = '600 10px Arial';
-          ctx.textAlign = 'center';
-          ctx.fillStyle = item.color;
-          ctx.fillText(item.label, Math.max(36, Math.min(paneWidth - 36, (left + right) / 2)), Math.max(11, top - 5));
+          if (sessionLabelsVisible) {
+            ctx.save();
+            ctx.globalAlpha = 0.24;
+            ctx.font = '600 10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = item.color;
+            ctx.fillText(item.label, Math.max(36, Math.min(paneWidth - 36, (left + right) / 2)), Math.max(11, top - 5));
+            ctx.restore();
+          }
         });
         ctx.restore();
       });
@@ -644,7 +652,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
       window.removeEventListener('wheel', draw);
       observer.disconnect();
     };
-  }, [active.sessions, chartRef, chartReady, sessionCandles, timeframe, sessionColors]);
+  }, [active.sessions, chartRef, chartReady, sessionCandles, timeframe, sessionColors, sessionLabelsVisible]);
 
   // Include the developing HTF candle's full range in the chart autoscale.
   // The transparent one-point series contributes only the requested price range.
@@ -1008,9 +1016,25 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
               </button>
             ))}
           </div>
-          {selected.some(item => ['ma', 'bb', 'rsi', 'atr', 'adx', 'fvg', 'htfCandleViewer', 'pdhPdl'].includes(item.key)) && (
+          {selected.some(item => ['ma', 'bb', 'rsi', 'atr', 'adx', 'fvg', 'htfCandleViewer', 'pdhPdl', 'sessions'].includes(item.key)) && (
             <div className="mt-2 border-t border-[#2a2e39] pt-2">
               <div className="mb-1 flex items-center gap-1 text-[10px] font-bold text-gray-400"><Settings2 size={11}/> Indicator instances</div>
+              {selected.some(item => item.key === 'sessions') && <div className="mb-2 rounded bg-[#1e222d] p-2">
+                <div className="mb-2 text-[10px] font-semibold text-white">Session Ranges</div>
+                <label className="mb-2 flex items-center gap-2 text-[10px] text-gray-300">
+                  <input type="checkbox" checked={sessionLabelsVisible} onChange={event => setSessionLabelsVisible(event.target.checked)} className="accent-blue-500"/>
+                  Show session labels
+                </label>
+                {[
+                  ['asia', 'Asia'],
+                  ['london', 'London'],
+                  ['newyork', 'New York'],
+                ].map(([key, label]) => <label key={key} className="mb-1 flex items-center justify-between gap-2 text-[10px] text-gray-300">
+                  <span>{label} range color</span>
+                  <input aria-label={label + ' session range color'} type="color" value={sessionColors?.[key] || '#64748b'} onChange={event => setSessionColor(key, event.target.value)} className="h-6 w-8 cursor-pointer bg-transparent"/>
+                </label>)}
+                <p className="mt-1 text-[9px] leading-4 text-gray-500">Labels are hidden by default. Range colors are saved automatically.</p>
+              </div>}
               {selected.some(item => item.key === 'pdhPdl') && <div className="mb-2 rounded bg-[#1e222d] p-2">
                 <div className="mb-2 text-[10px] font-semibold text-white">Previous Daily Levels</div>
                 {[
