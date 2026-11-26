@@ -2070,6 +2070,7 @@ export default function Chart({ chartId = 'main' }) {
             type="button"
             aria-label={`Resize rectangle ${handle.key}`}
             title={`Drag to extend rectangle ${handle.key}`}
+            data-handle-tick={drawingHandleTick}
             onPointerDown={e => {
               if (e.button !== 0) return;
               e.preventDefault();
