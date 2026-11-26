@@ -313,7 +313,7 @@ function App() {
               className="h-9 w-12 object-contain"
               draggable="false"
             />
-            <span className="hidden sm:inline text-sm font-bold tracking-wider"><span className="text-gray-400">Trade</span><span className="text-white">Past</span></span>
+            <span className="hidden sm:inline text-sm font-bold tracking-wider"><span className="text-gray-400/45">Trade</span><span className="text-white font-extrabold drop-shadow-[0_0_5px_rgba(255,255,255,0.4)]">Past</span></span>
           </h1>
           {positions.length > 0 && (
             <span className="bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded text-[10px] font-bold hidden md:inline">
