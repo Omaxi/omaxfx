@@ -241,8 +241,8 @@ export default function AnalyticsModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-[300] bg-[#0b0e11] p-1.5 sm:p-2" onClick={closeAnalytics}>
-      <div className="h-full w-full overflow-hidden rounded-lg border border-[#2a2e39] bg-[#131722] text-white flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="analytics-modal-overlay fixed inset-0 z-[300] bg-[#0b0e11] p-1.5 sm:p-2" onClick={closeAnalytics}>
+      <div className="analytics-modal-shell h-full w-full overflow-hidden rounded-lg border border-[#2a2e39] bg-[#131722] text-white flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="h-8 shrink-0 flex items-center justify-between px-3 border-b border-[#2a2e39]">
           <div className="flex items-center gap-2 text-xs font-bold"><BarChart3 size={14} className="text-blue-400"/> TradePast <span className="text-gray-400 font-medium">Performance analytics</span></div>
           <div className="flex items-center gap-2">
