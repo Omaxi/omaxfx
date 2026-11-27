@@ -174,7 +174,7 @@ export default function OrderModal() {
     }
 
     return { errors, isValid: errors.length === 0, effectiveEntry };
-  }, [orderSide, entryPrice, slPrice, tpPrice, orderType, currentPrice, riskPercent, maxRisk, riskReward, propFirmEnabled, positions, pendingOrders, breakevenEnabled, breakevenTriggerR, partialTakeProfitEnabled, partialTriggerR, partialClosePercent]);
+  }, [orderSide, entryPrice, slPrice, tpPrice, orderType, currentPrice, riskPercent, maxRisk, riskReward, propFirmEnabled, breakevenEnabled, breakevenTriggerR, partialTakeProfitEnabled, partialTriggerR, partialClosePercent]);
 
   const { estimatedLoss, estimatedProfit } = useMemo(() => {
     const entry = validation.effectiveEntry;
