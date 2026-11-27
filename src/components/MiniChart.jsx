@@ -103,7 +103,7 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
       width: container.clientWidth,
       height: container.clientHeight,
       layout: { background: { type: 'solid', color: uiTheme === 'light' ? '#f8fafc' : (theme?.background || '#171a27') }, textColor: uiTheme === 'light' ? '#475467' : '#6b7280', fontSize: 10, attributionLogo: false },
-      grid: { vertLines: { visible: true, color: '#202433' }, horzLines: { visible: true, color: '#202433' } },
+      grid: { vertLines: { visible: true, color: uiTheme === 'light' ? '#e2e8f0' : '#202433' }, horzLines: { visible: true, color: uiTheme === 'light' ? '#e2e8f0' : '#202433' } },
       rightPriceScale: { borderVisible: false },
       timeScale: { timeVisible: true, secondsVisible: false, borderVisible: false, rightOffset: 3, tickMarkFormatter: (time, type) => formatMarketTick(time, type) },
       localization: { timeFormatter: time => formatMarketDateTime(time) },
@@ -113,10 +113,10 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
     lastTimeframeRef.current = null;
     const state = useStore.getState();
     const series = chart.addSeries(CandlestickSeries, {
-      upColor: theme?.upBody || '#0897a7',
-      downColor: theme?.downBody || '#59616e',
-      wickUpColor: theme?.upWick || '#0897a7',
-      wickDownColor: theme?.downWick || '#59616e',
+      upColor: uiTheme === 'light' ? '#16a34a' : (theme?.upBody || '#0897a7'),
+      downColor: uiTheme === 'light' ? '#ef4444' : (theme?.downBody || '#59616e'),
+      wickUpColor: uiTheme === 'light' ? '#16a34a' : (theme?.upWick || '#0897a7'),
+      wickDownColor: uiTheme === 'light' ? '#ef4444' : (theme?.downWick || '#59616e'),
       borderVisible: false,
       priceLineVisible: false,
       priceFormat: { type: 'price', precision: getPricePrecision(symbol, state.contractSpecs), minMove: getPriceTickSize(symbol, state.contractSpecs) },
