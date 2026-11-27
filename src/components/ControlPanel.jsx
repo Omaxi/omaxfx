@@ -29,10 +29,6 @@ const SYMBOLS = [
   { code: 'GBPAUD', source: 'Dukascopy', available: false },
 ];
 
-const TIMEZONES = [
-  { code: 'UTC+3', label: 'UTC+3 (project data timezone)' },
-];
-
 const SESSIONS = [
   { key: 'asian',   label: 'Asia', icon: Sunrise, color: 'text-orange-400' },
   { key: 'london',  label: 'London',   icon: Sun,     color: 'text-blue-400' },
@@ -43,13 +39,11 @@ export default function ControlPanel() {
   const { 
     setTimeframe, timeframe, openOrderModal, isPlaying, togglePlay, stepForward,
     startDrawing, isDrawingMode, drawingStep, draftPosition, clearDraft,
-    symbol, setSymbol, timezone, setTimezone,
+    symbol, timezone,
     sessionTimes, sessionEndTimes, setSessionTime, setSessionEndTime, jumpToSession,
-    chartType, setChartType, allRawDataBySymbol, replaySpeed, setReplaySpeed
+    chartType, setChartType, replaySpeed, setReplaySpeed
   } = useStore();
 
-  const [symbolOpen, setSymbolOpen] = useState(false);
-  const [tzOpen, setTzOpen] = useState(false);
   const [tfOpen, setTfOpen] = useState(false);
   const [jumpOpen, setJumpOpen] = useState(false);
   const [ctOpen, setCtOpen] = useState(false);
@@ -74,7 +68,7 @@ export default function ControlPanel() {
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') {
-        setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false); setSpeedOpen(false);
+        setTfOpen(false); setJumpOpen(false); setCtOpen(false); setSpeedOpen(false);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -82,7 +76,7 @@ export default function ControlPanel() {
   }, []);
 
   const closeAll = () => { 
-    setSymbolOpen(false); setTzOpen(false); setTfOpen(false); setJumpOpen(false); setCtOpen(false); setSpeedOpen(false);
+    setTfOpen(false); setJumpOpen(false); setCtOpen(false); setSpeedOpen(false);
   };
 
   const handleMarketOrder = (side) => {
@@ -102,9 +96,6 @@ export default function ControlPanel() {
     setMarketOrderWarning('');
     openOrderModal(side);
   };
-  const toggleSymbol = () => { const o = !symbolOpen; closeAll(); setSymbolOpen(o); };
-  const toggleTz = () => { const o = !tzOpen; closeAll(); setTzOpen(o); };
-  
   const toggleTf = () => {
     const o = !tfOpen;
     if (o && tfButtonRef.current) {
@@ -146,75 +137,6 @@ export default function ControlPanel() {
   };
 
   const tfLabel = TIMEFRAMES.find(t => t.value === timeframe)?.label || '1 min';
-  const symbolChoices = [...SYMBOLS.filter(s => allRawDataBySymbol[s.code]?.length), ...Object.keys(allRawDataBySymbol).filter(code => !SYMBOLS.some(s => s.code === code)).map(code => ({ code, source: 'Imported', available: true }))];
-
-  const SymbolDropdown = () => (
-    <>
-      <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
-      <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[240px] overflow-hidden" style={{ zIndex: 9999, left: 8, bottom: 52 }}>
-        <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide flex justify-between items-center">
-          <span>Choose Symbol</span>
-          <span className="text-[8px] text-gray-600 normal-case">green = data loaded</span>
-        </div>
-        {symbolChoices.map(s => {
-          const isSelected = symbol === s.code;
-          const isAvailable = !!allRawDataBySymbol[s.code]?.length;
-          return (
-            <button key={s.code}
-              onClick={() => { if (isAvailable) { setSymbol(s.code); closeAll(); } }}
-              disabled={!isAvailable}
-              className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left transition-colors ${
-                isAvailable ? 'text-white hover:bg-[#2a2e39] cursor-pointer' : 'text-gray-600 cursor-not-allowed'
-              } ${isSelected && isAvailable ? 'bg-blue-600/15' : ''}`}>
-              <div className="flex items-center gap-2">
-                <span className="w-3 flex items-center justify-center">
-                  {isSelected && isAvailable && <Check size={10} className="text-blue-400" />}
-                </span>
-                <span
-                  className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                    isAvailable
-                      ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.9)]'
-                      : 'bg-gray-700'
-                  }`}
-                  title={s.source === 'Imported' ? 'User imported data' : 'Data loaded'}
-                />
-                <span className={`${isSelected && isAvailable ? 'font-bold' : ''} ${isAvailable ? '' : 'italic'}`}>
-                  {s.code}
-                </span>
-              </div>
-              <span className={`text-[9px] ${isAvailable ? 'text-emerald-400' : 'text-gray-700'}`}>
-                {s.source === 'Imported' ? 'Imported' : 'Ready'}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </>
-  );
-
-  const TzDropdown = () => (
-    <>
-      <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
-      <div className="fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[160px] overflow-hidden max-h-[70vh] overflow-y-auto" style={{ zIndex: 9999, right: 8, bottom: 52 }}>
-        <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide sticky top-0 bg-[#1e222d]">Timezone</div>
-        {TIMEZONES.map(tz => {
-          const isSelected = timezone === tz.code;
-          return (
-            <button key={tz.code}
-              onClick={() => { setTimezone(tz.code); closeAll(); }}
-              className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left text-white hover:bg-[#2a2e39] cursor-pointer ${isSelected ? 'bg-blue-600/15' : ''}`}>
-              <div className="flex items-center gap-2">
-                <span className="w-3 flex items-center justify-center">
-                  {isSelected && <Check size={10} className="text-blue-400" />}
-                </span>
-                <span className={isSelected ? 'font-bold' : ''}>{tz.label}</span>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </>
-  );
 
   const TimeframeDropdown = () => (
     <>
@@ -341,15 +263,15 @@ export default function ControlPanel() {
         </div>
       )}
       <div className="tradepast-bottom-toolbar flex items-center justify-between gap-3 px-4 py-1.5">
-        <div className="bottom-market-meta flex items-center gap-4 flex-shrink-0">
-          <button onClick={toggleSymbol} className="toolbar-plain-button flex h-9 items-center gap-1.5 text-white text-[11px] font-bold flex-shrink-0">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.9)]" /><span>{symbol}</span>
-            <ChevronDown size={11} className={`transition-transform ${symbolOpen ? 'rotate-180' : ''}`} />
-          </button>
-          <span className="h-5 w-px bg-[#343b49]" />
-          <button onClick={toggleTz} className="toolbar-plain-button flex h-9 items-center gap-1 text-white text-[11px] font-bold flex-shrink-0">
-            <span>{timezone}</span><ChevronDown size={11} className={`transition-transform ${tzOpen ? 'rotate-180' : ''}`} />
-          </button>
+        <div className="bottom-market-meta flex items-center gap-4 flex-shrink-0" aria-label="Market and timezone">
+          <div className="flex h-9 items-center gap-1.5 text-white text-[11px] font-bold flex-shrink-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.9)]" />
+            <span>{symbol}</span>
+          </div>
+          <span className="h-5 w-px bg-[#343b49]" aria-hidden="true" />
+          <div className="flex h-9 items-center text-white text-[11px] font-bold flex-shrink-0">
+            <span>{timezone}</span>
+          </div>
         </div>
         <div className="bottom-replay-controls flex items-center justify-center gap-3 flex-1 min-w-0">
           <button ref={speedButtonRef} onClick={toggleSpeed} className="toolbar-plain-button flex h-9 items-center gap-2 px-2 text-white text-[11px] font-bold flex-shrink-0" title="Auto-play speed in underlying 1-minute candles per second">
@@ -376,8 +298,6 @@ export default function ControlPanel() {
         </div>
       </div>
 
-      {symbolOpen && <SymbolDropdown />}
-      {tzOpen && <TzDropdown />}
       {jumpOpen && <JumpDropdown />}
       {speedOpen && <SpeedDropdown />}
     </div>
