@@ -377,11 +377,11 @@ function App() {
             title={enableFireworks ? 'Disable Fireworks' : 'Enable Fireworks'}>
             <Sparkles size={13} />
           </button>
-          <button onClick={handleExitPlatform} className="app-header-action w-7 h-7 bg-[#1e222d] border border-red-900/50 hover:bg-red-900/40 text-red-400 rounded flex items-center justify-center" title="Exit application">
-            <LogOut size={13}/>
-          </button>
           <button onClick={openInfo} className="app-header-action header-action-guide w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 rounded flex items-center justify-center" style={{ color: "#3b82f6" }} title="Quick guide">
             <Info size={13} />
+          </button>
+          <button onClick={handleExitPlatform} className="app-header-action w-7 h-7 bg-[#1e222d] border border-red-900/50 hover:bg-red-900/40 text-red-400 rounded flex items-center justify-center" title="Exit application">
+            <LogOut size={13}/>
           </button>
         </div>
       </header>
