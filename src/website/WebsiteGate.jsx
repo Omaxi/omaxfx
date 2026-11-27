@@ -6,6 +6,8 @@ import MarketingHome from './MarketingHome.jsx';
 const URL = String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
 const KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '');
 const SESSION = 'tradepast-auth-session';
+// Confirmation links must return to the deployed site, never localhost.
+const EMAIL_REDIRECT = 'https://omaxi.github.io/omaxfx/';
 const configured = Boolean(URL && KEY);
 
 async function auth(path, options = {}) {
@@ -26,11 +28,12 @@ function Brand() {
   return <a className="tp-brand" href="#/" aria-label="TradePast home"><img className="tp-brand-logo" src={`${import.meta.env.BASE_URL}tradepast-logo.svg?v=3`} alt="" /><span>TradePast</span></a>;
 }
 
-function AuthForm({ mode, changeMode, authenticated }) {
+function AuthForm({ mode, changeMode, authenticated, notice = '' }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const [resending, setResending] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const submit = async (event) => {
@@ -38,7 +41,7 @@ function AuthForm({ mode, changeMode, authenticated }) {
     try {
       if (!configured) throw new Error('Account service setup is pending. The site owner must connect the free authentication project.');
       if (mode === 'signup') {
-        const result = await auth('signup', { body: { email: email.trim(), password, data: { display_name: name.trim() } } });
+        const result = await auth('signup?redirect_to=' + encodeURIComponent(EMAIL_REDIRECT), { body: { email: email.trim(), password, data: { display_name: name.trim() } } });
         if (result.access_token) authenticated(result);
         else setMessage('Account created. Check your email to confirm your address, then log in.');
       } else {
@@ -47,10 +50,20 @@ function AuthForm({ mode, changeMode, authenticated }) {
     } catch (err) { setError(err.message || 'Please try again.'); }
     finally { setBusy(false); }
   };
+  const resendConfirmation = async () => {
+    if (!email.trim()) { setError('Enter the email address you used to register first.'); return; }
+    setResending(true); setError(''); setMessage('');
+    try {
+      await auth('resend?redirect_to=' + encodeURIComponent(EMAIL_REDIRECT), { body: { type: 'signup', email: email.trim() } });
+      setMessage('A fresh confirmation email has been requested. Check your inbox and spam folder, and use the newest email link.');
+    } catch (err) { setError(err.message || 'Could not resend the confirmation email. Please wait a few minutes and try again.'); }
+    finally { setResending(false); }
+  };
   return <section className="tp-auth-card">
     <span className="tp-kicker">{mode === 'signup' ? 'CREATE YOUR FREE ACCOUNT' : 'WELCOME BACK'}</span>
     <h2>{mode === 'signup' ? 'Start backtesting for free.' : 'Log in to TradePast.'}</h2>
     <p className="tp-muted">No credit card. No paid plan required.</p>
+    {notice && <div className="tp-alert tp-error" role="alert">{notice}</div>}
     <form onSubmit={submit}>
       {mode === 'signup' && <label>Your name<input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Omar Ali" autoComplete="name" required maxLength={70}/></label>}
       <label>Email address<input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required/></label>
@@ -58,6 +71,7 @@ function AuthForm({ mode, changeMode, authenticated }) {
       {error && <div className="tp-alert tp-error" role="alert">{error}</div>}
       {message && <div className="tp-alert tp-success" role="status">{message}</div>}
       <button className="tp-button tp-primary tp-wide" disabled={busy || !configured}>{busy ? 'Please wait…' : mode === 'signup' ? 'Create free account →' : 'Log in →'}</button>
+      {mode === 'signup' && configured && <button type="button" className="tp-resend-link" onClick={resendConfirmation} disabled={resending}>{resending ? 'Sending…' : 'Resend confirmation email'}</button>}
       {!configured && <small className="tp-config-note">Free account registration will activate when the Supabase project is connected.</small>}
     </form>
     <div className="tp-switch">{mode === 'signup' ? 'Already registered?' : 'New to TradePast?'} <button onClick={() => changeMode(mode === 'signup' ? 'login' : 'signup')}>{mode === 'signup' ? 'Log in' : 'Create an account'}</button></div>
@@ -93,6 +107,7 @@ export default function WebsiteGate() {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
   const [checking, setChecking] = useState(true);
+  const [callbackError, setCallbackError] = useState('');
   const go = useCallback((next) => { window.location.hash = next === 'home' ? '/' : '/' + next; setRoute(next); }, []);
   const accept = useCallback((next) => { saveSession(next); setSession(next); setUser(next.user || null); go('app'); }, [go]);
   const logout = useCallback(async () => {
@@ -104,6 +119,37 @@ export default function WebsiteGate() {
   useEffect(() => {
     let active = true;
     (async () => {
+      // Supabase's implicit confirmation flow returns tokens/errors in the URL fragment.
+      const fragment = window.location.hash.replace(/^#/, '');
+      const callback = new URLSearchParams(fragment);
+      const callbackCode = callback.get('error_code');
+      if (callbackCode) {
+        const description = (callback.get('error_description') || 'The confirmation link is invalid or has expired.').replace(/\+/g, ' ');
+        if (active) { setCallbackError(callbackCode === 'otp_expired' ? 'This confirmation link has expired or has already been used. Enter your email below and request a fresh confirmation email.' : description); setRoute('auth-error'); }
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        if (active) setChecking(false);
+        return;
+      }
+      const callbackAccessToken = callback.get('access_token');
+      if (callbackAccessToken) {
+        const callbackSession = {
+          access_token: callbackAccessToken,
+          refresh_token: callback.get('refresh_token') || '',
+          token_type: callback.get('token_type') || 'bearer',
+          expires_in: Number(callback.get('expires_in') || 3600),
+          expires_at: Math.floor(Date.now() / 1000) + Number(callback.get('expires_in') || 3600),
+        };
+        saveSession(callbackSession);
+        window.history.replaceState(null, '', window.location.pathname + window.location.search + '#/app');
+        try {
+          const profile = await auth('user', { method: 'GET', token: callbackSession.access_token });
+          if (active) { setSession(callbackSession); setUser(profile); setRoute('app'); }
+        } catch {
+          if (active) { setCallbackError('Your email was confirmed, but we could not start your session. Please log in.'); setRoute('login'); }
+        }
+        if (active) setChecking(false);
+        return;
+      }
       const saved = readSession();
       if (!saved?.access_token || !configured) { if (active) setChecking(false); return; }
       try {
@@ -126,6 +172,7 @@ export default function WebsiteGate() {
   if (checking) return <div className="tp-boot"><Brand/><span>Preparing your workspace…</span></div>;
   if (route === 'app' && session?.access_token) return <div className="tp-engine-shell"><App/><div className="tp-account-chip"><span>{(user?.user_metadata?.display_name || user?.email || 'T').slice(0,1).toUpperCase()}</span><small>{user?.email || 'Account'}</small><button onClick={logout}>Log out</button></div><AdToast/></div>;
   if (route === 'app') return <div className="tp-boot"><Brand/><span>Please log in to continue.</span><button className="tp-button tp-primary" onClick={() => go('login')}>Log in</button></div>;
+  if (route === 'auth-error') return <div className="tp-auth-page"><header className="tp-nav"><Brand/><button className="tp-button tp-ghost" onClick={() => go('home')}>← Home</button></header><div className="tp-auth-layout"><div><span className="tp-kicker">EMAIL CONFIRMATION</span><h1>One more<br/><em>step to go.</em></h1><p>Your email link needs to be current. Request a fresh confirmation email and open the newest message.</p><small>CHECK YOUR INBOX AND SPAM FOLDER</small></div><AuthForm mode="signup" changeMode={go} authenticated={accept} notice={callbackError}/></div></div>;
   if (route === 'login' || route === 'signup') return <div className="tp-auth-page"><header className="tp-nav"><Brand/><button className="tp-button tp-ghost" onClick={() => go('home')}>← Home</button></header><div className="tp-auth-layout"><div><span className="tp-kicker">TRADEPAST WEB</span><h1>Make every<br/><em>replay count.</em></h1><p>Learn from historical price action. Practice your plan. Measure your progress.</p><small>FREE ACCESS　•　NO CREDIT CARD</small></div><AuthForm mode={route} changeMode={go} authenticated={accept}/></div></div>;
   return <MarketingHome go={go}/>;
 }
