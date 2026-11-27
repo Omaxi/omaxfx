@@ -22,7 +22,7 @@ const saveSession = (value) => { try { localStorage.setItem(SESSION, JSON.string
 const clearSession = () => { try { localStorage.removeItem(SESSION); } catch {} };
 
 function Brand() {
-  return <a className="tp-brand" href="#/" aria-label="TradePast home"><span className="tp-mark">T</span><span>TradePast</span></a>;
+  return <a className="tp-brand" href="#/" aria-label="TradePast home"><img className="tp-brand-logo" src={`${import.meta.env.BASE_URL}tradepast-logo.svg?v=3`} alt="" /><span>TradePast</span></a>;
 }
 
 function AuthForm({ mode, changeMode, authenticated }) {
