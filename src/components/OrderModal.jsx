@@ -116,10 +116,6 @@ export default function OrderModal() {
   const validation = useMemo(() => {
     const errors = [];
     const effectiveEntry = orderType === 'market' ? currentPrice : entryPrice;
-    if (positions.length > 0 || pendingOrders.length > 0) {
-      errors.push('Only one active trade or pending order is allowed at a time');
-    }
-
     if (!Number.isFinite(effectiveEntry) || effectiveEntry <= 0) {
       errors.push('Entry price must be a valid positive price');
     }

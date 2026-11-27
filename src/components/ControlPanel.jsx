@@ -41,8 +41,8 @@ const SESSIONS = [
 
 export default function ControlPanel() {
   const { 
-    positions, setTimeframe, timeframe, closeAllPositions, openOrderModal,
-    pendingOrders, startDrawing, isDrawingMode, drawingStep, draftPosition, clearDraft,
+    setTimeframe, timeframe, openOrderModal,
+    startDrawing, isDrawingMode, drawingStep, draftPosition, clearDraft,
     symbol, setSymbol, timezone, setTimezone,
     sessionTimes, sessionEndTimes, setSessionTime, setSessionEndTime, jumpToSession,
     chartType, setChartType, allRawDataBySymbol, replaySpeed, setReplaySpeed
@@ -390,13 +390,6 @@ export default function ControlPanel() {
               <span className="text-yellow-400 text-[10px] font-bold whitespace-nowrap">{isDrawingMode ? drawingStep?.toUpperCase() : 'POSITION READY'}</span>
               <button onClick={clearDraft} className="flex h-6 w-6 items-center justify-center rounded text-red-400 hover:bg-red-500/10" title="Cancel position tool"><X size={11}/></button>
             </div>
-          )}
-
-          {positions.length > 0 && (
-            <button onClick={closeAllPositions} className="flex h-9 min-h-9 items-center justify-center px-2 bg-yellow-600 rounded font-bold text-[10px] text-white whitespace-nowrap flex-shrink-0">✕ {positions.length}</button>
-          )}
-          {pendingOrders.length > 0 && (
-            <div className="flex h-9 min-h-9 items-center justify-center px-2 text-[10px] text-yellow-400 bg-yellow-900/30 rounded font-bold whitespace-nowrap flex-shrink-0">{pendingOrders.length}P</div>
           )}
 
           <div className="flex items-center gap-1 flex-shrink-0">

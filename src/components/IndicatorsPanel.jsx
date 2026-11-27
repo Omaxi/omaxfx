@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LineSeries } from 'lightweight-charts';
+import { LineSeries, createSeriesMarkers } from 'lightweight-charts';
 import { ChevronDown, Settings2, X } from 'lucide-react';
 import { useStore } from '../store';
 import { aggregateData } from '../utils/timeframe';
@@ -14,7 +14,8 @@ const INDICATORS = [
   { key: 'rsi', label: 'RSI', color: '#38bdf8', pane: 'lower' },
   { key: 'atr', label: 'ATR', color: '#fb923c', pane: 'lower' },
   { key: 'adx', label: 'ADX', color: '#c084fc', pane: 'lower' },
-  { key: 'vwap', label: 'VWAP', color: '#22c55e', pane: 'price' },
+  { key: 'vwap', label: 'VWAP', color: '#f59e0b', pane: 'price' },
+  { key: 'fractals', label: 'Fractals', color: '#ef5350', pane: 'price' },
   { key: 'sessions', label: 'Sessions', color: '#64748b', pane: 'price' },
   { key: 'fvg', label: 'Fair Value Gaps', color: '#38bdf8', pane: 'price' },
   { key: 'htfCandleViewer', label: 'HTF Candle Viewer', color: '#22c55e', pane: 'price' },
@@ -27,6 +28,8 @@ const DEFAULT_CONFIG = {
   rsi: { period: 14 },
   atr: { period: 14 },
   adx: { period: 14 },
+  vwap: { showDeviationBands: false, color: '#f59e0b', upper1Color: '#f59e0b', lower1Color: '#f59e0b', upper2Color: '#c084fc', lower2Color: '#c084fc' },
+  fractals: { leftBars: 2, rightBars: 2, highColor: '#ef5350', lowColor: '#26a69a' },
   fvg: { showCurrent: true, showHigher: true, higherTimeframe: 15 },
   htfCandleViewer: { timeframe: 240 },
   pdhPdl: { showHigh: true, showLow: true, showOpen: false, showClose: true },
@@ -164,6 +167,28 @@ function calculateIndicators(candles, config, active, timeframe, sessionCandles 
     result.vwapLower2 = bands.lower2;
   }
 
+  if (active.fractals) {
+    const leftBars = Math.max(1, Math.min(10, Number(config.fractals?.leftBars) || 2));
+    const rightBars = Math.max(1, Math.min(10, Number(config.fractals?.rightBars) || 2));
+    const markers = [];
+    for (let i = leftBars; i < completed.length - rightBars; i++) {
+      const candle = completed[i];
+      let isHigh = true;
+      let isLow = true;
+      for (let offset = 1; offset <= leftBars; offset++) {
+        if (Number(completed[i - offset].high) >= Number(candle.high)) isHigh = false;
+        if (Number(completed[i - offset].low) <= Number(candle.low)) isLow = false;
+      }
+      for (let offset = 1; offset <= rightBars; offset++) {
+        if (Number(completed[i + offset].high) >= Number(candle.high)) isHigh = false;
+        if (Number(completed[i + offset].low) <= Number(candle.low)) isLow = false;
+      }
+      if (isHigh) markers.push({ time: candle.time, position: 'aboveBar', color: config.fractals?.highColor || '#ef5350', shape: 'arrowDown', text: 'H' });
+      if (isLow) markers.push({ time: candle.time, position: 'belowBar', color: config.fractals?.lowColor || '#26a69a', shape: 'arrowUp', text: 'L' });
+    }
+    result.fractalMarkers = markers.sort((a, b) => Number(a.time) - Number(b.time));
+  }
+
   if (active.rsi || active.atr || active.adx) {
     const pRSI = period('rsi'), pATR = period('atr'), pADX = period('adx');
     const tr = [], gains = [], losses = [], plusDM = [], minusDM = [];
@@ -252,13 +277,27 @@ function calculateIndicators(candles, config, active, timeframe, sessionCandles 
 }
 export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, chartRef, chartReady, visibleData, displayData, timeframe, priceSeriesRef, liveCandle, rawData, currentIndex }) {
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState({});
-  const [config, setConfig] = useState(DEFAULT_CONFIG);
+  const [active, setActive] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('tradepast-indicator-active') || '{}'); }
+    catch { return {}; }
+  });
+  const [config, setConfig] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('tradepast-indicator-config') || '{}');
+      return {
+        ...DEFAULT_CONFIG,
+        ...saved,
+        vwap: { ...DEFAULT_CONFIG.vwap, ...(saved.vwap || {}) },
+        fractals: { ...DEFAULT_CONFIG.fractals, ...(saved.fractals || {}) },
+      };
+    } catch { return DEFAULT_CONFIG; }
+  });
   const seriesRef = useRef({});
   const readyRef = useRef(false);
   const sessionCanvasRef = useRef(null);
   const fvgCanvasRef = useRef(null);
   const htfCandleCanvasRef = useRef(null);
+  const fractalMarkersRef = useRef(null);
   const sessionColors = useStore(state => state.sessionColors);
   const sessionLabelsVisible = useStore(state => state.sessionLabelsVisible);
   const setSessionLabelsVisible = useStore(state => state.setSessionLabelsVisible);
@@ -272,6 +311,13 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
   const previousDailyLinesRef = useRef([]);
 
   const selected = useMemo(() => INDICATORS.filter(item => active[item.key]), [active]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tradepast-indicator-active', JSON.stringify(active));
+      localStorage.setItem('tradepast-indicator-config', JSON.stringify(config));
+    } catch {}
+  }, [active, config]);
 
   // Previous Daily High/Low: calculate from source candles reached by replay,
   // using the simulator's UTC+3 market-day buckets. The current (developing)
@@ -447,11 +493,14 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
         });
       }
       if (item.key === 'vwap') {
-        add('vwap', item.color, 0, 1.8);
-        add('vwapUpper1', '#f59e0b', 0, 1.2, 2);
-        add('vwapLower1', '#f59e0b', 0, 1.2, 2);
-        add('vwapUpper2', '#c084fc', 0, 1.2, 2);
-        add('vwapLower2', '#c084fc', 0, 1.2, 2);
+        const vwap = config.vwap || DEFAULT_CONFIG.vwap;
+        add('vwap', vwap.color || '#f59e0b', 0, 1.8);
+        if (vwap.showDeviationBands) {
+          add('vwapUpper1', vwap.upper1Color || '#f59e0b', 0, 1.2, 2);
+          add('vwapLower1', vwap.lower1Color || '#f59e0b', 0, 1.2, 2);
+          add('vwapUpper2', vwap.upper2Color || '#c084fc', 0, 1.2, 2);
+          add('vwapLower2', vwap.lower2Color || '#c084fc', 0, 1.2, 2);
+        }
       }
       if (item.key === 'rsi') add('rsi', item.color, lowerPane++);
       if (item.key === 'atr') add('atr', item.color, lowerPane++);
@@ -469,6 +518,16 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
   }, [chartRef, chartReady, selected, config]);
 
   useEffect(() => {
+    if (!chartReady || !priceSeriesRef?.current) return undefined;
+    const markerPlugin = createSeriesMarkers(priceSeriesRef.current, []);
+    fractalMarkersRef.current = markerPlugin;
+    return () => {
+      try { markerPlugin.detach(); } catch {}
+      if (fractalMarkersRef.current === markerPlugin) fractalMarkersRef.current = null;
+    };
+  }, [chartReady, priceSeriesRef]);
+
+  useEffect(() => {
     if (!readyRef.current) return;
     const chart = chartRef.current;
     const completed = visibleData.slice(0, -1);
@@ -483,6 +542,9 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
     Object.entries(seriesRef.current).forEach(([key, series]) => {
       try { series.setData(calculated[key] || []); } catch (e) {}
     });
+    try {
+      fractalMarkersRef.current?.setMarkers(active.fractals ? (calculated.fractalMarkers || []) : []);
+    } catch {}
 
     const latest = data => {
       if (!Array.isArray(data)) return null;
@@ -1059,9 +1121,49 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
               </button>
             ))}
           </div>
-          {selected.some(item => ['ma', 'bb', 'rsi', 'atr', 'adx', 'fvg', 'htfCandleViewer', 'pdhPdl', 'sessions'].includes(item.key)) && (
+          {selected.some(item => ['ma', 'bb', 'rsi', 'atr', 'adx', 'vwap', 'fractals', 'fvg', 'htfCandleViewer', 'pdhPdl', 'sessions'].includes(item.key)) && (
             <div className="mt-2 border-t border-[#2a2e39] pt-2">
               <div className="mb-1 flex items-center gap-1 text-[10px] font-bold text-gray-400"><Settings2 size={11}/> Indicator instances</div>
+              {selected.some(item => item.key === 'vwap') && <div className="mb-2 rounded bg-[#1e222d] p-2">
+                <div className="mb-2 text-[10px] font-semibold text-white">VWAP</div>
+                <label className="mb-2 flex items-center justify-between gap-2 text-[10px] text-gray-300">
+                  Main line color
+                  <input aria-label="VWAP line color" type="color" value={config.vwap?.color || '#f59e0b'} onChange={event => updateConfig('vwap', 'color', event.target.value)} className="h-6 w-8 cursor-pointer bg-transparent"/>
+                </label>
+                <label className="mb-2 flex items-center gap-2 text-[10px] text-gray-300">
+                  <input type="checkbox" checked={!!config.vwap?.showDeviationBands} onChange={event => updateConfig('vwap', 'showDeviationBands', event.target.checked)} className="accent-blue-500"/>
+                  Show deviation bands
+                </label>
+                {[
+                  ['upper1Color', 'Upper +1σ', '#f59e0b'],
+                  ['lower1Color', 'Lower -1σ', '#f59e0b'],
+                  ['upper2Color', 'Upper +2σ', '#c084fc'],
+                  ['lower2Color', 'Lower -2σ', '#c084fc'],
+                ].map(([field, label, fallback]) => <label key={field} className="mb-1 flex items-center justify-between gap-2 text-[10px] text-gray-300">
+                  <span>{label}</span>
+                  <input aria-label={label + ' VWAP color'} type="color" value={config.vwap?.[field] || fallback} disabled={!config.vwap?.showDeviationBands} onChange={event => updateConfig('vwap', field, event.target.value)} className="h-6 w-8 cursor-pointer bg-transparent disabled:opacity-40"/>
+                </label>)}
+              </div>}
+              {selected.some(item => item.key === 'fractals') && <div className="mb-2 rounded bg-[#1e222d] p-2">
+                <div className="mb-2 text-[10px] font-semibold text-white">Fractal swing points</div>
+                <label className="mb-2 flex items-center justify-between gap-2 text-[10px] text-gray-300">
+                  Bars left
+                  <input type="number" min="1" max="10" value={config.fractals?.leftBars || 2} onChange={event => updateConfig('fractals', 'leftBars', Math.max(1, Math.min(10, Number(event.target.value) || 2)))} className="w-14 rounded bg-[#0b0e11] px-1.5 py-1 text-right text-white"/>
+                </label>
+                <label className="mb-2 flex items-center justify-between gap-2 text-[10px] text-gray-300">
+                  Bars right
+                  <input type="number" min="1" max="10" value={config.fractals?.rightBars || 2} onChange={event => updateConfig('fractals', 'rightBars', Math.max(1, Math.min(10, Number(event.target.value) || 2)))} className="w-14 rounded bg-[#0b0e11] px-1.5 py-1 text-right text-white"/>
+                </label>
+                <label className="mb-1 flex items-center justify-between gap-2 text-[10px] text-gray-300">
+                  Swing high color
+                  <input type="color" value={config.fractals?.highColor || '#ef5350'} onChange={event => updateConfig('fractals', 'highColor', event.target.value)} className="h-6 w-8 cursor-pointer bg-transparent"/>
+                </label>
+                <label className="flex items-center justify-between gap-2 text-[10px] text-gray-300">
+                  Swing low color
+                  <input type="color" value={config.fractals?.lowColor || '#26a69a'} onChange={event => updateConfig('fractals', 'lowColor', event.target.value)} className="h-6 w-8 cursor-pointer bg-transparent"/>
+                </label>
+                <p className="mt-1 text-[9px] leading-4 text-gray-500">A swing is marked only after the selected number of candles to its right have closed.</p>
+              </div>}
               {selected.some(item => item.key === 'sessions') && <div className="mb-2 rounded bg-[#1e222d] p-2">
                 <div className="mb-2 text-[10px] font-semibold text-white">Session Ranges</div>
                 <label className="mb-2 flex items-center gap-2 text-[10px] text-gray-300">

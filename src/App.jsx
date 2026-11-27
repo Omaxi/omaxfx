@@ -315,11 +315,6 @@ function App() {
             />
             <span className="hidden sm:inline text-sm font-bold tracking-wider"><span className="text-gray-400/45">Trade</span><span className="text-white font-extrabold drop-shadow-[0_0_5px_rgba(255,255,255,0.4)]">Past</span></span>
           </h1>
-          {positions.length > 0 && (
-            <span className="bg-green-900/50 text-green-400 px-1.5 py-0.5 rounded text-[10px] font-bold hidden md:inline">
-              {positions.length}
-            </span>
-          )}
         </div>
 
         {gameStarted && <div className="header-main-controls flex min-w-0 flex-1 items-center justify-between gap-4">

@@ -930,10 +930,8 @@ export const useStore = create((set, get) => ({
         if (violation) { gameOverReason = violation.reason; gameOverMessage = violation.message; }
       }
       const stillPending = [];
-      let pendingSlotTaken = newPositions.length > 0;
       let pendingFilledThisCandle = false;
       for (const order of newPendingOrders) {
-        if (pendingSlotTaken) continue;
         if (gameOverReason) { stillPending.push(order); continue; }
         const fillPrice = getPendingOrderFillPrice(order, candle);
         if (fillPrice != null) {
@@ -953,8 +951,6 @@ export const useStore = create((set, get) => ({
             stillPending.push(order);
             continue;
           }
-          // A single active trade is enforced even for legacy sessions that
-          // may contain more than one pending order.
           const filledPosition = {
             ...order,
             entryPrice: fillPrice,
@@ -995,7 +991,6 @@ export const useStore = create((set, get) => ({
           }
           pendingTriggered = true;
           pendingFilledThisCandle = true;
-          pendingSlotTaken = true;
         } else stillPending.push(order);
       }
       newPendingOrders = stillPending;
@@ -1049,8 +1044,6 @@ export const useStore = create((set, get) => ({
     const candle = state.rawData?.[state.currentIndex];
     if (state.gameState.isOver || !candle || !['buy', 'sell'].includes(side) ||
         !['market', 'limit', 'stop'].includes(type)) return state;
-    // Only one live position OR one pending order is allowed at a time.
-    if (state.positions.length > 0 || state.pendingOrders.length > 0) return state;
     // Market orders execute at the latest replayed 1m close. A chart's
     // display timeframe must never change the simulated execution price.
     const executionCandle = candle;

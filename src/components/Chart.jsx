@@ -419,6 +419,15 @@ export default function Chart({ chartId = 'main' }) {
   }, [chartOptions?.gridVisible]);
 
   useEffect(() => {
+    if (!chartRef.current) return;
+    const background = theme.background || '#171a27';
+    try {
+      chartRef.current.applyOptions({ layout: { background: { type: 'solid', color: background } } });
+      if (chartContainerRef.current) chartContainerRef.current.style.backgroundColor = background;
+    } catch (e) {}
+  }, [theme.background]);
+
+  useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
     try {
       seriesRef.current.applyOptions({
@@ -2174,7 +2183,8 @@ export default function Chart({ chartId = 'main' }) {
             <span className="text-gray-500">Close</span><span className="text-right text-white">{candlePrice(currentCandle?.close)}</span>
             <span className="text-gray-500">Datetime</span><span className="text-right text-white">{candleDate}</span>
             <span className="text-gray-500">Session</span><span className="text-right text-white">{candleSession}</span>
-
+            <span className="text-gray-500">Open positions</span><span className="text-right font-semibold text-emerald-400">{positions.length}</span>
+            <span className="text-gray-500">Pending orders</span><span className="text-right font-semibold text-amber-400">{pendingOrders.length}</span>
           </div>
           {htfDashboard && <div className="mt-2 border-t border-[#2a2e39] pt-2">
             <div className="mb-1 flex items-center justify-between">
