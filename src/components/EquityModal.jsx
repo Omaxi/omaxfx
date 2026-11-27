@@ -172,6 +172,8 @@ export default function EquityModal() {
               maxWidth: '100%',
               backgroundColor: '#ffffff',
               color: '#172033',
+              colorScheme: 'light',
+              isolation: 'isolate',
               padding: '30px',
               fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
               boxSizing: 'border-box',
@@ -216,7 +218,7 @@ export default function EquityModal() {
               <div style={{ fontSize: '14px', fontWeight: 750, color: '#172033' }}>Account equity</div>
               <div style={{ fontSize: '11px', fontWeight: 700, color: pnlColor }}>{currentPnl >= 0 ? '+' : '−'}${fmtMoney(currentPnl, 2)} <span style={{ color: '#64748b', fontWeight: 500 }}>({pnlPercent.toFixed(2)}%)</span></div>
             </div>
-            <div style={{ height: '290px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 12px 8px', minWidth: 0 }}>
+            <div className="equity-report-chart" style={{ height: '290px', backgroundColor: '#f8fafc', color: '#334155', colorScheme: 'light', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 12px 8px', minWidth: 0 }}>
               {tradeHistory.length === 0 ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', fontSize: '13px' }}>
                   No trades yet
