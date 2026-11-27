@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import App from './App.jsx'
+import WebsiteGate from './website/WebsiteGate.jsx'
 import { registerSW } from 'virtual:pwa-register'
 
 // Register the service worker so the app works offline
@@ -17,6 +17,6 @@ registerSW({
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <WebsiteGate />
   </StrictMode>,
 )
