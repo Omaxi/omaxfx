@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import App from '../App.jsx';
 import './website.css';
+import MarketingHome from './MarketingHome.jsx';
 
 const URL = String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '');
 const KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '');
@@ -126,5 +127,5 @@ export default function WebsiteGate() {
   if (route === 'app' && session?.access_token) return <div className="tp-engine-shell"><App/><div className="tp-account-chip"><span>{(user?.user_metadata?.display_name || user?.email || 'T').slice(0,1).toUpperCase()}</span><small>{user?.email || 'Account'}</small><button onClick={logout}>Log out</button></div><AdToast/></div>;
   if (route === 'app') return <div className="tp-boot"><Brand/><span>Please log in to continue.</span><button className="tp-button tp-primary" onClick={() => go('login')}>Log in</button></div>;
   if (route === 'login' || route === 'signup') return <div className="tp-auth-page"><header className="tp-nav"><Brand/><button className="tp-button tp-ghost" onClick={() => go('home')}>← Home</button></header><div className="tp-auth-layout"><div><span className="tp-kicker">TRADEPAST WEB</span><h1>Make every<br/><em>replay count.</em></h1><p>Learn from historical price action. Practice your plan. Measure your progress.</p><small>FREE ACCESS　•　NO CREDIT CARD</small></div><AuthForm mode={route} changeMode={go} authenticated={accept}/></div></div>;
-  return <Home go={go}/>;
+  return <MarketingHome go={go}/>;
 }
