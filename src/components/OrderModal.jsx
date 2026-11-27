@@ -462,7 +462,7 @@ export default function OrderModal() {
           <button 
             onClick={handleSubmit} 
             disabled={!validation.isValid}
-            className={`flex-1 py-1.5 rounded font-bold text-xs ${
+            className={`order-confirm-button flex-1 py-1.5 rounded font-bold text-xs ${
               !validation.isValid
                 ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
                 : orderSide === 'buy' 
