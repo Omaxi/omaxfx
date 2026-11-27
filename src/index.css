@@ -641,3 +641,46 @@ html[data-ui-theme="light"] .analytics-calendar-day.analytics-day-empty {
   background: #f8fafc !important;
   border-color: #e2e8f0 !important;
 }
+
+
+/* Requested light-theme contrast refinements. */
+html[data-ui-theme="light"] .analytics-modal-shell .analytics-metric-value {
+  color: #1e293b !important;
+}
+html[data-ui-theme="light"] .indicators-panel .indicator-option-selected {
+  color: #1d4ed8 !important;
+  font-weight: 700 !important;
+}
+html[data-ui-theme="light"] .bottom-trade-actions .theme-action-contrast,
+html[data-ui-theme="light"] .theme-action-contrast {
+  color: #ffffff !important;
+}
+html[data-ui-theme="light"] .trade-journal-modal {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border-color: #dbe2ea !important;
+}
+html[data-ui-theme="light"] .trade-journal-modal .trade-journal-card {
+  background: #f8fafc !important;
+  border-color: #dbe2ea !important;
+}
+html[data-ui-theme="light"] .trade-journal-modal [class*="bg-[#202633]"] {
+  background: #f1f5f9 !important;
+}
+html[data-ui-theme="light"] .trade-journal-modal [class*="bg-[#0d1117]"] {
+  background: #f8fafc !important;
+}
+html[data-ui-theme="light"] .trade-journal-modal [class*="border-[#303744]"],
+html[data-ui-theme="light"] .trade-journal-modal [class*="border-[#2a2e39]"] {
+  border-color: #dbe2ea !important;
+}
+html[data-ui-theme="light"] .trade-journal-modal .text-white,
+html[data-ui-theme="light"] .trade-journal-modal .text-gray-200,
+html[data-ui-theme="light"] .trade-journal-modal .text-gray-300 {
+  color: #334155 !important;
+}
+html[data-ui-theme="light"] .trade-journal-modal .text-gray-400,
+html[data-ui-theme="light"] .trade-journal-modal .text-gray-500,
+html[data-ui-theme="light"] .trade-journal-modal .text-gray-600 {
+  color: #64748b !important;
+}
