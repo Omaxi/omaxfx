@@ -87,7 +87,7 @@ export default function TradeDayModal({ date, trades, onClose, sessionId, candle
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <b className="text-sm">Trade #{index + 1}</b>
-                    <span className={'rounded px-2 py-0.5 text-[10px] font-bold ' + (isBuy ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300')}>{isBuy ? 'BUY' : 'SELL'}</span>
+                    <span className={'trade-side-badge rounded-md px-3 py-1 text-xs font-bold tracking-wide ' + (isBuy ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300')}>{isBuy ? 'BUY' : 'SELL'}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <Info label="Symbol" value={trade.symbol || '—'}/>
