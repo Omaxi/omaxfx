@@ -250,11 +250,12 @@ html[data-ui-theme="light"] .header-status-controls .ui-mode-toggle { color: #47
 html[data-ui-theme="light"] .theme-menu-surface,
 html[data-ui-theme="light"] .theme-menu-surface button { background-color: #ffffff !important; color: #334155 !important; border-color: #dbe2ea !important; }
 html[data-ui-theme="light"] .theme-menu-surface button:hover { background: #f1f5f9 !important; }
-html[data-ui-theme="light"] .bg-\\[\\#131722\\],
-html[data-ui-theme="light"] .bg-\\[\\#171a27\\],
-html[data-ui-theme="light"] .bg-\\[\\#1e222d\\] { background-color: #ffffff !important; }
-html[data-ui-theme="light"] .border-\\[\\#2a2e39\\],
-html[data-ui-theme="light"] .border-\\[\\#343b49\\] { border-color: #dbe2ea !important; }
+html[data-ui-theme="light"] [class*="bg-[#131722]"],
+html[data-ui-theme="light"] [class*="bg-[#171a27]"],
+html[data-ui-theme="light"] [class*="bg-[#1e222d]"],
+html[data-ui-theme="light"] [class*="bg-[#0b0e11]"] { background-color: #ffffff !important; }
+html[data-ui-theme="light"] [class*="border-[#2a2e39]"],
+html[data-ui-theme="light"] [class*="border-[#343b49]"] { border-color: #dbe2ea !important; }
 html[data-ui-theme="light"] .text-gray-200,
 html[data-ui-theme="light"] .text-gray-300 { color: #475569 !important; }
 html[data-ui-theme="light"] .text-gray-400,
