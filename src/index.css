@@ -933,3 +933,20 @@ html[data-ui-theme="light"] .history-modal-shell button.theme-action-contrast { 
 html[data-ui-theme="light"] .history-modal-shell button.theme-action-contrast:hover { background: #1d4ed8 !important; }
 html[data-ui-theme="light"] .history-modal-shell [class~="text-yellow-400"] { color: #b7791f !important; }
 html[data-ui-theme="light"] .history-modal-shell [class~="text-gray-500"] { color: #667085 !important; }
+
+/* The shareable Performance Report is deliberately light in both app themes.
+   Isolate its chart canvas from workspace-wide dark-mode styles. */
+.equity-report-capture {
+  color-scheme: light !important;
+  background: #ffffff !important;
+  color: #172033 !important;
+}
+.equity-report-capture .recharts-cartesian-grid line {
+  stroke: #e2e8f0 !important;
+}
+.equity-report-capture .recharts-text {
+  fill: #64748b !important;
+}
+.equity-report-capture .recharts-tooltip-wrapper {
+  color-scheme: light !important;
+}
