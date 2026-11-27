@@ -282,8 +282,8 @@ export default function ControlPanel() {
           {!isDrawingMode && !draftPosition ? <>
             <button onClick={() => startDrawing('buy')} className="theme-action-contrast h-9 px-3 bg-[#477fc9] hover:bg-[#3d70b3] text-white rounded font-bold text-[11px] whitespace-nowrap">Long position</button>
             <button onClick={() => startDrawing('sell')} className="theme-action-contrast h-9 px-3 bg-[#d16b70] hover:bg-[#bd5d63] text-white rounded font-bold text-[11px] whitespace-nowrap">Short position</button>
-          </> : <div className="flex h-9 min-h-9 items-center gap-2 bg-yellow-900/20 px-2 rounded flex-shrink-0">
-            <span className="text-yellow-400 text-[10px] font-bold whitespace-nowrap">{isDrawingMode ? drawingStep?.toUpperCase() : 'POSITION READY'}</span>
+          </> : <div className="position-ready-status flex h-9 min-h-9 items-center gap-2 px-3 rounded-md flex-shrink-0">
+            <span className="position-ready-label text-[10px] font-bold whitespace-nowrap">{isDrawingMode ? drawingStep?.toUpperCase() : 'POSITION READY'}</span>
             <button onClick={clearDraft} className="flex h-6 w-6 items-center justify-center text-red-400" title="Cancel position tool"><X size={11}/></button>
           </div>}
           <button onClick={() => handleMarketOrder('buy')} className="theme-action-contrast h-9 px-4 bg-[#29966b] hover:bg-[#23835e] text-white rounded font-bold text-[11px] transition-colors">BUY</button>
