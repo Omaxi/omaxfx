@@ -258,7 +258,7 @@ export default function Chart({ chartId = 'main' }) {
     rawData, displayData, currentIndex, positions, pendingOrders, 
     draftPosition, timeframe, cancelPendingOrder, closePosition, activeDrawingTool,
     isDrawingMode, isPlaying, togglePlay, stepForward, removeDrawing, gameStarted,
-    theme, snapshotDrawings, recenterToken, drawings,
+    theme, uiMode, snapshotDrawings, recenterToken, drawings,
     isPencilMode, pencilColor, setPencilColor,
     chartType, symbol, contractSpecs, sessionTimes, sessionEndTimes, chartOptions
   } = useStore();
@@ -327,11 +327,11 @@ export default function Chart({ chartId = 'main' }) {
     chartRef.current = createChart(chartContainerRef.current, {
       layout: {
         background: { type: 'solid', color: t.background || '#171a27' },
-        textColor: '#6b7280',
+        textColor: uiMode === 'light' ? '#64748b' : '#6b7280',
         fontSize: 9,
         attributionLogo: false,
         panes: {
-          separatorColor: '#2a2e39',
+          separatorColor: uiMode === 'light' ? '#dbe2ea' : '#2a2e39',
           separatorHoverColor: '#3b82f6',
           enableResize: true,
         },
@@ -343,7 +343,7 @@ export default function Chart({ chartId = 'main' }) {
         locale: 'en-GB',
         timeFormatter: (time) => formatMarketDateTime(time),
       },
-      grid: { vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: '#202433' }, horzLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: '#202433' } },
+      grid: { vertLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: uiMode === 'light' ? '#e8edf3' : '#202433' }, horzLines: { visible: useStore.getState().chartOptions?.gridVisible ?? true, color: uiMode === 'light' ? '#e8edf3' : '#202433' } },
       timeScale: { 
         timeVisible: true, secondsVisible: false,
         borderVisible: false, barSpacing: 6, rightOffset: 60,
@@ -418,6 +418,20 @@ export default function Chart({ chartId = 'main' }) {
       });
     } catch (e) {}
   }, [symbol, contractSpecs]);
+
+  useEffect(() => {
+    if (!chartRef.current) return;
+    const light = uiMode === 'light';
+    try {
+      chartRef.current.applyOptions({
+        layout: { textColor: light ? '#64748b' : '#6b7280', panes: { separatorColor: light ? '#dbe2ea' : '#2a2e39' } },
+        grid: {
+          vertLines: { visible: chartOptions?.gridVisible ?? true, color: light ? '#e8edf3' : '#202433' },
+          horzLines: { visible: chartOptions?.gridVisible ?? true, color: light ? '#e8edf3' : '#202433' },
+        },
+      });
+    } catch (e) {}
+  }, [uiMode]);
 
   useEffect(() => {
     if (!chartRef.current) return;
