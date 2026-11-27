@@ -134,7 +134,9 @@ const drawShape = (ctx, drawing, pointToXY, isDraft, isSelected) => {
     });
   }
 
-  if (isSelected) {
+  // Rectangle and Fibonacci edit states use their resize handles as the
+  // selection affordance; do not draw an extra dashed bounding outline.
+  if (isSelected && drawing.type !== 'rectangle' && drawing.type !== 'fibonacci') {
     ctx.setLineDash([3, 3]);
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1;
