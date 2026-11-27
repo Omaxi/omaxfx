@@ -296,7 +296,7 @@ export const useStore = create((set, get) => ({
   closePeriodModal: () => set({ isPeriodModalOpen: false }),
   
   sessionId: null,
-  playerName: 'Trader',
+  playerName: '',
   setPlayerName: (name) => set({ playerName: name }),
 
   loadingState: { isActive: true, loaded: 0, total: 0, error: null },
