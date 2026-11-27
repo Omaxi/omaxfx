@@ -9,6 +9,8 @@
       <stop offset="1" stop-color="#0866E5"/>
     </linearGradient>
   </defs>
-  <path d="M6 333L426 107V647L200 795V333H6Z" fill="url(#tradepast-mark-left)"/>
+  <g transform="translate(0 -135.3) scale(1 1.302)">
+    <path d="M6 333L426 107V647L200 795V333H6Z" fill="url(#tradepast-mark-left)"/>
   <path d="M496 129C496 110 507 104 524 114L888 346C901 354 901 365 888 374L523 607C507 617 496 609 496 590V129Z" fill="url(#tradepast-mark-right)"/>
+  </g>
 </svg>
