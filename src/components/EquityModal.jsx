@@ -167,6 +167,7 @@ export default function EquityModal() {
         <div className="overflow-auto flex-1 min-h-0 p-4 sm:p-6 bg-slate-50">
           <div
             ref={captureRef}
+            className="equity-report-capture"
             style={{
               width: `${PNG_WIDTH}px`,
               maxWidth: '100%',
