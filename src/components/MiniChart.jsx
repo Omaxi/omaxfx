@@ -124,8 +124,8 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
     });
     chartRef.current = chart;
     seriesRef.current = series;
-    // Theme changes recreate Lightweight Charts; force the data effect to
-    // populate the newly created candlestick series after each recreation.
+    // A new symbol creates a new series; bump the data revision so the
+    // replay candles are immediately applied to that series.
     setChartVersion(version => version + 1);
     setChartReady(true);
     const observer = new ResizeObserver(entries => {
