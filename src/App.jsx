@@ -19,7 +19,7 @@ import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
 import { fetchDataCatalog, loadBundledCsvFiles } from './utils/dataCatalog';
 import { getPnlMultiplier } from './utils/instrument';
-import { Info, Sparkles, AlertTriangle, LogOut, Square, Columns2, CheckCircle2, TrendingUp, X, Settings, Plus } from 'lucide-react';
+import { Info, Sparkles, AlertTriangle, LogOut, Square, Columns2, CheckCircle2, TrendingUp, X, Settings, Plus, ChevronDown, CandlestickChart } from 'lucide-react';
 
 function ThreeChartLayoutIcon({ size = 14 }) { return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1" y="1" width="5.5" height="14" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="9.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/></svg>; }
 
@@ -60,6 +60,7 @@ function App() {
     musicEnabled, gameStarted,
     gameState,
     loadingState, isInfoOpen, openInfo, openHistory, openAnalytics, theme,
+    timeframe, setTimeframe, chartType, setChartType,
     enableFireworks, toggleFireworks,
     symbolWarning, clearSymbolWarning, tradeNotifications, dismissTradeNotification,
   } = useStore();
@@ -318,7 +319,7 @@ function App() {
         </div>
 
         {gameStarted && <div className="header-main-controls flex min-w-0 flex-1 items-center justify-between gap-4">
-          <div className="header-primary-controls flex min-w-0 items-center justify-center gap-2"><div className="hidden lg:flex items-center gap-1.5 flex-shrink-0">
+          <div className="header-primary-controls flex min-w-0 flex-1 items-center justify-start gap-5"><div className="hidden lg:flex items-center gap-1.5 flex-shrink-0">
             <button onClick={() => setSettingsOpen(true)} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39] flex items-center gap-1.5">
               <Settings size={12}/> Settings
             </button>
@@ -326,7 +327,16 @@ function App() {
             <button onClick={openAnalytics} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Analytics</button>
             <button onClick={() => window.dispatchEvent(new Event('omaxfx:reset-chart'))} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Reset Chart</button>
           </div>
-          <div className="hidden md:flex items-center gap-1 rounded-lg border border-[#2a2e39] bg-[#0f131c] p-0.5 flex-shrink-0" aria-label="Chart layout">
+          <div className="header-chart-tools flex items-center gap-3 flex-shrink-0">
+            <span className="h-7 w-px bg-[#343b49]" aria-hidden="true" />
+            <label className="header-select-wrap flex items-center gap-1 text-[11px] text-gray-400">
+              <select aria-label="Chart timeframe" value={timeframe} onChange={e => setTimeframe(Number(e.target.value))} className="header-select">
+                {[{label:"1m",value:1},{label:"5m",value:5},{label:"15m",value:15},{label:"30m",value:30},{label:"1h",value:60},{label:"4h",value:240},{label:"1D",value:1440},{label:"1W",value:10080}].map(tf => <option key={tf.value} value={tf.value}>{tf.label}</option>)}
+              </select><ChevronDown size={12}/>
+            </label>
+            <button type="button" className="header-chart-type" onClick={() => setChartType(chartType === "candle" ? "line" : "candle")} title={`Chart type: ${chartType === "candle" ? "Candles" : "Line"}`} aria-label="Toggle chart type"><CandlestickChart size={18}/></button>
+          </div>
+          <div className="hidden md:flex items-center gap-1 flex-shrink-0" aria-label="Chart layout">
             {[{ value: 1, label: 'Single chart', Icon: Square }, { value: 2, label: 'Two charts', Icon: Columns2 }, { value: 3, label: 'Three charts', Icon: ThreeChartLayoutIcon }].map(({ value, label, Icon }) => (
               <button key={value} type="button" onClick={() => useStore.getState().setChartLayout(value)} title={label} aria-label={label} aria-pressed={useStore.getState().chartLayout === value}
                 className={'flex h-7 w-7 items-center justify-center rounded ' + (useStore.getState().chartLayout === value ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-[#2a2e39]')}>
