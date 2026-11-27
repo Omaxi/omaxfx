@@ -435,15 +435,22 @@ export default function Chart({ chartId = 'main' }) {
 
   useEffect(() => {
     if (!chartRef.current) return;
+    const gridColor = uiMode === 'light' ? '#e2e8f0' : '#202433';
     try {
       chartRef.current.applyOptions({
         grid: {
-          vertLines: { visible: chartOptions?.gridVisible ?? true, color: '#202433' },
-          horzLines: { visible: chartOptions?.gridVisible ?? true, color: '#202433' },
+          vertLines: { visible: chartOptions?.gridVisible ?? true, color: gridColor },
+          horzLines: { visible: chartOptions?.gridVisible ?? true, color: gridColor },
+        },
+        layout: {
+          panes: {
+            separatorColor: uiMode === 'light' ? '#dbe2ea' : '#2a2e39',
+            separatorHoverColor: '#3b82f6',
+          },
         },
       });
     } catch (e) {}
-  }, [chartOptions?.gridVisible]);
+  }, [chartOptions?.gridVisible, uiMode]);
 
   useEffect(() => {
     if (!chartRef.current) return;
