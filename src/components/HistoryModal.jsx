@@ -156,10 +156,10 @@ export default function HistoryModal() {
                       <td className="p-2">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded ${
                           t.reason === 'TP' ? 'history-exit-tp bg-green-900/50 text-green-400' :
-                          t.reason === 'SL' ? 'history-exit-sl bg-red-900/50 text-red-400' :
+                          t.reason === 'SL' || t.reason === 'DAILY_LOSS' || t.reason === 'DRAWDOWN' ? 'history-exit-sl bg-red-900/50 text-red-400' :
                           'bg-gray-700 text-gray-300'
                         }`}>
-                          {t.reason}
+                          {t.reason === 'DAILY_LOSS' ? 'Daily Loss' : t.reason === 'DRAWDOWN' ? 'Drawdown' : t.reason}
                         </span>
                       </td>
                       <td className="p-1 text-[9px] text-gray-400 font-mono hidden xl:table-cell">{formatTime(t.openTime)}</td>
