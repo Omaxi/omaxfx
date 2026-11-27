@@ -19,7 +19,7 @@ import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
 import { fetchDataCatalog, loadBundledCsvFiles } from './utils/dataCatalog';
 import { getPnlMultiplier } from './utils/instrument';
-import { Info, Sparkles, AlertTriangle, LogOut, Square, Columns2, CheckCircle2, TrendingUp, X, Settings, Plus, ChevronDown, CandlestickChart } from 'lucide-react';
+import { Info, Sparkles, AlertTriangle, LogOut, Square, Columns2, CheckCircle2, TrendingUp, X, Settings, Plus, ChevronDown, CandlestickChart, ChartLine, Check } from 'lucide-react';
 
 function ThreeChartLayoutIcon({ size = 14 }) { return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1" y="1" width="5.5" height="14" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="9.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/></svg>; }
 
@@ -66,6 +66,14 @@ function App() {
   } = useStore();
   const soundtrackStarted = useRef(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [timeframeMenuOpen, setTimeframeMenuOpen] = useState(false);
+  const [timeframeMenuPosition, setTimeframeMenuPosition] = useState({ left: 0, top: 0 });
+  const timeframeButtonRef = useRef(null);
+  const openTimeframeMenu = () => {
+    const rect = timeframeButtonRef.current?.getBoundingClientRect();
+    if (rect) setTimeframeMenuPosition({ left: Math.max(8, rect.left), top: rect.bottom + 6 });
+    setTimeframeMenuOpen(value => !value);
+  };
   // Disable native browser hover tooltips across the entire application.
   // Watch the DOM so title attributes added by dynamically rendered controls are removed too.
   useEffect(() => {
@@ -329,12 +337,13 @@ function App() {
           </div>
           <div className="header-chart-tools flex items-center gap-3 flex-shrink-0">
             <span className="h-7 w-px bg-[#343b49]" aria-hidden="true" />
-            <label className="header-select-wrap flex items-center gap-1 text-[11px] text-gray-400">
-              <select aria-label="Chart timeframe" value={timeframe} onChange={e => setTimeframe(Number(e.target.value))} className="header-select">
-                {[{label:"1m",value:1},{label:"5m",value:5},{label:"15m",value:15},{label:"30m",value:30},{label:"1h",value:60},{label:"4h",value:240},{label:"1D",value:1440},{label:"1W",value:10080}].map(tf => <option key={tf.value} value={tf.value}>{tf.label}</option>)}
-              </select><ChevronDown size={12}/>
-            </label>
-            <button type="button" className="header-chart-type" onClick={() => setChartType(chartType === "candle" ? "line" : "candle")} title={`Chart type: ${chartType === "candle" ? "Candles" : "Line"}`} aria-label="Toggle chart type"><CandlestickChart size={18}/></button>
+            <button ref={timeframeButtonRef} type="button" className="header-timeframe-trigger" onClick={openTimeframeMenu} aria-haspopup="menu" aria-expanded={timeframeMenuOpen} aria-label="Select chart timeframe">
+              <span>{{1:"1m",5:"5m",15:"15m",30:"30m",60:"1h",240:"4h",1440:"1D",10080:"1W"}[timeframe] || "1m"}</span>
+              <ChevronDown size={12} className={timeframeMenuOpen ? "rotate-180" : ""}/>
+            </button>
+            <button type="button" className="header-chart-type" onClick={() => setChartType(chartType === "candle" ? "line" : "candle")} title={`Chart type: ${chartType === "candle" ? "Candles" : "Line"}`} aria-label={`Switch to ${chartType === "candle" ? "line" : "candlestick"} chart`}>
+              {chartType === "candle" ? <CandlestickChart size={19}/> : <ChartLine size={19}/>}
+            </button>
           </div>
           <div className="hidden md:flex items-center gap-1 flex-shrink-0" aria-label="Chart layout">
             {[{ value: 1, label: 'Single chart', Icon: Square }, { value: 2, label: 'Two charts', Icon: Columns2 }, { value: 3, label: 'Three charts', Icon: ThreeChartLayoutIcon }].map(({ value, label, Icon }) => (
@@ -377,6 +386,18 @@ function App() {
         </div>
       </header>
       
+      {timeframeMenuOpen && <>
+        <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setTimeframeMenuOpen(false)} />
+        <div className="theme-menu-surface fixed min-w-[112px] overflow-hidden rounded-lg border border-[#2a2e39] bg-[#1e222d] shadow-2xl" style={{ zIndex: 9999, left: timeframeMenuPosition.left, top: timeframeMenuPosition.top }} role="menu" aria-label="Chart timeframe">
+          <div className="border-b border-[#2a2e39] px-3 py-1.5 text-[9px] font-bold uppercase tracking-wide text-gray-500">Timeframe</div>
+          {[{label:"1m",value:1},{label:"5m",value:5},{label:"15m",value:15},{label:"30m",value:30},{label:"1h",value:60},{label:"4h",value:240},{label:"1D",value:1440},{label:"1W",value:10080}].map(tf => {
+            const selected = timeframe === tf.value;
+            return <button key={tf.value} type="button" role="menuitemradio" aria-checked={selected} onClick={() => { setTimeframe(tf.value); setTimeframeMenuOpen(false); }} className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-xs text-white transition-colors hover:bg-[#2a2e39] ${selected ? "bg-blue-600/15 font-bold" : ""}`}>
+              <span>{tf.label}</span>{selected && <Check size={11} className="text-blue-400"/>}
+            </button>;
+          })}
+        </div>
+      </>}
       <main className="flex-1 relative min-h-0">
         {gameStarted && <ChartWorkspace />}
       </main>
