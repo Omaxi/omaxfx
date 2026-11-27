@@ -2096,9 +2096,12 @@ export default function Chart({ chartId = 'main' }) {
   const selectedRectangleDrawing = selectedItem?.type === 'drawing'
     ? drawings.find(d => d.id === selectedItem.id && d.type === 'rectangle' && d.points?.length === 2)
     : null;
+  const selectedFibonacciDrawing = selectedItem?.type === 'drawing'
+    ? drawings.find(d => d.id === selectedItem.id && d.type === 'fibonacci' && d.points?.length === 2)
+    : null;
 
   useEffect(() => {
-    if (!selectedRectangleDrawing || !chartRef.current) return;
+    if ((!selectedRectangleDrawing && !selectedFibonacciDrawing) || !chartRef.current) return;
     const refreshHandles = () => setDrawingHandleTick(value => value + 1);
     const timeScale = chartRef.current.timeScale();
     const priceScale = chartRef.current.priceScale('right');
@@ -2112,7 +2115,7 @@ export default function Chart({ chartId = 'main' }) {
       chartRef.current?.unsubscribeSizeChange?.(refreshHandles);
       window.removeEventListener('resize', refreshHandles);
     };
-  }, [selectedRectangleDrawing?.id, chartReady]);
+  }, [selectedRectangleDrawing?.id, selectedFibonacciDrawing?.id, chartReady]);
 
   return (
     <div className="chart-root relative w-full h-full" style={{ backgroundColor: theme.background, visibility: startupViewReady ? 'visible' : 'hidden' }}>
@@ -2198,6 +2201,73 @@ export default function Chart({ chartId = 'main' }) {
               pointerEvents: 'auto',
             }}
           />
+            ))}
+          </div>
+        );
+      })()}
+      {selectedFibonacciDrawing && !isPencilMode && (() => {
+        const pts = selectedFibonacciDrawing.points.map(pointToXY);
+        if (pts.some(point => !point)) return null;
+        // Fibonacci keeps its two original anchors, like a rectangle's two
+        // opposite corners. Dragging either square changes that endpoint.
+        return (
+          <div
+            className="fibonacci-resize-handles"
+            style={{ position: 'absolute', inset: 0, zIndex: 1000, pointerEvents: 'none' }}
+          >
+            {pts.map((point, index) => (
+              <button
+                key={index}
+                type="button"
+                aria-label={`Resize Fibonacci endpoint ${index + 1}`}
+                title={`Drag to resize Fibonacci endpoint ${index + 1}`}
+                data-handle-tick={drawingHandleTick}
+                onPointerDown={e => {
+                  if (e.button !== 0) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const rect = chartContainerRef.current?.getBoundingClientRect();
+                  if (!rect) return;
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  const point = xyToPoint(x, y);
+                  if (!point) return;
+                  snapshotDrawings();
+                  const selection = { type: 'drawing', id: selectedFibonacciDrawing.id };
+                  selectedItemRef.current = selection;
+                  setSelectedItem(selection);
+                  lockChart(true);
+                  dragRef.current = {
+                    type: 'drawing',
+                    drawingType: 'fibonacci',
+                    drawingId: selectedFibonacciDrawing.id,
+                    mode: 'drag-point',
+                    pointIndex: index,
+                    startMouse: point,
+                    startScreen: { x, y },
+                    originalPoints: selectedFibonacciDrawing.points.map(p => ({ ...p })),
+                  };
+                  try { chartContainerRef.current?.setPointerCapture(e.pointerId); } catch (error) {}
+                }}
+                style={{
+                  display: 'block',
+                  position: 'absolute',
+                  left: point.x,
+                  top: point.y,
+                  width: 13,
+                  height: 13,
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 29,
+                  cursor: 'move',
+                  background: '#ffffff',
+                  border: '2px solid #2563eb',
+                  borderRadius: 3,
+                  boxShadow: '0 1px 5px rgba(0,0,0,.9)',
+                  padding: 0,
+                  touchAction: 'none',
+                  pointerEvents: 'auto',
+                }}
+              />
             ))}
           </div>
         );
