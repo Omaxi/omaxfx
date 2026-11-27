@@ -234,6 +234,8 @@ export default function AnalyticsModal() {
         currentStreak: `${currentTradeStreak} ${streakText.toLowerCase()}`,
         longTrades: longTrades.length, longWinRate: longTrades.length ? longWins / longTrades.length * 100 : 0,
         shortTrades: shortTrades.length, shortWinRate: shortTrades.length ? shortWins / shortTrades.length * 100 : 0,
+        bestSession: bestSession ? { label: bestSession.label, pnl: bestSession.pnl, trades: bestSession.trades } : null,
+        worstSession: worstSession ? { label: worstSession.label, pnl: worstSession.pnl, trades: worstSession.trades } : null,
         maxBalance,
       };
       const html = buildAnalyticsPrintHtml({
