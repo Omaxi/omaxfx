@@ -22,13 +22,6 @@ const CHART_TYPES = [
 // SYMBOLS LIST
 // Set `available: true` when the CSV file(s) are present in /public/data/.
 // =========================================================================
-const SYMBOLS = [
-  { code: 'XAUUSD', source: 'Dukascopy', available: true },
-  { code: 'EURUSD', source: 'Dukascopy', available: true },
-  { code: 'CHFJPY', source: 'Dukascopy', available: false },
-  { code: 'GBPAUD', source: 'Dukascopy', available: false },
-];
-
 const SESSIONS = [
   { key: 'asian',   label: 'Asia', icon: Sunrise, color: 'text-orange-400' },
   { key: 'london',  label: 'London',   icon: Sun,     color: 'text-blue-400' },
