@@ -689,3 +689,18 @@ html[data-ui-theme="light"] .analytics-modal-shell .text-emerald-400 { color: #0
 html[data-ui-theme="light"] .analytics-modal-shell .text-red-400 { color: #dc2626 !important; }
 html[data-ui-theme="light"] .analytics-modal-shell .text-blue-300,
 html[data-ui-theme="light"] .analytics-modal-shell .text-blue-400 { color: #2563eb !important; }
+
+
+/* Keep labels white on blue action controls in light mode, even inside
+   modal-specific neutral text overrides. */
+html[data-ui-theme="light"] .history-modal-shell button.theme-action-contrast,
+html[data-ui-theme="light"] .history-modal-shell button.theme-action-contrast *,
+html[data-ui-theme="light"] .history-modal-shell button[class*="bg-blue-"] {
+  color: #ffffff !important;
+}
+
+/* The indicator count is a blue badge, not ordinary panel text. */
+html[data-ui-theme="light"] .indicators-panel-trigger .indicator-count-badge,
+html[data-ui-theme="light"] .indicators-panel-trigger .indicator-count-badge * {
+  color: #ffffff !important;
+}
