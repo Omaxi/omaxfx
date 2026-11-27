@@ -157,7 +157,7 @@ export default function PeriodModal() {
                 type="text" value={playerName} maxLength={20}
                 onChange={(e) => setPlayerName(e.target.value)}
                 placeholder="e.g., GeorgeSorosTrades, WarrenBuffettTrades, OmarTrades..."
-                className="w-full p-1.5 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-xs focus:border-blue-500 outline-none"
+                className="w-full p-1.5 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-xs placeholder:text-[10px] placeholder:text-gray-500 focus:border-blue-500 outline-none"
               />
             </div>
           </div>
