@@ -994,7 +994,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
         ctx.rect(0, 0, paneWidth, paneHeight);
         ctx.clip();
         visibleZones.forEach(zone => {
-          const startX = timeToX(zone.startTime);
+          const startX = timeToX(zone.anchorTime ?? zone.startTime);
           const endX = zone.mitigatedAt == null ? paneWidth : timeToX(zone.mitigatedAt);
           const topY = priceSeries.priceToCoordinate(zone.top);
           const bottomY = priceSeries.priceToCoordinate(zone.bottom);

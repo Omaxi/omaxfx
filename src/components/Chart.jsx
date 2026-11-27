@@ -2176,15 +2176,15 @@ export default function Chart({ chartId = 'main' }) {
           </span>
         </button>
         {!dashboardCollapsed && <>
-          <div className="grid grid-cols-[48px_1fr] gap-x-2 gap-y-0.5">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-0.5">
             <span className="text-gray-500">Open</span><span className="text-right text-white">{candlePrice(currentCandle?.open)}</span>
             <span className="text-gray-500">High</span><span className="text-right text-white">{candlePrice(currentCandle?.high)}</span>
             <span className="text-gray-500">Low</span><span className="text-right text-white">{candlePrice(currentCandle?.low)}</span>
             <span className="text-gray-500">Close</span><span className="text-right text-white">{candlePrice(currentCandle?.close)}</span>
             <span className="text-gray-500">Datetime</span><span className="text-right text-white">{candleDate}</span>
             <span className="text-gray-500">Session</span><span className="text-right text-white">{candleSession}</span>
-            <span className="text-gray-500">Open positions</span><span className="text-right font-semibold text-emerald-400">{positions.length}</span>
-            <span className="text-gray-500">Pending orders</span><span className="text-right font-semibold text-amber-400">{pendingOrders.length}</span>
+            <span className="text-gray-500 whitespace-nowrap">Open positions</span><span className="text-right font-semibold text-emerald-400">{positions.length}</span>
+            <span className="text-gray-500 whitespace-nowrap">Pending orders</span><span className="text-right font-semibold text-amber-400">{pendingOrders.length}</span>
           </div>
           {htfDashboard && <div className="mt-2 border-t border-[#2a2e39] pt-2">
             <div className="mb-1 flex items-center justify-between">

@@ -74,7 +74,10 @@ export const detectFairValueGaps = (candles, timeframe, thresholdPercent = 0) =>
       direction,
       top,
       bottom,
+      // Keep the confirmation time separate from the visual anchor. The gap is only
+      // revealed after candle 3 completes, but its rectangle begins at candle 1.
       startTime: Number(third.time),
+      anchorTime: Number(first.time),
       mitigatedAt,
       timeframe: Number(timeframe),
     });

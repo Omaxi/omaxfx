@@ -15,6 +15,7 @@ test('detects a bullish FVG only when the middle candle closes above the first c
   assert.equal(gaps[0].top, 11);
   assert.equal(gaps[0].bottom, 10);
   assert.equal(gaps[0].startTime, 120);
+  assert.equal(gaps[0].anchorTime, 0);
   assert.equal(gaps[0].mitigatedAt, null);
 });
 
