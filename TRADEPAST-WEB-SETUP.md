@@ -19,7 +19,7 @@ The existing GitHub Pages project URL is:
 
 https://omaxi.github.io/omaxfx/
 
-The Pages build uses the repository subpath. A custom domain such as `www.tradepast.com` must be registered/owned separately, then configured in GitHub Pages and at the domain registrar using the DNS records GitHub provides. Do not add a CNAME or claim the custom domain is live until ownership and DNS are verified. The site owner must also add the custom domain to Supabase's allowed redirect URLs.
+The Pages build uses the repository subpath by default. After the domain is registered and its DNS is ready, set the GitHub Actions repository variable `TRADEPAST_CUSTOM_DOMAIN` to `1` so Vite builds assets from the domain root, then configure the custom domain in GitHub Pages and at the registrar using the DNS records GitHub provides. Do not add a CNAME or claim the custom domain is live until ownership and DNS are verified. The site owner must also add the custom domain to Supabase's allowed redirect URLs.
 
 ## 3. Advertising
 
