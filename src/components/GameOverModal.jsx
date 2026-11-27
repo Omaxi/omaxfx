@@ -1,11 +1,11 @@
 import { useStore } from '../store';
 import { fmtMoney } from '../utils/format';
-import { Trophy, TrendingDown, TrendingUp, Target, Zap, RotateCcw } from 'lucide-react';
+import { Trophy, TrendingDown, TrendingUp, Target, RotateCcw, ChartNoAxesCombined } from 'lucide-react';
 
 export default function GameOverModal() {
   const { 
     gameState, rules, balance, tradeHistory, restartGame, 
-    openHistory, openEquity 
+    openHistory, openAnalytics 
   } = useStore();
 
   if (!gameState.isOver) return null;
@@ -99,10 +99,10 @@ export default function GameOverModal() {
 
         <div className="p-5 border-t border-[#2a2e39] flex flex-wrap gap-3">
           <button 
-            onClick={openEquity}
+            onClick={openAnalytics}
             className="flex-1 min-w-[140px] py-3 bg-[#1e222d] hover:bg-[#2a2e39] rounded-xl font-bold text-sm border border-[#2a2e39] flex items-center justify-center gap-2"
           >
-            <TrendingUp size={16} /> View Equity Curve
+            <ChartNoAxesCombined size={16} /> Analytics
           </button>
           <button 
             onClick={openHistory}
