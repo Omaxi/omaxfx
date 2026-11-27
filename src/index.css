@@ -214,3 +214,9 @@ html[data-ui-theme="dark"] .indicators-panel .text-gray-300 {
 .bottom-replay-controls { max-width: 460px; }
 @media (max-width: 900px) { .app-header { gap: 8px !important; padding-inline: 6px !important; } .header-primary-controls { gap: 8px !important; } .header-status-controls { gap: 4px !important; } .tradepast-bottom-toolbar { gap: 5px; padding-inline: 6px; } .bottom-market-meta { gap: 6px; } .bottom-replay-controls { gap: 4px; } .bottom-trade-actions { gap: 4px; } }
 @media (max-width: 680px) { .header-primary-controls > div:first-child { display: none !important; } .header-chart-tools { gap: 5px; } .header-status-controls > div { display: none; } .tradepast-bottom-toolbar { flex-wrap: wrap; justify-content: space-between; } .bottom-replay-controls { order: 3; flex-basis: 100%; max-width: none; } .bottom-trade-actions { margin-left: auto; } }
+
+/* Ensure the global dark-select theme does not reintroduce a box around the top timeframe control. */
+html[data-ui-theme="dark"] .header-select { appearance: none !important; -webkit-appearance: none !important; background: transparent !important; background-color: transparent !important; border: 0 !important; box-shadow: none !important; color: #9ca3af !important; }
+.header-primary-controls [aria-pressed="true"] { background: transparent !important; color: #3b82f6 !important; }
+.header-primary-controls [aria-pressed="false"] { background: transparent !important; }
+.header-status-controls .header-action-new-session { border: 1px solid #164e63 !important; background: #1e222d !important; }
