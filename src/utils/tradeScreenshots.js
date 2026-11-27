@@ -88,7 +88,9 @@ export function renderTradeScreenshot(trade, candles, timeframe = 1, uiTheme = '
   const windowData = getTradeCandleWindow(trade, candles, timeframe);
   if (!windowData || typeof document === 'undefined') return null;
   const { data, entryIndex, exitIndex } = windowData;
-  const palette = { background: '#0d1117', text: '#9aa4b2' };
+  const palette = uiTheme === 'light'
+    ? { background: '#f8fafc', text: '#64748b' }
+    : { background: '#0d1117', text: '#9aa4b2' };
   const width = 1280, height = 640;
   const canvas = document.createElement('canvas');
   canvas.width = width; canvas.height = height;
