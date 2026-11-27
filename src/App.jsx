@@ -8,7 +8,6 @@ import SoundToggle from './components/SoundToggle';
 import SettingsModal from './components/SettingsModal';
 import PeriodModal from './components/PeriodModal';
 import GameOverModal from './components/GameOverModal';
-import EquityModal from './components/EquityModal';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import LoadingScreen from './components/LoadingScreen';
 import TradeScreenshotCapture from './components/TradeScreenshotCapture';
@@ -501,7 +500,6 @@ function App() {
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <PeriodModal />
       <GameOverModal />
-      <EquityModal />
 
       <CelebrationOverlay />
 
