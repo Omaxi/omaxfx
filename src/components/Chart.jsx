@@ -9,6 +9,19 @@ import IndicatorsPanel from './IndicatorsPanel';
 import DrawingToolbar from './DrawingToolbar';
 import StylePanel from './StylePanel';
 
+// The Live Information panel must be an opaque surface so chart layers never show through it.
+const getOpaquePanelBackground = (color) => {
+  const value = String(color || '#171a27').trim();
+  const hex = value.match(/^#([0-9a-f]{8})$/i);
+  if (hex) return `#${hex[1].slice(0, 6)}`;
+  const shortHex = value.match(/^#([0-9a-f]{4})$/i);
+  if (shortHex) return `#${shortHex[1].slice(0, 3)}`;
+  const rgba = value.match(/^rgba?\(\s*([^,]+)\s*,\s*([^,]+)\s*,\s*([^,)]+)(?:\s*,\s*[^)]+)?\)$/i);
+  if (rgba) return `rgb(${rgba[1].trim()}, ${rgba[2].trim()}, ${rgba[3].trim()})`;
+  if (value.toLowerCase() === 'transparent') return '#171a27';
+  return value;
+};
+
 const calcRRR = (entry, sl, tp) => {
   if (entry == null || sl == null || tp == null) return null;
   const risk = Math.abs(entry - sl);
@@ -2165,7 +2178,7 @@ export default function Chart({ chartId = 'main' }) {
         );
       })()}
 
-      {gameStarted && !chartUiPanelsHidden && <div className="live-information-panel absolute top-2 right-[72px] left-auto z-[10] w-[min(230px,calc(100%-5rem))] rounded-lg border border-[#343b49] p-3 text-[9px] leading-4 text-gray-300 shadow-lg pointer-events-auto font-mono" style={{ backgroundColor: theme.background }}>
+      {gameStarted && !chartUiPanelsHidden && <div className="live-information-panel absolute top-2 right-[72px] left-auto z-[50] w-[min(230px,calc(100%-5rem))] rounded-lg border border-[#343b49] p-3 text-[9px] leading-4 text-gray-300 shadow-lg pointer-events-auto font-mono" style={{ backgroundColor: getOpaquePanelBackground(theme.background), backgroundImage: 'none', opacity: 1, isolation: 'isolate', zIndex: 50 }}>
         <button type="button" onClick={() => setDashboardCollapsed(value => !value)}
           aria-expanded={!dashboardCollapsed}
           className="mb-1 flex w-full items-center justify-between gap-2 rounded text-left hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500">
