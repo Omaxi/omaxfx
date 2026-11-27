@@ -140,16 +140,49 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
       chartRef.current = null;
       seriesRef.current = null;
     };
-  }, [symbol, theme, uiMode]);
+  }, [symbol]);
+
+  // Theme changes update the existing chart and series in place. Recreating
+  // Lightweight Charts on every theme toggle can leave secondary panes blank
+  // while their canvas and replay data effects race each other.
+  useEffect(() => {
+    const chart = chartRef.current;
+    const series = seriesRef.current;
+    if (!chart || !series) return;
+    const light = uiMode === 'light';
+    const background = light ? '#f8fafc' : (theme?.background || '#171a27');
+    const gridColor = light ? '#e2e8f0' : '#202433';
+    try {
+      chart.applyOptions({
+        layout: {
+          background: { type: 'solid', color: background },
+          textColor: light ? '#475467' : '#6b7280',
+        },
+        grid: {
+          vertLines: { visible: true, color: gridColor },
+          horzLines: { visible: true, color: gridColor },
+        },
+      });
+      series.applyOptions({
+        upColor: light ? '#16a34a' : (theme?.upBody || '#0897a7'),
+        downColor: light ? '#ef4444' : (theme?.downBody || '#59616e'),
+        wickUpColor: light ? '#16a34a' : (theme?.upWick || '#0897a7'),
+        wickDownColor: light ? '#ef4444' : (theme?.downWick || '#59616e'),
+      });
+      if (containerRef.current) containerRef.current.style.backgroundColor = background;
+    } catch (error) {
+      console.warn('[MiniChart] Unable to apply chart theme:', error);
+    }
+  }, [theme, uiMode]);
 
   useEffect(() => {
-    if (!seriesRef.current || !chartRef.current) return;
+    if (!seriesRef.current || !chartRef.current || !chartReady) return;
     seriesRef.current.setData(candles);
     if (candles.length && lastTimeframeRef.current !== timeframe) {
       chartRef.current.timeScale().fitContent();
       lastTimeframeRef.current = timeframe;
     }
-  }, [candles, timeframe, chartVersion]);
+  }, [candles, timeframe, chartVersion, chartReady]);
 
   const resetChartView = () => {
     const chart = chartRef.current;
