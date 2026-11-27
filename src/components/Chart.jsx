@@ -748,8 +748,9 @@ export default function Chart({ chartId = 'main' }) {
           ctx.fillStyle = unrealizedPnl >= 0 ? '#26a69a' : '#ef5350';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-          ctx.shadowBlur = 3;
+          // Keep the PnL label crisp without a drop shadow.
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
           // Anchor the label to the horizontal center of its own marker and
           // keep it completely outside the risk/reward block. If the preferred
           // side is clipped by the pane edge, flip it to the other side.
