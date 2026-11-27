@@ -464,15 +464,18 @@ export default function Chart({ chartId = 'main' }) {
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
     try {
+      const light = uiMode === 'light';
+      const upColor = light ? '#16a34a' : theme.upBody;
+      const downColor = light ? '#ef4444' : theme.downBody;
       seriesRef.current.applyOptions({
-        upColor: theme.upBody,
-        downColor: theme.downBody,
-        wickUpColor: theme.upWick,
-        wickDownColor: theme.downWick,
+        upColor,
+        downColor,
+        wickUpColor: light ? '#16a34a' : theme.upWick,
+        wickDownColor: light ? '#ef4444' : theme.downWick,
       });
-      lineSeriesRef.current.applyOptions({ color: theme.upBody });
+      lineSeriesRef.current.applyOptions({ color: upColor });
     } catch (e) {}
-  }, [theme]);
+  }, [theme, uiMode]);
 
   useEffect(() => {
     if (!seriesRef.current || !lineSeriesRef.current) return;
