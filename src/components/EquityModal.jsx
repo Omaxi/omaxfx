@@ -214,7 +214,7 @@ export default function EquityModal() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '9px' }}>
               <div style={{ fontSize: '14px', fontWeight: 750, color: '#172033' }}>Account equity</div>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: pnlColor }}>{currentPnl >= 0 ? '+' : '−'}$${fmtMoney(currentPnl, 2)} <span style={{ color: '#64748b', fontWeight: 500 }}>({pnlPercent.toFixed(2)}%)</span></div>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: pnlColor }}>{currentPnl >= 0 ? '+' : '−'}${fmtMoney(currentPnl, 2)} <span style={{ color: '#64748b', fontWeight: 500 }}>({pnlPercent.toFixed(2)}%)</span></div>
             </div>
             <div style={{ height: '290px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 12px 8px', minWidth: 0 }}>
               {tradeHistory.length === 0 ? (
