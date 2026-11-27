@@ -1116,7 +1116,7 @@ export default function IndicatorsPanel({ onHtfDashboard, onIndicatorDashboard, 
           </div>
           <div className="grid grid-cols-2 gap-1">
             {INDICATORS.map(item => (
-              <button key={item.key} onClick={() => toggle(item.key)} className={`rounded border px-2 py-1.5 text-left text-[10px] ${active[item.key] ? 'border-blue-500 bg-blue-600/20 text-white' : 'border-[#2a2e39] bg-[#1e222d] text-gray-400 hover:text-white'}`}>
+              <button key={item.key} onClick={() => toggle(item.key)} className={`indicator-option ${active[item.key] ? 'indicator-option-selected border-blue-500 bg-blue-600/20 text-blue-400' : 'border-[#2a2e39] bg-[#1e222d] text-gray-400 hover:text-white'} rounded border px-2 py-1.5 text-left text-[10px]`}>
                 {active[item.key] ? '✓ ' : '+ '}{item.label}
               </button>
             ))}
