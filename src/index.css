@@ -854,3 +854,16 @@ html[data-ui-theme="light"] .trade-journal-modal .trade-side-badge.bg-red-900\/5
   border-color: #fca5a5 !important;
   color: #991b1b !important;
 }
+
+
+/* Keep the calendar mark crisp white in the blue TradePast brand tile. */
+.period-brand-icon svg {
+  color: #fff !important;
+  stroke: #fff !important;
+}
+
+/* Selected challenge preset: blue label on the light-blue selected tile. */
+html[data-ui-theme="light"] .period-preset-selected,
+html[data-ui-theme="light"] .period-preset-selected span {
+  color: #1d4ed8 !important;
+}
