@@ -280,14 +280,14 @@ export default function ControlPanel() {
         </div>
         <div className="bottom-trade-actions flex items-center justify-end gap-1.5 flex-shrink-0">
           {!isDrawingMode && !draftPosition ? <>
-            <button onClick={() => startDrawing('buy')} className="theme-action-contrast h-9 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold text-[11px] whitespace-nowrap">Long position</button>
-            <button onClick={() => startDrawing('sell')} className="theme-action-contrast h-9 px-3 bg-red-600 hover:bg-red-500 text-white rounded font-bold text-[11px] whitespace-nowrap">Short position</button>
+            <button onClick={() => startDrawing('buy')} className="theme-action-contrast h-9 px-3 bg-[#477fc9] hover:bg-[#3d70b3] text-white rounded font-bold text-[11px] whitespace-nowrap">Long position</button>
+            <button onClick={() => startDrawing('sell')} className="theme-action-contrast h-9 px-3 bg-[#d16b70] hover:bg-[#bd5d63] text-white rounded font-bold text-[11px] whitespace-nowrap">Short position</button>
           </> : <div className="flex h-9 min-h-9 items-center gap-2 bg-yellow-900/20 px-2 rounded flex-shrink-0">
             <span className="text-yellow-400 text-[10px] font-bold whitespace-nowrap">{isDrawingMode ? drawingStep?.toUpperCase() : 'POSITION READY'}</span>
             <button onClick={clearDraft} className="flex h-6 w-6 items-center justify-center text-red-400" title="Cancel position tool"><X size={11}/></button>
           </div>}
-          <button onClick={() => handleMarketOrder('buy')} className="h-9 px-4 bg-green-600 hover:bg-green-500 text-white rounded font-bold text-[11px] transition-colors">BUY</button>
-          <button onClick={() => handleMarketOrder('sell')} className="h-9 px-4 bg-red-600 hover:bg-red-500 text-white rounded font-bold text-[11px] transition-colors">SELL</button>
+          <button onClick={() => handleMarketOrder('buy')} className="theme-action-contrast h-9 px-4 bg-[#29966b] hover:bg-[#23835e] text-white rounded font-bold text-[11px] transition-colors">BUY</button>
+          <button onClick={() => handleMarketOrder('sell')} className="theme-action-contrast h-9 px-4 bg-[#d16b70] hover:bg-[#bd5d63] text-white rounded font-bold text-[11px] transition-colors">SELL</button>
         </div>
       </div>
 
