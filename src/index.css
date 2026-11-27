@@ -867,3 +867,15 @@ html[data-ui-theme="light"] .period-preset-selected,
 html[data-ui-theme="light"] .period-preset-selected span {
   color: #1d4ed8 !important;
 }
+
+
+/* Period modal Cancel action must use the light surface palette in light mode. */
+html[data-ui-theme="light"] .period-cancel-button {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1px solid #dbe2ea !important;
+}
+html[data-ui-theme="light"] .period-cancel-button:hover {
+  background-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
