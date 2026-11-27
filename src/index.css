@@ -966,8 +966,9 @@ html[data-ui-theme="light"] .history-modal-shell button.theme-action-contrast:ho
 html[data-ui-theme="light"] .history-modal-shell [class~="text-yellow-400"] { color: #b7791f !important; }
 html[data-ui-theme="light"] .history-modal-shell [class~="text-gray-500"] { color: #667085 !important; }
 
-/* The shareable Performance Report is deliberately light in both app themes.
-   Isolate its chart canvas from workspace-wide dark-mode styles. */
+/* The shareable Performance Report follows the selected application theme.
+   Keep these rules scoped to the captured report so chart/workspace theme rules
+   cannot bleed into the export surface or override its report palette. */
 .equity-report-capture {
   color-scheme: light !important;
   background: #ffffff !important;
@@ -981,4 +982,18 @@ html[data-ui-theme="light"] .history-modal-shell [class~="text-gray-500"] { colo
 }
 .equity-report-capture .recharts-tooltip-wrapper {
   color-scheme: light !important;
+}
+html[data-ui-theme="dark"] .equity-report-capture {
+  color-scheme: dark !important;
+  background: #131722 !important;
+  color: #e5e7eb !important;
+}
+html[data-ui-theme="dark"] .equity-report-capture .recharts-cartesian-grid line {
+  stroke: #374151 !important;
+}
+html[data-ui-theme="dark"] .equity-report-capture .recharts-text {
+  fill: #9ca3af !important;
+}
+html[data-ui-theme="dark"] .equity-report-capture .recharts-tooltip-wrapper {
+  color-scheme: dark !important;
 }
