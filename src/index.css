@@ -704,3 +704,81 @@ html[data-ui-theme="light"] .indicators-panel-trigger .indicator-count-badge,
 html[data-ui-theme="light"] .indicators-panel-trigger .indicator-count-badge * {
   color: #ffffff !important;
 }
+
+
+/* Place Order modal: fully translate the hard-coded dark palette for light mode. */
+html[data-ui-theme="light"] .order-modal-overlay {
+  background: rgb(15 23 42 / 38%) !important;
+}
+html[data-ui-theme="light"] .order-modal-shell {
+  background: #ffffff !important;
+  color: #334155 !important;
+  border-color: #dbe2ea !important;
+  box-shadow: 0 24px 70px rgb(15 23 42 / 20%) !important;
+}
+html[data-ui-theme="light"] .order-modal-shell [class*="bg-[#131722]"],
+html[data-ui-theme="light"] .order-modal-shell [class*="bg-[#1e222d]"],
+html[data-ui-theme="light"] .order-modal-shell [class*="bg-[#2a2e39]"] {
+  background-color: #f1f5f9 !important;
+}
+html[data-ui-theme="light"] .order-modal-shell [class*="border-[#2a2e39]"],
+html[data-ui-theme="light"] .order-modal-shell [class*="border-[#343a49]"] {
+  border-color: #dbe2ea !important;
+}
+html[data-ui-theme="light"] .order-modal-shell .text-white,
+html[data-ui-theme="light"] .order-modal-shell .text-gray-200,
+html[data-ui-theme="light"] .order-modal-shell .text-gray-300 {
+  color: #334155 !important;
+}
+html[data-ui-theme="light"] .order-modal-shell .text-gray-400,
+html[data-ui-theme="light"] .order-modal-shell .text-gray-500 {
+  color: #64748b !important;
+}
+html[data-ui-theme="light"] .order-modal-shell input:not([type="checkbox"]),
+html[data-ui-theme="light"] .order-modal-shell select {
+  color: #1e293b !important;
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color-scheme: light !important;
+}
+html[data-ui-theme="light"] .order-modal-shell input::placeholder {
+  color: #94a3b8 !important;
+}
+html[data-ui-theme="light"] .order-modal-shell .theme-menu-surface {
+  background: #ffffff !important;
+  color: #334155 !important;
+  border-color: #dbe2ea !important;
+  box-shadow: 0 12px 30px rgb(15 23 42 / 14%) !important;
+}
+html[data-ui-theme="light"] .order-modal-shell .theme-menu-surface button {
+  color: #334155 !important;
+}
+html[data-ui-theme="light"] .order-modal-shell .theme-menu-surface button:hover {
+  background: #eff6ff !important;
+}
+html[data-ui-theme="light"] .order-modal-shell .theme-menu-surface button[aria-selected="true"] {
+  color: #1d4ed8 !important;
+  background: #dbeafe !important;
+}
+html[data-ui-theme="light"] .order-modal-shell button[class*="bg-blue-"] {
+  color: #ffffff !important;
+}
+html[data-ui-theme="light"] .order-modal-shell button[class*="bg-green-"],
+html[data-ui-theme="light"] .order-modal-shell button[class*="bg-red-"] {
+  color: #ffffff !important;
+}
+html[data-ui-theme="light"] .order-modal-shell .order-side-label {
+  background-color: #fee2e2 !important;
+  color: #dc555b !important;
+}
+html[data-ui-theme="light"] .order-modal-shell .order-side-label[class*="green"] {
+  background-color: #dcfce7 !important;
+  color: #15803d !important;
+}
+html[data-ui-theme="light"] .order-modal-shell [class*="bg-red-900"] {
+  background-color: #fef2f2 !important;
+  border-color: #fecaca !important;
+}
+html[data-ui-theme="light"] .order-modal-shell .border-t {
+  border-color: #e2e8f0 !important;
+}
