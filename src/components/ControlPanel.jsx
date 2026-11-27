@@ -198,7 +198,7 @@ export default function ControlPanel() {
   const JumpDropdown = () => (
     <>
       <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={closeAll} />
-      <div className="theme-menu-surface fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[260px]" style={{ zIndex: 9999, left: jumpLeft, bottom: 52 }}>
+      <div className="theme-menu-surface jump-session-menu fixed bg-[#1e222d] border border-[#2a2e39] rounded-lg shadow-2xl min-w-[390px] max-w-[calc(100vw-16px)]" style={{ zIndex: 9999, left: jumpLeft, bottom: 52 }}>
         <div className="px-3 py-1.5 border-b border-[#2a2e39] text-[9px] font-bold uppercase text-gray-500 tracking-wide flex justify-between items-center">
           <span>Jump to Session</span>
           <span className="text-[8px] text-gray-600 normal-case">UTC+3</span>
