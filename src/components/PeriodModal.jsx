@@ -281,7 +281,7 @@ export default function PeriodModal() {
           {gameStarted && (
             <button
               onClick={closePeriodModal}
-              className="flex-1 py-2 bg-[#2a2e39] hover:bg-[#3a3e49] rounded-lg font-bold text-sm text-gray-300 transition-colors"
+              className="period-cancel-button flex-1 py-2 bg-[#2a2e39] hover:bg-[#3a3e49] rounded-lg font-bold text-sm text-gray-300 transition-colors"
             >
               Cancel
             </button>
