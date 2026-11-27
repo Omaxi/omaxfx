@@ -684,3 +684,8 @@ html[data-ui-theme="light"] .trade-journal-modal .text-gray-500,
 html[data-ui-theme="light"] .trade-journal-modal .text-gray-600 {
   color: #64748b !important;
 }
+
+html[data-ui-theme="light"] .analytics-modal-shell .text-emerald-400 { color: #059669 !important; }
+html[data-ui-theme="light"] .analytics-modal-shell .text-red-400 { color: #dc2626 !important; }
+html[data-ui-theme="light"] .analytics-modal-shell .text-blue-300,
+html[data-ui-theme="light"] .analytics-modal-shell .text-blue-400 { color: #2563eb !important; }
