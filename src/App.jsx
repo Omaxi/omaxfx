@@ -358,11 +358,11 @@ function App() {
         <div className="header-status-controls flex items-center gap-2 text-[11px] flex-shrink-0 whitespace-nowrap tabular-nums">
           <div className="flex items-baseline gap-1">
             <span className="text-gray-400">Bal:</span>
-            <span className="inline-block w-[84px] text-right text-green-400 font-bold tabular-nums">${fmtMoney(balance, 0)}</span>
+            <span className="inline-block text-left text-green-400 font-bold tabular-nums">${fmtMoney(balance, 0)}</span>
           </div>
           <div className="flex items-baseline gap-1">
             <span className="text-gray-400 hidden sm:inline">PnL:</span>
-            <span className={`inline-block w-[104px] text-right font-bold tabular-nums ${unrealisedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <span className={`inline-block text-left font-bold tabular-nums ${unrealisedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               ${fmtMoney(unrealisedPnl)}
             </span>
           </div>
