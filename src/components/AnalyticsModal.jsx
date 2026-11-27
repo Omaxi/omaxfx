@@ -32,10 +32,13 @@ export default function AnalyticsModal() {
   const tradeHistory = store.tradeHistory;
   const balance = store.balance;
   const rules = store.rules;
+  const sessionTimes = store.sessionTimes || {};
+  const sessionEndTimes = store.sessionEndTimes || {};
   const rawData = store.rawData;
   const currentIndex = store.currentIndex;
   const sessionId = store.sessionId;
   const timeframe = store.timeframe;
+  const uiMode = store.uiMode;
   const screenshotCandles = rawData.length ? rawData : (store.allRawDataBySymbol?.[store.symbol] || []);
   const [selectedDate, setSelectedDate] = useState(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -137,6 +140,28 @@ export default function AnalyticsModal() {
   const shortTrades = trades.filter(t => t.type === 'sell');
   const longWins = longTrades.filter(t => t.pnl > 0).length;
   const shortWins = shortTrades.filter(t => t.pnl > 0).length;
+  const sessionPerformance = [
+    { key: 'asian', label: 'Asia' },
+    { key: 'london', label: 'London' },
+    { key: 'newyork', label: 'New York' },
+  ].map(session => {
+    const start = Number(sessionTimes[session.key] ?? ({ asian: 3, london: 11, newyork: 16 }[session.key]));
+    const end = Number(sessionEndTimes[session.key] ?? ({ asian: 8, london: 13, newyork: 18 }[session.key]));
+    const sessionTrades = trades.filter(trade => {
+      const timestamp = Number(trade.openTime);
+      if (!Number.isFinite(timestamp)) return false;
+      const marketDateTime = new Date((timestamp + MARKET_TZ_OFFSET_SECONDS) * 1000);
+      const hour = marketDateTime.getUTCHours() + marketDateTime.getUTCMinutes() / 60;
+      return start < end ? hour >= start && hour < end : start > end ? hour >= start || hour < end : false;
+    });
+    return {
+      ...session,
+      trades: sessionTrades.length,
+      pnl: sessionTrades.reduce((sum, trade) => sum + (Number(trade.pnl) || 0), 0),
+    };
+  }).filter(session => session.trades > 0);
+  const bestSession = [...sessionPerformance].sort((a, b) => b.pnl - a.pnl)[0] || null;
+  const worstSession = [...sessionPerformance].sort((a, b) => a.pnl - b.pnl)[0] || null;
   let maxBalance = startBalance;
   let runningBalance = startBalance;
   let maxClosedDrawdown = 0;
@@ -253,12 +278,12 @@ export default function AnalyticsModal() {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-1.5 p-1.5 shrink-0">
           <Metric title="Net P&L" value={`${netPnl >= 0 ? '+' : '-'}${money(netPnl)}`} color={netPnl >= 0 ? '#21c58b' : '#f05252'} detail={`${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(2)}% return`}/>
-          <Metric title="Trade win %" value={fmtPct(winRate)} color="#f4f4f5" detail={`${wins.length} wins · ${losses.length} losses`} gauge={winRate}/>
-          <Metric title="Avg win/loss trade" value={avgRatio.toFixed(2)} color="#f4f4f5" detail={`${money(avgWin)} avg win / -${money(avgLoss)} avg loss`}/>
-          <Metric title="Profit factor" value={profitFactor === Infinity ? '∞' : profitFactor.toFixed(2)} color="#f4f4f5" detail={`${trades.length} closed trades`} ring={profitFactor}/>
+          <Metric title="Trade win %" value={fmtPct(winRate)} color={uiMode === 'light' ? '#1e293b' : '#f4f4f5'} detail={`${wins.length} wins · ${losses.length} losses`} gauge={winRate}/>
+          <Metric title="Avg win/loss trade" value={avgRatio.toFixed(2)} color={uiMode === 'light' ? '#1e293b' : '#f4f4f5'} detail={`${money(avgWin)} avg win / -${money(avgLoss)} avg loss`}/>
+          <Metric title="Profit factor" value={profitFactor === Infinity ? '∞' : profitFactor.toFixed(2)} color={uiMode === 'light' ? '#1e293b' : '#f4f4f5'} detail={`${trades.length} closed trades`} ring={profitFactor}/>
           <Metric title="Average R" value={`${averageR >= 0 ? '+' : ''}${averageR.toFixed(2)}R`} color={averageR >= 0 ? '#21c58b' : '#f05252'} detail="Average realized R multiple"/>
           <Metric title="Closed DD" value={`${maxClosedDrawdown.toFixed(2)}%`} color="#f05252" detail="Closed-trade equity curve"/>
-          <Metric title="Current streak" value={`${currentTradeStreak} trades`} color="#f4f4f5" detail={streakText} streak/>
+          <Metric title="Current streak" value={`${currentTradeStreak} trades`} color={uiMode === 'light' ? '#1e293b' : '#f4f4f5'} detail={streakText} streak/>
         </div>
 
         <div className="flex-1 min-h-0 grid grid-cols-[minmax(220px,34%)_minmax(0,1fr)] gap-1.5 px-1.5 pb-1.5">
@@ -275,7 +300,7 @@ export default function AnalyticsModal() {
                     <CartesianGrid vertical={false} horizontal={false}/>
                     <XAxis dataKey="label" tick={{ fill: '#777d84', fontSize: 8 }} axisLine={false} tickLine={false} minTickGap={20}/>
                     <YAxis tick={{ fill: '#777d84', fontSize: 8 }} axisLine={false} tickLine={false} width={38} tickFormatter={v => v === 0 ? '$0' : `$${(v / 1000).toFixed(0)}k`}/>
-                    <Tooltip contentStyle={{ background: '#131722', border: '1px solid #2a2e39', borderRadius: 5, fontSize: 10, color: '#f3f4f6' }} labelStyle={{ color: '#aab0b6' }} formatter={v => [money(v), 'Cumulative P&L']}/>
+                    <Tooltip contentStyle={{ background: uiMode === 'light' ? '#ffffff' : '#131722', border: '1px solid ' + (uiMode === 'light' ? '#dbe2ea' : '#2a2e39'), borderRadius: 5, fontSize: 10, color: uiMode === 'light' ? '#1e293b' : '#f3f4f6' }} labelStyle={{ color: uiMode === 'light' ? '#64748b' : '#aab0b6' }} formatter={v => [money(v), 'Cumulative P&L']}/>
                     <Area type="monotone" dataKey="pnl" stroke="#2c67c5" strokeWidth={2.5} fill="url(#analyticsPnlFill)" isAnimationActive={false}/>
                   </AreaChart>
                 </ResponsiveContainer> : <Empty text="Close trades to build your P&L curve"/>}
@@ -295,6 +320,8 @@ export default function AnalyticsModal() {
                 <Stat label="Short trades" value={`${shortTrades.length} · ${shortTrades.length ? Math.round(shortWins / shortTrades.length * 100) : 0}% win`} color="text-red-400"/>
                 <Stat label="Final balance" value={money(balance)}/>
                 <Stat label="Max balance" value={money(maxBalance)}/>
+                <Stat label="Best session" value={bestSession ? `${bestSession.label} · +${money(bestSession.pnl)}` : '—'} color={bestSession?.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}/>
+                <Stat label="Worst session" value={worstSession ? `${worstSession.label} · ${worstSession.pnl > 0 ? '+' : '-'}${money(worstSession.pnl)}` : '—'} color={worstSession?.pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}/>
               </div>
               <div className="mt-auto px-2 pb-2">
                 <div className="analytics-statistics-track h-1.5 rounded-full bg-[#2a2e39] overflow-hidden flex">
