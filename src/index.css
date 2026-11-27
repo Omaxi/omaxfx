@@ -815,3 +815,20 @@ html[data-ui-theme="light"] .order-modal-shell .order-confirm-button:disabled {
 html[data-ui-theme="light"] .order-modal-shell .order-confirm-button:not(:disabled) {
   color: #ffffff !important;
 }
+
+
+/* Trade journal screenshots and their download control follow the active theme. */
+html[data-ui-theme="light"] .trade-journal-modal .trade-journal-chart,
+html[data-ui-theme="light"] .trade-journal-modal .trade-journal-chart > div:first-child {
+  background: #f8fafc !important;
+  border-color: #dbe2ea !important;
+}
+html[data-ui-theme="light"] .trade-journal-modal .trade-screenshot-download {
+  background: #e2e8f0 !important;
+  color: #334155 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+html[data-ui-theme="light"] .trade-journal-modal .trade-screenshot-download:hover {
+  background: #cbd5e1 !important;
+  color: #1e293b !important;
+}
