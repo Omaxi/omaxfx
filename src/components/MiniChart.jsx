@@ -23,6 +23,7 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
   const seriesRef = useRef(null);
   const lastTimeframeRef = useRef(null);
   const [chartReady, setChartReady] = useState(false);
+  const [chartVersion, setChartVersion] = useState(0);
   const [timeframeMenuOpen, setTimeframeMenuOpen] = useState(false);
   const timeframeButtonRef = useRef(null);
   const [timeframeMenuPosition, setTimeframeMenuPosition] = useState({ left: 176, top: 48, maxHeight: 360 });
@@ -123,6 +124,9 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
     });
     chartRef.current = chart;
     seriesRef.current = series;
+    // Theme changes recreate Lightweight Charts; force the data effect to
+    // populate the newly created candlestick series after each recreation.
+    setChartVersion(version => version + 1);
     setChartReady(true);
     const observer = new ResizeObserver(entries => {
       const rect = entries[0]?.contentRect;
@@ -145,7 +149,7 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
       chartRef.current.timeScale().fitContent();
       lastTimeframeRef.current = timeframe;
     }
-  }, [candles, timeframe]);
+  }, [candles, timeframe, chartVersion]);
 
   const resetChartView = () => {
     const chart = chartRef.current;
