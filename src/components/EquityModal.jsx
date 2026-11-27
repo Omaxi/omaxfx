@@ -286,11 +286,11 @@ function MetaPill({ label, value, theme }) {
   );
 }
 
-function StatCard({ label, value, color = '#172033', detail, theme }) {
+function StatCard({ label, value, color, detail, theme }) {
   return (
     <div style={{ backgroundColor: theme.panel, border: `1px solid ${theme.border}`, padding: '11px 13px', borderRadius: '9px', minWidth: 0 }}>
       <div style={{ fontSize: '9px', color: theme.muted, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.55px' }}>{label}</div>
-      <div style={{ fontSize: '17px', color, fontWeight: 800, letterSpacing: '-0.3px', marginTop: '5px', overflowWrap: 'anywhere' }}>{value}</div>
+      <div style={{ fontSize: '17px', color: color || theme.text, fontWeight: 800, letterSpacing: '-0.3px', marginTop: '5px', overflowWrap: 'anywhere' }}>{value}</div>
       {detail && <div style={{ fontSize: '9px', color: theme.muted, marginTop: '3px' }}>{detail}</div>}
     </div>
   );
