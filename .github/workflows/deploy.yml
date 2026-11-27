@@ -34,6 +34,11 @@ jobs:
         run: npm test
 
       - name: Build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_ADSENSE_CLIENT: ${{ vars.VITE_ADSENSE_CLIENT }}
+          TRADEPAST_CUSTOM_DOMAIN: ${{ vars.TRADEPAST_CUSTOM_DOMAIN }}
         run: npm run build
 
       - name: Setup Pages
