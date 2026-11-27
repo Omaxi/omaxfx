@@ -879,3 +879,57 @@ html[data-ui-theme="light"] .period-cancel-button:hover {
   background-color: #e2e8f0 !important;
   color: #1e293b !important;
 }
+
+
+/* Theme isolation for modal surfaces: light mode must not inherit the
+   chart's dark palette from utility classes or global dashboard styles. */
+html[data-ui-theme="light"] .game-over-overlay { background: rgb(15 23 42 / 42%) !important; }
+html[data-ui-theme="light"] .game-over-modal {
+  background: #ffffff !important; color: #1e293b !important;
+  border-color: #dbe3ee !important; color-scheme: light;
+}
+html[data-ui-theme="light"] .game-over-modal .border-b,
+html[data-ui-theme="light"] .game-over-modal .border-t { border-color: #dbe3ee !important; }
+html[data-ui-theme="light"] .game-over-modal [class~="bg-[#1e222d]"] {
+  background: #f1f5f9 !important; color: #1e293b !important;
+}
+html[data-ui-theme="light"] .game-over-modal [class~="text-gray-400"],
+html[data-ui-theme="light"] .game-over-modal [class~="text-gray-500"] { color: #64748b !important; }
+html[data-ui-theme="light"] .game-over-modal button:not(.bg-blue-600) {
+  background: #f8fafc !important; color: #243247 !important; border-color: #dbe3ee !important;
+}
+html[data-ui-theme="light"] .game-over-modal button:not(.bg-blue-600):hover { background: #eef2f7 !important; }
+html[data-ui-theme="light"] .game-over-modal button.bg-blue-600 { color: #ffffff !important; }
+
+html[data-ui-theme="light"] .history-modal-overlay { background: rgb(15 23 42 / 42%) !important; }
+html[data-ui-theme="light"] .history-modal-shell {
+  background: #ffffff !important; color: #1e293b !important;
+  border-color: #dbe3ee !important; color-scheme: light;
+}
+html[data-ui-theme="light"] .history-modal-shell .border-b,
+html[data-ui-theme="light"] .history-modal-shell .border-t,
+html[data-ui-theme="light"] .history-modal-shell tr { border-color: #e2e8f0 !important; }
+html[data-ui-theme="light"] .history-modal-shell [class~="bg-[#1e222d]"] {
+  background: #f1f5f9 !important; color: #344054 !important;
+}
+html[data-ui-theme="light"] .history-modal-shell [class~="bg-[#131722]"] { background: #ffffff !important; }
+html[data-ui-theme="light"] .history-modal-shell [class~="text-white"],
+html[data-ui-theme="light"] .history-modal-shell [class~="text-gray-200"],
+html[data-ui-theme="light"] .history-modal-shell [class~="text-gray-300"] { color: #344054 !important; }
+html[data-ui-theme="light"] .history-modal-shell [class~="text-gray-400"],
+html[data-ui-theme="light"] .history-modal-shell [class~="text-gray-500"] { color: #667085 !important; }
+html[data-ui-theme="light"] .history-modal-shell tbody tr { background: #ffffff !important; }
+html[data-ui-theme="light"] .history-modal-shell tbody tr:hover { background: #f8fafc !important; }
+html[data-ui-theme="light"] .history-modal-shell .history-exit-tp { background: #dcfce7 !important; color: #047857 !important; }
+html[data-ui-theme="light"] .history-modal-shell .history-exit-sl { background: #fee2e2 !important; color: #b42318 !important; }
+html[data-ui-theme="light"] .history-modal-shell .history-page-button {
+  background: #eaf0f7 !important; color: #344054 !important; border: 1px solid #dbe3ee !important;
+}
+html[data-ui-theme="light"] .history-modal-shell .history-page-button:disabled { color: #98a2b3 !important; background: #f2f4f7 !important; }
+html[data-ui-theme="light"] .history-modal-shell button[aria-label="Close trade history"] { color: #344054 !important; }
+html[data-ui-theme="light"] .history-modal-shell button[aria-label="Close trade history"]:hover { background: #eef2f7 !important; }
+html[data-ui-theme="light"] .history-modal-shell button[disabled] { opacity: .55; }
+html[data-ui-theme="light"] .history-modal-shell button.theme-action-contrast { background: #2563eb !important; color: #ffffff !important; }
+html[data-ui-theme="light"] .history-modal-shell button.theme-action-contrast:hover { background: #1d4ed8 !important; }
+html[data-ui-theme="light"] .history-modal-shell [class~="text-yellow-400"] { color: #b7791f !important; }
+html[data-ui-theme="light"] .history-modal-shell [class~="text-gray-500"] { color: #667085 !important; }
