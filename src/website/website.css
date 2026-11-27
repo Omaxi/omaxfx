@@ -144,3 +144,52 @@ body:has(.tp-site),body:has(.tp-auth-page),body:has(.tp-boot){
   .tp-footer{padding:21px 18px;flex-wrap:wrap}.tp-footer>span{order:3;width:100%}
   .tp-auth-layout{padding:36px 17px}.tp-auth-layout h1{font-size:42px}.tp-auth-card{padding:23px}
 }
+
+
+/* Supplied TradePast design integration */
+.tp-marketing .tp-nav{position:sticky;top:0;z-index:20;background:rgba(247,249,252,.95);backdrop-filter:blur(12px);border-bottom:1px solid #e3e9f1}
+.tp-marketing .tp-brand-logo{width:36px;height:36px;object-fit:contain;display:block}
+.tp-marketing .tp-marketing-links{display:flex;align-items:center;gap:24px}
+.tp-marketing .tp-marketing-links>button,.tp-marketing .tp-footer>button{border:0;background:none;color:#53647c;font:600 13px Inter,system-ui,sans-serif;cursor:pointer;padding:8px 0}
+.tp-marketing .tp-desktop-actions{display:flex;align-items:center;gap:8px}.tp-marketing .tp-mobile-actions,.tp-marketing .tp-menu-toggle{display:none}
+.tp-marketing .tp-button{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.tp-marketing .tp-hero{max-width:1320px;min-height:620px;padding-top:76px;padding-bottom:80px;gap:54px}
+.tp-marketing .tp-copy h1{font-size:clamp(44px,4.7vw,64px);line-height:1.06;letter-spacing:-2.8px;color:#142238}.tp-marketing .tp-copy h1 em{color:#246bdf}
+.tp-marketing .tp-copy>p{font-size:15px;line-height:1.85;color:#68788f;max-width:540px}
+.tp-marketing .tp-checks{display:flex;align-items:center;gap:18px;flex-wrap:wrap}.tp-marketing .tp-checks span{display:inline-flex;align-items:center;gap:5px;color:#66768c}.tp-marketing .tp-checks svg{color:#0ba784}
+.tp-marketing .tp-preview{background:#101b2d;border:1px solid #273b58;box-shadow:0 26px 65px rgba(16,27,45,.16);transform:none}
+.tp-marketing .tp-preview-head b{display:flex;align-items:center;gap:7px}.tp-marketing .tp-live-dot{width:7px;height:7px;border-radius:50%;background:#0ba784;display:inline-block}
+.tp-marketing .tp-chart{height:290px}.tp-marketing .tp-chart svg{position:absolute;inset:0;width:100%;height:100%}.tp-marketing .tp-time-axis{position:absolute;bottom:4px;left:8px;right:8px;z-index:2}
+.tp-marketing .tp-preview-controls{display:flex;align-items:center;gap:12px;padding:12px 5px 3px;color:#a9b8ce;font-size:11px}.tp-marketing .tp-preview-controls>b{width:26px;height:24px;display:grid;place-items:center;background:#246bdf;color:#fff;border-radius:5px}
+.tp-marketing .tp-order-controls{margin-left:auto;display:flex;gap:7px}.tp-marketing .tp-order-controls b{font-size:9px;padding:6px 12px;border-radius:5px;color:#fff;background:#0ba784}.tp-marketing .tp-order-controls b+b{background:#e05260}
+.tp-marketing .tp-preview-note{font-size:9px;color:#71839d;padding:8px 5px 0}
+.tp-marketing .tp-highlights{max-width:1252px;border:1px solid #e3e9f1;border-radius:12px;background:#fff;box-shadow:0 8px 26px rgba(16,27,45,.035);grid-template-columns:repeat(3,1fr)}
+.tp-marketing .tp-highlights b{color:#1b2b44}.tp-marketing .tp-highlights span{color:#6d7e94}
+.tp-marketing .tp-section{max-width:1320px;padding:92px 34px}.tp-marketing .tp-section-title h2,.tp-marketing .tp-how h2,.tp-marketing .tp-faq-heading h2{font-size:36px;line-height:1.2;letter-spacing:-1.5px;color:#142238}
+.tp-marketing .tp-section-title p{color:#68788f}.tp-marketing .tp-features{grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.tp-marketing .tp-features article{background:#fff;border:1px solid #e3e9f1;box-shadow:0 5px 18px rgba(16,27,45,.035);min-height:205px;padding:22px;border-radius:11px}
+.tp-marketing .tp-features article>b{color:#9aa8ba}.tp-marketing .tp-features article>i{background:#edf4ff;color:#246bdf}.tp-marketing .tp-features h3{color:#1b2b44;font-size:14px}.tp-marketing .tp-features p{color:#6b7c92;font-size:11px}
+.tp-marketing .tp-how{padding:78px max(34px,calc((100% - 1252px)/2));background:#edf3fb;border-block:1px solid #e1e9f3}.tp-marketing .tp-how h2{max-width:430px}.tp-marketing .tp-how-intro{margin-top:16px;max-width:350px;color:#6c7c92;font-size:13px;line-height:1.8}
+.tp-marketing .tp-steps p>b{background:#fff;border:1px solid #d8e5f6;color:#246bdf;font-weight:750}.tp-marketing .tp-steps strong{color:#1b2b44}.tp-marketing .tp-steps small{color:#6d7e95;line-height:1.65}
+.tp-marketing .tp-showcase-section{padding:88px max(34px,calc((100% - 1252px)/2));background:#101b2d;display:grid;grid-template-columns:.8fr 1.2fr;align-items:center;gap:54px}
+.tp-marketing .tp-showcase-copy h2{font:750 34px/1.2 Inter,system-ui,sans-serif;letter-spacing:-1.4px;color:#f5f8fc;margin:15px 0}.tp-marketing .tp-showcase-copy>p{color:#afbdd1;font-size:13px;line-height:1.8}
+.tp-marketing .tp-showcase-copy ul{display:grid;gap:13px;margin:23px 0 27px}.tp-marketing .tp-showcase-copy li{display:flex;align-items:center;gap:9px;color:#d5dfed;font-size:12px}.tp-marketing .tp-showcase-copy li svg{color:#28c39a;flex:none}.tp-marketing .tp-showcase-copy .tp-kicker{color:#8db4ff}
+.tp-marketing .tp-pricing-section{background:#f6f8fc}.tp-marketing .tp-pricing-grid{max-width:850px;margin:0 auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.tp-marketing .tp-plan{width:100%;max-width:none;margin:0;padding:28px;background:#fff;border:1px solid #e0e7f0;border-radius:13px;box-shadow:0 10px 30px rgba(16,27,45,.045)}
+.tp-marketing .tp-plan h3{font:750 40px Inter,system-ui,sans-serif;color:#142238}.tp-marketing .tp-plan h3 small{font:500 12px Inter,system-ui,sans-serif;color:#74839a}.tp-marketing .tp-plan>p{font-size:12px;line-height:1.7;color:#6c7c92}
+.tp-marketing .tp-plan ul{border-color:#e8edf4}.tp-marketing .tp-plan li{display:flex;align-items:center;gap:9px;font-size:12px;color:#46566d}.tp-marketing .tp-plan li:before{content:none}.tp-marketing .tp-plan li svg{color:#0ba784;flex:none}.tp-marketing .tp-plan-future{border-style:dashed;box-shadow:none}
+.tp-marketing .tp-faq-section{padding:86px 34px;background:#fff;border-block:1px solid #e3e9f1}.tp-marketing .tp-faq-inner{max-width:1050px;margin:auto;display:grid;grid-template-columns:.72fr 1.28fr;gap:65px}
+.tp-marketing .tp-faq-heading h2{margin:14px 0;font-weight:750}.tp-marketing .tp-faq-heading p{font-size:13px;color:#6c7c92;line-height:1.7}.tp-marketing .tp-faq-list{border-top:1px solid #e3e9f1}.tp-marketing .tp-faq-item{border-bottom:1px solid #e3e9f1}
+.tp-marketing .tp-faq-item h3{margin:0}.tp-marketing .tp-faq-item h3 button{width:100%;display:flex;justify-content:space-between;align-items:center;gap:18px;padding:18px 0;background:none;border:0;text-align:left;color:#1c2d46;font:650 13px Inter,system-ui,sans-serif;cursor:pointer}
+.tp-marketing .tp-faq-item h3 button svg{color:#74849a;transition:transform .2s;flex:none}.tp-marketing .tp-faq-item.open h3 button svg{transform:rotate(180deg);color:#246bdf}.tp-marketing .tp-faq-item>p{padding:0 30px 18px 0;color:#697a91;font-size:12px;line-height:1.8}
+.tp-marketing .tp-final{padding:82px 22px 90px;text-align:center;background:#edf3fb;border-bottom:1px solid #e2e9f2}.tp-marketing .tp-final h2{max-width:680px;margin:14px auto;font:750 clamp(30px,3.5vw,42px)/1.18 Inter,system-ui,sans-serif;letter-spacing:-1.5px;color:#142238}.tp-marketing .tp-final p{max-width:560px;margin:0 auto 25px;color:#68788f;font-size:13px;line-height:1.8}
+.tp-marketing .tp-footer{max-width:1320px;padding:23px 34px;background:#f6f8fc;border:0;gap:20px}.tp-marketing .tp-footer .tp-brand{color:#142238}.tp-marketing .tp-footer>span{max-width:650px;text-align:center;line-height:1.6}
+@media(max-width:1050px){.tp-marketing .tp-features{grid-template-columns:repeat(2,minmax(0,1fr))}.tp-marketing .tp-showcase-section{grid-template-columns:1fr;gap:32px}}
+@media(max-width:760px){.tp-marketing .tp-nav{height:68px;padding:0 17px}.tp-marketing .tp-desktop-actions{display:none}.tp-marketing .tp-menu-toggle{display:grid;place-items:center;width:39px;height:39px;border:1px solid #dce4ee;border-radius:8px;background:#fff;color:#263850}
+.tp-marketing .tp-marketing-links{display:none;position:absolute;left:0;right:0;top:68px;padding:15px 18px 19px;background:#fff;border-bottom:1px solid #e3e9f1;box-shadow:0 12px 22px rgba(16,27,45,.08);align-items:stretch;gap:0}.tp-marketing .tp-marketing-links.open{display:flex;flex-direction:column}
+.tp-marketing .tp-marketing-links>button{text-align:left;padding:13px 2px;border-bottom:1px solid #edf1f6}.tp-marketing .tp-mobile-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.tp-marketing .tp-hero{padding:48px 18px 56px;grid-template-columns:1fr;gap:34px}.tp-marketing .tp-copy h1{font-size:43px;letter-spacing:-2px}.tp-marketing .tp-copy>p{font-size:13px}
+.tp-marketing .tp-highlights{margin:0 17px;grid-template-columns:1fr;gap:0;padding:13px 18px}.tp-marketing .tp-highlights div,.tp-marketing .tp-highlights div:first-child{padding:12px 0;border:0;border-bottom:1px solid #edf1f6}.tp-marketing .tp-highlights div:last-child{border:0}
+.tp-marketing .tp-section{padding:68px 18px}.tp-marketing .tp-section-title h2,.tp-marketing .tp-how h2,.tp-marketing .tp-faq-heading h2{font-size:30px}.tp-marketing .tp-features{grid-template-columns:1fr}.tp-marketing .tp-how{padding:60px 20px;grid-template-columns:1fr;gap:27px}
+.tp-marketing .tp-showcase-section{padding:60px 18px}.tp-marketing .tp-showcase-copy h2{font-size:29px}.tp-marketing .tp-preview{padding:11px}.tp-marketing .tp-chart{height:225px}.tp-marketing .tp-pricing-grid{grid-template-columns:1fr}
+.tp-marketing .tp-faq-section{padding:65px 20px}.tp-marketing .tp-faq-inner{grid-template-columns:1fr;gap:24px}.tp-marketing .tp-final{padding:65px 18px}.tp-marketing .tp-footer{padding:22px 18px;flex-wrap:wrap;justify-content:space-between}.tp-marketing .tp-footer>span{order:3;width:100%;text-align:left}}
