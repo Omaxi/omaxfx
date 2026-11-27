@@ -74,7 +74,7 @@ export default function HistoryModal() {
 
   return (
     <div className="history-modal-overlay fixed inset-0 bg-black/80 flex items-center justify-center z-[130] p-4">
-      <div className="history-modal-shell bg-[#131722] rounded-2xl w-full max-w-7xl border border-[#2a2e39] overflow-hidden flex flex-col h-[min(92dvh,850px)]">
+      <div className="history-modal-shell bg-[#131722] text-white rounded-2xl w-full max-w-7xl border border-[#2a2e39] overflow-hidden flex flex-col h-[min(92dvh,850px)]">
         <div className="flex justify-between items-center p-3 border-b border-[#2a2e39]">
           <h2 className="text-lg font-bold">Trade History</h2>
           <div className="flex items-center gap-2">
