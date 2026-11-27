@@ -190,3 +190,27 @@ html[data-ui-theme="dark"] .indicators-panel .text-gray-300 {
   color: #6b7280 !important;
 }
 
+
+
+/* TradePast reference layout: minimal chrome, centered replay controls. */
+.app-header { min-height: 54px; padding: 2px 14px !important; gap: 18px !important; }
+.header-primary-controls { gap: 18px !important; }
+.header-primary-controls > div:first-child { gap: 12px !important; }
+.header-utility-action { border: 0 !important; background: transparent !important; border-radius: 0 !important; padding: 7px 3px !important; color: #8b93a4 !important; box-shadow: none !important; }
+.header-utility-action:hover { background: transparent !important; color: #e5e7eb !important; }
+.header-chart-tools { margin-left: 2px; }
+.header-select-wrap { position: relative; }
+.header-select { appearance: none; -webkit-appearance: none; background: transparent !important; border: 0 !important; outline: 0 !important; color: #9ca3af !important; padding: 4px 18px 4px 2px !important; font-size: 11px; cursor: pointer; }
+.header-select option { background: #1e222d; color: #fff; }
+.header-select-wrap > svg { position: absolute; right: 2px; pointer-events: none; color: #9ca3af; }
+.header-chart-type { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 32px; border: 0; background: transparent; color: #9ca3af; cursor: pointer; }
+.header-chart-type:hover { color: #fff; }
+.header-status-controls { gap: 12px !important; }
+.header-status-controls .app-header-action { border: 0 !important; background: transparent !important; box-shadow: none !important; }
+.header-status-controls .app-header-action:hover { background: transparent !important; filter: brightness(1.2); }
+.tradepast-bottom-toolbar { min-height: 54px; background: #131722; }
+.toolbar-plain-button { border: 0 !important; outline: 0 !important; background: transparent !important; box-shadow: none !important; border-radius: 0 !important; cursor: pointer; }
+.toolbar-plain-button:hover { background: transparent !important; color: #fff !important; }
+.bottom-replay-controls { max-width: 460px; }
+@media (max-width: 900px) { .app-header { gap: 8px !important; padding-inline: 6px !important; } .header-primary-controls { gap: 8px !important; } .header-status-controls { gap: 4px !important; } .tradepast-bottom-toolbar { gap: 5px; padding-inline: 6px; } .bottom-market-meta { gap: 6px; } .bottom-replay-controls { gap: 4px; } .bottom-trade-actions { gap: 4px; } }
+@media (max-width: 680px) { .header-primary-controls > div:first-child { display: none !important; } .header-chart-tools { gap: 5px; } .header-status-controls > div { display: none; } .tradepast-bottom-toolbar { flex-wrap: wrap; justify-content: space-between; } .bottom-replay-controls { order: 3; flex-basis: 100%; max-width: none; } .bottom-trade-actions { margin-left: auto; } }
