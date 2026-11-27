@@ -371,14 +371,14 @@ html[data-ui-theme="light"] .jump-session-action {
   visibility: visible !important;
   opacity: 1 !important;
 }
-html[data-ui-theme="light"] .theme-menu-surface:has(.jump-session-action) {
+html[data-ui-theme="light"] .jump-session-menu {
   width: 390px !important;
   max-width: calc(100vw - 16px) !important;
 }
-html[data-ui-theme="light"] .theme-menu-surface:has(.jump-session-action) > div:not(:first-child) {
+html[data-ui-theme="light"] .jump-session-menu > div:not(:first-child) {
   min-width: 0;
 }
-html[data-ui-theme="light"] .theme-menu-surface:has(.jump-session-action) > div:not(:first-child) > span:nth-of-type(1) {
+html[data-ui-theme="light"] .jump-session-menu > div:not(:first-child) > span:nth-of-type(1) {
   color: #334155 !important;
 }
 
@@ -485,3 +485,9 @@ html[data-ui-theme="light"] .analytics-modal-shell .recharts-text { fill: #64748
 html[data-ui-theme="light"] .header-status-controls .header-action-fireworks { color: #d97706 !important; }
 html[data-ui-theme="light"] .header-status-controls .header-action-guide { color: #2563eb !important; }
 html[data-ui-theme="light"] .header-status-controls .header-action-exit { color: #dc2626 !important; }
+
+html[data-ui-theme="light"] .jump-session-menu button.jump-session-action {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #1d4ed8 !important;
+}
