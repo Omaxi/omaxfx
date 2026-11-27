@@ -415,7 +415,7 @@ function App() {
           <button type="button" onClick={() => useStore.getState().openPeriodModal()} className="app-header-action header-action-new-session h-7 px-2 rounded border border-cyan-900/50 bg-[#1e222d] text-cyan-400 hover:bg-cyan-900/30 flex items-center justify-center gap-1" title="New backtest" aria-label="Start a new backtest"><Plus size={14}/><span className="hidden xl:inline text-[10px] font-semibold">New Backtest</span></button>
           <SoundToggle />
           <button onClick={toggleFireworks}
-            className={`app-header-action w-7 h-7 border rounded flex items-center justify-center transition-colors ${
+            className={`app-header-action header-action-fireworks w-7 h-7 border rounded flex items-center justify-center transition-colors ${
               enableFireworks
                 ? 'bg-yellow-900/30 border-yellow-600/50 text-yellow-400 hover:bg-yellow-900/50'
                 : 'bg-[#1e222d] border-[#2a2e39] text-gray-500 hover:text-gray-300'
@@ -426,7 +426,7 @@ function App() {
           <button onClick={openInfo} className="app-header-action header-action-guide w-7 h-7 bg-[#1e222d] border border-[#2a2e39] hover:bg-blue-900/50 rounded flex items-center justify-center" style={{ color: "#3b82f6" }} title="Quick guide">
             <Info size={13} />
           </button>
-          <button onClick={handleExitPlatform} className="app-header-action w-7 h-7 bg-[#1e222d] border border-red-900/50 hover:bg-red-900/40 text-red-400 rounded flex items-center justify-center" title="Exit application">
+          <button onClick={handleExitPlatform} className="app-header-action header-action-exit w-7 h-7 bg-[#1e222d] border border-red-900/50 hover:bg-red-900/40 text-red-400 rounded flex items-center justify-center" title="Exit application">
             <LogOut size={13}/>
           </button>
         </div>
