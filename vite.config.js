@@ -4,7 +4,11 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig(({ command }) => ({
-  base: command === 'serve' ? '/' : (process.env.TRADEPAST_DESKTOP === '1' ? './' : '/omaxfx/'),
+  // GitHub project pages need the repository prefix; a verified custom domain
+  // serves from the root. Desktop builds keep relative asset paths for offline use.
+  base: command === 'serve' || process.env.TRADEPAST_CUSTOM_DOMAIN === '1'
+    ? '/'
+    : (process.env.TRADEPAST_DESKTOP === '1' ? './' : '/omaxfx/'),
   plugins: [
     react(),
     tailwindcss(),
@@ -37,7 +41,7 @@ export default defineConfig(({ command }) => ({
         navigateFallback: 'index.html',
         runtimeCaching: [
           {
-            urlPattern: /\/data\/.*\.csv(?:\?.*)?$/i,
+            urlPattern: /\\/data\\/.*\\.csv(?:\\?.*)?$/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'csv-cache-v2',
