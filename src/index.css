@@ -801,3 +801,17 @@ html[data-ui-theme="light"] .tradepast-bottom-toolbar .position-ready-status but
 html[data-ui-theme="light"] .tradepast-bottom-toolbar .position-ready-status button:hover {
   color: #dc555b !important;
 }
+
+
+/* Disabled Place Order confirmation must use a light, readable disabled state. */
+html[data-ui-theme="light"] .order-modal-shell .order-confirm-button:disabled {
+  background-color: #e2e8f0 !important;
+  color: #64748b !important;
+  border: 1px solid #cbd5e1 !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+}
+html[data-ui-theme="light"] .order-modal-shell .order-confirm-button:not(:disabled) {
+  color: #ffffff !important;
+}
