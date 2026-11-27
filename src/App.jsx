@@ -67,16 +67,31 @@ function App() {
   const soundtrackStarted = useRef(false);
   const darkChartBackgroundRef = useRef(null);
   const toggleUiMode = () => {
+    const currentTheme = useStore.getState().theme || {};
     if (uiMode === 'dark') {
-      const currentBackground = useStore.getState().theme.background || '#171a27';
-      darkChartBackgroundRef.current = currentBackground;
-      try { localStorage.setItem('tradepast-dark-chart-background', currentBackground); } catch {}
-      setTheme({ background: '#f8fafc' });
+      darkChartBackgroundRef.current = currentTheme.background || '#171a27';
+      try {
+        localStorage.setItem('tradepast-dark-chart-background', darkChartBackgroundRef.current);
+        localStorage.setItem('tradepast-dark-chart-theme', JSON.stringify(currentTheme));
+      } catch {}
+      // A light-chart palette with clear bullish/bearish separation and
+      // readable risk/reward fills. The complete dark palette is restored below.
+      setTheme({
+        background: '#f8fafc',
+        upBody: '#16a34a', upWick: '#16a34a',
+        downBody: '#ef4444', downWick: '#ef4444',
+      });
       setUiMode('light');
     } else {
-      let previousBackground = darkChartBackgroundRef.current;
-      try { previousBackground = localStorage.getItem('tradepast-dark-chart-background') || previousBackground; } catch {}
-      setTheme({ background: previousBackground || '#171a27' });
+      let previousTheme = null;
+      try { previousTheme = JSON.parse(localStorage.getItem('tradepast-dark-chart-theme') || 'null'); } catch {}
+      if (previousTheme && typeof previousTheme === 'object') {
+        setTheme(previousTheme);
+      } else {
+        let previousBackground = darkChartBackgroundRef.current;
+        try { previousBackground = localStorage.getItem('tradepast-dark-chart-background') || previousBackground; } catch {}
+        setTheme({ background: previousBackground || '#171a27' });
+      }
       setUiMode('dark');
     }
   };
