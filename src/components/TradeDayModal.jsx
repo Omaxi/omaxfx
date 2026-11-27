@@ -20,33 +20,47 @@ const duration = (trade) => {
 export default function TradeDayModal({ date, trades, onClose, sessionId, candles, timeframe = 1 }) {
   const [images, setImages] = useState({});
   const [savingId, setSavingId] = useState(null);
+  const [uiTheme, setUiTheme] = useState(() => document.documentElement.getAttribute('data-ui-theme') === 'light' ? 'light' : 'dark');
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const updateTheme = () => setUiTheme(root.getAttribute('data-ui-theme') === 'light' ? 'light' : 'dark');
+    updateTheme();
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(root, { attributes: true, attributeFilter: ['data-ui-theme'] });
+    return () => observer.disconnect();
+  }, []);
+
+  const screenshotSession = uiTheme === 'light'
+    ? `${sessionId || 'unsaved-session'}::light`
+    : (sessionId || 'unsaved-session');
   useEffect(() => {
     let active = true;
     Promise.all(trades.map(async trade => {
       // A trade-time drawing snapshot is authoritative. Rebuild from it when
       // available; otherwise keep the previous image rather than replacing a
       // valid historical screenshot with a drawing-free render.
-      const stored = await getTradeScreenshot(trade.id, sessionId || 'unsaved-session');
+      const stored = await getTradeScreenshot(trade.id, screenshotSession);
       if (trade.drawingSnapshot) {
-        const captured = renderTradeScreenshot(trade, candles, timeframe, 'dark', trade.drawingSnapshot);
+        const captured = renderTradeScreenshot(trade, candles, timeframe, uiTheme, trade.drawingSnapshot);
         if (captured) {
-          await saveTradeScreenshot(trade.id, captured, sessionId || 'unsaved-session').catch(() => false);
+          await saveTradeScreenshot(trade.id, captured, screenshotSession).catch(() => false);
           return [String(trade.id), captured];
         }
       }
       if (stored) return [String(trade.id), stored];
-      const image = renderTradeScreenshot(trade, candles, timeframe, 'dark', {});
-      if (image) await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
+      const image = renderTradeScreenshot(trade, candles, timeframe, uiTheme, {});
+      if (image) await saveTradeScreenshot(trade.id, image, screenshotSession).catch(() => false);
       return [String(trade.id), image];
     })).then(entries => { if (active) setImages(Object.fromEntries(entries)); });
     return () => { active = false; };
-  }, [date, trades, sessionId, candles, timeframe]);
+  }, [date, trades, sessionId, candles, timeframe, uiTheme, screenshotSession]);
 
   const captureForTrade = async (trade) => {
     setSavingId(String(trade.id));
-    const image = renderTradeScreenshot(trade, candles, timeframe, 'dark', trade.drawingSnapshot || {});
+    const image = renderTradeScreenshot(trade, candles, timeframe, uiTheme, trade.drawingSnapshot || {});
     if (image) {
-      const saved = await saveTradeScreenshot(trade.id, image, sessionId || 'unsaved-session').catch(() => false);
+      const saved = await saveTradeScreenshot(trade.id, image, screenshotSession).catch(() => false);
       if (saved) setImages(current => ({ ...current, [String(trade.id)]: image }));
     }
     setSavingId(null);
@@ -102,7 +116,7 @@ export default function TradeDayModal({ date, trades, onClose, sessionId, candle
                   </div>
                   <div className="shrink-0 flex justify-end border-t border-[#303744] p-1.5">
                     {image ? (
-                      <a href={image} download={'tradepast-trade-' + trade.id + '.jpg'} className="inline-flex items-center gap-1 rounded bg-[#2a2e39] px-2 py-1 text-[10px] hover:bg-[#394253]"><Download size={12}/> Download screenshot</a>
+                      <a href={image} download={'tradepast-trade-' + trade.id + '.jpg'} className="trade-screenshot-download inline-flex items-center gap-1 rounded bg-[#2a2e39] px-2 py-1 text-[10px] hover:bg-[#394253]"><Download size={12}/> Download screenshot</a>
                     ) : (
                       <button disabled={savingId === String(trade.id)} onClick={() => captureForTrade(trade)} className="inline-flex items-center gap-1 rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold hover:bg-blue-500 disabled:opacity-50"><Camera size={13}/>{savingId === String(trade.id) ? 'Saving screenshot…' : 'Save screenshot'}</button>
                     )}
