@@ -447,6 +447,9 @@ export const useStore = create((set, get) => ({
   chartOptions: { gridVisible: true, lastPriceLineVisible: true, crosshairVerticalVisible: false, crosshairHorizontalVisible: false },
   setChartOptions: (patch) => set((state) => ({ chartOptions: { ...state.chartOptions, ...patch } })),
 
+  uiMode: 'dark',
+  setUiMode: (mode) => set({ uiMode: mode === 'light' ? 'light' : 'dark' }),
+
   theme: { ...DEFAULT_THEME },
   setTheme: (patch) => set((state) => ({ theme: { ...state.theme, ...patch } })),
   resetTheme: () => set({ theme: { ...DEFAULT_THEME } }),
