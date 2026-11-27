@@ -143,6 +143,7 @@ export default function InfoModal() {
           <footer className="mt-6 border-t border-[#2a2e39] pt-4 text-center">
             <p className="text-xs font-semibold text-gray-300">TradePast · Trading Replay Engine</p>
             <p className="mt-1 text-[10px] text-gray-500">For strategy practice and historical simulation. Trades are simulated and are not sent to a broker.</p>
+            <p className="mt-2 text-[10px] text-gray-500">Copyright © 2026 · <a href="mailto:omarmohamedyonis@gmail.com" className="text-blue-400 transition-colors hover:text-blue-300">omarmohamedyonis@gmail.com</a></p>
           </footer>
         </div>
       </div>
