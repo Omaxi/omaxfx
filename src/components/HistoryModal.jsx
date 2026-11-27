@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { fmtMoney } from '../utils/format';
 import { getPricePrecision } from '../utils/instrument';
-import { X } from 'lucide-react';
+import { X, Download } from 'lucide-react';
 
 export default function HistoryModal() {
   const { isHistoryOpen, closeHistory, tradeHistory, symbol: activeSymbol, contractSpecs } = useStore();
@@ -43,12 +43,44 @@ export default function HistoryModal() {
   const losses = tradeHistory.filter(t => t.pnl < 0).length;
   const totalPnl = tradeHistory.reduce((sum, t) => sum + t.pnl, 0);
 
+  const exportCsv = () => {
+    if (!sortedTrades.length) return;
+    const csvCell = value => {
+      const text = value == null ? '' : String(value);
+      return /[",\\r\\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+    };
+    const headers = ['Trade ID', 'Symbol', 'Side', 'Entry', 'Exit', 'Stop Loss', 'Take Profit', 'Lots', 'Risk Amount', 'Risk %', 'PnL', 'Exit Reason', 'Opened (UTC+3)', 'Closed (UTC+3)', 'Duration'];
+    const rows = [...sortedTrades].reverse().map(t => {
+      const sym = t.symbol || activeSymbol || 'XAUUSD';
+      return [
+        t.id, sym, String(t.type || '').toUpperCase(),
+        fmtPrice(t.entryPrice, sym), fmtPrice(t.exitPrice, sym),
+        fmtPrice(t.sl, sym), fmtPrice(t.tp, sym), t.size,
+        t.riskAmount, t.riskPercent, t.pnl, t.reason,
+        formatTime(t.openTime), formatTime(t.closeTime), formatDuration(t),
+      ];
+    });
+    const csv = '\uFEFF' + [headers, ...rows].map(row => row.map(csvCell).join(',')).join('\\r\\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'tradepast-trade-history.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="history-modal-overlay fixed inset-0 bg-black/80 flex items-center justify-center z-[130] p-4">
       <div className="history-modal-shell bg-[#131722] rounded-2xl w-full max-w-7xl border border-[#2a2e39] overflow-hidden flex flex-col h-[min(92dvh,850px)]">
         <div className="flex justify-between items-center p-3 border-b border-[#2a2e39]">
           <h2 className="text-lg font-bold">Trade History</h2>
-          <button onClick={closeHistory} className="p-1 hover:bg-[#2a2e39] rounded"><X size={18}/></button>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={exportCsv} disabled={!totalTrades} className="theme-action-contrast inline-flex items-center gap-1.5 rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"><Download size={13}/> Export CSV</button>
+            <button onClick={closeHistory} className="p-1 hover:bg-[#2a2e39] rounded" aria-label="Close trade history"><X size={18}/></button>
+          </div>
         </div>
 
         <div className="grid grid-cols-4 gap-2 p-3 border-b border-[#2a2e39]">
