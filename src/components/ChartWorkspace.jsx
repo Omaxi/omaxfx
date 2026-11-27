@@ -39,16 +39,6 @@ export default function ChartWorkspace() {
         ))}
       </div>
 
-      <div className="absolute bottom-3 right-3 z-[200] flex items-end gap-2 pointer-events-auto">
-        <button type="button" onClick={togglePlay} aria-label={isPlaying ? 'Pause replay' : 'Play replay'}
-          className="replay-play-button w-12 h-12 rounded-full bg-[#1e222d] hover:bg-[#2a2e39] border-2 border-[#2a2e39] text-white flex items-center justify-center shadow-2xl shadow-black/60 active:scale-95 transition-transform">
-          {isPlaying ? <Pause size={20}/> : <Play size={20}/>}
-        </button>
-        <button type="button" onClick={() => stepForward()} aria-label="Next bar"
-          className="replay-next-button w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-2xl shadow-blue-900/60 active:scale-95 transition-transform border-2 border-blue-500">
-          <SkipForward size={30}/>
-        </button>
-      </div>
     </section>
   );
 }
