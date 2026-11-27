@@ -782,3 +782,22 @@ html[data-ui-theme="light"] .order-modal-shell [class*="bg-red-900"] {
 html[data-ui-theme="light"] .order-modal-shell .border-t {
   border-color: #e2e8f0 !important;
 }
+
+
+/* Drawing/position status pill must remain readable on the light toolbar. */
+html[data-ui-theme="light"] .tradepast-bottom-toolbar .position-ready-status {
+  background: #e8eef7 !important;
+  border: 1px solid #cbd8e8 !important;
+  color: #1e3a5f !important;
+}
+html[data-ui-theme="light"] .tradepast-bottom-toolbar .position-ready-label {
+  color: #24558b !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+html[data-ui-theme="light"] .tradepast-bottom-toolbar .position-ready-status button {
+  color: #64748b !important;
+}
+html[data-ui-theme="light"] .tradepast-bottom-toolbar .position-ready-status button:hover {
+  color: #dc555b !important;
+}
