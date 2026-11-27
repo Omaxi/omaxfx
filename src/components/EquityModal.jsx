@@ -153,7 +153,7 @@ export default function EquityModal() {
                   <button onClick={() => shareImage('whatsapp')} className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 ${isDark ? 'hover:bg-[#2a2e39] text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
                     <MessageCircle size={14} className="text-green-600"/> WhatsApp
                   </button>
-                  <button onClick={() => shareImage('telegram')} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-slate-50 text-xs text-left text-slate-700">
+                  <button onClick={() => shareImage('telegram')} className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-left ${isDark ? 'hover:bg-[#2a2e39] text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
                     <Send size={14} className="text-blue-600"/> Telegram
                   </button>
                   <button onClick={() => shareImage('email')} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-slate-50 text-xs text-left text-slate-700">
@@ -218,18 +218,18 @@ export default function EquityModal() {
               <StatCard label="Starting balance" value={`${fmtMoney(startBalance, 0)}`} theme={reportTheme}/>
               <StatCard label="Final balance" value={`${fmtMoney(balance, 0)}`} theme={reportTheme}/>
               <StatCard label="Net P&L" value={`${currentPnl >= 0 ? '+' : '−'}$${fmtMoney(currentPnl, 0)}`} color={pnlColor} theme={reportTheme}/>
-              <StatCard label="Total return" value={`${currentPnl >= 0 ? '+' : ''}${pnlPercent.toFixed(2)}%`} color={pnlColor}/>
+              <StatCard label="Total return" value={`${currentPnl >= 0 ? '+' : ''}${pnlPercent.toFixed(2)}%`} color={pnlColor} theme={reportTheme}/>
               <StatCard label="Closed trades" value={totalTrades.toLocaleString()} theme={reportTheme}/>
               <StatCard label="Win rate" value={`${totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : '0.0'}%`} detail={`${wins} wins · ${losses} losses`} theme={reportTheme}/>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '9px' }}>
-              <div style={{ fontSize: '14px', fontWeight: 750, color: '#172033' }}>Account equity</div>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: pnlColor }}>{currentPnl >= 0 ? '+' : '−'}${fmtMoney(currentPnl, 2)} <span style={{ color: '#64748b', fontWeight: 500 }}>({pnlPercent.toFixed(2)}%)</span></div>
+              <div style={{ fontSize: '14px', fontWeight: 750, color: reportTheme.text }}>Account equity</div>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: pnlColor }}>{currentPnl >= 0 ? '+' : '−'}${fmtMoney(currentPnl, 2)} <span style={{ color: reportTheme.muted, fontWeight: 500 }}>({pnlPercent.toFixed(2)}%)</span></div>
             </div>
             <div className="equity-report-chart" style={{ height: '290px', backgroundColor: reportTheme.panel, color: reportTheme.secondary, colorScheme: isDark ? 'dark' : 'light', border: `1px solid ${reportTheme.border}`, borderRadius: '10px', padding: '14px 12px 8px', minWidth: 0 }}>
               {tradeHistory.length === 0 ? (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', fontSize: '13px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: reportTheme.muted, fontSize: '13px' }}>
                   No trades yet
                 </div>
               ) : (
@@ -249,11 +249,11 @@ export default function EquityModal() {
                     <Tooltip
                       contentStyle={{ backgroundColor: reportTheme.surface, border: `1px solid ${reportTheme.grid}`, borderRadius: '8px', fontSize: '11px', color: reportTheme.text, boxShadow: '0 4px 12px rgba(15,23,42,.08)' }}
                       itemStyle={{ color: '#60a5fa', fontWeight: 700 }}
-                      labelStyle={{ color: '#64748b' }}
+                      labelStyle={{ color: reportTheme.muted }}
                       formatter={(value) => [`$${fmtMoney(value)}`, 'Account balance']}
                       labelFormatter={(label) => `Trade #${label}`}
                     />
-                    <ReferenceLine y={startBalance} stroke="#94a3b8" strokeDasharray="4 4"/>
+                    <ReferenceLine y={startBalance} stroke={reportTheme.axis} strokeDasharray="4 4"/>
                     <Line type="monotone" dataKey="balance" stroke="#2563eb" strokeWidth={3} dot={false} activeDot={{ r: 5, fill: '#2563eb', stroke: reportTheme.surface, strokeWidth: 2 }} isAnimationActive={false}/>
                   </LineChart>
                 </ResponsiveContainer>
@@ -261,7 +261,7 @@ export default function EquityModal() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', borderTop: `1px solid ${reportTheme.border}`, marginTop: '18px', paddingTop: '12px' }}>
-              <div style={{ fontSize: '10px', color: '#64748b' }}>TradePast · Trading Performance</div>
+              <div style={{ fontSize: '10px', color: reportTheme.muted }}>TradePast · Trading Performance</div>
               <div style={{ fontSize: '10px', color: reportTheme.axis }}>Generated with TradePast</div>
             </div>
           </div>
