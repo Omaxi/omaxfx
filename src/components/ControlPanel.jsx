@@ -141,7 +141,7 @@ export default function ControlPanel() {
           return (
             <button key={tf.value}
               onClick={() => { setTimeframe(tf.value); closeAll(); }}
-              className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left text-white hover:bg-[#2a2e39] cursor-pointer ${isSelected ? 'bg-blue-600/15' : ''}`}>
+              aria-pressed={isSelected} className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left text-white hover:bg-[#2a2e39] cursor-pointer ${isSelected ? 'bg-blue-600/15' : ''}`}>
               <div className="flex items-center gap-2">
                 <span className="w-3 flex items-center justify-center">
                   {isSelected && <Check size={10} className="text-blue-400" />}
@@ -181,7 +181,7 @@ export default function ControlPanel() {
           return (
             <button key={ct.value}
               onClick={() => { setChartType(ct.value); closeAll(); }}
-              className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left text-white hover:bg-[#2a2e39] cursor-pointer ${isSelected ? 'bg-blue-600/15' : ''}`}>
+              aria-pressed={isSelected} className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-xs text-left text-white hover:bg-[#2a2e39] cursor-pointer ${isSelected ? 'bg-blue-600/15' : ''}`}>
               <div className="flex items-center gap-2">
                 <span className="w-3 flex items-center justify-center">
                   {isSelected && <Check size={10} className="text-blue-400" />}
