@@ -41,8 +41,8 @@ export default function GameOverModal() {
   const isProfitable = totalPnl >= 0;
 
   return (
-    <div className="fixed inset-0 bg-black/90 backdrop-blur flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-[#131722] rounded-2xl w-full max-w-2xl border border-[#2a2e39] overflow-hidden shadow-2xl my-4">
+    <div className="game-over-overlay fixed inset-0 bg-black/90 backdrop-blur flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="game-over-modal bg-[#131722] text-white rounded-2xl w-full max-w-2xl border border-[#2a2e39] overflow-hidden shadow-2xl my-4">
         
         <div className="p-6 border-b border-[#2a2e39] text-center">
           <div className={`flex justify-center mb-3 ${info.color}`}>
