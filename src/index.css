@@ -275,6 +275,13 @@ html[data-ui-theme="dark"] .theme-menu-surface button[aria-pressed="true"] * {
   color: #bfdbfe !important;
 }
 
+/* In dark theme, the selected challenge preset label must remain white
+   for clear contrast against its blue selected background. */
+html[data-ui-theme="dark"] .period-preset-selected,
+html[data-ui-theme="dark"] .period-preset-selected * {
+  color: #ffffff !important;
+}
+
 /* The New Backtest/New Session action gets a clear blue outline on hover. */
 .app-header .header-action-new-session:hover,
 .app-header .header-action-new-session:focus-visible {
