@@ -228,3 +228,43 @@ html[data-ui-theme="dark"] .header-select { appearance: none !important; -webkit
 .header-timeframe-trigger svg { transition: transform 120ms ease; }
 .header-status-controls { gap: 8px !important; }
 .header-status-controls > div { gap: 4px !important; }
+
+
+/* ============================================================
+   Light appearance — the header switch changes the full workspace,
+   while the chart keeps the user's saved dark background for restore.
+   ============================================================ */
+html[data-ui-theme="light"] body { background: #f1f5f9; color: #172033; }
+html[data-ui-theme="light"] .app-header,
+html[data-ui-theme="light"] .tradepast-bottom-toolbar { background: #ffffff !important; border-color: #dbe2ea !important; color: #334155 !important; }
+html[data-ui-theme="light"] .app-header .text-white,
+html[data-ui-theme="light"] .app-header .text-gray-100,
+html[data-ui-theme="light"] .tradepast-bottom-toolbar .text-white { color: #334155 !important; }
+html[data-ui-theme="light"] .header-utility-action,
+html[data-ui-theme="light"] .header-timeframe-trigger,
+html[data-ui-theme="light"] .header-chart-type,
+html[data-ui-theme="light"] .header-utility-action:hover { color: #475569 !important; }
+html[data-ui-theme="light"] .header-status-controls .text-gray-400 { color: #64748b !important; }
+html[data-ui-theme="light"] .header-status-controls .header-action-new-session { background: #f8fafc !important; border-color: #cbd5e1 !important; }
+html[data-ui-theme="light"] .header-status-controls .ui-mode-toggle { color: #475569 !important; }
+html[data-ui-theme="light"] .theme-menu-surface,
+html[data-ui-theme="light"] .theme-menu-surface button { background-color: #ffffff !important; color: #334155 !important; border-color: #dbe2ea !important; }
+html[data-ui-theme="light"] .theme-menu-surface button:hover { background: #f1f5f9 !important; }
+html[data-ui-theme="light"] .bg-\\[\\#131722\\],
+html[data-ui-theme="light"] .bg-\\[\\#171a27\\],
+html[data-ui-theme="light"] .bg-\\[\\#1e222d\\] { background-color: #ffffff !important; }
+html[data-ui-theme="light"] .border-\\[\\#2a2e39\\],
+html[data-ui-theme="light"] .border-\\[\\#343b49\\] { border-color: #dbe2ea !important; }
+html[data-ui-theme="light"] .text-gray-200,
+html[data-ui-theme="light"] .text-gray-300 { color: #475569 !important; }
+html[data-ui-theme="light"] .text-gray-400,
+html[data-ui-theme="light"] .text-gray-500 { color: #64748b !important; }
+html[data-ui-theme="light"] .live-information-panel { background: #ffffff !important; color: #334155 !important; border-color: #dbe2ea !important; box-shadow: 0 8px 24px rgb(15 23 42 / 10%) !important; }
+html[data-ui-theme="light"] .live-information-panel .text-gray-100,
+html[data-ui-theme="light"] .live-information-panel .text-gray-200,
+html[data-ui-theme="light"] .live-information-panel .text-gray-300 { color: #475569 !important; }
+html[data-ui-theme="light"] .live-information-panel .text-gray-500 { color: #64748b !important; }
+html[data-ui-theme="light"] .ui-mode-toggle:hover { background: #f1f5f9 !important; }
+html[data-ui-theme="light"] .quick-guide-open { color: #334155 !important; }
+html[data-ui-theme="light"] select { color-scheme: light !important; background-color: #ffffff !important; color: #334155 !important; border-color: #cbd5e1 !important; }
+html[data-ui-theme="light"] select option { background: #ffffff !important; color: #334155 !important; }
