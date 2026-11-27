@@ -156,7 +156,7 @@ export default function PeriodModal() {
               <input 
                 type="text" value={playerName} maxLength={20}
                 onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="Enter your name"
+                placeholder="e.g. Alex Morgan"
                 className="w-full p-1.5 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-xs focus:border-blue-500 outline-none"
               />
             </div>
