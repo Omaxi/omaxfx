@@ -19,7 +19,7 @@ import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
 import { fetchDataCatalog, loadBundledCsvFiles } from './utils/dataCatalog';
 import { getPnlMultiplier } from './utils/instrument';
-import { Info, Sparkles, AlertTriangle, LogOut, Square, Columns2, CheckCircle2, TrendingUp, X, Settings, Plus, ChevronDown, CandlestickChart, ChartLine, Check } from 'lucide-react';
+import { Info, Sparkles, AlertTriangle, LogOut, Square, Columns2, CheckCircle2, TrendingUp, X, Settings, Plus, ChevronDown, CandlestickChart, ChartLine, Check, Sun, Moon } from 'lucide-react';
 
 function ThreeChartLayoutIcon({ size = 14 }) { return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1" y="1" width="5.5" height="14" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="9.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/></svg>; }
 
@@ -61,10 +61,25 @@ function App() {
     gameState,
     loadingState, isInfoOpen, openInfo, openHistory, openAnalytics, theme,
     timeframe, setTimeframe, chartType, setChartType,
-    enableFireworks, toggleFireworks,
+    enableFireworks, toggleFireworks, uiMode, setUiMode, setTheme,
     symbolWarning, clearSymbolWarning, tradeNotifications, dismissTradeNotification,
   } = useStore();
   const soundtrackStarted = useRef(false);
+  const darkChartBackgroundRef = useRef(null);
+  const toggleUiMode = () => {
+    if (uiMode === 'dark') {
+      const currentBackground = useStore.getState().theme.background || '#171a27';
+      darkChartBackgroundRef.current = currentBackground;
+      try { localStorage.setItem('tradepast-dark-chart-background', currentBackground); } catch {}
+      setTheme({ background: '#f8fafc' });
+      setUiMode('light');
+    } else {
+      let previousBackground = darkChartBackgroundRef.current;
+      try { previousBackground = localStorage.getItem('tradepast-dark-chart-background') || previousBackground; } catch {}
+      setTheme({ background: previousBackground || '#171a27' });
+      setUiMode('dark');
+    }
+  };
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [timeframeMenuOpen, setTimeframeMenuOpen] = useState(false);
   const [timeframeMenuPosition, setTimeframeMenuPosition] = useState({ left: 0, top: 0 });
@@ -101,6 +116,28 @@ function App() {
   }, []);
 
   useEffect(() => {
+    try {
+      const savedMode = localStorage.getItem('tradepast-ui-mode');
+      if (savedMode === 'light' || savedMode === 'dark') setUiMode(savedMode);
+      const savedDarkBackground = localStorage.getItem('tradepast-dark-chart-background');
+      if (savedDarkBackground) darkChartBackgroundRef.current = savedDarkBackground;
+    } catch {}
+  }, [setUiMode]);
+
+  useEffect(() => {
+    document.documentElement.dataset.uiTheme = uiMode;
+    document.documentElement.style.colorScheme = uiMode;
+    try { localStorage.setItem('tradepast-ui-mode', uiMode); } catch {}
+    if (uiMode === 'dark') {
+      const currentBackground = useStore.getState().theme.background;
+      if (currentBackground && currentBackground !== '#f8fafc') {
+        darkChartBackgroundRef.current = currentBackground;
+        try { localStorage.setItem('tradepast-dark-chart-background', currentBackground); } catch {}
+      }
+    }
+  }, [uiMode]);
+
+  useEffect(() => {
     const key = 'tradepast-appearance-v2';
     try {
       const saved = JSON.parse(localStorage.getItem(key) || '{}');
@@ -117,8 +154,6 @@ function App() {
         ...(saved.chartType ? { chartType: saved.chartType } : {}),
       }));
     } catch {}
-    document.documentElement.dataset.uiTheme = 'dark';
-    document.documentElement.style.colorScheme = 'dark';
     const unsubscribe = useStore.subscribe((state, previous) => {
       if (state.theme !== previous.theme ||
           state.chartOptions !== previous.chartOptions ||
@@ -366,6 +401,9 @@ function App() {
               ${fmtMoney(unrealisedPnl)}
             </span>
           </div>
+          <button type="button" onClick={toggleUiMode} className="app-header-action ui-mode-toggle h-7 w-7 flex items-center justify-center rounded" title={uiMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} aria-label={uiMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+            {uiMode === 'dark' ? <Sun size={15}/> : <Moon size={15}/>}
+          </button>
           <button type="button" onClick={() => useStore.getState().openPeriodModal()} className="app-header-action header-action-new-session h-7 px-2 rounded border border-cyan-900/50 bg-[#1e222d] text-cyan-400 hover:bg-cyan-900/30 flex items-center justify-center gap-1" title="New backtest" aria-label="Start a new backtest"><Plus size={14}/><span className="hidden xl:inline text-[10px] font-semibold">New Backtest</span></button>
           <SoundToggle />
           <button onClick={toggleFireworks}
