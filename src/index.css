@@ -250,6 +250,38 @@ html[data-ui-theme="light"] .header-status-controls .ui-mode-toggle { color: #47
 html[data-ui-theme="light"] .theme-menu-surface,
 html[data-ui-theme="light"] .theme-menu-surface button { background-color: #ffffff !important; color: #334155 !important; border-color: #dbe2ea !important; }
 html[data-ui-theme="light"] .theme-menu-surface button:hover { background: #f1f5f9 !important; }
+
+/* Keep the currently selected option visibly highlighted in every theme menu. */
+html[data-ui-theme="light"] .theme-menu-surface button[aria-checked="true"],
+html[data-ui-theme="light"] .theme-menu-surface button[aria-selected="true"],
+html[data-ui-theme="light"] .theme-menu-surface button[aria-pressed="true"] {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+html[data-ui-theme="light"] .theme-menu-surface button[aria-checked="true"] *,
+html[data-ui-theme="light"] .theme-menu-surface button[aria-selected="true"] *,
+html[data-ui-theme="light"] .theme-menu-surface button[aria-pressed="true"] * {
+  color: #1d4ed8 !important;
+}
+html[data-ui-theme="dark"] .theme-menu-surface button[aria-checked="true"],
+html[data-ui-theme="dark"] .theme-menu-surface button[aria-selected="true"],
+html[data-ui-theme="dark"] .theme-menu-surface button[aria-pressed="true"] {
+  background: rgb(37 99 235 / 24%) !important;
+  color: #bfdbfe !important;
+}
+html[data-ui-theme="dark"] .theme-menu-surface button[aria-checked="true"] *,
+html[data-ui-theme="dark"] .theme-menu-surface button[aria-selected="true"] *,
+html[data-ui-theme="dark"] .theme-menu-surface button[aria-pressed="true"] * {
+  color: #bfdbfe !important;
+}
+
+/* The New Backtest/New Session action gets a clear blue outline on hover. */
+.app-header .header-action-new-session:hover,
+.app-header .header-action-new-session:focus-visible {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 1px rgb(37 99 235 / 28%) !important;
+}
+
 html[data-ui-theme="light"] [class*="bg-[#131722]"],
 html[data-ui-theme="light"] [class*="bg-[#171a27]"],
 html[data-ui-theme="light"] [class*="bg-[#1e222d]"],
