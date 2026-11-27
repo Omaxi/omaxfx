@@ -157,6 +157,9 @@ export function buildAnalyticsPrintHtml({ traderName, symbol, startBalance, bala
   const sellTrades = trades.filter(trade => String(trade.type || '').toLowerCase() === 'sell');
   const sideStats = list => ({ total: list.length, wins: list.filter(trade => Number(trade.pnl) > 0).length, pnl: list.reduce((sum, trade) => sum + (Number(trade.pnl) || 0), 0) });
   const buyStats = sideStats(buyTrades), sellStats = sideStats(sellTrades);
+  const sessionSummary = session => session
+    ? '<div class="dashboard-panel"><h3>' + escapeHtml(session.label) + '</h3><h2 class="' + (session.pnl >= 0 ? 'gain' : 'loss') + '">' + money(session.pnl) + '</h2><div class="compact-stat"><span>Closed trades</span><b>' + session.trades + '</b></div></div>'
+    : '<div class="dashboard-panel"><h3>Not enough data</h3><p class="muted">Close trades during a configured session to see its performance.</p></div>';
   const donut = (first, second, firstColor, secondColor) => {
     const total = first + second, ratio = total ? first / total * 100 : 0;
     return '<div class="donut" style="background:conic-gradient(' + firstColor + ' 0 ' + ratio + '%, ' + secondColor + ' ' + ratio + '% 100%)"><span>' + total + '</span></div>';
@@ -202,6 +205,7 @@ export function buildAnalyticsPrintHtml({ traderName, symbol, startBalance, bala
       <div class="dashboard-panel"><h3>Total trades</h3><div class="donut-row">${donut(buyStats.total,sellStats.total,'#20bd89','#2c67c5')}<div class="legend-stats"><span><i class="dot buy-dot"></i>Buy <b>${buyStats.total}</b></span><span><i class="dot sell-dot"></i>Sell <b>${sellStats.total}</b></span></div></div></div>
       <div class="dashboard-panel"><h3>Win rate</h3><div class="donut-row">${donut(buyStats.wins,sellStats.wins,'#20bd89','#2c67c5')}<div class="legend-stats"><span><i class="dot buy-dot"></i>Buy <b>${buyStats.total ? Math.round(buyStats.wins/buyStats.total*100) : 0}%</b></span><span><i class="dot sell-dot"></i>Sell <b>${sellStats.total ? Math.round(sellStats.wins/sellStats.total*100) : 0}%</b></span></div></div></div>
     </div></section>
+    <section class="section"><h2>Performance by session</h2><div class="two-panels">${sessionSummary(metrics.bestSession ? { ...metrics.bestSession, label: 'Best · ' + metrics.bestSession.label } : null)}${sessionSummary(metrics.worstSession ? { ...metrics.worstSession, label: 'Worst · ' + metrics.worstSession.label } : null)}</div></section>
     <section class="section"><h2>Performance by day</h2><div class="dashboard-panel day-bars">${dayBars}</div></section>
     <section class="section"><h2>Performance by month</h2><div class="dashboard-panel month-histogram">${monthlyBars}<div class="month-hist-item month-hist-ytd"><div class="month-hist-value ${yearPnl >= 0 ? 'gain' : 'loss'}">${money(yearPnl)}</div><div class="month-hist-total"><span class="${yearPnl >= 0 ? 'gain-bar' : 'loss-bar'}"></span></div><b>YTD ${reportYear}</b><small>${yearTrades} trades</small></div></div></section>
   `;
