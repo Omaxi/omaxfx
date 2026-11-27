@@ -47,7 +47,7 @@ export default function HistoryModal() {
     if (!sortedTrades.length) return;
     const csvCell = value => {
       const text = value == null ? '' : String(value);
-      return /[",\\r\\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+      return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
     };
     const headers = ['Trade ID', 'Symbol', 'Side', 'Entry', 'Exit', 'Stop Loss', 'Take Profit', 'Lots', 'Risk Amount', 'Risk %', 'PnL', 'Exit Reason', 'Opened (UTC+3)', 'Closed (UTC+3)', 'Duration'];
     const rows = [...sortedTrades].reverse().map(t => {
@@ -60,7 +60,7 @@ export default function HistoryModal() {
         formatTime(t.openTime), formatTime(t.closeTime), formatDuration(t),
       ];
     });
-    const csv = '\uFEFF' + [headers, ...rows].map(row => row.map(csvCell).join(',')).join('\\r\\n');
+    const csv = '\uFEFF' + [headers, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
