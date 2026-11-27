@@ -220,3 +220,11 @@ html[data-ui-theme="dark"] .header-select { appearance: none !important; -webkit
 .header-primary-controls [aria-pressed="true"] { background: transparent !important; color: #3b82f6 !important; }
 .header-primary-controls [aria-pressed="false"] { background: transparent !important; }
 .header-status-controls .header-action-new-session { border: 1px solid #164e63 !important; background: #1e222d !important; }
+
+
+/* Header timeframe menu trigger follows the compact replay-control styling. */
+.header-timeframe-trigger { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 3px 4px; border: 0 !important; border-radius: 0 !important; outline: 0; background: transparent !important; box-shadow: none !important; color: #9ca3af; font-size: 11px; font-weight: 600; cursor: pointer; }
+.header-timeframe-trigger:hover, .header-timeframe-trigger:focus-visible { color: #f3f4f6; background: transparent !important; }
+.header-timeframe-trigger svg { transition: transform 120ms ease; }
+.header-status-controls { gap: 8px !important; }
+.header-status-controls > div { gap: 4px !important; }
