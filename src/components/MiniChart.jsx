@@ -136,7 +136,7 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
       chartRef.current = null;
       seriesRef.current = null;
     };
-  }, [symbol, theme, uiTheme]);
+  }, [symbol, theme, uiMode]);
 
   useEffect(() => {
     if (!seriesRef.current || !chartRef.current) return;
