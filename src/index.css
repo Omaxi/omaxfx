@@ -287,3 +287,184 @@ html[data-ui-theme="light"] button[class*="bg-red-"] *,
 html[data-ui-theme="light"] button[class*="bg-cyan-"] *,
 html[data-ui-theme="light"] button[class*="bg-amber-"] *,
 html[data-ui-theme="light"] button[class*="bg-yellow-"] * { color: inherit !important; }
+
+
+/* ============================================================
+   Light theme completion: menus, overlays, history, analytics,
+   scrollbars and every chart workspace pane.
+   ============================================================ */
+html[data-ui-theme="light"],
+html[data-ui-theme="light"] body,
+html[data-ui-theme="light"] #root {
+  color-scheme: light;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+html[data-ui-theme="light"] * {
+  scrollbar-color: #cbd5e1 #f8fafc !important;
+}
+html[data-ui-theme="light"] *::-webkit-scrollbar-track,
+html[data-ui-theme="light"] ::-webkit-scrollbar-track { background: #f1f5f9 !important; }
+html[data-ui-theme="light"] *::-webkit-scrollbar-thumb,
+html[data-ui-theme="light"] ::-webkit-scrollbar-thumb { background: #cbd5e1 !important; border: 1px solid #f1f5f9 !important; }
+html[data-ui-theme="light"] *::-webkit-scrollbar-thumb:hover,
+html[data-ui-theme="light"] ::-webkit-scrollbar-thumb:hover { background: #94a3b8 !important; }
+html[data-ui-theme="light"] *::-webkit-scrollbar-corner,
+html[data-ui-theme="light"] ::-webkit-scrollbar-corner { background: #f8fafc !important; }
+
+/* The multi-chart workspace must never retain its dark shell or pane fill. */
+html[data-ui-theme="light"] .chart-workspace-grid,
+html[data-ui-theme="light"] .chart-workspace-pane,
+html[data-ui-theme="light"] section.relative.h-full.min-h-0.w-full.overflow-hidden {
+  background: #f8fafc !important;
+}
+html[data-ui-theme="light"] .chart-workspace-grid { gap: 1px !important; }
+
+/* Keep every toolbar action visible at the right edge at normal desktop widths. */
+.app-header { overflow: visible !important; }
+.header-main-controls { overflow: visible !important; }
+.header-status-controls {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  min-width: max-content !important;
+  overflow: visible !important;
+  position: relative;
+  z-index: 5;
+}
+.header-status-controls > button,
+.header-status-controls > .app-header-action,
+.header-status-controls .sound-toggle { flex: 0 0 auto !important; visibility: visible !important; opacity: 1 !important; }
+html[data-ui-theme="light"] .header-status-controls .app-header-action:not(.header-action-new-session) {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+html[data-ui-theme="light"] .header-status-controls .header-action-guide,
+html[data-ui-theme="light"] .header-status-controls button[title*="Fireworks"],
+html[data-ui-theme="light"] .header-status-controls button[title="Exit application"] {
+  display: inline-flex !important;
+}
+
+/* Light menu surfaces, including portals mounted outside the app root. */
+html[data-ui-theme="light"] .theme-menu-surface {
+  background: #ffffff !important;
+  color: #334155 !important;
+  border: 1px solid #dbe2ea !important;
+  box-shadow: 0 12px 30px rgb(15 23 42 / 14%) !important;
+}
+html[data-ui-theme="light"] .theme-menu-surface > div,
+html[data-ui-theme="light"] .theme-menu-surface button,
+html[data-ui-theme="light"] .theme-menu-surface span { color: #334155; }
+html[data-ui-theme="light"] .theme-menu-surface button:hover { background: #f1f5f9 !important; }
+html[data-ui-theme="light"] .theme-menu-surface input[type="number"] {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border: 1px solid #cbd5e1 !important;
+}
+html[data-ui-theme="light"] .jump-session-action {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+html[data-ui-theme="light"] .theme-menu-surface:has(.jump-session-action) {
+  width: 390px !important;
+  max-width: calc(100vw - 16px) !important;
+}
+html[data-ui-theme="light"] .theme-menu-surface:has(.jump-session-action) > div:not(:first-child) {
+  min-width: 0;
+}
+html[data-ui-theme="light"] .theme-menu-surface:has(.jump-session-action) > div:not(:first-child) > span:nth-of-type(1) {
+  color: #334155 !important;
+}
+
+/* Indicator popover and its scroll track use the same light palette. */
+html[data-ui-theme="light"] .indicators-panel,
+html[data-ui-theme="light"] .indicators-panel-trigger {
+  background: #ffffff !important;
+  color: #334155 !important;
+  border-color: #dbe2ea !important;
+  scrollbar-color: #cbd5e1 #f8fafc !important;
+}
+html[data-ui-theme="light"] .indicators-panel button { color: #475569; }
+html[data-ui-theme="light"] .indicators-panel button:hover { background-color: #f1f5f9 !important; }
+html[data-ui-theme="light"] .indicators-panel input,
+html[data-ui-theme="light"] .indicators-panel select {
+  color-scheme: light !important;
+  color: #334155 !important;
+}
+
+/* History modal: readable table, summary cards and always-visible paging. */
+html[data-ui-theme="light"] .history-modal-overlay { background: rgb(15 23 42 / 35%) !important; }
+html[data-ui-theme="light"] .history-modal-shell {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border-color: #dbe2ea !important;
+  box-shadow: 0 24px 70px rgb(15 23 42 / 20%) !important;
+}
+html[data-ui-theme="light"] .history-modal-shell [class*="bg-[#1e222d]"],
+html[data-ui-theme="light"] .history-modal-shell thead {
+  background: #f1f5f9 !important;
+}
+html[data-ui-theme="light"] .history-modal-shell [class*="border-[#2a2e39]"],
+html[data-ui-theme="light"] .history-modal-shell tr { border-color: #e2e8f0 !important; }
+html[data-ui-theme="light"] .history-modal-shell .text-white,
+html[data-ui-theme="light"] .history-modal-shell .text-gray-200,
+html[data-ui-theme="light"] .history-modal-shell .text-gray-300 { color: #334155 !important; }
+html[data-ui-theme="light"] .history-modal-shell .text-gray-400,
+html[data-ui-theme="light"] .history-modal-shell .text-gray-500 { color: #64748b !important; }
+html[data-ui-theme="light"] .history-modal-shell .history-page-button {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 82px;
+  min-height: 30px;
+  color: #ffffff !important;
+  background: #2563eb !important;
+  border: 1px solid #1d4ed8 !important;
+  opacity: 1 !important;
+}
+html[data-ui-theme="light"] .history-modal-shell .history-page-button:disabled {
+  color: #64748b !important;
+  background: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+  opacity: .75 !important;
+}
+
+/* Analytics is a full-screen workspace, not a dark modal. */
+html[data-ui-theme="light"] .analytics-modal-overlay {
+  background: #f1f5f9 !important;
+}
+html[data-ui-theme="light"] .analytics-modal-shell {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border-color: #dbe2ea !important;
+}
+html[data-ui-theme="light"] .analytics-modal-shell [class*="bg-[#0b0e11]"],
+html[data-ui-theme="light"] .analytics-modal-shell [class*="bg-[#131722]"],
+html[data-ui-theme="light"] .analytics-modal-shell [class*="bg-[#1e222d]"],
+html[data-ui-theme="light"] .analytics-modal-shell [class*="bg-gray-900"],
+html[data-ui-theme="light"] .analytics-modal-shell [class*="bg-slate-900"] {
+  background: #f8fafc !important;
+}
+html[data-ui-theme="light"] .analytics-modal-shell [class*="border-[#2a2e39]"],
+html[data-ui-theme="light"] .analytics-modal-shell [class*="border-[#343b4b]"] {
+  border-color: #dbe2ea !important;
+}
+html[data-ui-theme="light"] .analytics-modal-shell .text-white,
+html[data-ui-theme="light"] .analytics-modal-shell .text-gray-100,
+html[data-ui-theme="light"] .analytics-modal-shell .text-gray-200,
+html[data-ui-theme="light"] .analytics-modal-shell .text-gray-300 { color: #334155 !important; }
+html[data-ui-theme="light"] .analytics-modal-shell .text-gray-400,
+html[data-ui-theme="light"] .analytics-modal-shell .text-gray-500,
+html[data-ui-theme="light"] .analytics-modal-shell .text-gray-600 { color: #64748b !important; }
+html[data-ui-theme="light"] .analytics-modal-shell button[class*="bg-blue-"],
+html[data-ui-theme="light"] .analytics-modal-shell button[class*="bg-green-"],
+html[data-ui-theme="light"] .analytics-modal-shell button[class*="bg-emerald-"],
+html[data-ui-theme="light"] .analytics-modal-shell button[class*="bg-red-"] { color: #ffffff !important; }
+html[data-ui-theme="light"] .analytics-modal-shell .recharts-cartesian-grid line { stroke: #e2e8f0 !important; }
+html[data-ui-theme="light"] .analytics-modal-shell .recharts-text { fill: #64748b !important; }
