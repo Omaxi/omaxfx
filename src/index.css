@@ -619,3 +619,25 @@ html[data-ui-theme="light"] .theme-action-contrast,
 html[data-ui-theme="light"] button.theme-action-contrast {
   color: #ffffff !important;
 }
+
+/* Explicit calendar outcome classes avoid depending on browser serialization
+   of the original inline hex colors. */
+html[data-ui-theme="light"] .analytics-calendar-day.analytics-day-positive {
+  background: #dcfce7 !important;
+  border-color: #86efac !important;
+}
+html[data-ui-theme="light"] .analytics-calendar-day.analytics-day-positive b { color: #166534 !important; }
+html[data-ui-theme="light"] .analytics-calendar-day.analytics-day-negative {
+  background: #fee2e2 !important;
+  border-color: #fca5a5 !important;
+}
+html[data-ui-theme="light"] .analytics-calendar-day.analytics-day-negative b { color: #b91c1c !important; }
+html[data-ui-theme="light"] .analytics-calendar-day.analytics-day-neutral {
+  background: #dbeafe !important;
+  border-color: #93c5fd !important;
+}
+html[data-ui-theme="light"] .analytics-calendar-day.analytics-day-neutral b { color: #1d4ed8 !important; }
+html[data-ui-theme="light"] .analytics-calendar-day.analytics-day-empty {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
