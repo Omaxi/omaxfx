@@ -54,7 +54,7 @@ body:has(.tp-site),body:has(.tp-auth-page),body:has(.tp-boot){
 .tp-copy>p,.tp-auth-layout>div>p{max-width:510px;color:#607089;font-size:15px;line-height:1.85;margin:0}
 .tp-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:29px}
 .tp-checks{display:flex;gap:20px;flex-wrap:wrap;margin-top:25px;color:#64758d;font-size:11px;font-weight:550}
-.tp-checks span: first-letter{color:#159b78}
+.tp-checks span:first-letter{color:#159b78}
 .tp-preview{
   position:relative;z-index:1;padding:18px;background:#101a2a;border:1px solid #26364d;border-radius:17px;
   box-shadow:0 28px 70px #1a35521f,0 4px 14px #13233b0d;transform:none;
