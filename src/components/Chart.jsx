@@ -672,11 +672,11 @@ export default function Chart({ chartId = 'main' }) {
             const redAlpha = baseAlpha;
             ctx.save();
             if (Number.isFinite(slY)) {
-              ctx.fillStyle = `rgba(239, 83, 80, ${redAlpha.toFixed(3)})`;
+              ctx.fillStyle = state.uiMode === 'light' ? `rgba(239, 68, 68, ${(baseAlpha + 0.025).toFixed(3)})` : `rgba(239, 83, 80, ${redAlpha.toFixed(3)})`;
               ctx.fillRect(left, Math.min(entryY, slY), right - left, Math.max(1, Math.abs(slY - entryY)));
             }
             if (Number.isFinite(tpY)) {
-              ctx.fillStyle = `rgba(38, 166, 154, ${greenAlpha.toFixed(3)})`;
+              ctx.fillStyle = state.uiMode === 'light' ? `rgba(22, 163, 74, ${(baseAlpha + 0.025).toFixed(3)})` : `rgba(38, 166, 154, ${greenAlpha.toFixed(3)})`;
               ctx.fillRect(left, Math.min(entryY, tpY), right - left, Math.max(1, Math.abs(tpY - entryY)));
             }
             if (isLivePosition && Number.isFinite(livePrice)) {
@@ -684,8 +684,8 @@ export default function Chart({ chartId = 'main' }) {
               if (Number.isFinite(liveY) && Math.abs(liveY - entryY) > 0.5) {
                 const inProfit = favorableMove > 0;
                 ctx.fillStyle = inProfit
-                  ? 'rgba(38, 166, 154, 0.19)'
-                  : 'rgba(239, 83, 80, 0.19)';
+                  ? (state.uiMode === 'light' ? 'rgba(22, 163, 74, 0.22)' : 'rgba(38, 166, 154, 0.19)')
+                  : (state.uiMode === 'light' ? 'rgba(239, 68, 68, 0.22)' : 'rgba(239, 83, 80, 0.19)');
                 ctx.fillRect(left, Math.min(entryY, liveY), right - left, Math.max(1, Math.abs(liveY - entryY)));
               }
             }
