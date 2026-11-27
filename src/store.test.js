@@ -176,32 +176,45 @@ test('open buy positions receive the opening price when market gaps above take p
 });
 
 
-test('rejects a second order while a position or pending order already exists', () => {
+test('allows scale-in market positions while pending orders already exist', () => {
   const restore = configureStore({
     positions: [{ id: 'already-open', type: 'buy', entryPrice: 100, sl: 99, tp: 102, size: 0.01 }],
+    pendingOrders: [{ id: 'pending-one', type: 'buy', orderType: 'limit', entryPrice: 99, sl: 98, tp: 101, size: 0.001 }],
   });
   try {
     useStore.getState().placeOrder({
       side: 'sell', type: 'market', riskPercent: 1,
       entryPrice: 100, slPrice: 101, tpPrice: 98, riskAmount: 100,
     });
-    assert.equal(useStore.getState().positions.length, 1);
-    assert.equal(useStore.getState().positions[0].id, 'already-open');
-    assert.equal(useStore.getState().pendingOrders.length, 0);
+    const state = useStore.getState();
+    assert.equal(state.positions.length, 2);
+    assert.equal(state.positions[0].id, 'already-open');
+    assert.equal(state.positions[1].type, 'sell');
+    assert.equal(state.pendingOrders.length, 1);
   } finally { restore(); }
 });
 
-test('rejects a new position while a pending order already exists', () => {
+test('allows several pending orders and fills every order triggered by the same candle', () => {
   const restore = configureStore({
-    pendingOrders: [{ id: 'pending-one', type: 'buy', orderType: 'limit', entryPrice: 99, sl: 98, tp: 101 }],
+    gameStarted: true,
+    rawData: [
+      { time: 60, open: 100, high: 101, low: 99, close: 100 },
+      { time: 120, open: 100, high: 102, low: 97, close: 100 },
+      { time: 180, open: 100, high: 102, low: 99, close: 100 },
+    ],
+    positions: [{ id: 'already-open', type: 'sell', entryPrice: 100, sl: 110, tp: 90, size: 0.001, symbol: 'EURUSD' }],
+    pendingOrders: [
+      { id: 'pending-one', type: 'buy', orderType: 'limit', entryPrice: 99, sl: 90, tp: 110, size: 0.001, riskAmount: 100, symbol: 'EURUSD' },
+      { id: 'pending-two', type: 'buy', orderType: 'limit', entryPrice: 98, sl: 89, tp: 111, size: 0.001, riskAmount: 100, symbol: 'EURUSD' },
+    ],
   });
   try {
-    useStore.getState().placeOrder({
-      side: 'sell', type: 'market', riskPercent: 1,
-      entryPrice: 100, slPrice: 101, tpPrice: 98, riskAmount: 100,
-    });
-    assert.equal(useStore.getState().pendingOrders.length, 1);
-    assert.equal(useStore.getState().positions.length, 0);
+    useStore.getState().stepForward();
+    const state = useStore.getState();
+    assert.equal(state.pendingOrders.length, 0);
+    assert.equal(state.positions.length, 3);
+    assert.ok(state.positions.some(position => position.id === 'pending-one'));
+    assert.ok(state.positions.some(position => position.id === 'pending-two'));
   } finally { restore(); }
 });
 
