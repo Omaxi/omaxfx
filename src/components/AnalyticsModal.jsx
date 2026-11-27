@@ -370,7 +370,7 @@ function CalendarDay({ day, selected, onClick }) {
   const background = !active ? '#1e222d' : positive ? '#003a2b' : negative ? '#551b1b' : '#1d2d4b';
   const border = selected ? '#60a5fa' : !active ? '#2a2e39' : positive ? '#087b5a' : negative ? '#a33b3b' : '#4268ad';
   const primary = positive ? '#6ee7b7' : negative ? '#fca5a5' : '#bfdbfe';
-  return <button type="button" onClick={onClick} title={day.trades + ' trades · click to open day journal'} className="analytics-calendar-day rounded border min-w-0 p-1 flex flex-col items-end overflow-hidden text-left hover:brightness-95 focus:outline-none focus:ring-1 focus:ring-blue-400" style={{ background, borderColor: border, color: '#d1d5db' }}>
+  return <button type="button" onClick={onClick} title={day.trades + ' trades · click to open day journal'} className={`analytics-calendar-day ${!active ? 'analytics-day-empty' : positive ? 'analytics-day-positive' : negative ? 'analytics-day-negative' : 'analytics-day-neutral'} rounded border min-w-0 p-1 flex flex-col items-end overflow-hidden text-left hover:brightness-95 focus:outline-none focus:ring-1 focus:ring-blue-400`} style={{ background, borderColor: border, color: '#d1d5db' }}>
     <span style={{ color: '#9ca3af' }} className="text-[8px]">{day.day}</span>
     {active && <div className="mt-auto mb-auto w-full text-center min-w-0">
       <b style={{ color: primary }} className="block text-[10px] leading-3 truncate">{day.pnl >= 0 ? '' : '-'}{money(day.pnl)}</b>
