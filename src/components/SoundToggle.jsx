@@ -9,22 +9,14 @@ export default function SoundToggle() {
       <button
         onClick={toggleSound}
         title={soundEnabled ? 'Mute sound effects' : 'Enable sound effects'}
-        className={`w-7 h-7 rounded border flex items-center justify-center transition-colors ${
-          soundEnabled 
-            ? 'bg-[#1e222d] border-[#2a2e39] text-green-400 hover:bg-[#2a2e39]' 
-            : 'bg-[#1e222d] border-[#2a2e39] text-gray-600 hover:bg-[#2a2e39]'
-        }`}
+        className={`w-7 h-7 rounded flex items-center justify-center border-0 bg-transparent transition-colors hover:bg-transparent ${soundEnabled ? 'text-green-400' : 'text-gray-600'}`}
       >
         {soundEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
       </button>
       <button
         onClick={toggleMusic}
         title={musicEnabled ? 'Stop music' : 'Play music'}
-        className={`w-7 h-7 rounded border flex items-center justify-center transition-colors ${
-          musicEnabled 
-            ? 'bg-[#1e222d] border-[#2a2e39] text-blue-400 hover:bg-[#2a2e39]' 
-            : 'bg-[#1e222d] border-[#2a2e39] text-gray-600 hover:bg-[#2a2e39]'
-        }`}
+        className={`w-7 h-7 rounded flex items-center justify-center border-0 bg-transparent transition-colors hover:bg-transparent ${musicEnabled ? 'text-blue-400' : 'text-gray-600'}`}
       >
         <Music size={13} />
       </button>
