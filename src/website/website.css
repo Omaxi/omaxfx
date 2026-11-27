@@ -216,3 +216,8 @@ body:has(.tp-site),body:has(.tp-auth-page),body:has(.tp-boot){
 .tp-marketing .tp-preview-large .tp-preview-note{color:#8190a3}
 .tp-marketing .tp-preview-large .tp-preview-metrics small{color:#718198}
 .tp-marketing .tp-preview-large .tp-preview-metrics strong{color:#1b2b44}
+
+/* Email confirmation recovery action */
+.tp-resend-link{display:block;margin:12px auto 0;padding:8px 10px;border:0;background:transparent;color:#246bdf;font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+.tp-resend-link:hover{text-decoration:underline}
+.tp-resend-link:disabled{opacity:.55;cursor:wait}
