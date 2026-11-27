@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import { X, ChevronDown, Check, Sunrise, Sun, Sunset, ArrowUpDown, CandlestickChart, AlertTriangle } from 'lucide-react';
+import { X, ChevronDown, Check, Sunrise, Sun, Sunset, ArrowUpDown, CandlestickChart, AlertTriangle, Play, Pause, SkipForward } from 'lucide-react';
 
 const TIMEFRAMES = [
   { label: '1 min', value: 1 },
@@ -41,7 +41,7 @@ const SESSIONS = [
 
 export default function ControlPanel() {
   const { 
-    setTimeframe, timeframe, openOrderModal,
+    setTimeframe, timeframe, openOrderModal, isPlaying, togglePlay, stepForward,
     startDrawing, isDrawingMode, drawingStep, draftPosition, clearDraft,
     symbol, setSymbol, timezone, setTimezone,
     sessionTimes, sessionEndTimes, setSessionTime, setSessionEndTime, jumpToSession,
@@ -340,75 +340,44 @@ export default function ControlPanel() {
           <span>{marketOrderWarning}</span>
         </div>
       )}
-      <div className="flex items-center justify-between gap-1 px-1.5 py-1.5 overflow-x-auto">
-
-        <button onClick={toggleSymbol}
-          className="flex h-9 items-center gap-1.5 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.9)]" />
-          <span>{symbol}</span>
-          <ChevronDown size={10} className={`transition-transform ${symbolOpen ? 'rotate-180' : ''}`} />
-        </button>
-
-        <div className="flex items-center justify-center gap-1 flex-1 min-w-0 flex-wrap">
-
-          <button ref={tfButtonRef} onClick={toggleTf}
-            className="flex h-9 items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
-            <span>{tfLabel}</span>
-            <ChevronDown size={10} className={`transition-transform ${tfOpen ? 'rotate-180' : ''}`} />
+      <div className="tradepast-bottom-toolbar flex items-center justify-between gap-3 px-4 py-1.5">
+        <div className="bottom-market-meta flex items-center gap-4 flex-shrink-0">
+          <button onClick={toggleSymbol} className="toolbar-plain-button flex h-9 items-center gap-1.5 text-white text-[11px] font-bold flex-shrink-0">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.9)]" /><span>{symbol}</span>
+            <ChevronDown size={11} className={`transition-transform ${symbolOpen ? 'rotate-180' : ''}`} />
           </button>
-
-          <button ref={speedButtonRef} onClick={toggleSpeed}
-            className="flex h-9 items-center gap-1.5 px-2.5 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
-            title="Auto-play speed in underlying 1-minute candles per second">
-            <span className="text-gray-400">Speed</span>
-            <span>{replaySpeed} bar/s</span>
-            <ChevronDown size={10} className={`transition-transform ${speedOpen ? 'rotate-180' : ''}`} />
+          <span className="h-5 w-px bg-[#343b49]" />
+          <button onClick={toggleTz} className="toolbar-plain-button flex h-9 items-center gap-1 text-white text-[11px] font-bold flex-shrink-0">
+            <span>{timezone}</span><ChevronDown size={11} className={`transition-transform ${tzOpen ? 'rotate-180' : ''}`} />
           </button>
-
-          <button ref={ctButtonRef} onClick={toggleCt}
-            className="flex h-9 items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
-            title="Chart type">
-            <CandlestickChart size={11} />
-            <ChevronDown size={10} className={`transition-transform ${ctOpen ? 'rotate-180' : ''}`} />
-          </button>
-
-          <button ref={jumpButtonRef} onClick={toggleJump}
-            className="theme-menu-item flex h-9 items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0"
-            title="Jump to trading session">
-            <ArrowUpDown size={10} />
-            <span>Jump</span>
-            <ChevronDown size={10} className={`transition-transform ${jumpOpen ? 'rotate-180' : ''}`} />
-          </button>
-
-          {!isDrawingMode && !draftPosition ? (
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <button onClick={() => startDrawing('buy')} className="h-9 px-2 py-1 bg-blue-600/30 text-blue-400 rounded font-bold text-[10px] whitespace-nowrap">Long position</button>
-              <button onClick={() => startDrawing('sell')} className="h-9 px-2 py-1 bg-red-600/30 text-red-400 rounded font-bold text-[10px] whitespace-nowrap">Short position</button>
-            </div>
-          ) : (
-            <div className="flex h-9 min-h-9 items-center gap-2 bg-yellow-900/30 px-2 rounded flex-shrink-0">
-              <span className="text-yellow-400 text-[10px] font-bold whitespace-nowrap">{isDrawingMode ? drawingStep?.toUpperCase() : 'POSITION READY'}</span>
-              <button onClick={clearDraft} className="flex h-6 w-6 items-center justify-center rounded text-red-400 hover:bg-red-500/10" title="Cancel position tool"><X size={11}/></button>
-            </div>
-          )}
-
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <button onClick={() => handleMarketOrder('buy')} className="h-9 px-3 bg-green-600/30 hover:bg-green-600/40 active:bg-green-600/50 text-green-400 rounded font-bold text-xs transition-colors">BUY</button>
-            <button onClick={() => handleMarketOrder('sell')} className="h-9 px-3 bg-red-600/30 hover:bg-red-600/40 active:bg-red-600/50 text-red-400 rounded font-bold text-xs transition-colors">SELL</button>
-          </div>
         </div>
-
-        <button onClick={toggleTz}
-          className="flex h-9 items-center gap-1 px-2 py-1 bg-[#1e222d] rounded border border-[#2a2e39] text-white text-[10px] font-bold hover:bg-[#2a2e39] transition-colors flex-shrink-0">
-          <span>{timezone}</span>
-          <ChevronDown size={10} className={`transition-transform ${tzOpen ? 'rotate-180' : ''}`} />
-        </button>
+        <div className="bottom-replay-controls flex items-center justify-center gap-3 flex-1 min-w-0">
+          <button ref={speedButtonRef} onClick={toggleSpeed} className="toolbar-plain-button flex h-9 items-center gap-2 px-2 text-white text-[11px] font-bold flex-shrink-0" title="Auto-play speed in underlying 1-minute candles per second">
+            <span className="text-gray-400">Speed</span><span>{replaySpeed}x</span><ChevronDown size={11} className={`transition-transform ${speedOpen ? 'rotate-180' : ''}`} />
+          </button>
+          <span className="h-5 w-px bg-[#343b49]" />
+          <button type="button" onClick={togglePlay} aria-label={isPlaying ? 'Pause replay' : 'Play replay'} className="toolbar-plain-button h-9 w-9 flex items-center justify-center text-gray-300 hover:text-white">{isPlaying ? <Pause size={17}/> : <Play size={17}/>}</button>
+          <button type="button" onClick={() => stepForward()} aria-label="Next bar" className="toolbar-plain-button h-9 w-9 flex items-center justify-center text-gray-300 hover:text-white"><SkipForward size={17}/></button>
+          <span className="h-5 w-px bg-[#343b49]" />
+          <button ref={jumpButtonRef} onClick={toggleJump} className="toolbar-plain-button flex h-9 items-center gap-1.5 px-2 text-white text-[11px] font-bold flex-shrink-0" title="Jump to trading session">
+            <ArrowUpDown size={12}/><span>Jump</span><ChevronDown size={11} className={`transition-transform ${jumpOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+        <div className="bottom-trade-actions flex items-center justify-end gap-1.5 flex-shrink-0">
+          {!isDrawingMode && !draftPosition ? <>
+            <button onClick={() => startDrawing('buy')} className="h-9 px-3 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded font-bold text-[11px] whitespace-nowrap">Long position</button>
+            <button onClick={() => startDrawing('sell')} className="h-9 px-3 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded font-bold text-[11px] whitespace-nowrap">Short position</button>
+          </> : <div className="flex h-9 min-h-9 items-center gap-2 bg-yellow-900/20 px-2 rounded flex-shrink-0">
+            <span className="text-yellow-400 text-[10px] font-bold whitespace-nowrap">{isDrawingMode ? drawingStep?.toUpperCase() : 'POSITION READY'}</span>
+            <button onClick={clearDraft} className="flex h-6 w-6 items-center justify-center text-red-400" title="Cancel position tool"><X size={11}/></button>
+          </div>}
+          <button onClick={() => handleMarketOrder('buy')} className="h-9 px-4 bg-green-600 hover:bg-green-500 text-white rounded font-bold text-[11px] transition-colors">BUY</button>
+          <button onClick={() => handleMarketOrder('sell')} className="h-9 px-4 bg-red-600 hover:bg-red-500 text-white rounded font-bold text-[11px] transition-colors">SELL</button>
+        </div>
       </div>
 
       {symbolOpen && <SymbolDropdown />}
       {tzOpen && <TzDropdown />}
-      {tfOpen && <TimeframeDropdown />}
-      {ctOpen && <ChartTypeDropdown />}
       {jumpOpen && <JumpDropdown />}
       {speedOpen && <SpeedDropdown />}
     </div>
