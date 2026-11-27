@@ -21,7 +21,7 @@ export default function OrderModal() {
     contractSpecs,
     isOrderModalOpen, closeOrderModal, orderSide, placeOrder, 
     balance, rawData, currentIndex, draftPosition, clearDraft, rules,
-    symbol, positions, pendingOrders,
+    symbol,
   } = useStore();
 
   const meta = { pointSize: getPriceTickSize(symbol, contractSpecs), precision: getPricePrecision(symbol, contractSpecs) };
