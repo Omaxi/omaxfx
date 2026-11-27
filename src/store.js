@@ -930,7 +930,44 @@ export const useStore = create((set, get) => ({
       lastEquity = equity;
       if (!gameOverReason) {
         const violation = checkRuleViolations(state, equity, newPeak, newDailyLoss);
-        if (violation) { gameOverReason = violation.reason; gameOverMessage = violation.message; }
+        if (violation) {
+          gameOverReason = violation.reason;
+          gameOverMessage = violation.message;
+
+          // A rule breach can be caused by floating P&L. Do not stop the
+          // replay while leaving those positions open and invisible to the
+          // closed-trade report: liquidate at the same adverse intrabar
+          // prices used by calculateIntrabarUnrealizedPnl and record them.
+          if (violation.reason === 'daily_loss' || violation.reason === 'drawdown') {
+            const closeReason = violation.reason === 'daily_loss' ? 'DAILY_LOSS' : 'DRAWDOWN';
+            for (const pos of newPositions) {
+              const isBuy = pos.type === 'buy';
+              const exitPrice = Number(isBuy ? candle.low : candle.high);
+              const contractSize = Number(getPnlMultiplier(pos.symbol || state.symbol, state.contractSpecs));
+              const size = Number(pos.size);
+              if (![exitPrice, Number(pos.entryPrice), contractSize, size].every(Number.isFinite) ||
+                  contractSize <= 0 || size < 0) continue;
+              const remainingPnl = (isBuy ? exitPrice - Number(pos.entryPrice) : Number(pos.entryPrice) - exitPrice) *
+                contractSize * size;
+              const realizedPartialPnl = Number(pos.realizedPnl) || 0;
+              newBalance += remainingPnl;
+              newHistory.push({
+                ...pos,
+                size: pos.initialSize ?? pos.size,
+                remainingSizeAtExit: pos.size,
+                realizedPartialPnl,
+                exitPrice,
+                pnl: realizedPartialPnl + remainingPnl,
+                reason: closeReason,
+                closeTime: candle.time,
+                drawingSnapshot: cloneTradeDrawingSnapshot(state),
+              });
+            }
+            newPositions = [];
+            newPendingOrders = [];
+            lastEquity = newBalance;
+          }
+        }
       }
       const stillPending = [];
       let pendingFilledThisCandle = false;
