@@ -10,9 +10,9 @@ export default function InfoModal() {
   if (!isInfoOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/85 backdrop-blur flex items-center justify-center z-[70] p-2 sm:p-4" onClick={closeInfo}>
+    <div className="user-guide-overlay fixed inset-0 bg-black/85 backdrop-blur flex items-center justify-center z-[70] p-2 sm:p-4" onClick={closeInfo}>
       <div
-        className="bg-[#131722] rounded-xl w-full max-w-5xl border border-[#2a2e39] overflow-hidden flex flex-col max-h-[94vh] shadow-2xl"
+        className="user-guide-shell bg-[#131722] rounded-xl w-full max-w-5xl border border-[#2a2e39] overflow-hidden flex flex-col max-h-[94vh] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="px-4 sm:px-6 py-3 border-b border-[#2a2e39] flex-shrink-0 flex items-center justify-between">
