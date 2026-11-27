@@ -477,3 +477,38 @@ test('takes a configured partial profit once and includes it in final trade P&L'
     assert.equal(state.balance, 10300);
   } finally { restore(); }
 });
+
+test('daily loss breach closes floating positions and records them in trade history', () => {
+  const restore = configureStore({
+    gameStarted: true,
+    rawData: [
+      { time: 60, open: 100, high: 101, low: 99.5, close: 100 },
+      { time: 120, open: 100, high: 101, low: 98, close: 99.5 },
+    ],
+    currentIndex: 0,
+    rules: { maxRiskPerTrade: 1, maxDailyLoss: 1.5, maxDrawdown: 99, propFirmEnabled: true },
+    dailyLoss: { day: '1970-01-01', dayStartBalance: 10000 },
+    positions: [{
+      id: 'floating-loss-1', type: 'buy', entryPrice: 100, sl: 90, tp: 120,
+      size: 0.001, initialSize: 0.001, symbol: 'EURUSD', openTime: 60,
+      riskAmount: 1000, realizedPnl: 0,
+    }],
+    pendingOrders: [{
+      id: 'pending-after-breach', type: 'buy', orderType: 'limit',
+      entryPrice: 95, sl: 90, tp: 110, size: 0.001, symbol: 'EURUSD',
+    }],
+  });
+  try {
+    useStore.getState().stepForward();
+    const state = useStore.getState();
+    assert.equal(state.gameState.isOver, true);
+    assert.equal(state.gameState.reason, 'daily_loss');
+    assert.equal(state.tradeHistory.length, 1);
+    assert.equal(state.tradeHistory[0].reason, 'DAILY_LOSS');
+    assert.equal(state.tradeHistory[0].exitPrice, 98);
+    assert.equal(state.tradeHistory[0].pnl, -200);
+    assert.equal(state.balance, 9800);
+    assert.equal(state.positions.length, 0);
+    assert.equal(state.pendingOrders.length, 0);
+  } finally { restore(); }
+});
