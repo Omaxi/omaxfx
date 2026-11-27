@@ -17,7 +17,15 @@ const fmtDate = (unix) => {
 };
 
 export default function EquityModal() {
-  const { isEquityOpen, closeEquity, tradeHistory, balance, rules, playerName, gamePeriod } = useStore();
+  const { isEquityOpen, closeEquity, tradeHistory, balance, rules, playerName, gamePeriod, uiMode } = useStore();
+  const isDark = uiMode === 'dark';
+  const reportTheme = isDark ? {
+    surface: '#131722', panel: '#1e222d', text: '#e5e7eb', secondary: '#cbd5e1', muted: '#9ca3af',
+    border: '#2a2e39', grid: '#374151', axis: '#64748b', pill: '#1e3a8a', pillBorder: '#1d4ed8', pillText: '#dbeafe',
+  } : {
+    surface: '#ffffff', panel: '#f8fafc', text: '#172033', secondary: '#334155', muted: '#64748b',
+    border: '#e2e8f0', grid: '#cbd5e1', axis: '#94a3b8', pill: '#eff6ff', pillBorder: '#dbeafe', pillText: '#1e40af',
+  };
   const captureRef = useRef(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -53,7 +61,7 @@ export default function EquityModal() {
     try {
       await new Promise(r => setTimeout(r, 100));
       const canvas = await html2canvas(captureRef.current, {
-        backgroundColor: '#ffffff', scale: 2, logging: false, useCORS: true, allowTaint: true,
+        backgroundColor: reportTheme.surface, scale: 2, logging: false, useCORS: true, allowTaint: true,
       });
       return new Promise(resolve => canvas.toBlob(blob => resolve(blob), 'image/png', 0.95));
     } catch (err) {
@@ -114,17 +122,17 @@ export default function EquityModal() {
   const pnlColor = currentPnl >= 0 ? '#059669' : '#dc2626';
 
   return (
-    <div className="fixed inset-0 bg-slate-950/55 backdrop-blur-[2px] flex items-center justify-center z-[60] p-3 sm:p-5" onClick={() => setMenuOpen(false)}>
+    <div className={`fixed inset-0 ${isDark ? 'bg-slate-950/80' : 'bg-slate-950/55'} backdrop-blur-[2px] flex items-center justify-center z-[60] p-3 sm:p-5`} onClick={() => setMenuOpen(false)}>
       <div
-        className="bg-white text-slate-800 rounded-2xl w-full max-w-5xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[94dvh] relative"
+        className={`rounded-2xl w-full max-w-5xl border shadow-2xl overflow-hidden flex flex-col max-h-[94dvh] relative ${isDark ? 'bg-[#131722] text-slate-100 border-[#2a2e39]' : 'bg-white text-slate-800 border-slate-200'}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center px-5 py-3 border-b border-slate-200 flex-shrink-0 bg-white">
+        <div className={`flex justify-between items-center px-5 py-3 border-b flex-shrink-0 ${isDark ? 'border-[#2a2e39] bg-[#131722]' : 'border-slate-200 bg-white'}`}>
           <div className="flex items-center gap-2.5">
             <div className="grid place-items-center size-8 rounded-lg bg-blue-600 text-white"><Share2 size={16}/></div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">Performance Report</h2>
-              <p className="text-[11px] text-slate-500">A shareable summary of this backtest</p>
+              <h2 className={`text-base font-bold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}>Performance Report</h2>
+              <p className={`text-[11px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>A shareable summary of this backtest</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -138,8 +146,8 @@ export default function EquityModal() {
                 {isCapturing ? 'Generating…' : 'Share'}
               </button>
               {menuOpen && (
-                <div className="absolute right-0 top-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden z-[100] min-w-[190px] py-1">
-                  <button onClick={() => shareImage('native')} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-slate-50 text-xs text-left text-slate-700">
+                <div className={`absolute right-0 top-full mt-2 border rounded-xl shadow-xl overflow-hidden z-[100] min-w-[190px] py-1 ${isDark ? 'bg-[#1e222d] border-[#2a2e39]' : 'bg-white border-slate-200'}`}>
+                  <button onClick={() => shareImage('native')} className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-left ${isDark ? 'hover:bg-[#2a2e39] text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
                     <Smartphone size={14} className="text-violet-600"/> Share via...
                   </button>
                   <button onClick={() => shareImage('whatsapp')} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-slate-50 text-xs text-left text-slate-700">
@@ -151,47 +159,47 @@ export default function EquityModal() {
                   <button onClick={() => shareImage('email')} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-slate-50 text-xs text-left text-slate-700">
                     <Mail size={14} className="text-amber-600"/> Email
                   </button>
-                  <div className="my-1 border-t border-slate-100"/>
+                  <div className={`my-1 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}/>
                   <button onClick={handleDownload} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-slate-50 text-xs text-left text-slate-700">
                     <Download size={14} className="text-slate-500"/> Download PNG
                   </button>
                 </div>
               )}
             </div>
-            <button onClick={closeEquity} className="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100" aria-label="Close report">
+            <button onClick={closeEquity} className={`p-2 rounded-lg ${isDark ? 'text-slate-400 hover:text-white hover:bg-[#2a2e39]' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`} aria-label="Close report">
               <X size={18}/>
             </button>
           </div>
         </div>
 
-        <div className="overflow-auto flex-1 min-h-0 p-4 sm:p-6 bg-slate-50">
+        <div className={`overflow-auto flex-1 min-h-0 p-4 sm:p-6 ${isDark ? 'bg-[#0b0e11]' : 'bg-slate-50'}`}>
           <div
             ref={captureRef}
             className="equity-report-capture"
             style={{
               width: `${PNG_WIDTH}px`,
               maxWidth: '100%',
-              backgroundColor: '#ffffff',
-              color: '#172033',
-              colorScheme: 'light',
+              backgroundColor: reportTheme.surface,
+              color: reportTheme.text,
+              colorScheme: isDark ? 'dark' : 'light',
               isolation: 'isolate',
               padding: '30px',
               fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
               boxSizing: 'border-box',
               margin: '0 auto',
-              border: '1px solid #e2e8f0',
+              border: `1px solid ${reportTheme.border}`,
               borderTop: '5px solid #2563eb',
               borderRadius: '12px',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', paddingBottom: '18px', borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', paddingBottom: '18px', borderBottom: `1px solid ${reportTheme.border}` }}>
               <div>
-                <div style={{ fontSize: '23px', lineHeight: 1.15, fontWeight: 800, letterSpacing: '-0.6px', color: '#172033' }}>TradePast</div>
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', letterSpacing: '0.2px' }}>TRADING PERFORMANCE REPORT</div>
+                <div style={{ fontSize: '23px', lineHeight: 1.15, fontWeight: 800, letterSpacing: '-0.6px', color: reportTheme.text }}>TradePast</div>
+                <div style={{ fontSize: '11px', color: reportTheme.muted, marginTop: '4px', letterSpacing: '0.2px' }}>TRADING PERFORMANCE REPORT</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.7px', fontWeight: 700 }}>Generated</div>
-                <div style={{ fontSize: '12px', color: '#334155', fontWeight: 600, marginTop: '4px' }}>{new Date().toLocaleDateString()}</div>
+                <div style={{ fontSize: '10px', color: theme.muted, textTransform: 'uppercase', letterSpacing: '0.7px', fontWeight: 700 }}>Generated</div>
+                <div style={{ fontSize: '12px', color: reportTheme.secondary, fontWeight: 600, marginTop: '4px' }}>{new Date().toLocaleDateString()}</div>
               </div>
             </div>
 
@@ -201,25 +209,25 @@ export default function EquityModal() {
                 <div style={{ fontSize: '20px', lineHeight: 1.2, color: '#172033', fontWeight: 750 }}>{playerName || 'Trader'}</div>
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <MetaPill label="Challenge" value={presetName}/>
-                <MetaPill label="Period" value={`${fmtDate(gamePeriod?.from)} → ${fmtDate(gamePeriod?.to)}`}/>
+                <MetaPill label="Challenge" value={presetName} theme={reportTheme}/>
+                <MetaPill label="Period" value={`${fmtDate(gamePeriod?.from)} → ${fmtDate(gamePeriod?.to)}`} theme={reportTheme}/>
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '10px', marginBottom: '18px' }}>
-              <StatCard label="Starting balance" value={`$${fmtMoney(startBalance, 0)}`}/>
-              <StatCard label="Final balance" value={`$${fmtMoney(balance, 0)}`}/>
-              <StatCard label="Net P&L" value={`${currentPnl >= 0 ? '+' : '−'}$${fmtMoney(currentPnl, 0)}`} color={pnlColor}/>
+              <StatCard label="Starting balance" value={`${fmtMoney(startBalance, 0)}`} theme={reportTheme}/>
+              <StatCard label="Final balance" value={`${fmtMoney(balance, 0)}`} theme={reportTheme}/>
+              <StatCard label="Net P&L" value={`${currentPnl >= 0 ? '+' : '−'}$${fmtMoney(currentPnl, 0)}`} color={pnlColor} theme={reportTheme}/>
               <StatCard label="Total return" value={`${currentPnl >= 0 ? '+' : ''}${pnlPercent.toFixed(2)}%`} color={pnlColor}/>
-              <StatCard label="Closed trades" value={totalTrades.toLocaleString()}/>
-              <StatCard label="Win rate" value={`${totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : '0.0'}%`} detail={`${wins} wins · ${losses} losses`}/>
+              <StatCard label="Closed trades" value={totalTrades.toLocaleString()} theme={reportTheme}/>
+              <StatCard label="Win rate" value={`${totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : '0.0'}%`} detail={`${wins} wins · ${losses} losses`} theme={reportTheme}/>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '9px' }}>
               <div style={{ fontSize: '14px', fontWeight: 750, color: '#172033' }}>Account equity</div>
               <div style={{ fontSize: '11px', fontWeight: 700, color: pnlColor }}>{currentPnl >= 0 ? '+' : '−'}${fmtMoney(currentPnl, 2)} <span style={{ color: '#64748b', fontWeight: 500 }}>({pnlPercent.toFixed(2)}%)</span></div>
             </div>
-            <div className="equity-report-chart" style={{ height: '290px', backgroundColor: '#f8fafc', color: '#334155', colorScheme: 'light', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 12px 8px', minWidth: 0 }}>
+            <div className="equity-report-chart" style={{ height: '290px', backgroundColor: reportTheme.panel, color: reportTheme.secondary, colorScheme: isDark ? 'dark' : 'light', border: `1px solid ${reportTheme.border}`, borderRadius: '10px', padding: '14px 12px 8px', minWidth: 0 }}>
               {tradeHistory.length === 0 ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', fontSize: '13px' }}>
                   No trades yet
@@ -227,8 +235,8 @@ export default function EquityModal() {
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={equityData} margin={{ top: 10, right: 16, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 4" stroke="#e2e8f0" vertical={false}/>
-                    <XAxis dataKey="trade" stroke="#94a3b8" tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} axisLine={{ stroke: '#cbd5e1' }}/>
+                    <CartesianGrid strokeDasharray="3 4" stroke={reportTheme.grid} vertical={false}/>
+                    <XAxis dataKey="trade" stroke={reportTheme.axis} tick={{ fontSize: 10, fill: reportTheme.muted }} tickLine={false} axisLine={{ stroke: reportTheme.grid }}/>
                     <YAxis
                       stroke="#94a3b8"
                       domain={[minEquity * 0.98, maxEquity * 1.02]}
@@ -239,8 +247,8 @@ export default function EquityModal() {
                       width={54}
                     />
                     <Tooltip
-                      contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '11px', color: '#172033', boxShadow: '0 4px 12px rgba(15,23,42,.08)' }}
-                      itemStyle={{ color: '#2563eb', fontWeight: 700 }}
+                      contentStyle={{ backgroundColor: reportTheme.surface, border: `1px solid ${reportTheme.grid}`, borderRadius: '8px', fontSize: '11px', color: '#172033', boxShadow: '0 4px 12px rgba(15,23,42,.08)' }}
+                      itemStyle={{ color: '#60a5fa', fontWeight: 700 }}
                       labelStyle={{ color: '#64748b' }}
                       formatter={(value) => [`$${fmtMoney(value)}`, 'Account balance']}
                       labelFormatter={(label) => `Trade #${label}`}
@@ -252,15 +260,15 @@ export default function EquityModal() {
               )}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', borderTop: '1px solid #e2e8f0', marginTop: '18px', paddingTop: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', borderTop: `1px solid ${reportTheme.border}`, marginTop: '18px', paddingTop: '12px' }}>
               <div style={{ fontSize: '10px', color: '#64748b' }}>TradePast · Trading Performance</div>
-              <div style={{ fontSize: '10px', color: '#94a3b8' }}>Generated with TradePast</div>
+              <div style={{ fontSize: '10px', color: reportTheme.axis }}>Generated with TradePast</div>
             </div>
           </div>
         </div>
 
         {toast && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white border border-slate-200 px-4 py-2 rounded-lg text-xs text-slate-700 shadow-xl z-[100] whitespace-nowrap">
+          <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 border px-4 py-2 rounded-lg text-xs shadow-xl z-[100] whitespace-nowrap ${isDark ? 'bg-[#1e222d] border-[#2a2e39] text-slate-200' : 'bg-white border-slate-200 text-slate-700'}`}>
             {toast}
           </div>
         )}
@@ -269,18 +277,18 @@ export default function EquityModal() {
   );
 }
 
-function MetaPill({ label, value }) {
+function MetaPill({ label, value, theme }) {
   return (
-    <div style={{ backgroundColor: '#eff6ff', border: '1px solid #dbeafe', borderRadius: '7px', padding: '7px 10px' }}>
+    <div style={{ backgroundColor: theme.pill, border: `1px solid ${theme.pillBorder}`, borderRadius: '7px', padding: '7px 10px' }}>
       <span style={{ display: 'block', fontSize: '8px', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>{label}</span>
-      <span style={{ display: 'block', fontSize: '10px', color: '#1e40af', fontWeight: 700, marginTop: '2px' }}>{value}</span>
+      <span style={{ display: 'block', fontSize: '10px', color: theme.pillText, fontWeight: 700, marginTop: '2px' }}>{value}</span>
     </div>
   );
 }
 
-function StatCard({ label, value, color = '#172033', detail }) {
+function StatCard({ label, value, color = '#172033', detail, theme }) {
   return (
-    <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', padding: '11px 13px', borderRadius: '9px', minWidth: 0 }}>
+    <div style={{ backgroundColor: theme.panel, border: `1px solid ${theme.border}`, padding: '11px 13px', borderRadius: '9px', minWidth: 0 }}>
       <div style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.55px' }}>{label}</div>
       <div style={{ fontSize: '17px', color, fontWeight: 800, letterSpacing: '-0.3px', marginTop: '5px', overflowWrap: 'anywhere' }}>{value}</div>
       {detail && <div style={{ fontSize: '9px', color: '#64748b', marginTop: '3px' }}>{detail}</div>}
