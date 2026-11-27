@@ -491,3 +491,131 @@ html[data-ui-theme="light"] .jump-session-menu button.jump-session-action {
   color: #ffffff !important;
   border-color: #1d4ed8 !important;
 }
+
+
+/* ------------------------------------------------------------
+   Light-theme finishing pass (shared by the chart, dialogs and
+   analytics). These rules intentionally override legacy dark
+   utility classes and inline calendar colors without touching
+   the dark theme.
+   ------------------------------------------------------------ */
+html[data-ui-theme="light"] .user-guide-overlay {
+  background: rgb(15 23 42 / 28%) !important;
+}
+html[data-ui-theme="light"] .user-guide-shell {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border-color: #dbe2ea !important;
+  box-shadow: 0 24px 70px rgb(15 23 42 / 18%) !important;
+}
+html[data-ui-theme="light"] .user-guide-shell header,
+html[data-ui-theme="light"] .user-guide-shell footer {
+  border-color: #e2e8f0 !important;
+}
+html[data-ui-theme="light"] .user-guide-shell [class*="bg-[#131722]"],
+html[data-ui-theme="light"] .user-guide-shell [class*="bg-[#1e222d]"] {
+  background-color: #f8fafc !important;
+}
+html[data-ui-theme="light"] .user-guide-shell .text-white,
+html[data-ui-theme="light"] .user-guide-shell .text-gray-100,
+html[data-ui-theme="light"] .user-guide-shell .text-gray-200,
+html[data-ui-theme="light"] .user-guide-shell .text-gray-300,
+html[data-ui-theme="light"] .user-guide-shell b {
+  color: #334155 !important;
+}
+html[data-ui-theme="light"] .user-guide-shell .text-gray-400,
+html[data-ui-theme="light"] .user-guide-shell .text-gray-500 {
+  color: #64748b !important;
+}
+html[data-ui-theme="light"] .user-guide-shell .text-blue-300,
+html[data-ui-theme="light"] .user-guide-shell .text-blue-200 {
+  color: #2563eb !important;
+}
+html[data-ui-theme="light"] .user-guide-shell kbd {
+  background: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+}
+html[data-ui-theme="light"] .user-guide-shell a {
+  color: #2563eb !important;
+}
+
+/* The calendar uses inline colors for outcome states; map those
+   states to readable pastel surfaces in light mode. */
+html[data-ui-theme="light"] .analytics-calendar-day {
+  color: #334155 !important;
+  background: #f8fafc !important;
+  border-color: #dbe2ea !important;
+}
+html[data-ui-theme="light"] .analytics-calendar-day span {
+  color: #64748b !important;
+}
+html[data-ui-theme="light"] .analytics-calendar-day[style*="#003a2b"] {
+  background: #dcfce7 !important;
+  border-color: #86efac !important;
+}
+html[data-ui-theme="light"] .analytics-calendar-day[style*="#003a2b"] b {
+  color: #166534 !important;
+}
+html[data-ui-theme="light"] .analytics-calendar-day[style*="#551b1b"] {
+  background: #fee2e2 !important;
+  border-color: #fca5a5 !important;
+}
+html[data-ui-theme="light"] .analytics-calendar-day[style*="#551b1b"] b {
+  color: #b91c1c !important;
+}
+html[data-ui-theme="light"] .analytics-calendar-day[style*="#1d2d4b"] {
+  background: #dbeafe !important;
+  border-color: #93c5fd !important;
+}
+html[data-ui-theme="light"] .analytics-calendar-day[style*="#1d2d4b"] b {
+  color: #1d4ed8 !important;
+}
+html[data-ui-theme="light"] .analytics-calendar-day[style*="#003a2b"] span,
+html[data-ui-theme="light"] .analytics-calendar-day[style*="#551b1b"] span,
+html[data-ui-theme="light"] .analytics-calendar-day[style*="#1d2d4b"] span {
+  color: #475569 !important;
+}
+html[data-ui-theme="light"] .analytics-calendar-empty {
+  background: #f8fafc !important;
+}
+
+/* Trade outcome chips stay high-contrast rather than inheriting
+   dark translucent green/red backgrounds from the dark palette. */
+html[data-ui-theme="light"] .history-modal-shell .history-exit-tp {
+  background: #dcfce7 !important;
+  color: #166534 !important;
+  border: 1px solid #86efac !important;
+}
+html[data-ui-theme="light"] .history-modal-shell .history-exit-sl {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border: 1px solid #fca5a5 !important;
+}
+html[data-ui-theme="light"] .history-modal-shell tbody tr:hover {
+  background: #f8fafc !important;
+}
+html[data-ui-theme="light"] .analytics-modal-shell .analytics-statistics-track {
+  background: #e2e8f0 !important;
+}
+html[data-ui-theme="light"] .analytics-modal-shell .analytics-calendar-day:focus-visible {
+  outline: 2px solid #2563eb !important;
+  outline-offset: -2px;
+}
+
+/* Keep all chart panes and split separators on the same soft grid
+   palette; no pure-black grid lines in light mode. */
+html[data-ui-theme="light"] .chart-workspace-grid,
+html[data-ui-theme="light"] .chart-workspace-pane,
+html[data-ui-theme="light"] .chart-root,
+html[data-ui-theme="light"] .chart-workspace-grid > * {
+  background-color: #f8fafc !important;
+}
+html[data-ui-theme="light"] .chart-workspace-grid [class*="border-[#2a2e39]"],
+html[data-ui-theme="light"] .chart-workspace-grid [class*="border-[#343b49]"] {
+  border-color: #dbe2ea !important;
+}
+html[data-ui-theme="light"] .theme-action-contrast,
+html[data-ui-theme="light"] button.theme-action-contrast {
+  color: #ffffff !important;
+}
