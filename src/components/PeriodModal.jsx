@@ -118,7 +118,7 @@ export default function PeriodModal() {
         <div className="p-3 border-b border-[#2a2e39] flex justify-between items-start">
           <div>
             <div className="flex items-center gap-2 mb-0.5">
-              <div className="period-brand-icon theme-action-contrast bg-blue-600 rounded p-1.5">
+              <div className="period-brand-icon bg-blue-600 rounded p-1.5">
                 <Calendar size={14} className="text-white" />
               </div>
               <h1 className="text-base font-bold tracking-wider">
@@ -173,7 +173,7 @@ export default function PeriodModal() {
                   onClick={() => setPresetKey(key)}
                   className={`flex flex-col items-center gap-0.5 p-1.5 rounded border transition-all text-center ${
                     presetKey === key 
-                      ? 'period-preset-selected bg-blue-600/20 border-blue-500 !text-white' 
+                      ? 'period-preset-selected bg-blue-600/20 border-blue-500 !text-blue-700' 
                       : 'bg-[#1e222d] border-[#2a2e39] text-gray-400 hover:border-[#3a3e49] hover:text-gray-200'
                   }`}
                 >
