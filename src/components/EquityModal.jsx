@@ -150,7 +150,7 @@ export default function EquityModal() {
                   <button onClick={() => shareImage('native')} className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-left ${isDark ? 'hover:bg-[#2a2e39] text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
                     <Smartphone size={14} className="text-violet-600"/> Share via...
                   </button>
-                  <button onClick={() => shareImage('whatsapp')} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-slate-50 text-xs text-left text-slate-700">
+                  <button onClick={() => shareImage('whatsapp')} className={`w-full flex items-center gap-2.5 px-3.5 py-2.5 ${isDark ? 'hover:bg-[#2a2e39] text-slate-200' : 'hover:bg-slate-50 text-slate-700'}`}>
                     <MessageCircle size={14} className="text-green-600"/> WhatsApp
                   </button>
                   <button onClick={() => shareImage('telegram')} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-slate-50 text-xs text-left text-slate-700">
@@ -161,7 +161,7 @@ export default function EquityModal() {
                   </button>
                   <div className={`my-1 border-t ${isDark ? 'border-slate-700' : 'border-slate-100'}`}/>
                   <button onClick={handleDownload} className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-slate-50 text-xs text-left text-slate-700">
-                    <Download size={14} className="text-slate-500"/> Download PNG
+                    <Download size={14} className={isDark ? 'text-slate-400' : 'text-slate-500'}/> Download PNG
                   </button>
                 </div>
               )}
@@ -198,15 +198,15 @@ export default function EquityModal() {
                 <div style={{ fontSize: '11px', color: reportTheme.muted, marginTop: '4px', letterSpacing: '0.2px' }}>TRADING PERFORMANCE REPORT</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '10px', color: theme.muted, textTransform: 'uppercase', letterSpacing: '0.7px', fontWeight: 700 }}>Generated</div>
+                <div style={{ fontSize: '10px', color: reportTheme.muted, textTransform: 'uppercase', letterSpacing: '0.7px', fontWeight: 700 }}>Generated</div>
                 <div style={{ fontSize: '12px', color: reportTheme.secondary, fontWeight: 600, marginTop: '4px' }}>{new Date().toLocaleDateString()}</div>
               </div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '18px', flexWrap: 'wrap', padding: '20px 0 18px' }}>
               <div>
-                <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.7px', fontWeight: 700, marginBottom: '5px' }}>Prepared for</div>
-                <div style={{ fontSize: '20px', lineHeight: 1.2, color: '#172033', fontWeight: 750 }}>{playerName || 'Trader'}</div>
+                <div style={{ fontSize: '10px', color: reportTheme.muted, textTransform: 'uppercase', letterSpacing: '0.7px', fontWeight: 700, marginBottom: '5px' }}>Prepared for</div>
+                <div style={{ fontSize: '20px', lineHeight: 1.2, color: reportTheme.text, fontWeight: 750 }}>{playerName || 'Trader'}</div>
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <MetaPill label="Challenge" value={presetName} theme={reportTheme}/>
@@ -238,23 +238,23 @@ export default function EquityModal() {
                     <CartesianGrid strokeDasharray="3 4" stroke={reportTheme.grid} vertical={false}/>
                     <XAxis dataKey="trade" stroke={reportTheme.axis} tick={{ fontSize: 10, fill: reportTheme.muted }} tickLine={false} axisLine={{ stroke: reportTheme.grid }}/>
                     <YAxis
-                      stroke="#94a3b8"
+                      stroke={reportTheme.axis}
                       domain={[minEquity * 0.98, maxEquity * 1.02]}
                       tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`}
-                      tick={{ fontSize: 10, fill: '#64748b' }}
+                      tick={{ fontSize: 10, fill: reportTheme.muted }}
                       tickLine={false}
                       axisLine={false}
                       width={54}
                     />
                     <Tooltip
-                      contentStyle={{ backgroundColor: reportTheme.surface, border: `1px solid ${reportTheme.grid}`, borderRadius: '8px', fontSize: '11px', color: '#172033', boxShadow: '0 4px 12px rgba(15,23,42,.08)' }}
+                      contentStyle={{ backgroundColor: reportTheme.surface, border: `1px solid ${reportTheme.grid}`, borderRadius: '8px', fontSize: '11px', color: reportTheme.text, boxShadow: '0 4px 12px rgba(15,23,42,.08)' }}
                       itemStyle={{ color: '#60a5fa', fontWeight: 700 }}
                       labelStyle={{ color: '#64748b' }}
                       formatter={(value) => [`$${fmtMoney(value)}`, 'Account balance']}
                       labelFormatter={(label) => `Trade #${label}`}
                     />
                     <ReferenceLine y={startBalance} stroke="#94a3b8" strokeDasharray="4 4"/>
-                    <Line type="monotone" dataKey="balance" stroke="#2563eb" strokeWidth={3} dot={false} activeDot={{ r: 5, fill: '#2563eb', stroke: '#ffffff', strokeWidth: 2 }} isAnimationActive={false}/>
+                    <Line type="monotone" dataKey="balance" stroke="#2563eb" strokeWidth={3} dot={false} activeDot={{ r: 5, fill: '#2563eb', stroke: reportTheme.surface, strokeWidth: 2 }} isAnimationActive={false}/>
                   </LineChart>
                 </ResponsiveContainer>
               )}
@@ -280,7 +280,7 @@ export default function EquityModal() {
 function MetaPill({ label, value, theme }) {
   return (
     <div style={{ backgroundColor: theme.pill, border: `1px solid ${theme.pillBorder}`, borderRadius: '7px', padding: '7px 10px' }}>
-      <span style={{ display: 'block', fontSize: '8px', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>{label}</span>
+      <span style={{ display: 'block', fontSize: '8px', color: theme.muted, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>{label}</span>
       <span style={{ display: 'block', fontSize: '10px', color: theme.pillText, fontWeight: 700, marginTop: '2px' }}>{value}</span>
     </div>
   );
@@ -289,9 +289,9 @@ function MetaPill({ label, value, theme }) {
 function StatCard({ label, value, color = '#172033', detail, theme }) {
   return (
     <div style={{ backgroundColor: theme.panel, border: `1px solid ${theme.border}`, padding: '11px 13px', borderRadius: '9px', minWidth: 0 }}>
-      <div style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.55px' }}>{label}</div>
+      <div style={{ fontSize: '9px', color: theme.muted, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.55px' }}>{label}</div>
       <div style={{ fontSize: '17px', color, fontWeight: 800, letterSpacing: '-0.3px', marginTop: '5px', overflowWrap: 'anywhere' }}>{value}</div>
-      {detail && <div style={{ fontSize: '9px', color: '#64748b', marginTop: '3px' }}>{detail}</div>}
+      {detail && <div style={{ fontSize: '9px', color: theme.muted, marginTop: '3px' }}>{detail}</div>}
     </div>
   );
 }
