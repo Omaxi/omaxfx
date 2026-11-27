@@ -128,13 +128,6 @@ function App() {
     document.documentElement.dataset.uiTheme = uiMode;
     document.documentElement.style.colorScheme = uiMode;
     try { localStorage.setItem('tradepast-ui-mode', uiMode); } catch {}
-    if (uiMode === 'dark') {
-      const currentBackground = useStore.getState().theme.background;
-      if (currentBackground && currentBackground !== '#f8fafc') {
-        darkChartBackgroundRef.current = currentBackground;
-        try { localStorage.setItem('tradepast-dark-chart-background', currentBackground); } catch {}
-      }
-    }
   }, [uiMode]);
 
   useEffect(() => {
@@ -339,7 +332,7 @@ function App() {
   };
 
   return (
-    <div className={`flex flex-col h-dvh overflow-hidden ${isInfoOpen ? 'quick-guide-open' : ''}`} style={{ backgroundColor: theme.background, color: '#ffffff' }}>
+    <div className={`flex flex-col h-dvh overflow-hidden ${isInfoOpen ? 'quick-guide-open' : ''}`} style={{ backgroundColor: theme.background, color: uiMode === 'light' ? '#1e293b' : '#ffffff' }}>
       {/* Hidden audio element — preloaded by the browser at page load. */}
       <audio
         id="sfx-tphit"
