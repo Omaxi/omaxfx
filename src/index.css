@@ -269,3 +269,21 @@ html[data-ui-theme="light"] .ui-mode-toggle:hover { background: #f1f5f9 !importa
 html[data-ui-theme="light"] .quick-guide-open { color: #334155 !important; }
 html[data-ui-theme="light"] select { color-scheme: light !important; background-color: #ffffff !important; color: #334155 !important; border-color: #cbd5e1 !important; }
 html[data-ui-theme="light"] select option { background: #ffffff !important; color: #334155 !important; }
+
+html[data-ui-theme="light"] .text-white,
+html[data-ui-theme="light"] .text-gray-50,
+html[data-ui-theme="light"] .text-gray-100 { color: #334155 !important; }
+html[data-ui-theme="light"] button[class*="bg-blue-"],
+html[data-ui-theme="light"] button[class*="bg-green-"],
+html[data-ui-theme="light"] button[class*="bg-emerald-"],
+html[data-ui-theme="light"] button[class*="bg-red-"],
+html[data-ui-theme="light"] button[class*="bg-cyan-"],
+html[data-ui-theme="light"] button[class*="bg-amber-"],
+html[data-ui-theme="light"] button[class*="bg-yellow-"] { color: #ffffff !important; }
+html[data-ui-theme="light"] button[class*="bg-blue-"] *,
+html[data-ui-theme="light"] button[class*="bg-green-"] *,
+html[data-ui-theme="light"] button[class*="bg-emerald-"] *,
+html[data-ui-theme="light"] button[class*="bg-red-"] *,
+html[data-ui-theme="light"] button[class*="bg-cyan-"] *,
+html[data-ui-theme="light"] button[class*="bg-amber-"] *,
+html[data-ui-theme="light"] button[class*="bg-yellow-"] * { color: inherit !important; }
