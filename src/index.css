@@ -832,3 +832,25 @@ html[data-ui-theme="light"] .trade-journal-modal .trade-screenshot-download:hove
   background: #cbd5e1 !important;
   color: #1e293b !important;
 }
+
+
+/* Clear, restrained side badges in the light-theme trade journal. */
+html[data-ui-theme="light"] .trade-journal-modal .trade-side-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  border: 1px solid transparent;
+  box-shadow: none;
+  letter-spacing: 0.035em;
+}
+html[data-ui-theme="light"] .trade-journal-modal .trade-side-badge.bg-emerald-900\/50 {
+  background: #dcfce7 !important;
+  border-color: #86efac !important;
+  color: #166534 !important;
+}
+html[data-ui-theme="light"] .trade-journal-modal .trade-side-badge.bg-red-900\/50 {
+  background: #fee2e2 !important;
+  border-color: #fca5a5 !important;
+  color: #991b1b !important;
+}
