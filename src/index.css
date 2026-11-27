@@ -468,3 +468,20 @@ html[data-ui-theme="light"] .analytics-modal-shell button[class*="bg-emerald-"],
 html[data-ui-theme="light"] .analytics-modal-shell button[class*="bg-red-"] { color: #ffffff !important; }
 html[data-ui-theme="light"] .analytics-modal-shell .recharts-cartesian-grid line { stroke: #e2e8f0 !important; }
 html[data-ui-theme="light"] .analytics-modal-shell .recharts-text { fill: #64748b !important; }
+
+
+/* Stable class hooks: app tooltips are stripped at runtime, so do not
+   depend on title attributes to keep the right-side actions visible. */
+.header-status-controls .header-action-fireworks,
+.header-status-controls .header-action-guide,
+.header-status-controls .header-action-exit {
+  display: inline-flex !important;
+  flex: 0 0 28px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+html[data-ui-theme="light"] .header-status-controls .header-action-fireworks { color: #d97706 !important; }
+html[data-ui-theme="light"] .header-status-controls .header-action-guide { color: #2563eb !important; }
+html[data-ui-theme="light"] .header-status-controls .header-action-exit { color: #dc2626 !important; }
