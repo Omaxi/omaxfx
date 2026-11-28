@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Minus, MoveVertical, Square, Type, Layers, Undo2, Trash2, X, Pencil, Check } from 'lucide-react';
+import { Minus, MoveVertical, Square, Type, Undo2, Trash2, X, Pencil, Check } from 'lucide-react';
 import { useStore } from '../store';
 
 const EMPTY = [];
+const FibonacciIcon = ({ size = 14 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M4 5h16M4 11h16M4 19h16"/><path d="M6 19 18 5" strokeWidth="1.5"/><circle cx="6" cy="19" r="1.2" fill="currentColor" stroke="none"/><circle cx="18" cy="5" r="1.2" fill="currentColor" stroke="none"/></svg>;
 const TOOLS = [
   { key: 'horizontal', title: 'Horizontal line', Icon: Minus },
   { key: 'vertical', title: 'Vertical line', Icon: MoveVertical },
   { key: 'trendline', title: 'Trendline', Icon: null },
   { key: 'rectangle', title: 'Rectangle', Icon: Square },
-  { key: 'fibonacci', title: 'Fibonacci', Icon: Layers },
+  { key: 'fibonacci', title: 'Fibonacci retracement', Icon: FibonacciIcon },
   { key: 'text', title: 'Text note', Icon: Type },
 ];
 let activeMiniChartId = null;
@@ -129,9 +130,17 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
           const x=Math.min(pts[0].x,pts[1].x), y=Math.min(pts[0].y,pts[1].y), w=Math.abs(pts[1].x-pts[0].x), h=Math.abs(pts[1].y-pts[0].y);
           ctx.fillRect(x,y,w,h); if(drawing.showBorder===true)ctx.strokeRect(x,y,w,h);
         } else if(pts.length===2&&drawing.type==='fibonacci'){
-          const x=Math.min(pts[0].x,pts[1].x), w=Math.abs(pts[1].x-pts[0].x);
-          ctx.fillRect(x,Math.min(pts[0].y,pts[1].y),w,Math.abs(pts[1].y-pts[0].y));
-          if(drawing.showBorder===true)[0,.5,.618,.764,1].forEach(level=>{const y=pts[0].y+(pts[1].y-pts[0].y)*level;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+w,y);ctx.stroke();ctx.fillStyle=color;ctx.font='10px sans-serif';ctx.fillText(`${(level*100).toFixed(1)}%`,x+w+4,y-2);});
+          const levels=(Array.isArray(drawing.levels)?drawing.levels:[0,0.236,0.382,0.5,0.618,0.786,1])
+            .map(Number).filter(level=>Number.isFinite(level)&&level>=0&&level<=1).sort((a,b)=>a-b);
+          const x1=Math.min(pts[0].x,pts[1].x), x2=Math.max(pts[0].x,pts[1].x);
+          levels.forEach(level=>{
+            const y=pts[0].y+(pts[1].y-pts[0].y)*level;
+            ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=Math.max(1,Number(drawing.lineWidth)||1);
+            ctx.setLineDash([]);ctx.moveTo(x1,y);ctx.lineTo(x2,y);ctx.stroke();
+            const price=Number(drawing.points[0].price)+(Number(drawing.points[1].price)-Number(drawing.points[0].price))*level;
+            ctx.fillStyle=color;ctx.font='10px monospace';
+            ctx.fillText(`${Number((level*100).toFixed(1))}%  ${price.toFixed(2)}`,x2+4,y+3);
+          });
         }
         ctx.restore();
       };
@@ -141,11 +150,17 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
       if(selected){
         const pts=(selected.points||[]).map(xyAt).filter(Boolean);
         ctx.save();ctx.strokeStyle='#2563eb';ctx.fillStyle='#ffffff';ctx.lineWidth=1;ctx.setLineDash([3,3]);
-        if(selected.type==='rectangle'&&pts.length===2){ctx.strokeRect(Math.min(pts[0].x,pts[1].x),Math.min(pts[0].y,pts[1].y),Math.abs(pts[1].x-pts[0].x),Math.abs(pts[1].y-pts[0].y));}
+        if((selected.type==='rectangle'||selected.type==='fibonacci')&&pts.length===2){ctx.strokeRect(Math.min(pts[0].x,pts[1].x),Math.min(pts[0].y,pts[1].y),Math.abs(pts[1].x-pts[0].x),Math.abs(pts[1].y-pts[0].y));}
         else if(selected.type==='trendline'&&pts.length===2){ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);ctx.lineTo(pts[1].x,pts[1].y);ctx.stroke();}
         else if(selected.type==='horizontal'&&pts[0]){ctx.beginPath();ctx.moveTo(0,pts[0].y);ctx.lineTo(rect.width,pts[0].y);ctx.stroke();}
         else if(selected.type==='vertical'&&pts[0]){ctx.beginPath();ctx.moveTo(pts[0].x,0);ctx.lineTo(pts[0].x,rect.height);ctx.stroke();}
-        pts.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();ctx.stroke();});
+        if(selected.type==='rectangle'&&pts.length===2){
+          const left=pts[0].x<=pts[1].x?0:1,right=1-left,top=pts[0].y<=pts[1].y?0:1,bottom=1-top;
+          const handles=[[pts[left].x,pts[top].y],[(pts[0].x+pts[1].x)/2,pts[top].y],[pts[right].x,pts[top].y],[pts[right].x,(pts[0].y+pts[1].y)/2],[pts[right].x,pts[bottom].y],[(pts[0].x+pts[1].x)/2,pts[bottom].y],[pts[left].x,pts[bottom].y],[pts[left].x,(pts[0].y+pts[1].y)/2]];
+          handles.forEach(([x,y])=>{ctx.fillRect(x-4,y-4,8,8);ctx.strokeRect(x-4,y-4,8,8);});
+        }else if(pts.length===2){
+          pts.forEach(p=>{ctx.fillRect(p.x-4,p.y-4,8,8);ctx.strokeRect(p.x-4,p.y-4,8,8);});
+        }else pts.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();ctx.stroke();});
         ctx.restore();
       }
     });
@@ -192,19 +207,43 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
     for(let i=items.length-1;i>=0;i--){
       const d=items[i], pts=(d.points||[]).map(xyAt);
       if(!pts.length||pts.some(p=>!p))continue;
+      const isSelected=selectedRef.current===d.id;
+      if(isSelected&&d.type==='rectangle'&&pts.length===2){
+        const left=pts[0].x<=pts[1].x?0:1,right=1-left,top=pts[0].y<=pts[1].y?0:1,bottom=1-top;
+        const mx=(pts[0].x+pts[1].x)/2,my=(pts[0].y+pts[1].y)/2;
+        const handles=[
+          {mode:'resize-corner',corner:'top-left',x:pts[left].x,y:pts[top].y,timeIndex:left,priceIndex:top},
+          {mode:'resize-edge',edge:'top',x:mx,y:pts[top].y,priceIndex:top},
+          {mode:'resize-corner',corner:'top-right',x:pts[right].x,y:pts[top].y,timeIndex:right,priceIndex:top},
+          {mode:'resize-edge',edge:'right',x:pts[right].x,y:my,timeIndex:right},
+          {mode:'resize-corner',corner:'bottom-right',x:pts[right].x,y:pts[bottom].y,timeIndex:right,priceIndex:bottom},
+          {mode:'resize-edge',edge:'bottom',x:mx,y:pts[bottom].y,priceIndex:bottom},
+          {mode:'resize-corner',corner:'bottom-left',x:pts[left].x,y:pts[bottom].y,timeIndex:left,priceIndex:bottom},
+          {mode:'resize-edge',edge:'left',x:pts[left].x,y:my,timeIndex:left},
+        ];
+        for(const handle of handles)if(Math.hypot(x-handle.x,y-handle.y)<=14)return{id:d.id,...handle};
+      }
+      if(isSelected&&d.type==='fibonacci'&&pts.length===2){
+        for(let j=0;j<2;j++)if(Math.hypot(x-pts[j].x,y-pts[j].y)<=14)return{id:d.id,mode:'point',pointIndex:j};
+      }
       if(d.type==='text'){
         const ctx=canvasRef.current?.getContext('2d'); if(!ctx)continue;
         ctx.font=`${d.fontSize||14}px ${d.fontFamily||'sans-serif'}`;
         const w=ctx.measureText(d.text||'').width,h=d.fontSize||14;
-        if(x>=pts[0].x-8&&x<=pts[0].x+w+8&&y>=pts[0].y-h-8&&y<=pts[0].y+8)return {id:d.id,mode:'body'};
-      } else if(d.type==='horizontal'&&Math.abs(y-pts[0].y)<9)return {id:d.id,mode:'body'};
-      else if(d.type==='vertical'&&Math.abs(x-pts[0].x)<9)return {id:d.id,mode:'body'};
-      else if(d.type==='trendline'&&pts.length===2&&distanceToSegment(x,y,pts[0],pts[1])<10)return {id:d.id,mode:'body'};
+        if(x>=pts[0].x-8&&x<=pts[0].x+w+8&&y>=pts[0].y-h-8&&y<=pts[0].y+8)return{id:d.id,mode:'body'};
+      }else if(d.type==='horizontal'&&Math.abs(y-pts[0].y)<9)return{id:d.id,mode:'body'};
+      else if(d.type==='vertical'&&Math.abs(x-pts[0].x)<9)return{id:d.id,mode:'body'};
+      else if(d.type==='trendline'&&pts.length===2&&distanceToSegment(x,y,pts[0],pts[1])<10)return{id:d.id,mode:'body'};
       else if((d.type==='rectangle'||d.type==='fibonacci')&&pts.length===2){
         const x1=Math.min(pts[0].x,pts[1].x),x2=Math.max(pts[0].x,pts[1].x),y1=Math.min(pts[0].y,pts[1].y),y2=Math.max(pts[0].y,pts[1].y);
-        if(x>=x1-8&&x<=x2+8&&y>=y1-8&&y<=y2+8)return {id:d.id,mode:'body'};
+        const tol=9;
+        const onEdge=(Math.abs(y-y1)<tol&&x>=x1-tol&&x<=x2+tol)||(Math.abs(y-y2)<tol&&x>=x1-tol&&x<=x2+tol)||(Math.abs(x-x1)<tol&&y>=y1-tol&&y<=y2+tol)||(Math.abs(x-x2)<tol&&y>=y1-tol&&y<=y2+tol);
+        const inside=x>=x1&&x<=x2&&y>=y1&&y<=y2;
+        if(onEdge||inside)return{id:d.id,mode:'body'};
       }
-      for(let j=0;j<pts.length;j++)if(Math.hypot(x-pts[j].x,y-pts[j].y)<12)return {id:d.id,mode:'point',pointIndex:j};
+      if(d.type!=='rectangle'&&d.type!=='fibonacci'){
+        for(let j=0;j<pts.length;j++)if(Math.hypot(x-pts[j].x,y-pts[j].y)<12)return{id:d.id,mode:'point',pointIndex:j};
+      }
     }
     return null;
   };
@@ -287,6 +326,14 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
         const dx=p.time-drag.start.time,dy=p.price-drag.start.price;
         const updated=drag.original.map((v,i)=>{
           if(drag.mode==='point')return i===drag.pointIndex?p:v;
+          if(drag.mode==='resize-corner'&&drag.original.length===2){
+            return {...v,...(i===drag.timeIndex?{time:p.time}:{}),...(i===drag.priceIndex?{price:p.price}:{})};
+          }
+          if(drag.mode==='resize-edge'&&drag.original.length===2){
+            if((drag.edge==='top'||drag.edge==='bottom')&&i===drag.priceIndex)return {...v,price:p.price};
+            if((drag.edge==='left'||drag.edge==='right')&&i===drag.timeIndex)return {...v,time:p.time};
+            return v;
+          }
           if(drag.mode==='body'){
             if(drag.original.length===1)return drag.id&&readDrawings().find(d=>d.id===drag.id)?.type==='horizontal'?{...v,price:p.price}:{...v,time:p.time};
             return {...v,time:v.time+dx,price:v.price+dy};
