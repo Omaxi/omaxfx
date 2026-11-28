@@ -209,6 +209,8 @@ export function buildAnalyticsPrintHtml({ traderName, symbol, startBalance, bala
     <section class="section"><h2>Performance by day</h2><div class="dashboard-panel day-bars">${dayBars}</div></section>
     <section class="section"><h2>Performance by month</h2><div class="dashboard-panel month-histogram">${monthlyBars}<div class="month-hist-item month-hist-ytd"><div class="month-hist-value ${yearPnl >= 0 ? 'gain' : 'loss'}">${money(yearPnl)}</div><div class="month-hist-total"><span class="${yearPnl >= 0 ? 'gain-bar' : 'loss-bar'}"></span></div><b>YTD ${reportYear}</b><small>${yearTrades} trades</small></div></div></section>
   `;
+  // Number trades across the complete report, not separately within each day.
+  const tradeNumbers = new Map(trades.map((trade, index) => [trade, index + 1]));
   const grouped = new Map();
   trades.forEach(trade => {
     const key = dateKey(trade.closeTime || trade.openTime);
@@ -218,10 +220,11 @@ export function buildAnalyticsPrintHtml({ traderName, symbol, startBalance, bala
   const tradePages = [...grouped.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([date, dayTrades]) => `
     <section class="day-section">
       <div class="section-title"><div><h2 class="journal-date">${escapeHtml(dateLabel(date))}</h2><p>${dayTrades.length} closed trades</p></div><strong class="${dayTrades.reduce((sum,t)=>sum+(Number(t.pnl)||0),0)>=0?'gain':'loss'}">${money(dayTrades.reduce((sum,t)=>sum+(Number(t.pnl)||0),0))}</strong></div>
-      ${dayTrades.map((trade,index)=>{
+      ${dayTrades.map((trade)=>{
         const pnl=Number(trade.pnl)||0, image=screenshots[String(trade.id)];
+        const tradeNumber = tradeNumbers.get(trade) ?? '—';
         return `<article class="trade-card">
-          <div class="trade-head"><h3><span class="journal-value blue">Trade #${index+1}</span> · ${escapeHtml(trade.symbol||symbol||'Market')} · <span class="trade-side ${String(trade.type||'').toLowerCase()==='buy'?'buy':'sell'}">${escapeHtml(String(trade.type||'').toUpperCase())}</span></h3><b class="${pnl>=0?'gain':'loss'}">${money(pnl)}</b></div>
+          <div class="trade-head"><h3><span class="journal-value blue">Trade #${tradeNumber}</span> · ${escapeHtml(trade.symbol||symbol||'Market')} · <span class="trade-side ${String(trade.type||'').toLowerCase()==='buy'?'buy':'sell'}">${escapeHtml(String(trade.type||'').toUpperCase())}</span></h3><b class="${pnl>=0?'gain':'loss'}">${money(pnl)}</b></div>
           <div class="trade-grid">
             <div><small>Result</small><b class="journal-value ${pnl>0?'gain':pnl<0?'loss':'warn'}">${pnl>0?'WIN':pnl<0?'LOSS':'BREAKEVEN'}</b></div><div><small>Entry time</small><b class="journal-value blue">${escapeHtml(timeLabel(trade.openTime))}</b></div>
             <div><small>Close time</small><b class="journal-value blue">${escapeHtml(timeLabel(trade.closeTime))}</b></div><div><small>Duration</small><b class="journal-value blue">${escapeHtml(duration(trade))}</b></div>
