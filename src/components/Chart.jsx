@@ -2320,7 +2320,7 @@ export default function Chart({ chartId = 'main' }) {
 
       {isPencilMode && (
         <div 
-          className="absolute top-2 right-2 z-30 flex flex-col gap-1.5 bg-[#1e222d]/95 backdrop-blur border border-[#2a2e39] rounded-lg shadow-2xl p-2"
+          className="main-chart-pencil-toolbar absolute top-2 right-2 z-30 flex flex-col gap-1.5 bg-[#1e222d]/95 backdrop-blur border border-[#2a2e39] rounded-lg shadow-2xl p-2"
           onPointerDown={(e) => e.stopPropagation()}
         >
           <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wide text-center px-1">Pencil</div>
@@ -2348,7 +2348,7 @@ export default function Chart({ chartId = 'main' }) {
       )}
 
       {selectedItem && selectedItem.type === 'drawing' && !isPencilMode && (
-        <div className="absolute top-2 right-2 z-30 flex items-center gap-1 bg-[#1e222d]/95 backdrop-blur border border-white/20 rounded-lg shadow-2xl p-1 pointer-events-auto">
+        <div className="main-chart-selected-toolbar absolute top-2 right-2 z-30 flex items-center gap-1 bg-[#1e222d]/95 backdrop-blur border border-white/20 rounded-lg shadow-2xl p-1 pointer-events-auto">
           <span className="text-[10px] text-white/80 font-bold px-2">✦ Selected</span>
           {useStore.getState().drawings.find(d => d.id === selectedItem.id)?.type === 'text' && (
             <button onClick={() => {
@@ -2380,7 +2380,7 @@ export default function Chart({ chartId = 'main' }) {
       )}
 
       {selectedItem && !isPencilMode && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-[#1e222d]/90 backdrop-blur border border-white/20 px-3 py-1 rounded-full text-[10px] text-white font-bold pointer-events-none shadow-lg">
+        <div className="main-chart-locked-pill absolute top-2 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 bg-[#1e222d]/90 backdrop-blur border border-white/20 px-3 py-1 rounded-full text-[10px] text-white font-bold pointer-events-none shadow-lg">
           <Lock size={10} />
           <span>Locked — double-tap chart to unlock</span>
         </div>
