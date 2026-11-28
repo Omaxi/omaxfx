@@ -169,6 +169,8 @@ export default function WebsiteGate() {
     return () => { active = false; };
   }, []);
   if (window.tradePastDesktop?.isElectron) return <App/>;
+  // Public guest entry: launch the backtesting engine directly without account UI.
+  if (route === 'play') return <App/>;
   if (checking) return <div className="tp-boot"><Brand/><span>Preparing your workspace…</span></div>;
   if (route === 'app' && session?.access_token) return <div className="tp-engine-shell"><App/><div className="tp-account-chip"><span>{(user?.user_metadata?.display_name || user?.email || 'T').slice(0,1).toUpperCase()}</span><small>{user?.email || 'Account'}</small><button onClick={logout}>Log out</button></div><AdToast/></div>;
   if (route === 'app') return <div className="tp-boot"><Brand/><span>Please log in to continue.</span><button className="tp-button tp-primary" onClick={() => go('login')}>Log in</button></div>;
