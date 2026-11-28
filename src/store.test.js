@@ -512,3 +512,73 @@ test('daily loss breach closes floating positions and records them in trade hist
     assert.equal(state.pendingOrders.length, 0);
   } finally { restore(); }
 });
+
+
+test('Jump to Session advances to the next real session candle across missing dates', () => {
+  const at = (value) => Math.floor(Date.parse(`${value}Z`) / 1000) - 3 * 3600;
+  const restore = configureStore({
+    gameStarted: true,
+    currentIndex: 0,
+    timezone: 'UTC+3',
+    rawData: [
+      { time: at('2026-01-02T10:59:00'), open: 1, high: 1, low: 1, close: 1 },
+      { time: at('2026-01-03T10:59:00'), open: 1, high: 1, low: 1, close: 1 },
+      { time: at('2026-01-03T11:07:00'), open: 1, high: 1, low: 1, close: 1 },
+    ],
+    sessionTimes: { asian: 3, london: 11, newyork: 16 },
+    sessionEndTimes: { asian: 8, london: 13, newyork: 18 },
+  });
+  try {
+    const previousRecenter = useStore.getState().recenterToken;
+    const index = useStore.getState().jumpToSession('london');
+    assert.equal(index, 2);
+    assert.equal(useStore.getState().currentIndex, 2);
+    assert.equal(useStore.getState().recenterToken, previousRecenter + 1);
+    assert.equal(useStore.getState().isPlaying, false);
+    assert.equal(useStore.getState().sessionJumpNotice, null);
+  } finally { restore(); }
+});
+
+test('saved backtest restore reinstates replay cursor, market data, trades and chart drawings', () => {
+  const restore = configureStore();
+  try {
+    const rawData = [
+      { time: 60, open: 100, high: 101, low: 99, close: 100 },
+      { time: 120, open: 101, high: 102, low: 100, close: 101 },
+      { time: 180, open: 102, high: 103, low: 101, close: 102 },
+    ];
+    const snapshot = {
+      symbol: 'EURUSD',
+      timezone: 'UTC+3',
+      timeframe: 5,
+      rawData,
+      allRawData: rawData,
+      currentIndex: 1,
+      gamePeriod: { from: 60, to: 180 },
+      rules: { startingBalance: 50000, maxRiskPerTrade: 1, maxDailyLoss: 5, maxDrawdown: 10 },
+      balance: 51250,
+      peakBalance: 51500,
+      positions: [{ id: 'open-1', type: 'buy', entryPrice: 100, sl: 99, tp: 104, size: 0.01 }],
+      pendingOrders: [{ id: 'pending-1', type: 'sell', entryPrice: 103, sl: 104, tp: 101, size: 0.01 }],
+      tradeHistory: [{ id: 'closed-1', pnl: 250, closeTime: 60 }],
+      drawings: [{ id: 'drawing-1', type: 'horizontal', points: [{ time: 120, price: 101 }] }],
+      chartDrawings: { main: [{ id: 'chart-drawing-1', type: 'rectangle', points: [] }] },
+      sessionTimes: { asian: 3, london: 11, newyork: 16 },
+      sessionEndTimes: { asian: 8, london: 13, newyork: 18 },
+      contractSpec: { contractSize: 100000, quoteToAccountRate: 1 },
+    };
+    assert.equal(useStore.getState().restoreBacktestSession(snapshot), true);
+    const state = useStore.getState();
+    assert.equal(state.currentIndex, 1);
+    assert.equal(state.rawData.length, 3);
+    assert.equal(state.displayData.length > 0, true);
+    assert.equal(state.balance, 51250);
+    assert.equal(state.positions[0].id, 'open-1');
+    assert.equal(state.pendingOrders[0].id, 'pending-1');
+    assert.equal(state.tradeHistory[0].id, 'closed-1');
+    assert.equal(state.drawings[0].id, 'drawing-1');
+    assert.equal(state.chartDrawings.main[0].id, 'chart-drawing-1');
+    assert.equal(state.isPlaying, false);
+    assert.equal(state.gameStarted, true);
+  } finally { restore(); }
+});
