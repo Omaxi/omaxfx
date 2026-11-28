@@ -34,50 +34,54 @@ const pad = (value) => String(value).padStart(2, '0');
  * intraday windows, so keep advancing by calendar day until a real candle
  * is found. rawData must be sorted by ascending epoch time.
  */
+/**
+ * Find the next real candle belonging to the next occurrence of a configured
+ * broker-clock session. Scan forward from the replay cursor instead of using
+ * binary search: imported CSVs can contain gaps, duplicate timestamps, or
+ * imperfect ordering, and a missed lookup must never silently block a jump.
+ *
+ * Session windows are [start, end). Overnight windows (e.g. 16:00–01:00)
+ * attribute after-midnight candles to the previous broker date.
+ */
 export function findNextSessionCandleIndex(rawData, currentIndex, startHour, endHour, offsetSeconds = MARKET_OFFSET_SECONDS) {
-  if (!Array.isArray(rawData) || rawData.length === 0) return -1;
+  if (!Array.isArray(rawData) || rawData.length < 2) return -1;
   const start = Number(startHour);
-  let end = Number(endHour);
+  const end = Number(endHour);
   const offset = Number(offsetSeconds);
   const cursor = Math.trunc(Number(currentIndex));
-  if (!Number.isInteger(cursor) || cursor < 0 || cursor >= rawData.length ||
+  if (!Number.isInteger(cursor) || cursor < 0 || cursor >= rawData.length - 1 ||
       !Number.isFinite(start) || start < 0 || start >= 24 ||
       !Number.isFinite(end) || end < 0 || end > 24 ||
-      !Number.isFinite(offset)) return -1;
+      !Number.isFinite(offset) || end === start) return -1;
 
-  // Permit overnight windows (for example 16:00–01:00), while rejecting
-  // equal start/end values because they do not describe a usable session.
-  if (end <= start) {
-    if (end === start) return -1;
-    end += 24;
-  }
+  const overnight = end < start;
+  const durationHours = overnight ? end + 24 - start : end - start;
+  if (!(durationHours > 0 && durationHours <= 24)) return -1;
 
   const currentTime = Number(rawData[cursor]?.time);
-  const lastTime = Number(rawData[rawData.length - 1]?.time);
-  if (!Number.isFinite(currentTime) || !Number.isFinite(lastTime)) return -1;
-
+  if (!Number.isFinite(currentTime)) return -1;
   const secondsPerDay = 86400;
-  const brokerDayStart = Math.floor((currentTime + offset) / secondsPerDay) * secondsPerDay - offset;
-  let sessionStart = brokerDayStart + start * 3600;
-  if (currentTime >= sessionStart) sessionStart += secondsPerDay;
+  const currentBrokerDay = Math.floor((currentTime + offset) / secondsPerDay) * secondsPerDay - offset;
+  let earliestSessionStart = currentBrokerDay + start * 3600;
 
-  // Binary-search each candidate window. If a day has no candles in the
-  // requested session, skip it rather than failing the click.
-  while (sessionStart <= lastTime) {
-    const sessionEnd = sessionStart + (end - start) * 3600;
-    let low = cursor + 1;
-    let high = rawData.length;
-    while (low < high) {
-      const middle = low + Math.floor((high - low) / 2);
-      const time = Number(rawData[middle]?.time);
-      if (Number.isFinite(time) && time < sessionStart) low = middle + 1;
-      else high = middle;
+  // If the cursor is already at or beyond today's session start, the next
+  // occurrence is tomorrow. Otherwise today's upcoming session is eligible.
+  if (currentTime >= earliestSessionStart) earliestSessionStart += secondsPerDay;
+
+  const durationSeconds = durationHours * 3600;
+  for (let index = cursor + 1; index < rawData.length; index += 1) {
+    const candleTime = Number(rawData[index]?.time);
+    if (!Number.isFinite(candleTime) || candleTime < earliestSessionStart) continue;
+
+    const brokerDay = Math.floor((candleTime + offset) / secondsPerDay) * secondsPerDay - offset;
+    let sessionStart = brokerDay + start * 3600;
+    if (overnight && candleTime < sessionStart) sessionStart -= secondsPerDay;
+
+    const sessionEnd = sessionStart + durationSeconds;
+    if (sessionStart >= earliestSessionStart &&
+        candleTime >= sessionStart && candleTime < sessionEnd) {
+      return index;
     }
-    if (low < rawData.length) {
-      const candidateTime = Number(rawData[low]?.time);
-      if (Number.isFinite(candidateTime) && candidateTime >= sessionStart && candidateTime < sessionEnd) return low;
-    }
-    sessionStart += secondsPerDay;
   }
   return -1;
 }
