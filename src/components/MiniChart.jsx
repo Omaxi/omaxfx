@@ -219,7 +219,7 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
       <IndicatorsPanel chartRef={chartRef} chartReady={chartReady} visibleData={candles} displayData={aggregatedData} timeframe={timeframe} priceSeriesRef={seriesRef} liveCandle={rawData[currentIndex] || null} rawData={rawData} currentIndex={currentIndex} />
       {candleCountdown !== null && (
         <div aria-live="polite" aria-label={`Candle closes in ${candleCountdown}`}
-          className="absolute right-2 top-2 z-20 rounded-md border border-amber-500/30 bg-[#1e222d]/90 px-2 py-1 text-[10px] font-semibold tabular-nums text-amber-400 shadow-sm pointer-events-none">
+          className="mini-chart-countdown absolute right-2 top-2 z-20 rounded-md border border-amber-500/30 bg-[#1e222d]/90 px-2 py-1 text-[10px] font-semibold tabular-nums text-amber-400 shadow-sm pointer-events-none">
           Closes in {candleCountdown}
         </div>
       )}
@@ -227,7 +227,7 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
       <div className="absolute left-[148px] top-2 z-30 pointer-events-auto">
         <button ref={timeframeButtonRef} type="button" onClick={toggleTimeframeMenu}
           aria-label="Chart timeframe" aria-haspopup="listbox" aria-expanded={timeframeMenuOpen}
-          className="flex h-8 min-w-[56px] items-center justify-center gap-1.5 rounded-md border border-[#2a2e39] bg-[#1e222d] px-2 text-[10px] font-bold text-white shadow-none transition-colors hover:bg-[#2a2e39] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+          className="mini-chart-timeframe-button flex h-8 min-w-[56px] items-center justify-center gap-1.5 rounded-md border border-[#2a2e39] bg-[#1e222d] px-2 text-[10px] font-bold text-white shadow-none transition-colors hover:bg-[#2a2e39] focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
           <span>{timeframeLabel(timeframe)}</span>
           <ChevronDown size={10} className={`transition-transform ${timeframeMenuOpen ? 'rotate-180' : ''}`}/>
         </button>
@@ -235,7 +235,7 @@ export default function MiniChart({ timeframe, onTimeframeChange, chartId = 'min
       {timeframeMenuOpen && <>
         <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setTimeframeMenuOpen(false)} />
         <div data-mini-timeframe-menu role="listbox" aria-label="Select chart timeframe"
-          className="theme-menu-surface fixed min-w-[140px] overflow-hidden rounded-lg border border-[#2a2e39] bg-[#1e222d] shadow-none"
+          className="mini-chart-timeframe-menu theme-menu-surface fixed min-w-[140px] overflow-hidden rounded-lg border border-[#2a2e39] bg-[#1e222d] shadow-none"
           style={{ zIndex: 9999, left: timeframeMenuPosition.left, top: timeframeMenuPosition.top, maxHeight: timeframeMenuPosition.maxHeight, overflowY: 'auto' }}>
           <div className="sticky top-0 border-b border-[#2a2e39] bg-[#1e222d] px-3 py-1.5 text-[9px] font-bold uppercase tracking-wide text-gray-500">Timeframe</div>
           {OPTIONS.map(option => {
