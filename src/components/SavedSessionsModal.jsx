@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bookmark, FolderOpen, Trash2, Play, X, Save, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Bookmark, FolderOpen, Trash2, Play, X, Save, RefreshCw, AlertCircle, CheckCircle2, Download, Upload } from 'lucide-react';
 import { useStore } from '../store';
 import {
   deleteSavedBacktestSession,
@@ -62,6 +62,7 @@ export default function SavedSessionsModal({ open, onClose }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [fileBusy, setFileBusy] = useState(false);
 
   const refresh = async () => {
     setLoading(true);
@@ -109,6 +110,87 @@ export default function SavedSessionsModal({ open, onClose }) {
     }
   };
 
+  const handleExport = async () => {
+    const state = useStore.getState();
+    if (!state.gameStarted || !state.rawData?.length) {
+      setError('Start a backtest before exporting a session.');
+      return;
+    }
+    setFileBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const snapshot = createSnapshot(state);
+      const payload = {
+        format: 'TradePastSession',
+        formatVersion: 1,
+        exportedAt: new Date().toISOString(),
+        name: name.trim() || `${state.symbol || 'Backtest'} session`,
+        snapshot,
+      };
+      const safeName = (payload.name.replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'TradePast-session');
+      const blob = new Blob([JSON.stringify(payload)], { type: 'application/vnd.tradepast.session+json' });
+      if (typeof window.showSaveFilePicker === 'function') {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: `${safeName}.tradepast`,
+          startIn: 'documents',
+          types: [{ description: 'TradePast backtest session', accept: { 'application/vnd.tradepast.session+json': ['.tradepast'] } }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        setNotice('Session file saved. Choose Documents in the file picker to keep it there.');
+      } else {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${safeName}.tradepast`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        setNotice('Session file downloaded. Move it into your Documents folder.');
+      }
+    } catch (err) {
+      if (err?.name !== 'AbortError') setError(err?.message || 'Could not export this session file.');
+    } finally {
+      setFileBusy(false);
+    }
+  };
+
+  const handleImportFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setFileBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      if (payload?.format !== 'TradePastSession' || payload?.formatVersion !== 1 ||
+          !payload?.snapshot || !Array.isArray(payload.snapshot.rawData) ||
+          payload.snapshot.rawData.length < 2) {
+        throw new Error('This is not a valid TradePast session file, or its version is not supported.');
+      }
+      const snapshot = payload.snapshot;
+      const restored = useStore.getState().restoreBacktestSession(snapshot);
+      if (!restored) throw new Error('TradePast could not restore this session file.');
+      try {
+        await saveBacktestSession(payload.name || file.name.replace(/\\.tradepast$/i, ''), snapshot);
+      } catch {
+        // The imported file is already restored. Local browser storage is optional.
+      }
+      setNotice('Session imported and resumed successfully.');
+      await refresh();
+      onClose();
+    } catch (err) {
+      setError(err?.message || 'Could not import this session file.');
+    } finally {
+      setFileBusy(false);
+    }
+  };
+
   const handleResume = async (id) => {
     setLoading(true);
     setError('');
@@ -145,11 +227,20 @@ export default function SavedSessionsModal({ open, onClose }) {
             <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600"><Bookmark size={19}/></span>
             <div>
               <h2 id="saved-sessions-title" className="text-base font-bold">Saved Sessions</h2>
-              <p className="text-xs text-slate-500">Save a backtest and continue it later on this device.</p>
+              <p className="text-xs text-slate-500">Save locally or export a portable file to Documents.</p>
             </div>
           </div>
           <button type="button" onClick={onClose} className="rounded-md p-2 text-slate-500 hover:bg-slate-100" aria-label="Close saved sessions"><X size={18}/></button>
         </header>
+
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-5 py-3">
+          <button type="button" onClick={handleExport} disabled={fileBusy || !useStore.getState().gameStarted} className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><Download size={14}/> Save file to Documents</button>
+          <label className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 ${fileBusy ? 'pointer-events-none opacity-50' : ''}`}>
+            <Upload size={14}/> Import session file
+            <input type="file" accept=".tradepast,.json,application/json,application/vnd.tradepast.session+json" className="hidden" disabled={fileBusy} onChange={handleImportFile}/>
+          </label>
+          <span className="text-[11px] text-slate-500">Portable backup · works offline</span>
+        </div>
 
         <div className="border-b border-slate-200 bg-slate-50 p-5">
           <label htmlFor="saved-session-name" className="mb-2 block text-xs font-semibold text-slate-600">Session name</label>
@@ -159,7 +250,7 @@ export default function SavedSessionsModal({ open, onClose }) {
               {saving ? <RefreshCw size={15} className="animate-spin"/> : <Save size={15}/>} Save current
             </button>
           </div>
-          <p className="mt-2 text-[11px] text-slate-500">Includes your CSV data, replay position, balance, trades, open orders and chart drawings.</p>
+          <p className="mt-2 text-[11px] text-slate-500">Includes CSV data, replay position, balance, trades, open orders and drawings. Use Save file to keep a backup in Documents.</p>
         </div>
 
         <div className="max-h-[52vh] overflow-y-auto p-5">
