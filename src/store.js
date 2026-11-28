@@ -650,6 +650,8 @@ export const useStore = create((set, get) => ({
       timeframe,
       chartType: snapshot.chartType || current.chartType,
       chartLayout: [1, 2, 3].includes(Number(snapshot.chartLayout)) ? Number(snapshot.chartLayout) : current.chartLayout,
+      chartOptions: snapshot.chartOptions || current.chartOptions,
+      pencilColor: snapshot.pencilColor || current.pencilColor,
       allRawDataBySymbol: { ...current.allRawDataBySymbol, [symbol]: allRawData },
       allRawData,
       rawData,
