@@ -1018,7 +1018,7 @@ html[data-ui-theme="light"] .mini-chart-drawing-toolbar button:not(.bg-blue-600)
   color: #475569 !important;
 }
 html[data-ui-theme="light"] .drawing-toolbar button:not(:disabled):hover,
-html[data-ui-theme="light"] .mini-chart-drawing-toolbar button:not(:disabled):hover {
+html[data-ui-theme="light"] .mini-chart-drawing-toolbar button:not(:disabled):not(.bg-blue-600):hover {
   background-color: #eef2f7 !important;
   color: #1e293b !important;
 }
