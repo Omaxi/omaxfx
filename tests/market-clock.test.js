@@ -107,16 +107,21 @@ test('next-session lookup skips missing session windows and finds the next avail
 test('next-session lookup handles overnight windows and exact session boundaries', () => {
   const at = (value) => epoch(value) - 3 * 60 * 60;
   const candles = [
+    { time: at('2026-01-02T15:59:00') },
     { time: at('2026-01-02T16:00:00') },
     { time: at('2026-01-02T23:59:00') },
     { time: at('2026-01-03T00:00:00') },
     { time: at('2026-01-03T00:30:00') },
     { time: at('2026-01-03T01:00:00') },
+    { time: at('2026-01-03T16:00:00') },
   ];
   assert.equal(findNextSessionCandleIndex(candles, 0, 16, 1), 1);
-  assert.equal(findNextSessionCandleIndex(candles, 1, 16, 1), 2);
-  assert.equal(findNextSessionCandleIndex(candles, 2, 16, 1), 3);
-  assert.equal(findNextSessionCandleIndex(candles, 3, 16, 1), -1);
+  assert.equal(findNextSessionCandleIndex(candles, 1, 16, 1), 6);
+  assert.equal(findNextSessionCandleIndex(candles, 2, 16, 1), 6);
+  assert.equal(findNextSessionCandleIndex(candles, 3, 16, 1), 6);
+  assert.equal(findNextSessionCandleIndex(candles, 4, 16, 1), 6);
+  assert.equal(findNextSessionCandleIndex(candles, 5, 16, 1), 6);
+  assert.equal(findNextSessionCandleIndex(candles, 6, 16, 1), -1);
 });
 
 test('next-session lookup uses the first available candle after the start minute', () => {
