@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { parseMarketCsvText } from '../src/utils/marketData.js';
-import { formatMarketDateTime, formatMarketTick, getMarketSession } from '../src/utils/marketClock.js';
+import { findNextSessionCandleIndex, formatMarketDateTime, formatMarketTick, getMarketSession } from '../src/utils/marketClock.js';
 
 const csvUrl = new URL('../public/data/XAUUSD_2026.csv', import.meta.url);
 const epoch = (value) => Math.floor(Date.parse(`${value}Z`) / 1000);
@@ -89,4 +89,48 @@ test('UTC+3 session boundaries are exact and New York crosses midnight', () => {
   assert.deepEqual(getMarketSession(at('2026-01-02T16:00:00')), {
     key: 'newyork', label: 'New York', sessionDate: '2026-01-02',
   });
+});
+
+
+test('next-session lookup skips missing session windows and finds the next available day', () => {
+  const at = (value) => epoch(value) - 3 * 60 * 60;
+  const candles = [
+    { time: at('2026-01-02T10:59:00') },
+    // No London candles on Jan 2: jump must skip that day.
+    { time: at('2026-01-03T10:59:00') },
+    { time: at('2026-01-03T11:07:00') },
+    { time: at('2026-01-03T11:08:00') },
+  ];
+  assert.equal(findNextSessionCandleIndex(candles, 0, 11, 16), 2);
+});
+
+test('next-session lookup handles overnight windows and exact session boundaries', () => {
+  const at = (value) => epoch(value) - 3 * 60 * 60;
+  const candles = [
+    { time: at('2026-01-02T16:00:00') },
+    { time: at('2026-01-02T23:59:00') },
+    { time: at('2026-01-03T00:00:00') },
+    { time: at('2026-01-03T00:30:00') },
+    { time: at('2026-01-03T01:00:00') },
+  ];
+  assert.equal(findNextSessionCandleIndex(candles, 0, 16, 1), 1);
+  assert.equal(findNextSessionCandleIndex(candles, 1, 16, 1), 2);
+  assert.equal(findNextSessionCandleIndex(candles, 2, 16, 1), 3);
+  assert.equal(findNextSessionCandleIndex(candles, 3, 16, 1), -1);
+});
+
+test('next-session lookup uses the first available candle after the start minute', () => {
+  const at = (value) => epoch(value) - 3 * 60 * 60;
+  const candles = [
+    { time: at('2026-01-02T10:59:00') },
+    { time: at('2026-01-02T11:04:00') },
+    { time: at('2026-01-02T11:05:00') },
+  ];
+  assert.equal(findNextSessionCandleIndex(candles, 0, 11, 16), 1);
+});
+
+test('next-session lookup safely rejects invalid windows and empty data', () => {
+  assert.equal(findNextSessionCandleIndex([], 0, 11, 16), -1);
+  assert.equal(findNextSessionCandleIndex([{ time: 0 }], 0, 11, 11), -1);
+  assert.equal(findNextSessionCandleIndex([{ time: 0 }], 0, 25, 26), -1);
 });
