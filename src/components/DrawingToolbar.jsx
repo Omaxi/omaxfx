@@ -49,7 +49,7 @@ export default function DrawingToolbar({ positionClassName = 'absolute top-1 lef
   const locked = isPencilMode; // when pencil active, other tools locked
 
   return (
-    <div className={`${positionClassName} z-20 flex flex-col gap-0.5 md:gap-1 bg-[#131722]/95 rounded-md md:rounded-lg p-0.5 md:p-1 shadow-none`}>
+    <div className={`${positionClassName} z-30 flex max-h-[calc(100%-12px)] flex-col gap-0.5 overflow-y-auto overflow-x-hidden md:gap-1 bg-[#131722]/95 rounded-md md:rounded-lg p-0.5 md:p-1 shadow-none`}>
       {/* Pencil — top priority button */}
       <button
         onClick={() => setPencilMode(!isPencilMode)}
@@ -107,18 +107,16 @@ export default function DrawingToolbar({ positionClassName = 'absolute top-1 lef
         </button>
       ))}
       
-      {drawings.length > 0 && !locked && (
-        <>
-          <div className="border-t border-[#2a2e39] my-0.5" />
-          <button
-            onClick={clearDrawings}
-            title={`Clear ALL drawings (${drawings.length})`}
-            className="p-1 md:p-1.5 rounded text-red-400 hover:bg-red-900/40 transition-colors"
-          >
-            <Trash2 size={12} />
-          </button>
-        </>
-      )}
+      <div className="border-t border-[#2a2e39] my-0.5" />
+      <button
+        onClick={clearDrawings}
+        disabled={!drawings.length || locked}
+        title={drawings.length ? `Delete all drawings (${drawings.length})` : 'No drawings to delete'}
+        aria-label="Delete all drawings"
+        className="p-1 md:p-1.5 rounded text-red-400 hover:bg-red-900/40 transition-colors disabled:text-gray-700 disabled:cursor-not-allowed"
+      >
+        <Trash2 size={14} />
+      </button>
     </div>
   );
 }
