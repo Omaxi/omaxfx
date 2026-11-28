@@ -149,8 +149,10 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
       const selected=drawingsRef.current.find(d=>d.id===selectedRef.current);
       if(selected){
         const pts=(selected.points||[]).map(xyAt).filter(Boolean);
-        ctx.save();ctx.strokeStyle='#2563eb';ctx.fillStyle='#ffffff';ctx.lineWidth=1;ctx.setLineDash([3,3]);
-        if((selected.type==='rectangle'||selected.type==='fibonacci')&&pts.length===2){ctx.strokeRect(Math.min(pts[0].x,pts[1].x),Math.min(pts[0].y,pts[1].y),Math.abs(pts[1].x-pts[0].x),Math.abs(pts[1].y-pts[0].y));}
+        ctx.save();ctx.strokeStyle='#2563eb';ctx.fillStyle='#ffffff';ctx.lineWidth=1;ctx.setLineDash([]);
+        // Fibonacci levels are the selection affordance: do not draw a dashed
+        // bounding rectangle around them. Rectangle selections use a solid outline.
+        if(selected.type==='rectangle'&&pts.length===2){ctx.strokeRect(Math.min(pts[0].x,pts[1].x),Math.min(pts[0].y,pts[1].y),Math.abs(pts[1].x-pts[0].x),Math.abs(pts[1].y-pts[0].y));}
         else if(selected.type==='trendline'&&pts.length===2){ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);ctx.lineTo(pts[1].x,pts[1].y);ctx.stroke();}
         else if(selected.type==='horizontal'&&pts[0]){ctx.beginPath();ctx.moveTo(0,pts[0].y);ctx.lineTo(rect.width,pts[0].y);ctx.stroke();}
         else if(selected.type==='vertical'&&pts[0]){ctx.beginPath();ctx.moveTo(pts[0].x,0);ctx.lineTo(pts[0].x,rect.height);ctx.stroke();}
@@ -313,7 +315,7 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
       }
       const item=readDrawings().find(d=>d.id===hit.id);
       const p=pointAt(x,y);
-      if(item&&p){pushHistory();dragRef.current={kind:'move',mode:hit.mode,id:hit.id,pointIndex:hit.pointIndex,start:p,original:item.points.map(v=>({...v}))};}
+      if(item&&p){pushHistory();dragRef.current={kind:'move',...hit,id:hit.id,start:p,original:item.points.map(v=>({...v}))};}
       scheduleDraw();
     };
     const move=(e)=>{
