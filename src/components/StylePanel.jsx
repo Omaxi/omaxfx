@@ -129,9 +129,11 @@ export default function StylePanel({ selectedId, onClose }) {
               <div className="text-[10px] text-gray-400 uppercase font-bold">Show Border Line</div>
               <button
                 onClick={() => commit({ showBorder: !showBorder })}
-                className={`w-8 h-4 rounded-full transition-colors relative ${showBorder ? 'bg-blue-600' : 'bg-[#2a2e39]'}`}
+                className={`drawing-style-border-toggle w-8 h-4 rounded-full transition-colors relative ${showBorder ? 'is-active bg-blue-600' : 'bg-[#2a2e39]'}`}
+                aria-label="Show border line"
+                aria-pressed={showBorder}
               >
-                <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${showBorder ? 'left-4' : 'left-0.5'}`} />
+                <div className={`drawing-style-border-toggle-knob absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${showBorder ? 'left-4' : 'left-0.5'}`} />
               </button>
             </div>}
 
