@@ -130,7 +130,7 @@ export default function MiniChartDrawingLayer({ chartRef, seriesRef, chartReady,
           const x=Math.min(pts[0].x,pts[1].x), y=Math.min(pts[0].y,pts[1].y), w=Math.abs(pts[1].x-pts[0].x), h=Math.abs(pts[1].y-pts[0].y);
           ctx.fillRect(x,y,w,h); if(drawing.showBorder===true)ctx.strokeRect(x,y,w,h);
         } else if(pts.length===2&&drawing.type==='fibonacci'){
-          const levels=(Array.isArray(drawing.levels)?drawing.levels:[0,0.236,0.382,0.5,0.618,0.786,1])
+          const levels=(Array.isArray(drawing.levels)?drawing.levels:[0,0.5,1])
             .map(Number).filter(level=>Number.isFinite(level)&&level>=0&&level<=1).sort((a,b)=>a-b);
           const x1=Math.min(pts[0].x,pts[1].x), x2=Math.max(pts[0].x,pts[1].x);
           levels.forEach(level=>{
