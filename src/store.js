@@ -124,6 +124,7 @@ export const useStore = create((set, get) => ({
   replaySpeed: 1,
   setReplaySpeed: (speed) => set({ replaySpeed: [1, 5, 10, 50, 100, 500].includes(Number(speed)) ? Number(speed) : 1 }),
   recenterToken: 0,
+  sessionJumpNotice: null,
 
   symbol: 'XAUUSD',
   timezone: 'UTC+3',
@@ -599,22 +600,96 @@ export const useStore = create((set, get) => ({
     };
   }),
 
-  jumpToSession: (session) => set((state) => {
+  jumpToSession: (session) => {
+    const state = get();
     const startHour = Number(state.sessionTimes?.[session]);
     const endHour = Number(state.sessionEndTimes?.[session]);
+    const offsetSeconds = (TZ_OFFSETS[state.timezone || 'UTC+3'] ?? 180) * 60;
     const nextIndex = findNextSessionCandleIndex(
       state.rawData,
       state.currentIndex,
       startHour,
-      endHour
+      endHour,
+      offsetSeconds
     );
-    if (nextIndex < 0) return state;
-    return {
+    if (nextIndex < 0) {
+      set({
+        isPlaying: false,
+        sessionJumpNotice: 'No later candles were found inside that session in the loaded dataset.',
+      });
+      return -1;
+    }
+    set({
       currentIndex: nextIndex,
       isPlaying: false,
+      sessionJumpNotice: null,
       recenterToken: state.recenterToken + 1,
-    };
-  }),
+    });
+    return nextIndex;
+  },
+  clearSessionJumpNotice: () => set({ sessionJumpNotice: null }),
+
+  restoreBacktestSession: (snapshot) => {
+    const current = get();
+    if (!snapshot || !Array.isArray(snapshot.rawData) || snapshot.rawData.length < 2) {
+      return false;
+    }
+    const symbol = String(snapshot.symbol || current.symbol || 'XAUUSD');
+    const rawData = snapshot.rawData;
+    const allRawData = Array.isArray(snapshot.allRawData) && snapshot.allRawData.length
+      ? snapshot.allRawData
+      : rawData;
+    const timeframe = Number(snapshot.timeframe) > 0 ? Number(snapshot.timeframe) : 1;
+    const currentIndex = Math.max(0, Math.min(rawData.length - 1, Math.trunc(Number(snapshot.currentIndex) || 0)));
+    const contractSpecs = snapshot.contractSpec
+      ? { ...current.contractSpecs, [symbol]: snapshot.contractSpec }
+      : current.contractSpecs;
+    set({
+      symbol,
+      timezone: snapshot.timezone || current.timezone || 'UTC+3',
+      timeframe,
+      chartType: snapshot.chartType || current.chartType,
+      chartLayout: [1, 2, 3].includes(Number(snapshot.chartLayout)) ? Number(snapshot.chartLayout) : current.chartLayout,
+      allRawDataBySymbol: { ...current.allRawDataBySymbol, [symbol]: allRawData },
+      allRawData,
+      rawData,
+      displayData: aggregateData(rawData, timeframe),
+      currentIndex,
+      gamePeriod: snapshot.gamePeriod || null,
+      gameStarted: true,
+      isPeriodModalOpen: false,
+      rules: snapshot.rules || current.rules,
+      balance: Number.isFinite(Number(snapshot.balance)) ? Number(snapshot.balance) : INITIAL_BALANCE,
+      positions: Array.isArray(snapshot.positions) ? snapshot.positions : [],
+      pendingOrders: Array.isArray(snapshot.pendingOrders) ? snapshot.pendingOrders : [],
+      tradeHistory: Array.isArray(snapshot.tradeHistory) ? snapshot.tradeHistory : [],
+      peakBalance: Number.isFinite(Number(snapshot.peakBalance)) ? Number(snapshot.peakBalance) : Number(snapshot.balance) || INITIAL_BALANCE,
+      dailyLoss: snapshot.dailyLoss || { day: null, dayStartBalance: Number(snapshot.balance) || INITIAL_BALANCE },
+      gameState: snapshot.gameState || { isOver: false, reason: null, message: '', startTime: Date.now() },
+      drawings: Array.isArray(snapshot.drawings) ? snapshot.drawings : [],
+      chartDrawings: snapshot.chartDrawings || {},
+      drawingsPast: Array.isArray(snapshot.drawingsPast) ? snapshot.drawingsPast : [],
+      drawingsFuture: Array.isArray(snapshot.drawingsFuture) ? snapshot.drawingsFuture : [],
+      pencilStrokes: Array.isArray(snapshot.pencilStrokes) ? snapshot.pencilStrokes : [],
+      isPencilMode: false,
+      activeDrawingTool: null,
+      draftPosition: null,
+      isDrawingMode: false,
+      sessionTimes: snapshot.sessionTimes || current.sessionTimes,
+      sessionEndTimes: snapshot.sessionEndTimes || current.sessionEndTimes,
+      sessionColors: snapshot.sessionColors || current.sessionColors,
+      sessionLabelsVisible: typeof snapshot.sessionLabelsVisible === 'boolean' ? snapshot.sessionLabelsVisible : current.sessionLabelsVisible,
+      drawingStyles: snapshot.drawingStyles || current.drawingStyles,
+      theme: snapshot.theme || current.theme,
+      uiMode: snapshot.uiMode || current.uiMode,
+      contractSpecs,
+      isPlaying: false,
+      sessionId: null,
+      sessionJumpNotice: null,
+      recenterToken: current.recenterToken + 1,
+    });
+    return true;
+  },
 
   startDrawing: (side) => set((state) => ({
     isDrawingMode: true, drawingSide: side, drawingStep: 'entry',
