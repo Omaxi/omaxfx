@@ -19,6 +19,8 @@ function createSnapshot(state) {
     timeframe: state.timeframe,
     chartType: state.chartType,
     chartLayout: state.chartLayout,
+    chartOptions: state.chartOptions,
+    pencilColor: state.pencilColor,
     allRawData: symbolData,
     rawData: state.rawData,
     currentIndex: state.currentIndex,
