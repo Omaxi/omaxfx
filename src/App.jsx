@@ -12,6 +12,7 @@ import GameOverModal from './components/GameOverModal';
 import CelebrationOverlay from './components/CelebrationOverlay';
 import LoadingScreen from './components/LoadingScreen';
 import TradeScreenshotCapture from './components/TradeScreenshotCapture';
+import SavedSessionsModal from './components/SavedSessionsModal';
 import DataImportModal from './components/DataImportModal';
 import { useStore } from './store';
 import { useEffect, useRef, useState } from 'react';
@@ -19,7 +20,7 @@ import { startSoundtrack, stopSoundtrack } from './utils/audio';
 import { fmtMoney } from './utils/format';
 import { fetchDataCatalog, loadBundledCsvFiles } from './utils/dataCatalog';
 import { getPnlMultiplier } from './utils/instrument';
-import { Info, Sparkles, AlertTriangle, LogOut, Square, Columns2, CheckCircle2, TrendingUp, X, Settings, Plus, ChevronDown, CandlestickChart, ChartLine, Check, Sun, Moon } from 'lucide-react';
+import { Info, Sparkles, AlertTriangle, LogOut, Square, Columns2, CheckCircle2, TrendingUp, X, Settings, Plus, ChevronDown, CandlestickChart, ChartLine, Check, Sun, Moon, Bookmark } from 'lucide-react';
 
 function ThreeChartLayoutIcon({ size = 14 }) { return <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="1" y="1" width="5.5" height="14" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="1" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/><rect x="9.5" y="9.5" width="5.5" height="5.5" rx="1" stroke="currentColor" strokeWidth="1.5"/></svg>; }
 
@@ -96,6 +97,7 @@ function App() {
     }
   };
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [savedSessionsOpen, setSavedSessionsOpen] = useState(false);
   const [timeframeMenuOpen, setTimeframeMenuOpen] = useState(false);
   const [timeframeMenuPosition, setTimeframeMenuPosition] = useState({ left: 0, top: 0 });
   const timeframeButtonRef = useRef(null);
@@ -375,6 +377,7 @@ function App() {
               <Settings size={12}/> Settings
             </button>
             <button onClick={openHistory} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">History</button>
+            <button onClick={() => setSavedSessionsOpen(true)} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39] flex items-center gap-1.5"><Bookmark size={12}/> Sessions</button>
             <button onClick={openAnalytics} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Analytics</button>
             <button onClick={() => window.dispatchEvent(new Event('omaxfx:reset-chart'))} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Reset Chart</button>
           </div>
@@ -493,6 +496,7 @@ function App() {
       
       <ControlPanel />
       <DataImportModal />
+      <SavedSessionsModal open={savedSessionsOpen} onClose={() => setSavedSessionsOpen(false)} />
 
       <OrderModal />
       <HistoryModal />
