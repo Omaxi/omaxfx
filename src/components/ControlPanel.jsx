@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
+import ToolbarSeparator from './ToolbarSeparator';
 import { X, ChevronDown, Check, Sunrise, Sun, Sunset, ArrowUpDown, CandlestickChart, AlertTriangle, Play, Pause, SkipForward } from 'lucide-react';
 
 const TIMEFRAMES = [
@@ -261,7 +262,7 @@ export default function ControlPanel() {
             <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.9)]" />
             <span>{symbol}</span>
           </div>
-          <span className="h-5 w-px bg-[#343b49]" aria-hidden="true" />
+          <ToolbarSeparator />
           <div className="flex h-9 items-center text-white text-[11px] font-bold flex-shrink-0">
             <span>{timezone}</span>
           </div>
@@ -270,10 +271,10 @@ export default function ControlPanel() {
           <button ref={speedButtonRef} onClick={toggleSpeed} className="toolbar-plain-button flex h-9 items-center gap-2 px-2 text-white text-[11px] font-bold flex-shrink-0" title="Auto-play speed in underlying 1-minute candles per second">
             <span className="text-gray-400">Speed</span><span>{replaySpeed}x</span><ChevronDown size={11} className={`transition-transform ${speedOpen ? 'rotate-180' : ''}`} />
           </button>
-          <span className="h-5 w-px bg-[#343b49]" />
+          <ToolbarSeparator />
           <button type="button" onClick={togglePlay} aria-label={isPlaying ? 'Pause replay' : 'Play replay'} className="toolbar-plain-button h-9 w-9 flex items-center justify-center text-gray-300 hover:text-white">{isPlaying ? <Pause size={17}/> : <Play size={17}/>}</button>
           <button type="button" onClick={() => stepForward()} aria-label="Next bar" className="toolbar-plain-button h-9 w-9 flex items-center justify-center text-gray-300 hover:text-white"><SkipForward size={17}/></button>
-          <span className="h-5 w-px bg-[#343b49]" />
+          <ToolbarSeparator />
           <button ref={jumpButtonRef} onClick={toggleJump} className="toolbar-plain-button flex h-9 items-center gap-1.5 px-2 text-white text-[11px] font-bold flex-shrink-0" title="Jump to trading session">
             <ArrowUpDown size={12}/><span>Jump</span><ChevronDown size={11} className={`transition-transform ${jumpOpen ? 'rotate-180' : ''}`} />
           </button>
