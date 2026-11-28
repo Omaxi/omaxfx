@@ -139,3 +139,40 @@ test('next-session lookup safely rejects invalid windows and empty data', () => 
   assert.equal(findNextSessionCandleIndex([{ time: 0 }], 0, 11, 11), -1);
   assert.equal(findNextSessionCandleIndex([{ time: 0 }], 0, 25, 26), -1);
 });
+
+
+test('next-session lookup skips weekends and sparse days without matching candles', () => {
+  const at = (value) => epoch(value) - 3 * 60 * 60;
+  const candles = [
+    { time: at('2026-01-02T10:30:00') },
+    // Friday has no Asia session candles; Saturday and Sunday are absent.
+    { time: at('2026-01-05T02:59:00') },
+    { time: at('2026-01-05T03:07:00') },
+    { time: at('2026-01-05T03:08:00') },
+  ];
+  assert.equal(findNextSessionCandleIndex(candles, 0, 3, 8), 2);
+});
+
+test('next-session lookup supports a session ending at midnight', () => {
+  const at = (value) => epoch(value) - 3 * 60 * 60;
+  const candles = [
+    { time: at('2026-01-02T15:59:00') },
+    { time: at('2026-01-02T16:03:00') },
+    { time: at('2026-01-02T23:59:00') },
+    { time: at('2026-01-03T00:00:00') },
+    { time: at('2026-01-03T16:00:00') },
+  ];
+  assert.equal(findNextSessionCandleIndex(candles, 0, 16, 24), 1);
+  assert.equal(findNextSessionCandleIndex(candles, 2, 16, 24), 4);
+});
+
+test('next-session lookup never returns a candle at or before the replay cursor', () => {
+  const at = (value) => epoch(value) - 3 * 60 * 60;
+  const candles = [
+    { time: at('2026-01-02T10:59:00') },
+    { time: at('2026-01-02T11:00:00') },
+    { time: at('2026-01-02T11:01:00') },
+    { time: at('2026-01-03T11:00:00') },
+  ];
+  assert.equal(findNextSessionCandleIndex(candles, 1, 11, 16), 3);
+});
