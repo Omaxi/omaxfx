@@ -1116,3 +1116,17 @@ html[data-ui-theme="light"] .main-chart-selected-toolbar button.bg-blue-600 {
 html[data-ui-theme="light"] .main-chart-pencil-toolbar .text-gray-400 {
   color: #64748b !important;
 }
+
+/* Light-theme switch treatment for the drawing Style panel. */
+html[data-ui-theme="light"] .drawing-style-panel .drawing-style-border-toggle {
+  background-color: #cbd5e1 !important;
+  border: 1px solid #94a3b8 !important;
+}
+html[data-ui-theme="light"] .drawing-style-panel .drawing-style-border-toggle.is-active {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+}
+html[data-ui-theme="light"] .drawing-style-panel .drawing-style-border-toggle-knob {
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 22%) !important;
+}
