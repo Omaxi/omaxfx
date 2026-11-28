@@ -1,5 +1,6 @@
 import ChartWorkspace from './components/ChartWorkspace';
 import ControlPanel from './components/ControlPanel';
+import ToolbarSeparator from './components/ToolbarSeparator';
 import OrderModal from './components/OrderModal';
 import HistoryModal from './components/HistoryModal';
 import AnalyticsModal from './components/AnalyticsModal';
@@ -378,7 +379,7 @@ function App() {
             <button onClick={() => window.dispatchEvent(new Event('omaxfx:reset-chart'))} className="header-utility-action px-2.5 py-1.5 rounded border border-[#2a2e39] bg-[#1e222d] text-[10px] font-semibold text-gray-200 hover:bg-[#2a2e39]">Reset Chart</button>
           </div>
           <div className="header-chart-tools flex items-center gap-3 flex-shrink-0">
-            <span className="h-7 w-px bg-[#343b49]" aria-hidden="true" />
+            <ToolbarSeparator />
             <button ref={timeframeButtonRef} type="button" className="header-timeframe-trigger" onClick={openTimeframeMenu} aria-haspopup="menu" aria-expanded={timeframeMenuOpen} aria-label="Select chart timeframe">
               <span>{{1:"1m",5:"5m",15:"15m",30:"30m",60:"1h",240:"4h",1440:"1D",10080:"1W"}[timeframe] || "1m"}</span>
               <ChevronDown size={12} className={timeframeMenuOpen ? "rotate-180" : ""}/>
