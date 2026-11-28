@@ -1004,3 +1004,91 @@ html[data-ui-theme="dark"] .equity-report-capture .recharts-text {
 html[data-ui-theme="dark"] .equity-report-capture .recharts-tooltip-wrapper {
   color-scheme: dark !important;
 }
+
+
+/* Drawing controls and secondary-chart chrome must respect the selected UI theme. */
+html[data-ui-theme="light"] .drawing-toolbar,
+html[data-ui-theme="light"] .mini-chart-drawing-toolbar {
+  background: #ffffff !important;
+  border: 1px solid #dbe3ee !important;
+  box-shadow: 0 2px 8px rgb(15 23 42 / 10%) !important;
+}
+html[data-ui-theme="light"] .drawing-toolbar button:not(.drawing-toolbar-clear):not(.bg-blue-600),
+html[data-ui-theme="light"] .mini-chart-drawing-toolbar button:not(.bg-blue-600) {
+  color: #475569 !important;
+}
+html[data-ui-theme="light"] .drawing-toolbar button:not(:disabled):hover,
+html[data-ui-theme="light"] .mini-chart-drawing-toolbar button:not(:disabled):hover {
+  background-color: #eef2f7 !important;
+  color: #1e293b !important;
+}
+html[data-ui-theme="light"] .drawing-toolbar button.bg-blue-600,
+html[data-ui-theme="light"] .mini-chart-drawing-toolbar button.bg-blue-600 {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+html[data-ui-theme="light"] .drawing-toolbar .drawing-toolbar-clear {
+  color: #dc2626 !important;
+  background: #fff1f2 !important;
+}
+html[data-ui-theme="light"] .drawing-toolbar .drawing-toolbar-clear:hover {
+  background: #ffe4e6 !important;
+}
+html[data-ui-theme="light"] .drawing-toolbar .border-t,
+html[data-ui-theme="light"] .mini-chart-drawing-toolbar .border-t {
+  border-color: #e2e8f0 !important;
+}
+html[data-ui-theme="light"] .drawing-style-panel {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border-color: #dbe3ee !important;
+  box-shadow: 0 12px 32px rgb(15 23 42 / 16%) !important;
+}
+html[data-ui-theme="light"] .drawing-style-panel .text-gray-400 {
+  color: #64748b !important;
+}
+html[data-ui-theme="light"] .drawing-style-panel input[aria-label="Drawing color hex"] {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  border-color: #cbd5e1 !important;
+}
+html[data-ui-theme="light"] .drawing-style-panel button.bg-\[\#303746\] {
+  background: #e2e8f0 !important;
+  color: #334155 !important;
+}
+html[data-ui-theme="light"] .mini-chart-selected-pill {
+  background: #ffffff !important;
+  color: #334155 !important;
+  border: 1px solid #dbe3ee !important;
+  box-shadow: 0 2px 8px rgb(15 23 42 / 10%) !important;
+}
+html[data-ui-theme="light"] .mini-chart-timeframe-button {
+  background: #ffffff !important;
+  color: #334155 !important;
+  border-color: #cbd5e1 !important;
+}
+html[data-ui-theme="light"] .mini-chart-timeframe-button:hover {
+  background: #f1f5f9 !important;
+}
+html[data-ui-theme="light"] .mini-chart-timeframe-menu {
+  background: #ffffff !important;
+  color: #334155 !important;
+  border-color: #dbe3ee !important;
+  box-shadow: 0 12px 28px rgb(15 23 42 / 14%) !important;
+}
+html[data-ui-theme="light"] .mini-chart-timeframe-menu > div {
+  background: #f8fafc !important;
+  color: #64748b !important;
+  border-color: #e2e8f0 !important;
+}
+html[data-ui-theme="light"] .mini-chart-timeframe-menu button {
+  color: #334155 !important;
+}
+html[data-ui-theme="light"] .mini-chart-timeframe-menu button:hover {
+  background: #eff6ff !important;
+}
+html[data-ui-theme="light"] .mini-chart-countdown {
+  background: #fffbeb !important;
+  color: #b45309 !important;
+  border-color: #fcd34d !important;
+}
