@@ -112,3 +112,32 @@ test('exports a consistently dark report regardless of the application theme', (
   assert.match(html, /background:#1a2130/);
   assert.doesNotMatch(html, /background:#ffffff|background:#f2f4f7|color-scheme:light/);
 });
+
+
+test('numbers trade screenshots sequentially across dates, not from one on each day', () => {
+  const trades = [
+    { id: 'trade-1', symbol: 'XAUUSD', type: 'buy', pnl: 10, openTime: 1793600400, closeTime: 1793601000 },
+    { id: 'trade-2', symbol: 'XAUUSD', type: 'sell', pnl: -5, openTime: 1793686800, closeTime: 1793687400 },
+    { id: 'trade-3', symbol: 'XAUUSD', type: 'buy', pnl: 15, openTime: 1793688000, closeTime: 1793688600 },
+  ];
+  const html = buildAnalyticsPrintHtml({
+    ...base,
+    trades,
+    dailyEntries: [
+      ['2026-11-02', { pnl: 10, trades: 1, wins: 1 }],
+      ['2026-11-03', { pnl: 10, trades: 2, wins: 1 }],
+    ],
+    curve: [
+      { timestamp: 1793601000, label: '11-02 02:10', pnl: 10 },
+      { timestamp: 1793687400, label: '11-03 02:10', pnl: 5 },
+      { timestamp: 1793688600, label: '11-03 02:30', pnl: 20 },
+    ],
+  });
+
+  assert.match(html, /Trade #1/);
+  assert.match(html, /Trade #2/);
+  assert.match(html, /Trade #3/);
+  assert.equal((html.match(/Trade #1/g) || []).length, 1);
+  assert.equal((html.match(/Trade #2/g) || []).length, 1);
+  assert.equal((html.match(/Trade #3/g) || []).length, 1);
+});
