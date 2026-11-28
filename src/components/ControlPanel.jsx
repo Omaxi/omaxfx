@@ -34,7 +34,7 @@ export default function ControlPanel() {
     setTimeframe, timeframe, openOrderModal, isPlaying, togglePlay, stepForward,
     startDrawing, isDrawingMode, drawingStep, draftPosition, clearDraft,
     symbol, timezone,
-    sessionTimes, sessionEndTimes, setSessionTime, setSessionEndTime, jumpToSession,
+    sessionTimes, sessionEndTimes, setSessionTime, setSessionEndTime, jumpToSession, sessionJumpNotice, clearSessionJumpNotice,
     chartType, setChartType, replaySpeed, setReplaySpeed
   } = useStore();
 
@@ -58,6 +58,12 @@ export default function ControlPanel() {
     const timer = window.setTimeout(() => setMarketOrderWarning(''), 4000);
     return () => window.clearTimeout(timer);
   }, [marketOrderWarning]);
+
+  useEffect(() => {
+    if (!sessionJumpNotice) return undefined;
+    const timer = window.setTimeout(() => clearSessionJumpNotice(), 5000);
+    return () => window.clearTimeout(timer);
+  }, [sessionJumpNotice, clearSessionJumpNotice]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -254,6 +260,12 @@ export default function ControlPanel() {
         <div role="alert" aria-live="assertive" className="absolute bottom-full left-1/2 z-[12000] mb-2 flex max-w-[min(92vw,520px)] -translate-x-1/2 items-center gap-2 rounded-lg border border-amber-500/50 bg-[#1e222d] px-4 py-3 text-xs font-semibold text-amber-200 shadow-2xl">
           <AlertTriangle size={15} className="shrink-0 text-amber-400" />
           <span>{marketOrderWarning}</span>
+        </div>
+      )}
+      {sessionJumpNotice && (
+        <div role="status" aria-live="polite" className="absolute bottom-full left-1/2 z-[12000] mb-2 flex max-w-[min(92vw,560px)] -translate-x-1/2 items-center gap-2 rounded-lg border border-amber-500/50 bg-[#1e222d] px-4 py-3 text-xs font-semibold text-amber-200 shadow-2xl">
+          <AlertTriangle size={15} className="shrink-0 text-amber-400" />
+          <span>{sessionJumpNotice}</span>
         </div>
       )}
       <div className="tradepast-bottom-toolbar flex items-center justify-between gap-3 px-4 py-1.5">
